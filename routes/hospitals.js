@@ -67,5 +67,43 @@ router.get('/:id', (req, res) => {
     res.status(500).json({ success: false, message: error.message });
   }
 });
+// Emergency search endpoint
+router.get('/emergency-search', async (req, res) => {
+  try {
+    const { disease, lat, lng, sortBy = 'emergency' } = req.query;
+    
+    let query = {};
+    if (disease) {
+      query.diseases_treated = { $in: [new RegExp(disease, 'i')] };
+    }
+    
+    let hospitals = await Hospital.find(query);
+    
+    // Add distance if location provided
+    if (lat && lng) {
+      hospitals = hospitals.map(h => ({
+        ...h.toObject(),
+        distance: calculateDistance(lat, lng, h.location?.lat, h.location?.lng)
+      }));
+    }
+    
+    res.json({ success: true, data: hospitals });
+  } catch (error) {
+    res.status(500).json({ success: false, message: error.message });
+  }
+});
+
+// Helper function for distance
+function calculateDistance(lat1, lon1, lat2, lon2) {
+  if (!lat1 || !lon1 || !lat2 || !lon2) return 999;
+  const R = 6371;
+  const dLat = (lat2 - lat1) * Math.PI / 180;
+  const dLon = (lon2 - lon1) * Math.PI / 180;
+  const a = Math.sin(dLat/2) * Math.sin(dLat/2) +
+            Math.cos(lat1 * Math.PI/180) * Math.cos(lat2 * Math.PI/180) *
+            Math.sin(dLon/2) * Math.sin(dLon/2);
+  const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
+  return (R * c).toFixed(1);
+}
 
 module.exports = router;
