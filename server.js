@@ -7,6 +7,12 @@ const app = express();
 app.use(cors());
 app.use(express.json());
 
+// Import routes
+const hospitalRoutes = require('./routes/hospitals');
+
+// Use routes
+app.use('/api/hospitals', hospitalRoutes);
+
 // Simple health check
 app.get('/health', (req, res) => {
   res.json({ status: 'ok', message: 'Server is running' });
