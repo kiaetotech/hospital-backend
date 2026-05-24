@@ -1,73 +1,41 @@
 const express = require('express');
 const router = express.Router();
+const Hospital = require('../models/Hospital');
 
-// Temporary in-memory data (until MongoDB model is ready)
-const hospitals = [
-  {
-    _id: "1",
-    name: "Apollo Hospital Mumbai",
-    address: { city: "Mumbai", state: "Maharashtra" },
-    specialties: ["Cardiology", "Neurology"],
-    pricing: { consultation: 1200 },
-    ratings: { average: 4.8, count: 1240 },
-    image: "https://placehold.co/600x200/e2e8f0/1e293b?text=Apollo+Hospital"
-  },
-  {
-    _id: "2",
-    name: "Fortis Hospital Delhi",
-    address: { city: "Delhi", state: "Delhi" },
-    specialties: ["Cardiology", "Orthopedics"],
-    pricing: { consultation: 1500 },
-    ratings: { average: 4.6, count: 890 },
-    image: "https://placehold.co/600x200/e2e8f0/1e293b?text=Fortis+Hospital"
-  },
-  {
-    _id: "3",
-    name: "Manipal Hospital Bangalore",
-    address: { city: "Bangalore", state: "Karnataka" },
-    specialties: ["Neurology", "Oncology"],
-    pricing: { consultation: 1000 },
-    ratings: { average: 4.9, count: 2100 },
-    image: "https://placehold.co/600x200/e2e8f0/1e293b?text=Manipal+Hospital"
-  }
-];
+// Helper function for distance calculation
+function calculateDistance(lat1, lon1, lat2, lon2) {
+  if (!lat1 || !lon1 || !lat2 || !lon2) return 999;
+  const R = 6371;
+  const dLat = (lat2 - lat1) * Math.PI / 180;
+  const dLon = (lon2 - lon1) * Math.PI / 180;
+  const a = Math.sin(dLat/2) * Math.sin(dLat/2) +
+            Math.cos(lat1 * Math.PI/180) * Math.cos(lat2 * Math.PI/180) *
+            Math.sin(dLon/2) * Math.sin(dLon/2);
+  const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
+  return parseFloat((R * c).toFixed(1));
+}
 
-// Search hospitals
-router.get('/search', (req, res) => {
+// Regular search (by city, disease)
+router.get('/search', async (req, res) => {
   try {
     const { city, disease } = req.query;
-    let filtered = [...hospitals];
+    let query = {};
     
     if (city) {
-      filtered = filtered.filter(h => 
-        h.address.city.toLowerCase().includes(city.toLowerCase())
-      );
+      query['address.city'] = { $regex: new RegExp(city, 'i') };
     }
     if (disease) {
-      filtered = filtered.filter(h =>
-        h.specialties.some(s => s.toLowerCase().includes(disease.toLowerCase()))
-      );
+      query.diseases_treated = { $in: [new RegExp(disease, 'i')] };
     }
     
-    res.json({ success: true, data: filtered });
+    const hospitals = await Hospital.find(query).limit(20);
+    res.json({ success: true, data: hospitals });
   } catch (error) {
     res.status(500).json({ success: false, message: error.message });
   }
 });
 
-// Get single hospital
-router.get('/:id', (req, res) => {
-  try {
-    const hospital = hospitals.find(h => h._id === req.params.id);
-    if (!hospital) {
-      return res.status(404).json({ success: false, message: 'Hospital not found' });
-    }
-    res.json({ success: true, data: hospital });
-  } catch (error) {
-    res.status(500).json({ success: false, message: error.message });
-  }
-});
-// Emergency search endpoint
+// Emergency search (by disease/symptom, with location)
 router.get('/emergency-search', async (req, res) => {
   try {
     const { disease, lat, lng, sortBy = 'emergency' } = req.query;
@@ -83,8 +51,28 @@ router.get('/emergency-search', async (req, res) => {
     if (lat && lng) {
       hospitals = hospitals.map(h => ({
         ...h.toObject(),
-        distance: calculateDistance(lat, lng, h.location?.lat, h.location?.lng)
+        distance: calculateDistance(parseFloat(lat), parseFloat(lng), h.location?.lat, h.location?.lng)
       }));
+    }
+    
+    // Sort based on emergency priority
+    if (sortBy === 'emergency') {
+      hospitals.sort((a, b) => {
+        let scoreA = 0, scoreB = 0;
+        if (a.has24x7ER) scoreA += 40;
+        if (b.has24x7ER) scoreB += 40;
+        if (a.beds?.icu_available > 0) scoreA += 20;
+        if (b.beds?.icu_available > 0) scoreB += 20;
+        if (a.ratings?.average) scoreA += a.ratings.average * 5;
+        if (b.ratings?.average) scoreB += b.ratings.average * 5;
+        if (a.distance) scoreA -= a.distance / 2;
+        if (b.distance) scoreB -= b.distance / 2;
+        return scoreB - scoreA;
+      });
+    } else if (sortBy === 'distance' && lat && lng) {
+      hospitals.sort((a, b) => (a.distance || 999) - (b.distance || 999));
+    } else if (sortBy === 'rating') {
+      hospitals.sort((a, b) => (b.ratings?.average || 0) - (a.ratings?.average || 0));
     }
     
     res.json({ success: true, data: hospitals });
@@ -93,17 +81,17 @@ router.get('/emergency-search', async (req, res) => {
   }
 });
 
-// Helper function for distance
-function calculateDistance(lat1, lon1, lat2, lon2) {
-  if (!lat1 || !lon1 || !lat2 || !lon2) return 999;
-  const R = 6371;
-  const dLat = (lat2 - lat1) * Math.PI / 180;
-  const dLon = (lon2 - lon1) * Math.PI / 180;
-  const a = Math.sin(dLat/2) * Math.sin(dLat/2) +
-            Math.cos(lat1 * Math.PI/180) * Math.cos(lat2 * Math.PI/180) *
-            Math.sin(dLon/2) * Math.sin(dLon/2);
-  const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
-  return (R * c).toFixed(1);
-}
+// Get single hospital by ID
+router.get('/:id', async (req, res) => {
+  try {
+    const hospital = await Hospital.findById(req.params.id);
+    if (!hospital) {
+      return res.status(404).json({ success: false, message: 'Hospital not found' });
+    }
+    res.json({ success: true, data: hospital });
+  } catch (error) {
+    res.status(500).json({ success: false, message: error.message });
+  }
+});
 
 module.exports = router;
