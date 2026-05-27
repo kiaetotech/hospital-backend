@@ -1,49 +1,46 @@
 const mongoose = require('mongoose');
 
 const hospitalSchema = new mongoose.Schema({
-  name: String,
+  name: { type: String, required: true },
+  subscription_plan: { type: String, default: 'free' },
   address: {
     city: String,
     state: String,
-    street: String,
-    pincode: String
+    street: String
   },
   location: {
     lat: Number,
     lng: Number
   },
-  specialties: [String],
   diseases_treated: [String],
-  has24x7ER: Boolean,
+  specialties: [String],
+  has24x7ER: { type: Boolean, default: false },
   beds: {
     total: Number,
     available: Number,
-    icu: Number,
-    icu_available: Number,
-    ventilator: Number,
-    ventilator_available: Number,
-    general: Number,
-    general_available: Number
+    icu_available: Number
   },
   pricing: {
     consultation: Number,
     icu_bed_per_day: Number,
-    general_bed_per_day: Number,
-    ventilator_per_day: Number
+    general_bed_per_day: Number
   },
+  doctors: [{
+    name: String,
+    specialization: String,
+    consultation_fee: Number
+  }],
   insurance_accepted: [String],
-  facilities: [String],
+  lab_tests_available: { type: Boolean, default: false },
+  ambulance_available: { type: Boolean, default: false },
   ratings: {
-    average: Number,
-    count: Number
+    average: { type: Number, default: 0 },
+    count: { type: Number, default: 0 }
   },
   contact: {
     phone: String,
-    email: String,
-    emergency: String
-  },
-  ambulance_available: Boolean,
-  ambulance_eta_minutes: Number
-});
+    email: String
+  }
+}, { collection: 'hospitals' });
 
 module.exports = mongoose.model('Hospital', hospitalSchema);
