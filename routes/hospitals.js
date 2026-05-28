@@ -1,7 +1,6 @@
 const express = require('express');
 const router = express.Router();
 
-// ========== HOSPITAL DATA (Hardcoded for now) ==========
 const hospitals = [
   {
     _id: "1",
@@ -15,11 +14,11 @@ const hospitals = [
     beds: { total: 350, available: 45, icu_available: 4 },
     pricing: { consultation: 1200, icu_bed_per_day: 8000, general_bed_per_day: 3000 },
     doctors: [
-      { name: "Dr. Priya Sharma", specialization: "Cardiologist", consultation_fee: 1200 },
-      { name: "Dr. Rajesh Mehta", specialization: "Neurologist", consultation_fee: 1300 },
-      { name: "Dr. Sunil Patil", specialization: "Orthopedic", consultation_fee: 1100 }
+      { name: "Dr. Priya Sharma", specialization: "Cardiologist", consultation_fee: 1200, rating: 4.9, reviewCount: 340 },
+      { name: "Dr. Rajesh Mehta", specialization: "Neurologist", consultation_fee: 1300, rating: 4.8, reviewCount: 210 },
+      { name: "Dr. Sunil Patil", specialization: "Orthopedic", consultation_fee: 1100, rating: 4.7, reviewCount: 180 }
     ],
-    insurance_accepted: ["Star Health", "ICICI Lombard", "HDFC ERGO"],
+    insurance_accepted: ["Star Health", "ICICI Lombard", "HDFC ERGO", "Bajaj Allianz", "New India Assurance"],
     lab_tests_available: true,
     ambulance_available: true,
     ratings: { average: 4.8, count: 1240 },
@@ -37,10 +36,10 @@ const hospitals = [
     beds: { total: 280, available: 32, icu_available: 2 },
     pricing: { consultation: 1500, icu_bed_per_day: 9000, general_bed_per_day: 3500 },
     doctors: [
-      { name: "Dr. Anil Kumar", specialization: "Cardiologist", consultation_fee: 1500 },
-      { name: "Dr. Neha Gupta", specialization: "Orthopedic", consultation_fee: 1400 }
+      { name: "Dr. Anil Kumar", specialization: "Cardiologist", consultation_fee: 1500, rating: 4.8, reviewCount: 220 },
+      { name: "Dr. Neha Gupta", specialization: "Orthopedic", consultation_fee: 1400, rating: 4.6, reviewCount: 150 }
     ],
-    insurance_accepted: ["Star Health", "HDFC ERGO"],
+    insurance_accepted: ["Star Health", "HDFC ERGO", "ICICI Lombard"],
     lab_tests_available: false,
     ambulance_available: true,
     ratings: { average: 4.6, count: 890 },
@@ -58,10 +57,10 @@ const hospitals = [
     beds: { total: 420, available: 56, icu_available: 5 },
     pricing: { consultation: 1000, icu_bed_per_day: 7500, general_bed_per_day: 2500 },
     doctors: [
-      { name: "Dr. Sunita Reddy", specialization: "Neurologist", consultation_fee: 1000 },
-      { name: "Dr. Vikram Singh", specialization: "Oncologist", consultation_fee: 1200 }
+      { name: "Dr. Sunita Reddy", specialization: "Neurologist", consultation_fee: 1000, rating: 4.9, reviewCount: 310 },
+      { name: "Dr. Vikram Singh", specialization: "Oncologist", consultation_fee: 1200, rating: 4.8, reviewCount: 190 }
     ],
-    insurance_accepted: ["Star Health", "ICICI Lombard", "HDFC ERGO"],
+    insurance_accepted: ["Star Health", "ICICI Lombard", "HDFC ERGO", "Bajaj Allianz"],
     lab_tests_available: true,
     ambulance_available: true,
     ratings: { average: 4.9, count: 2100 },
@@ -79,10 +78,10 @@ const hospitals = [
     beds: { total: 320, available: 28, icu_available: 6 },
     pricing: { consultation: 1100, icu_bed_per_day: 7500, general_bed_per_day: 2800 },
     doctors: [
-      { name: "Dr. Ajay Kumar", specialization: "Cardiologist", consultation_fee: 1100 },
-      { name: "Dr. Meera Reddy", specialization: "Nephrologist", consultation_fee: 1000 }
+      { name: "Dr. Ajay Kumar", specialization: "Cardiologist", consultation_fee: 1100, rating: 4.7, reviewCount: 200 },
+      { name: "Dr. Meera Reddy", specialization: "Nephrologist", consultation_fee: 1000, rating: 4.8, reviewCount: 170 }
     ],
-    insurance_accepted: ["Star Health", "ICICI Lombard", "Bajaj Allianz"],
+    insurance_accepted: ["Star Health", "ICICI Lombard", "Bajaj Allianz", "HDFC ERGO"],
     lab_tests_available: true,
     ambulance_available: true,
     ratings: { average: 4.7, count: 1560 },
@@ -100,10 +99,10 @@ const hospitals = [
     beds: { total: 450, available: 42, icu_available: 8 },
     pricing: { consultation: 900, icu_bed_per_day: 6800, general_bed_per_day: 2200 },
     doctors: [
-      { name: "Dr. S. Chatterjee", specialization: "Cardiologist", consultation_fee: 900 },
-      { name: "Dr. R. Banerjee", specialization: "Oncologist", consultation_fee: 950 }
+      { name: "Dr. S. Chatterjee", specialization: "Cardiologist", consultation_fee: 900, rating: 4.6, reviewCount: 160 },
+      { name: "Dr. R. Banerjee", specialization: "Oncologist", consultation_fee: 950, rating: 4.7, reviewCount: 130 }
     ],
-    insurance_accepted: ["Star Health", "HDFC ERGO", "New India Assurance"],
+    insurance_accepted: ["Star Health", "HDFC ERGO", "New India Assurance", "ICICI Lombard"],
     lab_tests_available: false,
     ambulance_available: true,
     ratings: { average: 4.5, count: 980 },
@@ -111,16 +110,12 @@ const hospitals = [
   }
 ];
 
-// ========== ROUTES ==========
-
-// GET /api/hospitals/search - Search hospitals
 router.get('/search', (req, res) => {
   try {
     const { q, page = 1, limit = 10 } = req.query;
     
     let filtered = [...hospitals];
     
-    // Apply search filter
     if (q && q.trim() !== '') {
       const searchTerm = q.toLowerCase();
       filtered = filtered.filter(hospital => {
@@ -132,7 +127,6 @@ router.get('/search', (req, res) => {
       });
     }
     
-    // Pagination
     const start = (parseInt(page) - 1) * parseInt(limit);
     const paginatedData = filtered.slice(start, start + parseInt(limit));
     
@@ -147,22 +141,16 @@ router.get('/search', (req, res) => {
       }
     });
   } catch (error) {
-    console.error('Search error:', error);
     res.status(500).json({ success: false, message: error.message });
   }
 });
 
-// GET /api/hospitals/:id - Get single hospital
 router.get('/:id', (req, res) => {
-  try {
-    const hospital = hospitals.find(h => h._id === req.params.id);
-    if (!hospital) {
-      return res.status(404).json({ success: false, message: 'Hospital not found' });
-    }
-    res.json({ success: true, data: hospital });
-  } catch (error) {
-    res.status(500).json({ success: false, message: error.message });
+  const hospital = hospitals.find(h => h._id === req.params.id);
+  if (!hospital) {
+    return res.status(404).json({ success: false, message: 'Hospital not found' });
   }
+  res.json({ success: true, data: hospital });
 });
 
 module.exports = router;
