@@ -34,4 +34,7 @@ const paymentRoutes = require('./routes/payments');
 app.use('/api/payments', paymentRoutes);
 app.listen(PORT, () => {
   console.log(`🚀 Server running on port ${PORT}`);
+const ambulanceRoutes = require('./routes/ambulance');
+app.use('/api/ambulance', ambulanceRoutes);
 });
+
