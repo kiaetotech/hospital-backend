@@ -2,25 +2,27 @@ const express = require('express');
 const router = express.Router();
 const Caregiver = require('../models/Caregiver');
 const CaregiverBooking = require('../models/CaregiverBooking');
-const ServiceLog = require('../models/ServiceLog');
 const auth = require('../middleware/auth');
 
-// Get all caregivers (public)
+// GET /api/caregivers - Get all caregivers (public)
 router.get('/', async (req, res) => {
   try {
-    const { lat, lng, radius, serviceType, gender, minExperience, minRating, maxHourlyRate, specializations } = req.query;
+    const { serviceType, gender, minExperience, minRating, maxHourlyRate, city } = req.query;
     let query = { isActive: true, backgroundCheckStatus: 'cleared' };
     
-    if (serviceType) query.serviceType = { $in: [serviceType, 'both'] };
+    if (serviceType && serviceType !== '') query.serviceType = { $in: [serviceType, 'both'] };
     if (gender && gender !== 'any') query.gender = gender;
     if (minExperience) query.experienceYears = { $gte: parseInt(minExperience) };
     if (minRating) query['ratings.average'] = { $gte: parseFloat(minRating) };
-    if (specializations) query.specializations = { $in: specializations.split(',') };
+    if (city) query['location.city'] = { $regex: new RegExp(city, 'i') };
     
-    let caregivers = await Caregiver.find(query);
+    let caregivers = await Caregiver.find(query).sort({ 'ratings.average': -1 });
     
     if (maxHourlyRate) {
-      caregivers = caregivers.filter(c => (c.pricing.personal?.hourly || c.pricing.skilled?.hourly) <= parseInt(maxHourlyRate));
+      caregivers = caregivers.filter(c => {
+        const rate = c.pricing?.personal?.hourly || c.pricing?.skilled?.hourly || 0;
+        return rate <= parseInt(maxHourlyRate);
+      });
     }
     
     res.json({ success: true, data: caregivers });
@@ -29,21 +31,63 @@ router.get('/', async (req, res) => {
   }
 });
 
-// Get single caregiver
+// GET /api/caregivers/:id - Get single caregiver
 router.get('/:id', async (req, res) => {
   try {
     const caregiver = await Caregiver.findById(req.params.id);
-    if (!caregiver) return res.status(404).json({ success: false });
+    if (!caregiver) return res.status(404).json({ success: false, message: 'Caregiver not found' });
     res.json({ success: true, data: caregiver });
   } catch (error) {
     res.status(500).json({ success: false, message: error.message });
   }
 });
 
-// Create booking (authenticated)
+// POST /api/caregivers/profile - Create/Update caregiver profile (authenticated)
+router.post('/profile', auth, async (req, res) => {
+  try {
+    if (req.user.role !== 'caregiver') {
+      return res.status(403).json({ success: false, message: 'Only caregivers can create profile' });
+    }
+    
+    let caregiver = await Caregiver.findOne({ userId: req.user.id });
+    
+    if (caregiver) {
+      caregiver = await Caregiver.findOneAndUpdate(
+        { userId: req.user.id },
+        { ...req.body, updatedAt: Date.now() },
+        { new: true }
+      );
+    } else {
+      caregiver = new Caregiver({ ...req.body, userId: req.user.id });
+      await caregiver.save();
+    }
+    
+    res.json({ success: true, data: caregiver });
+  } catch (error) {
+    res.status(500).json({ success: false, message: error.message });
+  }
+});
+
+// GET /api/caregivers/profile/me - Get my caregiver profile
+router.get('/profile/me', auth, async (req, res) => {
+  try {
+    const caregiver = await Caregiver.findOne({ userId: req.user.id });
+    if (!caregiver) return res.status(404).json({ success: false, message: 'Profile not found' });
+    res.json({ success: true, data: caregiver });
+  } catch (error) {
+    res.status(500).json({ success: false, message: error.message });
+  }
+});
+
+// POST /api/caregivers/book - Create booking
 router.post('/book', auth, async (req, res) => {
   try {
-    const booking = new CaregiverBooking({ ...req.body, patientId: req.user.id });
+    const booking = new CaregiverBooking({
+      ...req.body,
+      patientId: req.user.id,
+      status: 'pending',
+      paymentStatus: 'pending'
+    });
     await booking.save();
     res.status(201).json({ success: true, data: booking });
   } catch (error) {
@@ -51,7 +95,19 @@ router.post('/book', auth, async (req, res) => {
   }
 });
 
-// Check-in (authenticated caregiver)
+// GET /api/caregivers/my-bookings - Get patient bookings
+router.get('/my-bookings', auth, async (req, res) => {
+  try {
+    const bookings = await CaregiverBooking.find({ patientId: req.user.id })
+      .populate('caregiverId', 'fullName photo ratings')
+      .sort({ createdAt: -1 });
+    res.json({ success: true, data: bookings });
+  } catch (error) {
+    res.status(500).json({ success: false, message: error.message });
+  }
+});
+
+// POST /api/caregivers/checkin/:bookingId - Check-in
 router.post('/checkin/:bookingId', auth, async (req, res) => {
   try {
     const { lat, lng } = req.body;
@@ -67,7 +123,7 @@ router.post('/checkin/:bookingId', auth, async (req, res) => {
   }
 });
 
-// Check-out (authenticated caregiver)
+// POST /api/caregivers/checkout/:bookingId - Check-out
 router.post('/checkout/:bookingId', auth, async (req, res) => {
   try {
     const { lat, lng } = req.body;
@@ -83,18 +139,7 @@ router.post('/checkout/:bookingId', auth, async (req, res) => {
   }
 });
 
-// Add service log (authenticated caregiver)
-router.post('/log/:bookingId', auth, async (req, res) => {
-  try {
-    const log = new ServiceLog({ ...req.body, bookingId: req.params.bookingId });
-    await log.save();
-    res.status(201).json({ success: true, data: log });
-  } catch (error) {
-    res.status(500).json({ success: false, message: error.message });
-  }
-});
-
-// Add rating (authenticated patient)
+// POST /api/caregivers/rate/:bookingId - Add rating
 router.post('/rate/:bookingId', auth, async (req, res) => {
   try {
     const { rating, review } = req.body;
@@ -105,7 +150,6 @@ router.post('/rate/:bookingId', auth, async (req, res) => {
     booking.review = review;
     await booking.save();
     
-    // Update caregiver average rating
     const caregiver = await Caregiver.findById(booking.caregiverId);
     const allRatings = await CaregiverBooking.find({ caregiverId: booking.caregiverId, rating: { $ne: null } });
     const avgRating = allRatings.reduce((sum, b) => sum + b.rating, 0) / allRatings.length;

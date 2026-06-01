@@ -11,11 +11,13 @@ app.use(express.json());
 const hospitalRoutes = require('./routes/hospitals');
 const authRoutes = require('./routes/auth');
 const caregiverRoutes = require('./routes/caregivers');
+const diagnosticsRoutes = require('./routes/diagnostics');
 
 // Use routes
 app.use('/api/hospitals', hospitalRoutes);
 app.use('/api/auth', authRoutes);
 app.use('/api/caregivers', caregiverRoutes);
+app.use('/api/diagnostics', diagnosticsRoutes);
 
 // Simple health check
 app.get('/health', (req, res) => {

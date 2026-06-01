@@ -4,6 +4,7 @@ const caregiverBookingSchema = new mongoose.Schema({
   patientId: { type: mongoose.Schema.Types.ObjectId, ref: 'Patient', required: true },
   caregiverId: { type: mongoose.Schema.Types.ObjectId, ref: 'Caregiver', required: true },
   serviceType: { type: String, enum: ['personal', 'skilled'], required: true },
+  durationType: { type: String, enum: ['hourly', 'daily', 'weekly', 'monthly', 'yearly'], default: 'hourly' },
   date: { type: Date, required: true },
   startTime: { type: String, required: true },
   endTime: { type: String, required: true },
