@@ -9,9 +9,13 @@ app.use(express.json());
 
 // Import routes
 const hospitalRoutes = require('./routes/hospitals');
+const authRoutes = require('./routes/auth');
+const caregiverRoutes = require('./routes/caregivers');
 
 // Use routes
 app.use('/api/hospitals', hospitalRoutes);
+app.use('/api/auth', authRoutes);
+app.use('/api/caregivers', caregiverRoutes);
 
 // Simple health check
 app.get('/health', (req, res) => {
