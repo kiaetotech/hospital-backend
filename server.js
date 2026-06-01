@@ -12,12 +12,16 @@ const hospitalRoutes = require('./routes/hospitals');
 const authRoutes = require('./routes/auth');
 const caregiverRoutes = require('./routes/caregivers');
 const diagnosticsRoutes = require('./routes/diagnostics');
+const paymentRoutes = require('./routes/payments');
+const ambulanceRoutes = require('./routes/ambulance');
 
-// Use routes
+// Use routes (ALL routes MUST be before app.listen)
 app.use('/api/hospitals', hospitalRoutes);
 app.use('/api/auth', authRoutes);
 app.use('/api/caregivers', caregiverRoutes);
 app.use('/api/diagnostics', diagnosticsRoutes);
+app.use('/api/payments', paymentRoutes);
+app.use('/api/ambulance', ambulanceRoutes);
 
 // Simple health check
 app.get('/health', (req, res) => {
@@ -36,11 +40,6 @@ mongoose.connect(DB_URI)
   .catch(err => console.error('❌ MongoDB error:', err));
 
 const PORT = process.env.PORT || 5000;
-const paymentRoutes = require('./routes/payments');
-app.use('/api/payments', paymentRoutes);
 app.listen(PORT, () => {
   console.log(`🚀 Server running on port ${PORT}`);
-const ambulanceRoutes = require('./routes/ambulance');
-app.use('/api/ambulance', ambulanceRoutes);
 });
-
