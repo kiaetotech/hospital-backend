@@ -1,0 +1,1 @@
+mongodb+srv://kiaetotech:<Kiaeto2412>@cluster0.4vjxrfm.mongodb.net/?retryWrites=true&w=majority

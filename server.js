@@ -11,7 +11,7 @@ app.use(express.json());
 const hospitalRoutes = require('./routes/hospitals');
 const authRoutes = require('./routes/auth');
 const caregiverRoutes = require('./routes/caregivers');
-const diagnosticsRoutes = require('./routes/diagnostics');
+const diagnosticsRoutes = require('./routes/diagnostics'); const diagnosticsUploadRoutes = require('./routes/diagnostics-upload');
 const paymentRoutes = require('./routes/payments');
 const ambulanceRoutes = require('./routes/ambulance');
 
@@ -19,7 +19,7 @@ const ambulanceRoutes = require('./routes/ambulance');
 app.use('/api/hospitals', hospitalRoutes);
 app.use('/api/auth', authRoutes);
 app.use('/api/caregivers', caregiverRoutes);
-app.use('/api/diagnostics', diagnosticsRoutes);
+app.use('/api/diagnostics', diagnosticsRoutes); app.use('/api/diagnostics/upload', diagnosticsUploadRoutes);
 app.use('/api/payments', paymentRoutes);
 app.use('/api/ambulance', ambulanceRoutes);
 
