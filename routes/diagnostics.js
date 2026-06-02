@@ -219,5 +219,31 @@ function calculateDistance(lat1, lon1, lat2, lon2) {
   const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
   return R * c;
 }
-
+// POST /api/diagnostics/compare - Compare multiple tests/packages
+router.post('/compare', async (req, res) => {
+  try {
+    const { type, ids } = req.body;
+    let items = [];
+    
+    if (type === 'tests') {
+      items = await TestMaster.find({ _id: { $in: ids }, is_active: true });
+      // Add pricing info
+      items = await Promise.all(items.map(async (item) => {
+        const pricing = await TestPricing.find({ test_id: item._id, is_active: true });
+        const minPrice = pricing.length > 0 ? Math.min(...pricing.map(p => p.discounted_price)) : item.price;
+        return {
+          ...item.toObject(),
+          min_price: minPrice,
+          discounted_price: Math.round(minPrice * 0.9)
+        };
+      }));
+    } else {
+      items = await HealthPackage.find({ _id: { $in: ids }, is_active: true });
+    }
+    
+    res.json({ success: true, data: items });
+  } catch (error) {
+    res.status(500).json({ success: false, message: error.message });
+  }
+});
 module.exports = router;
