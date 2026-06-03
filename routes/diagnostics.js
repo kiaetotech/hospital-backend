@@ -13,15 +13,34 @@ const calculateDistance = (lat1, lon1, lat2, lon2) => {
   return R * c;
 };
 
+// ============================================
+// GET /api/diagnostics/tests
+// ============================================
 router.get('/tests', async (req, res) => {
   try {
-    const { search, page = 1, limit = 50 } = req.query;
-    let query = { is_active: true };
-    if (search) query.test_name = { $regex: search, $options: 'i' };
-    const tests = await TestMaster.find(query).limit(parseInt(limit)).skip((parseInt(page)-1)*parseInt(limit));
+    const { search, page = 1, limit = 100 } = req.query;
+    let query = {};
+    
+    // Remove the is_active filter temporarily
+    // query = { is_active: true };
+    
+    if (search) {
+      query.test_name = { $regex: search, $options: 'i' };
+    }
+    
+    const tests = await TestMaster.find(query)
+      .limit(parseInt(limit))
+      .skip((parseInt(page) - 1) * parseInt(limit));
+    
     const total = await TestMaster.countDocuments(query);
-    res.json({ success: true, data: tests, pagination: { total, page: parseInt(page), limit: parseInt(limit) } });
+    
+    res.json({
+      success: true,
+      data: tests,
+      pagination: { total, page: parseInt(page), limit: parseInt(limit) }
+    });
   } catch (error) {
+    console.error('Error in /tests:', error);
     res.status(500).json({ success: false, message: error.message });
   }
 });
