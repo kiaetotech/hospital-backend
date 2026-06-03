@@ -106,34 +106,38 @@ router.get('/categories', async (req, res) => {
 // ============================================
 router.get('/seed', async (req, res) => {
   try {
-    // 1. Create sample tests
+    // First, clear existing data (optional)
+    await TestMaster.deleteMany({});
+    await DiagnosticsProvider.deleteMany({});
+    await TestPricing.deleteMany({});
+    
+    // 1. Create sample tests (with ALL required fields)
     const tests = await TestMaster.insertMany([
-      { test_name: 'Complete Blood Count (CBC)', major_category_name: 'Hematology', is_active: true, price: 499, min_price: 399 },
-      { test_name: 'Blood Sugar (Fasting)', major_category_name: 'Diabetes', is_active: true, price: 199, min_price: 149 },
-      { test_name: 'Lipid Profile', major_category_name: 'Cardiology', is_active: true, price: 799, min_price: 599 },
-      { test_name: 'Liver Function Test (LFT)', major_category_name: 'Hepatology', is_active: true, price: 699, min_price: 549 },
-      { test_name: 'Thyroid Profile (T3, T4, TSH)', major_category_name: 'Endocrinology', is_active: true, price: 599, min_price: 449 },
-      { test_name: 'Vitamin D', major_category_name: 'Nutrition', is_active: true, price: 1299, min_price: 999 },
-      { test_name: 'HbA1c', major_category_name: 'Diabetes', is_active: true, price: 399, min_price: 299 },
-      { test_name: 'Urine Routine', major_category_name: 'Urinalysis', is_active: true, price: 149, min_price: 99 }
+      { test_name: 'Complete Blood Count (CBC)', major_category: 'Hematology', major_category_name: 'Hematology', is_active: true, price: 499, min_price: 399, test_id: 1001 },
+      { test_name: 'Blood Sugar (Fasting)', major_category: 'Diabetes', major_category_name: 'Diabetes', is_active: true, price: 199, min_price: 149, test_id: 1002 },
+      { test_name: 'Lipid Profile', major_category: 'Cardiology', major_category_name: 'Cardiology', is_active: true, price: 799, min_price: 599, test_id: 1003 },
+      { test_name: 'Liver Function Test (LFT)', major_category: 'Hepatology', major_category_name: 'Hepatology', is_active: true, price: 699, min_price: 549, test_id: 1004 },
+      { test_name: 'Thyroid Profile (T3, T4, TSH)', major_category: 'Endocrinology', major_category_name: 'Endocrinology', is_active: true, price: 599, min_price: 449, test_id: 1005 },
+      { test_name: 'Vitamin D', major_category: 'Nutrition', major_category_name: 'Nutrition', is_active: true, price: 1299, min_price: 999, test_id: 1006 },
+      { test_name: 'HbA1c', major_category: 'Diabetes', major_category_name: 'Diabetes', is_active: true, price: 399, min_price: 299, test_id: 1007 },
+      { test_name: 'Urine Routine', major_category: 'Urinalysis', major_category_name: 'Urinalysis', is_active: true, price: 149, min_price: 99, test_id: 1008 }
     ]);
     
     // 2. Create sample labs/providers
     const providers = await DiagnosticsProvider.insertMany([
-      { provider_name: 'Dr. Lal PathLabs', rating: 4.7, total_reviews: 12500, city: 'Delhi', location: { lat: 28.6139, lng: 77.2090 }, is_home_collection_available: true, is_active: true },
-      { provider_name: 'SRL Diagnostics', rating: 4.5, total_reviews: 8900, city: 'Delhi', location: { lat: 28.7041, lng: 77.1025 }, is_home_collection_available: true, is_active: true },
-      { provider_name: 'Thyrocare', rating: 4.6, total_reviews: 15000, city: 'Mumbai', location: { lat: 19.0760, lng: 72.8777 }, is_home_collection_available: true, is_active: true },
-      { provider_name: 'Metropolis Healthcare', rating: 4.4, total_reviews: 7200, city: 'Mumbai', location: { lat: 19.0760, lng: 72.8777 }, is_home_collection_available: true, is_active: true },
-      { provider_name: 'Medall Healthcare', rating: 4.3, total_reviews: 3400, city: 'Chennai', location: { lat: 13.0827, lng: 80.2707 }, is_home_collection_available: false, is_active: true }
+      { provider_name: 'Dr. Lal PathLabs', rating: 4.7, total_reviews: 12500, city: 'Delhi', location: { lat: 28.6139, lng: 77.2090 }, is_home_collection_available: true, is_active: true, provider_id: 2001 },
+      { provider_name: 'SRL Diagnostics', rating: 4.5, total_reviews: 8900, city: 'Delhi', location: { lat: 28.7041, lng: 77.1025 }, is_home_collection_available: true, is_active: true, provider_id: 2002 },
+      { provider_name: 'Thyrocare', rating: 4.6, total_reviews: 15000, city: 'Mumbai', location: { lat: 19.0760, lng: 72.8777 }, is_home_collection_available: true, is_active: true, provider_id: 2003 },
+      { provider_name: 'Metropolis Healthcare', rating: 4.4, total_reviews: 7200, city: 'Mumbai', location: { lat: 19.0760, lng: 72.8777 }, is_home_collection_available: true, is_active: true, provider_id: 2004 },
+      { provider_name: 'Medall Healthcare', rating: 4.3, total_reviews: 3400, city: 'Chennai', location: { lat: 13.0827, lng: 80.2707 }, is_home_collection_available: false, is_active: true, provider_id: 2005 }
     ]);
     
     // 3. Create pricing (link tests to labs with prices)
     const pricingData = [];
     
-    // For each provider, add prices for each test
     for (const provider of providers) {
       for (const test of tests) {
-        const discount = 0.2 + Math.random() * 0.3; // 20-50% discount
+        const discount = 0.2 + Math.random() * 0.3;
         const discounted = Math.round(test.price * (1 - discount));
         pricingData.push({
           provider_id: provider._id,
