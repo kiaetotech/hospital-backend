@@ -101,276 +101,102 @@ router.get('/categories', async (req, res) => {
   }
 });
 // ============================================
-// SEED DATA - One click to add sample data
+// SEED DATA - Complete data from your Excel
 // Visit this URL once: /api/diagnostics/seed
 // ============================================
 router.get('/seed', async (req, res) => {
   try {
-    // First, clear existing data
+    // Clear existing data
     await TestMaster.deleteMany({});
     await DiagnosticsProvider.deleteMany({});
     await TestPricing.deleteMany({});
     
-    // 1. Create sample tests
-    const test1 = new TestMaster({
-      test_id: 1001,
-      test_name: 'Complete Blood Count (CBC)',
-      major_category: 'Hematology',
-      major_category_name: 'Hematology',
-      is_active: true
+    // ==================== TESTS (from your Excel) ====================
+    const tests = await TestMaster.insertMany([
+      { test_id: 1001, test_name: 'Complete Blood Count', test_short_name: 'CBC', major_category: 'BLD', major_category_name: 'Blood Tests', sub_category: 'Hematology', requires_fasting: 'No', sample_type: 'Blood', turnaround_time_default_hours: 4, home_collection_possible: true, is_active: true },
+      { test_id: 1002, test_name: 'Liver Function Test', test_short_name: 'LFT', major_category: 'BLD', major_category_name: 'Blood Tests', sub_category: 'Biochemistry', requires_fasting: 'Yes', sample_type: 'Blood', turnaround_time_default_hours: 6, home_collection_possible: true, is_active: true },
+      { test_id: 1003, test_name: 'Thyroid Profile', test_short_name: 'TSH', major_category: 'BLD', major_category_name: 'Blood Tests', sub_category: 'Hormones', requires_fasting: 'No', sample_type: 'Blood', turnaround_time_default_hours: 8, home_collection_possible: true, is_active: true },
+      { test_id: 1004, test_name: 'Vitamin D', test_short_name: 'Vitamin D', major_category: 'BLD', major_category_name: 'Blood Tests', sub_category: 'Vitamins', requires_fasting: 'No', sample_type: 'Blood', turnaround_time_default_hours: 24, home_collection_possible: true, is_active: true },
+      { test_id: 1005, test_name: 'Lipid Profile', test_short_name: 'Lipid', major_category: 'BLD', major_category_name: 'Blood Tests', sub_category: 'Biochemistry', requires_fasting: 'Yes', sample_type: 'Blood', turnaround_time_default_hours: 6, home_collection_possible: true, is_active: true },
+      { test_id: 1006, test_name: 'Kidney Function Test', test_short_name: 'RFT', major_category: 'BLD', major_category_name: 'Blood Tests', sub_category: 'Biochemistry', requires_fasting: 'Yes', sample_type: 'Blood', turnaround_time_default_hours: 6, home_collection_possible: true, is_active: true },
+      { test_id: 1007, test_name: 'Blood Sugar Fasting', test_short_name: 'BSF', major_category: 'BLD', major_category_name: 'Blood Tests', sub_category: 'Diabetes', requires_fasting: 'Yes', sample_type: 'Blood', turnaround_time_default_hours: 4, home_collection_possible: true, is_active: true },
+      { test_id: 1008, test_name: 'Blood Sugar Post Meal', test_short_name: 'PPBS', major_category: 'BLD', major_category_name: 'Blood Tests', sub_category: 'Diabetes', requires_fasting: 'No', sample_type: 'Blood', turnaround_time_default_hours: 4, home_collection_possible: true, is_active: true },
+      { test_id: 1009, test_name: 'HB1Ac', test_short_name: 'HB1Ac', major_category: 'BLD', major_category_name: 'Blood Tests', sub_category: 'Diabetes', requires_fasting: 'No', sample_type: 'Blood', turnaround_time_default_hours: 8, home_collection_possible: true, is_active: true },
+      { test_id: 1010, test_name: 'Urine Routine', test_short_name: 'Urine Routine', major_category: 'URN', major_category_name: 'Urine Tests', sub_category: 'Routine', requires_fasting: 'No', sample_type: 'Urine', turnaround_time_default_hours: 4, home_collection_possible: true, is_active: true },
+      { test_id: 1011, test_name: 'Urine Culture', test_short_name: 'Urine Culture', major_category: 'URN', major_category_name: 'Urine Tests', sub_category: 'Culture', requires_fasting: 'No', sample_type: 'Urine', turnaround_time_default_hours: 48, home_collection_possible: true, is_active: true },
+      { test_id: 2001, test_name: 'Chest X-Ray', test_short_name: 'X-Ray Chest', major_category: 'IMG', major_category_name: 'Medical Imaging', sub_category: 'X-Ray', requires_fasting: 'No', sample_type: 'Other', turnaround_time_default_hours: 2, home_collection_possible: false, is_active: true },
+      { test_id: 2002, test_name: 'ECG', test_short_name: 'ECG', major_category: 'CRD', major_category_name: 'Cardiac Diagnostics', sub_category: 'ECG', requires_fasting: 'No', sample_type: 'Other', turnaround_time_default_hours: 1, home_collection_possible: true, is_active: true },
+      { test_id: 2003, test_name: '2D Echo', test_short_name: 'Echo', major_category: 'CRD', major_category_name: 'Cardiac Diagnostics', sub_category: 'Ultrasound', requires_fasting: 'No', sample_type: 'Other', turnaround_time_default_hours: 2, home_collection_possible: false, is_active: true }
+    ]);
+    
+    // ==================== PROVIDERS (from your Excel) ====================
+    const providers = await DiagnosticsProvider.insertMany([
+      { provider_id: 1, provider_name: 'ABC Diagnostics', provider_type: 'Lab', city: 'Mumbai', rating: 4.5, is_nabl_accredited: true, is_home_collection_available: true, is_active: true },
+      { provider_id: 2, provider_name: 'City Hospital Lab', provider_type: 'Hospital', city: 'Mumbai', rating: 4.3, is_nabl_accredited: false, is_home_collection_available: false, is_active: true },
+      { provider_id: 3, provider_name: 'HealthCare Diagnostics', provider_type: 'Lab', city: 'Mumbai', rating: 4.7, is_nabl_accredited: true, is_home_collection_available: true, is_active: true },
+      { provider_id: 4, provider_name: 'Metropolis Healthcare', provider_type: 'Lab', city: 'Delhi', rating: 4.6, is_nabl_accredited: true, is_home_collection_available: true, is_active: true },
+      { provider_id: 5, provider_name: 'Dr Lal PathLabs', provider_type: 'Lab', city: 'Delhi', rating: 4.8, is_nabl_accredited: true, is_home_collection_available: true, is_active: true },
+      { provider_id: 6, provider_name: 'Apollo Diagnostic', provider_type: 'Lab', city: 'Bangalore', rating: 4.9, is_nabl_accredited: true, is_home_collection_available: true, is_active: true }
+    ]);
+    
+    // Create a map for quick provider lookup by name
+    const providerMap = {};
+    providers.forEach(p => {
+      providerMap[p.provider_name] = p;
     });
     
-    const test2 = new TestMaster({
-      test_id: 1002,
-      test_name: 'Blood Sugar (Fasting)',
-      major_category: 'Diabetes',
-      major_category_name: 'Diabetes',
-      is_active: true
+    // Create a map for quick test lookup by test_id
+    const testMap = {};
+    tests.forEach(t => {
+      testMap[t.test_id] = t;
     });
     
-    const test3 = new TestMaster({
-      test_id: 1003,
-      test_name: 'Lipid Profile',
-      major_category: 'Cardiology',
-      major_category_name: 'Cardiology',
-      is_active: true
-    });
-    
-    const test4 = new TestMaster({
-      test_id: 1004,
-      test_name: 'Liver Function Test (LFT)',
-      major_category: 'Hepatology',
-      major_category_name: 'Hepatology',
-      is_active: true
-    });
-    
-    const test5 = new TestMaster({
-      test_id: 1005,
-      test_name: 'Thyroid Profile',
-      major_category: 'Endocrinology',
-      major_category_name: 'Endocrinology',
-      is_active: true
-    });
-    
-    const savedTests = await TestMaster.insertMany([test1, test2, test3, test4, test5]);
-    
-    // 2. Create sample providers
-    const provider1 = new DiagnosticsProvider({
-      provider_id: 2001,
-      provider_name: 'Dr. Lal PathLabs',
-      rating: 4.7,
-      total_reviews: 12500,
-      city: 'Delhi',
-      location: { lat: 28.6139, lng: 77.2090 },
-      is_home_collection_available: true,
-      is_active: true
-    });
-    
-    const provider2 = new DiagnosticsProvider({
-      provider_id: 2002,
-      provider_name: 'SRL Diagnostics',
-      rating: 4.5,
-      total_reviews: 8900,
-      city: 'Delhi',
-      location: { lat: 28.7041, lng: 77.1025 },
-      is_home_collection_available: true,
-      is_active: true
-    });
-    
-    const provider3 = new DiagnosticsProvider({
-      provider_id: 2003,
-      provider_name: 'Thyrocare',
-      rating: 4.6,
-      total_reviews: 15000,
-      city: 'Mumbai',
-      location: { lat: 19.0760, lng: 72.8777 },
-      is_home_collection_available: true,
-      is_active: true
-    });
-    
-    const savedProviders = await DiagnosticsProvider.insertMany([provider1, provider2, provider3]);
-    
-    // 3. Create pricing with hardcoded prices
+    // ==================== PRICING (from your Excel) ====================
     const pricingData = [];
     
-    // CBC prices
-    pricingData.push({
-      provider_id: savedProviders[0]._id,
-      test_id: savedTests[0]._id,
-      mrp: 499,
-      discounted_price: 399,
-      discount_percentage: 20,
-      home_collection_available: true,
-      report_time_hours: 24,
-      is_active: true
-    });
+    // Pricing data from your Excel
+    const excelPricing = [
+      { test_id: 1001, provider_name: 'ABC Diagnostics', mrp: 399, discounted_price: 199, home_collection: true, report_time_hours: 4 },
+      { test_id: 1002, provider_name: 'ABC Diagnostics', mrp: 499, discounted_price: 299, home_collection: true, report_time_hours: 6 },
+      { test_id: 1003, provider_name: 'ABC Diagnostics', mrp: 599, discounted_price: 399, home_collection: true, report_time_hours: 8 },
+      { test_id: 1004, provider_name: 'ABC Diagnostics', mrp: 999, discounted_price: 699, home_collection: true, report_time_hours: 24 },
+      { test_id: 1005, provider_name: 'ABC Diagnostics', mrp: 499, discounted_price: 299, home_collection: true, report_time_hours: 6 },
+      { test_id: 1006, provider_name: 'City Hospital Lab', mrp: 350, discounted_price: 199, home_collection: false, report_time_hours: 6 },
+      { test_id: 1007, provider_name: 'City Hospital Lab', mrp: 450, discounted_price: 299, home_collection: false, report_time_hours: 8 },
+      { test_id: 1001, provider_name: 'HealthCare Diagnostics', mrp: 450, discounted_price: 249, home_collection: true, report_time_hours: 3 },
+      { test_id: 1002, provider_name: 'HealthCare Diagnostics', mrp: 550, discounted_price: 349, home_collection: true, report_time_hours: 5 },
+      { test_id: 1003, provider_name: 'HealthCare Diagnostics', mrp: 650, discounted_price: 449, home_collection: true, report_time_hours: 6 },
+      { test_id: 1001, provider_name: 'Metropolis Healthcare', mrp: 400, discounted_price: 199, home_collection: true, report_time_hours: 4 },
+      { test_id: 1001, provider_name: 'Dr Lal PathLabs', mrp: 380, discounted_price: 189, home_collection: true, report_time_hours: 4 },
+      { test_id: 1001, provider_name: 'Apollo Diagnostic', mrp: 420, discounted_price: 209, home_collection: true, report_time_hours: 3 }
+    ];
     
-    pricingData.push({
-      provider_id: savedProviders[1]._id,
-      test_id: savedTests[0]._id,
-      mrp: 599,
-      discounted_price: 449,
-      discount_percentage: 25,
-      home_collection_available: true,
-      report_time_hours: 24,
-      is_active: true
-    });
-    
-    pricingData.push({
-      provider_id: savedProviders[2]._id,
-      test_id: savedTests[0]._id,
-      mrp: 399,
-      discounted_price: 349,
-      discount_percentage: 12,
-      home_collection_available: true,
-      report_time_hours: 24,
-      is_active: true
-    });
-    
-    // Blood Sugar prices
-    pricingData.push({
-      provider_id: savedProviders[0]._id,
-      test_id: savedTests[1]._id,
-      mrp: 199,
-      discounted_price: 149,
-      discount_percentage: 25,
-      home_collection_available: true,
-      report_time_hours: 24,
-      is_active: true
-    });
-    
-    pricingData.push({
-      provider_id: savedProviders[1]._id,
-      test_id: savedTests[1]._id,
-      mrp: 249,
-      discounted_price: 179,
-      discount_percentage: 28,
-      home_collection_available: true,
-      report_time_hours: 24,
-      is_active: true
-    });
-    
-    pricingData.push({
-      provider_id: savedProviders[2]._id,
-      test_id: savedTests[1]._id,
-      mrp: 149,
-      discounted_price: 129,
-      discount_percentage: 13,
-      home_collection_available: true,
-      report_time_hours: 24,
-      is_active: true
-    });
-    
-    // Lipid Profile prices
-    pricingData.push({
-      provider_id: savedProviders[0]._id,
-      test_id: savedTests[2]._id,
-      mrp: 799,
-      discounted_price: 599,
-      discount_percentage: 25,
-      home_collection_available: true,
-      report_time_hours: 48,
-      is_active: true
-    });
-    
-    pricingData.push({
-      provider_id: savedProviders[1]._id,
-      test_id: savedTests[2]._id,
-      mrp: 899,
-      discounted_price: 649,
-      discount_percentage: 28,
-      home_collection_available: true,
-      report_time_hours: 48,
-      is_active: true
-    });
-    
-    pricingData.push({
-      provider_id: savedProviders[2]._id,
-      test_id: savedTests[2]._id,
-      mrp: 699,
-      discounted_price: 549,
-      discount_percentage: 21,
-      home_collection_available: true,
-      report_time_hours: 48,
-      is_active: true
-    });
-    
-    // LFT prices
-    pricingData.push({
-      provider_id: savedProviders[0]._id,
-      test_id: savedTests[3]._id,
-      mrp: 699,
-      discounted_price: 499,
-      discount_percentage: 28,
-      home_collection_available: true,
-      report_time_hours: 48,
-      is_active: true
-    });
-    
-    pricingData.push({
-      provider_id: savedProviders[1]._id,
-      test_id: savedTests[3]._id,
-      mrp: 799,
-      discounted_price: 549,
-      discount_percentage: 31,
-      home_collection_available: true,
-      report_time_hours: 48,
-      is_active: true
-    });
-    
-    pricingData.push({
-      provider_id: savedProviders[2]._id,
-      test_id: savedTests[3]._id,
-      mrp: 599,
-      discounted_price: 449,
-      discount_percentage: 25,
-      home_collection_available: true,
-      report_time_hours: 48,
-      is_active: true
-    });
-    
-    // Thyroid prices
-    pricingData.push({
-      provider_id: savedProviders[0]._id,
-      test_id: savedTests[4]._id,
-      mrp: 599,
-      discounted_price: 449,
-      discount_percentage: 25,
-      home_collection_available: true,
-      report_time_hours: 48,
-      is_active: true
-    });
-    
-    pricingData.push({
-      provider_id: savedProviders[1]._id,
-      test_id: savedTests[4]._id,
-      mrp: 699,
-      discounted_price: 499,
-      discount_percentage: 28,
-      home_collection_available: true,
-      report_time_hours: 48,
-      is_active: true
-    });
-    
-    pricingData.push({
-      provider_id: savedProviders[2]._id,
-      test_id: savedTests[4]._id,
-      mrp: 499,
-      discounted_price: 399,
-      discount_percentage: 20,
-      home_collection_available: true,
-      report_time_hours: 48,
-      is_active: true
-    });
+    for (const p of excelPricing) {
+      const provider = providerMap[p.provider_name];
+      const test = testMap[p.test_id];
+      
+      if (provider && test) {
+        pricingData.push({
+          provider_id: provider._id,
+          test_id: test._id,
+          mrp: p.mrp,
+          discounted_price: p.discounted_price,
+          discount_percentage: Math.round(((p.mrp - p.discounted_price) / p.mrp) * 100),
+          home_collection_available: p.home_collection,
+          report_time_hours: p.report_time_hours,
+          is_active: true
+        });
+      }
+    }
     
     await TestPricing.insertMany(pricingData);
     
     res.json({
       success: true,
-      message: '✅ Sample data added successfully!',
+      message: '✅ Complete data imported from Excel!',
       data: {
-        tests: savedTests.length,
-        providers: savedProviders.length,
+        tests: tests.length,
+        providers: providers.length,
         pricings: pricingData.length
       }
     });
