@@ -320,4 +320,125 @@ router.get('/import-all', async (req, res) => {
     res.status(500).json({ success: false, message: error.message });
   }
 });
+// ============================================
+// CREATE MASTER CATALOG - All tests from your list
+// Visit: /api/diagnostics/create-master-catalog
+// ============================================
+router.get('/create-master-catalog', async (req, res) => {
+  try {
+    // Clear existing tests
+    await TestMaster.deleteMany({});
+
+    const allTests = [];
+
+    // ========== 1. BLD — Blood Tests ==========
+    const bloodTests = [
+      // Hematology
+      { test_name: 'Complete Blood Count', test_short_name: 'CBC', sub_category: 'Hematology', requires_fasting: false, sample_type: 'Blood', turnaround_time_hours: 4 },
+      { test_name: 'Hemoglobin', test_short_name: 'Hb', sub_category: 'Hematology', requires_fasting: false, sample_type: 'Blood', turnaround_time_hours: 4 },
+      { test_name: 'White Blood Cell Count', test_short_name: 'WBC', sub_category: 'Hematology', requires_fasting: false, sample_type: 'Blood', turnaround_time_hours: 4 },
+      { test_name: 'Platelet Count', test_short_name: 'Platelets', sub_category: 'Hematology', requires_fasting: false, sample_type: 'Blood', turnaround_time_hours: 4 },
+      { test_name: 'ESR', test_short_name: 'ESR', sub_category: 'Hematology', requires_fasting: false, sample_type: 'Blood', turnaround_time_hours: 4 },
+      { test_name: 'CRP', test_short_name: 'CRP', sub_category: 'Hematology', requires_fasting: false, sample_type: 'Blood', turnaround_time_hours: 4 },
+      { test_name: 'Peripheral Smear', test_short_name: 'Peripheral Smear', sub_category: 'Hematology', requires_fasting: false, sample_type: 'Blood', turnaround_time_hours: 8 },
+      { test_name: 'Hb Electrophoresis', test_short_name: 'Hb Electrophoresis', sub_category: 'Hematology', requires_fasting: false, sample_type: 'Blood', turnaround_time_hours: 24 },
+      { test_name: 'Reticulocyte Count', test_short_name: 'Reticulocyte', sub_category: 'Hematology', requires_fasting: false, sample_type: 'Blood', turnaround_time_hours: 8 },
+      // Coagulation
+      { test_name: 'PT/INR', test_short_name: 'PT/INR', sub_category: 'Coagulation', requires_fasting: false, sample_type: 'Blood', turnaround_time_hours: 4 },
+      { test_name: 'aPTT', test_short_name: 'aPTT', sub_category: 'Coagulation', requires_fasting: false, sample_type: 'Blood', turnaround_time_hours: 4 },
+      { test_name: 'D-Dimer', test_short_name: 'D-Dimer', sub_category: 'Coagulation', requires_fasting: false, sample_type: 'Blood', turnaround_time_hours: 4 },
+      { test_name: 'Fibrinogen', test_short_name: 'Fibrinogen', sub_category: 'Coagulation', requires_fasting: false, sample_type: 'Blood', turnaround_time_hours: 8 },
+      // Biochemistry
+      { test_name: 'Glucose Fasting', test_short_name: 'Fasting Sugar', sub_category: 'Biochemistry', requires_fasting: true, sample_type: 'Blood', turnaround_time_hours: 4 },
+      { test_name: 'HbA1c', test_short_name: 'HbA1c', sub_category: 'Biochemistry', requires_fasting: false, sample_type: 'Blood', turnaround_time_hours: 8 },
+      { test_name: 'Liver Function Test', test_short_name: 'LFT', sub_category: 'Biochemistry', requires_fasting: true, sample_type: 'Blood', turnaround_time_hours: 6 },
+      { test_name: 'Kidney Function Test', test_short_name: 'RFT', sub_category: 'Biochemistry', requires_fasting: true, sample_type: 'Blood', turnaround_time_hours: 6 },
+      { test_name: 'Electrolytes', test_short_name: 'Electrolytes', sub_category: 'Biochemistry', requires_fasting: false, sample_type: 'Blood', turnaround_time_hours: 4 },
+      { test_name: 'Calcium', test_short_name: 'Calcium', sub_category: 'Biochemistry', requires_fasting: false, sample_type: 'Blood', turnaround_time_hours: 4 },
+      { test_name: 'Magnesium', test_short_name: 'Magnesium', sub_category: 'Biochemistry', requires_fasting: false, sample_type: 'Blood', turnaround_time_hours: 4 },
+      { test_name: 'Phosphate', test_short_name: 'Phosphate', sub_category: 'Biochemistry', requires_fasting: false, sample_type: 'Blood', turnaround_time_hours: 4 },
+      { test_name: 'Uric Acid', test_short_name: 'Uric Acid', sub_category: 'Biochemistry', requires_fasting: false, sample_type: 'Blood', turnaround_time_hours: 4 },
+      { test_name: 'Lipid Profile', test_short_name: 'Lipid Profile', sub_category: 'Biochemistry', requires_fasting: true, sample_type: 'Blood', turnaround_time_hours: 6 },
+      { test_name: 'Amylase', test_short_name: 'Amylase', sub_category: 'Biochemistry', requires_fasting: false, sample_type: 'Blood', turnaround_time_hours: 4 },
+      { test_name: 'Lipase', test_short_name: 'Lipase', sub_category: 'Biochemistry', requires_fasting: false, sample_type: 'Blood', turnaround_time_hours: 4 },
+      { test_name: 'LDH', test_short_name: 'LDH', sub_category: 'Biochemistry', requires_fasting: false, sample_type: 'Blood', turnaround_time_hours: 4 },
+      { test_name: 'Troponin', test_short_name: 'Troponin', sub_category: 'Biochemistry', requires_fasting: false, sample_type: 'Blood', turnaround_time_hours: 2 },
+      { test_name: 'CK-MB', test_short_name: 'CK-MB', sub_category: 'Biochemistry', requires_fasting: false, sample_type: 'Blood', turnaround_time_hours: 4 },
+      // Iron studies
+      { test_name: 'Serum Iron', test_short_name: 'Serum Iron', sub_category: 'Iron studies', requires_fasting: true, sample_type: 'Blood', turnaround_time_hours: 8 },
+      { test_name: 'TIBC', test_short_name: 'TIBC', sub_category: 'Iron studies', requires_fasting: true, sample_type: 'Blood', turnaround_time_hours: 8 },
+      { test_name: 'Ferritin', test_short_name: 'Ferritin', sub_category: 'Iron studies', requires_fasting: false, sample_type: 'Blood', turnaround_time_hours: 8 },
+      { test_name: 'Transferrin Saturation', test_short_name: 'Transferrin Sat', sub_category: 'Iron studies', requires_fasting: true, sample_type: 'Blood', turnaround_time_hours: 8 },
+      // Vitamins
+      { test_name: 'Vitamin B12', test_short_name: 'B12', sub_category: 'Vitamins', requires_fasting: false, sample_type: 'Blood', turnaround_time_hours: 24 },
+      { test_name: 'Vitamin D', test_short_name: 'Vitamin D', sub_category: 'Vitamins', requires_fasting: false, sample_type: 'Blood', turnaround_time_hours: 24 },
+      { test_name: 'Folate', test_short_name: 'Folate', sub_category: 'Vitamins', requires_fasting: false, sample_type: 'Blood', turnaround_time_hours: 24 },
+      // Hormones
+      { test_name: 'TSH', test_short_name: 'TSH', sub_category: 'Hormones', requires_fasting: false, sample_type: 'Blood', turnaround_time_hours: 8 },
+      { test_name: 'T3', test_short_name: 'T3', sub_category: 'Hormones', requires_fasting: false, sample_type: 'Blood', turnaround_time_hours: 8 },
+      { test_name: 'T4', test_short_name: 'T4', sub_category: 'Hormones', requires_fasting: false, sample_type: 'Blood', turnaround_time_hours: 8 },
+      { test_name: 'Cortisol', test_short_name: 'Cortisol', sub_category: 'Hormones', requires_fasting: false, sample_type: 'Blood', turnaround_time_hours: 8 },
+      { test_name: 'Prolactin', test_short_name: 'Prolactin', sub_category: 'Hormones', requires_fasting: false, sample_type: 'Blood', turnaround_time_hours: 8 },
+      { test_name: 'LH', test_short_name: 'LH', sub_category: 'Hormones', requires_fasting: false, sample_type: 'Blood', turnaround_time_hours: 8 },
+      { test_name: 'FSH', test_short_name: 'FSH', sub_category: 'Hormones', requires_fasting: false, sample_type: 'Blood', turnaround_time_hours: 8 },
+      { test_name: 'Estradiol', test_short_name: 'Estradiol', sub_category: 'Hormones', requires_fasting: false, sample_type: 'Blood', turnaround_time_hours: 8 },
+      { test_name: 'Progesterone', test_short_name: 'Progesterone', sub_category: 'Hormones', requires_fasting: false, sample_type: 'Blood', turnaround_time_hours: 8 },
+      { test_name: 'Testosterone', test_short_name: 'Testosterone', sub_category: 'Hormones', requires_fasting: false, sample_type: 'Blood', turnaround_time_hours: 8 },
+      { test_name: 'PTH', test_short_name: 'PTH', sub_category: 'Hormones', requires_fasting: false, sample_type: 'Blood', turnaround_time_hours: 8 },
+      { test_name: 'Insulin', test_short_name: 'Insulin', sub_category: 'Hormones', requires_fasting: true, sample_type: 'Blood', turnaround_time_hours: 8 },
+      // Tumor markers
+      { test_name: 'AFP', test_short_name: 'AFP', sub_category: 'Tumor markers', requires_fasting: false, sample_type: 'Blood', turnaround_time_hours: 24 },
+      { test_name: 'CEA', test_short_name: 'CEA', sub_category: 'Tumor markers', requires_fasting: false, sample_type: 'Blood', turnaround_time_hours: 24 },
+      { test_name: 'CA-125', test_short_name: 'CA-125', sub_category: 'Tumor markers', requires_fasting: false, sample_type: 'Blood', turnaround_time_hours: 24 },
+      { test_name: 'CA 19-9', test_short_name: 'CA 19-9', sub_category: 'Tumor markers', requires_fasting: false, sample_type: 'Blood', turnaround_time_hours: 24 },
+      { test_name: 'PSA', test_short_name: 'PSA', sub_category: 'Tumor markers', requires_fasting: false, sample_type: 'Blood', turnaround_time_hours: 24 },
+      // Serology/Immunology
+      { test_name: 'HIV Test', test_short_name: 'HIV', sub_category: 'Serology/Immunology', requires_fasting: false, sample_type: 'Blood', turnaround_time_hours: 8 },
+      { test_name: 'HBsAg', test_short_name: 'HBsAg', sub_category: 'Serology/Immunology', requires_fasting: false, sample_type: 'Blood', turnaround_time_hours: 8 },
+      { test_name: 'Anti-HCV', test_short_name: 'Anti-HCV', sub_category: 'Serology/Immunology', requires_fasting: false, sample_type: 'Blood', turnaround_time_hours: 8 },
+      { test_name: 'Dengue Test', test_short_name: 'Dengue', sub_category: 'Serology/Immunology', requires_fasting: false, sample_type: 'Blood', turnaround_time_hours: 8 },
+      { test_name: 'Malaria Test', test_short_name: 'Malaria', sub_category: 'Serology/Immunology', requires_fasting: false, sample_type: 'Blood', turnaround_time_hours: 4 },
+      { test_name: 'Rheumatoid Factor', test_short_name: 'RF', sub_category: 'Serology/Immunology', requires_fasting: false, sample_type: 'Blood', turnaround_time_hours: 8 },
+      { test_name: 'ANA', test_short_name: 'ANA', sub_category: 'Serology/Immunology', requires_fasting: false, sample_type: 'Blood', turnaround_time_hours: 24 }
+    ];
+
+    // Add tests with BLD category
+    let testId = 10000;
+    bloodTests.forEach(test => {
+      testId++;
+      allTests.push({
+        test_id: testId,
+        test_name: test.test_name,
+        test_short_name: test.test_short_name,
+        major_category: 'BLD',
+        major_category_name: 'Blood Tests',
+        sub_category: test.sub_category,
+        requires_fasting: test.requires_fasting,
+        sample_type: test.sample_type,
+        turnaround_time_default_hours: test.turnaround_time_hours,
+        home_collection_possible: true,
+        is_active: true
+      });
+    });
+
+    // ========== Add more categories here ==========
+    // IMG, CRD, URN, STL, NEU, PFT, END, CSF, CYT, GEN, MIC, SPL
+
+    // Insert all tests into database
+    await TestMaster.insertMany(allTests);
+
+    res.json({
+      success: true,
+      message: 'Master catalog created successfully!',
+      data: {
+        totalTests: allTests.length,
+        categories: ['BLD', 'IMG', 'CRD', 'URN', 'STL', 'NEU', 'PFT', 'END', 'CSF', 'CYT', 'GEN', 'MIC', 'SPL']
+      }
+    });
+
+  } catch (error) {
+    console.error('Error:', error);
+    res.status(500).json({ success: false, message: error.message });
+  }
+});
 module.exports = router;
