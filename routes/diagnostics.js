@@ -106,52 +106,262 @@ router.get('/categories', async (req, res) => {
 // ============================================
 router.get('/seed', async (req, res) => {
   try {
-    // First, clear existing data (optional)
+    // First, clear existing data
     await TestMaster.deleteMany({});
     await DiagnosticsProvider.deleteMany({});
     await TestPricing.deleteMany({});
     
-    // 1. Create sample tests (with ALL required fields)
-    const tests = await TestMaster.insertMany([
-      { test_name: 'Complete Blood Count (CBC)', major_category: 'Hematology', major_category_name: 'Hematology', is_active: true, price: 499, min_price: 399, test_id: 1001 },
-      { test_name: 'Blood Sugar (Fasting)', major_category: 'Diabetes', major_category_name: 'Diabetes', is_active: true, price: 199, min_price: 149, test_id: 1002 },
-      { test_name: 'Lipid Profile', major_category: 'Cardiology', major_category_name: 'Cardiology', is_active: true, price: 799, min_price: 599, test_id: 1003 },
-      { test_name: 'Liver Function Test (LFT)', major_category: 'Hepatology', major_category_name: 'Hepatology', is_active: true, price: 699, min_price: 549, test_id: 1004 },
-      { test_name: 'Thyroid Profile (T3, T4, TSH)', major_category: 'Endocrinology', major_category_name: 'Endocrinology', is_active: true, price: 599, min_price: 449, test_id: 1005 },
-      { test_name: 'Vitamin D', major_category: 'Nutrition', major_category_name: 'Nutrition', is_active: true, price: 1299, min_price: 999, test_id: 1006 },
-      { test_name: 'HbA1c', major_category: 'Diabetes', major_category_name: 'Diabetes', is_active: true, price: 399, min_price: 299, test_id: 1007 },
-      { test_name: 'Urine Routine', major_category: 'Urinalysis', major_category_name: 'Urinalysis', is_active: true, price: 149, min_price: 99, test_id: 1008 }
-    ]);
+    // 1. Create sample tests
+    const test1 = new TestMaster({
+      test_id: 1001,
+      test_name: 'Complete Blood Count (CBC)',
+      major_category: 'Hematology',
+      major_category_name: 'Hematology',
+      is_active: true
+    });
     
-    // 2. Create sample labs/providers
-    const providers = await DiagnosticsProvider.insertMany([
-      { provider_name: 'Dr. Lal PathLabs', rating: 4.7, total_reviews: 12500, city: 'Delhi', location: { lat: 28.6139, lng: 77.2090 }, is_home_collection_available: true, is_active: true, provider_id: 2001 },
-      { provider_name: 'SRL Diagnostics', rating: 4.5, total_reviews: 8900, city: 'Delhi', location: { lat: 28.7041, lng: 77.1025 }, is_home_collection_available: true, is_active: true, provider_id: 2002 },
-      { provider_name: 'Thyrocare', rating: 4.6, total_reviews: 15000, city: 'Mumbai', location: { lat: 19.0760, lng: 72.8777 }, is_home_collection_available: true, is_active: true, provider_id: 2003 },
-      { provider_name: 'Metropolis Healthcare', rating: 4.4, total_reviews: 7200, city: 'Mumbai', location: { lat: 19.0760, lng: 72.8777 }, is_home_collection_available: true, is_active: true, provider_id: 2004 },
-      { provider_name: 'Medall Healthcare', rating: 4.3, total_reviews: 3400, city: 'Chennai', location: { lat: 13.0827, lng: 80.2707 }, is_home_collection_available: false, is_active: true, provider_id: 2005 }
-    ]);
+    const test2 = new TestMaster({
+      test_id: 1002,
+      test_name: 'Blood Sugar (Fasting)',
+      major_category: 'Diabetes',
+      major_category_name: 'Diabetes',
+      is_active: true
+    });
     
-    // 3. Create pricing (link tests to labs with prices)
+    const test3 = new TestMaster({
+      test_id: 1003,
+      test_name: 'Lipid Profile',
+      major_category: 'Cardiology',
+      major_category_name: 'Cardiology',
+      is_active: true
+    });
+    
+    const test4 = new TestMaster({
+      test_id: 1004,
+      test_name: 'Liver Function Test (LFT)',
+      major_category: 'Hepatology',
+      major_category_name: 'Hepatology',
+      is_active: true
+    });
+    
+    const test5 = new TestMaster({
+      test_id: 1005,
+      test_name: 'Thyroid Profile',
+      major_category: 'Endocrinology',
+      major_category_name: 'Endocrinology',
+      is_active: true
+    });
+    
+    const savedTests = await TestMaster.insertMany([test1, test2, test3, test4, test5]);
+    
+    // 2. Create sample providers
+    const provider1 = new DiagnosticsProvider({
+      provider_id: 2001,
+      provider_name: 'Dr. Lal PathLabs',
+      rating: 4.7,
+      total_reviews: 12500,
+      city: 'Delhi',
+      location: { lat: 28.6139, lng: 77.2090 },
+      is_home_collection_available: true,
+      is_active: true
+    });
+    
+    const provider2 = new DiagnosticsProvider({
+      provider_id: 2002,
+      provider_name: 'SRL Diagnostics',
+      rating: 4.5,
+      total_reviews: 8900,
+      city: 'Delhi',
+      location: { lat: 28.7041, lng: 77.1025 },
+      is_home_collection_available: true,
+      is_active: true
+    });
+    
+    const provider3 = new DiagnosticsProvider({
+      provider_id: 2003,
+      provider_name: 'Thyrocare',
+      rating: 4.6,
+      total_reviews: 15000,
+      city: 'Mumbai',
+      location: { lat: 19.0760, lng: 72.8777 },
+      is_home_collection_available: true,
+      is_active: true
+    });
+    
+    const savedProviders = await DiagnosticsProvider.insertMany([provider1, provider2, provider3]);
+    
+    // 3. Create pricing with hardcoded prices
     const pricingData = [];
     
-    for (const provider of providers) {
-      for (const test of tests) {
-        const discount = 0.2 + Math.random() * 0.3;
-        const discounted = Math.round(test.price * (1 - discount));
-        pricingData.push({
-          provider_id: provider._id,
-          test_id: test._id,
-          mrp: test.price,
-          discounted_price: discounted,
-          discount_percentage: Math.round(discount * 100),
-          home_collection_available: provider.is_home_collection_available,
-          home_collection_fee: provider.is_home_collection_available ? 0 : 99,
-          report_time_hours: 24 + Math.floor(Math.random() * 24),
-          is_active: true
-        });
-      }
-    }
+    // CBC prices
+    pricingData.push({
+      provider_id: savedProviders[0]._id,
+      test_id: savedTests[0]._id,
+      mrp: 499,
+      discounted_price: 399,
+      discount_percentage: 20,
+      home_collection_available: true,
+      report_time_hours: 24,
+      is_active: true
+    });
+    
+    pricingData.push({
+      provider_id: savedProviders[1]._id,
+      test_id: savedTests[0]._id,
+      mrp: 599,
+      discounted_price: 449,
+      discount_percentage: 25,
+      home_collection_available: true,
+      report_time_hours: 24,
+      is_active: true
+    });
+    
+    pricingData.push({
+      provider_id: savedProviders[2]._id,
+      test_id: savedTests[0]._id,
+      mrp: 399,
+      discounted_price: 349,
+      discount_percentage: 12,
+      home_collection_available: true,
+      report_time_hours: 24,
+      is_active: true
+    });
+    
+    // Blood Sugar prices
+    pricingData.push({
+      provider_id: savedProviders[0]._id,
+      test_id: savedTests[1]._id,
+      mrp: 199,
+      discounted_price: 149,
+      discount_percentage: 25,
+      home_collection_available: true,
+      report_time_hours: 24,
+      is_active: true
+    });
+    
+    pricingData.push({
+      provider_id: savedProviders[1]._id,
+      test_id: savedTests[1]._id,
+      mrp: 249,
+      discounted_price: 179,
+      discount_percentage: 28,
+      home_collection_available: true,
+      report_time_hours: 24,
+      is_active: true
+    });
+    
+    pricingData.push({
+      provider_id: savedProviders[2]._id,
+      test_id: savedTests[1]._id,
+      mrp: 149,
+      discounted_price: 129,
+      discount_percentage: 13,
+      home_collection_available: true,
+      report_time_hours: 24,
+      is_active: true
+    });
+    
+    // Lipid Profile prices
+    pricingData.push({
+      provider_id: savedProviders[0]._id,
+      test_id: savedTests[2]._id,
+      mrp: 799,
+      discounted_price: 599,
+      discount_percentage: 25,
+      home_collection_available: true,
+      report_time_hours: 48,
+      is_active: true
+    });
+    
+    pricingData.push({
+      provider_id: savedProviders[1]._id,
+      test_id: savedTests[2]._id,
+      mrp: 899,
+      discounted_price: 649,
+      discount_percentage: 28,
+      home_collection_available: true,
+      report_time_hours: 48,
+      is_active: true
+    });
+    
+    pricingData.push({
+      provider_id: savedProviders[2]._id,
+      test_id: savedTests[2]._id,
+      mrp: 699,
+      discounted_price: 549,
+      discount_percentage: 21,
+      home_collection_available: true,
+      report_time_hours: 48,
+      is_active: true
+    });
+    
+    // LFT prices
+    pricingData.push({
+      provider_id: savedProviders[0]._id,
+      test_id: savedTests[3]._id,
+      mrp: 699,
+      discounted_price: 499,
+      discount_percentage: 28,
+      home_collection_available: true,
+      report_time_hours: 48,
+      is_active: true
+    });
+    
+    pricingData.push({
+      provider_id: savedProviders[1]._id,
+      test_id: savedTests[3]._id,
+      mrp: 799,
+      discounted_price: 549,
+      discount_percentage: 31,
+      home_collection_available: true,
+      report_time_hours: 48,
+      is_active: true
+    });
+    
+    pricingData.push({
+      provider_id: savedProviders[2]._id,
+      test_id: savedTests[3]._id,
+      mrp: 599,
+      discounted_price: 449,
+      discount_percentage: 25,
+      home_collection_available: true,
+      report_time_hours: 48,
+      is_active: true
+    });
+    
+    // Thyroid prices
+    pricingData.push({
+      provider_id: savedProviders[0]._id,
+      test_id: savedTests[4]._id,
+      mrp: 599,
+      discounted_price: 449,
+      discount_percentage: 25,
+      home_collection_available: true,
+      report_time_hours: 48,
+      is_active: true
+    });
+    
+    pricingData.push({
+      provider_id: savedProviders[1]._id,
+      test_id: savedTests[4]._id,
+      mrp: 699,
+      discounted_price: 499,
+      discount_percentage: 28,
+      home_collection_available: true,
+      report_time_hours: 48,
+      is_active: true
+    });
+    
+    pricingData.push({
+      provider_id: savedProviders[2]._id,
+      test_id: savedTests[4]._id,
+      mrp: 499,
+      discounted_price: 399,
+      discount_percentage: 20,
+      home_collection_available: true,
+      report_time_hours: 48,
+      is_active: true
+    });
     
     await TestPricing.insertMany(pricingData);
     
@@ -159,8 +369,8 @@ router.get('/seed', async (req, res) => {
       success: true,
       message: '✅ Sample data added successfully!',
       data: {
-        tests: tests.length,
-        providers: providers.length,
+        tests: savedTests.length,
+        providers: savedProviders.length,
         pricings: pricingData.length
       }
     });
