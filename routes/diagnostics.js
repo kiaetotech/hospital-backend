@@ -219,4 +219,105 @@ router.get('/seed', async (req, res) => {
     res.status(500).json({ success: false, message: error.message });
   }
 });
+// ============================================
+// ONE-CLICK IMPORT - Complete Excel Data
+// Visit: /api/diagnostics/import-all
+// ============================================
+router.get('/import-all', async (req, res) => {
+  try {
+    // Clear existing data
+    await TestMaster.deleteMany({});
+    await DiagnosticsProvider.deleteMany({});
+    await TestPricing.deleteMany({});
+
+    // ========== 1. IMPORT TESTS ==========
+    const tests = await TestMaster.insertMany([
+      { test_id: 1001, test_name: 'Complete Blood Count', test_short_name: 'CBC', major_category: 'BLD', major_category_name: 'Blood Tests', sub_category: 'Hematology', requires_fasting: false, sample_type: 'Blood', turnaround_time_default_hours: 4, home_collection_possible: true, is_active: true },
+      { test_id: 1002, test_name: 'Liver Function Test', test_short_name: 'LFT', major_category: 'BLD', major_category_name: 'Blood Tests', sub_category: 'Biochemistry', requires_fasting: true, sample_type: 'Blood', turnaround_time_default_hours: 6, home_collection_possible: true, is_active: true },
+      { test_id: 1003, test_name: 'Thyroid Profile', test_short_name: 'TSH', major_category: 'BLD', major_category_name: 'Blood Tests', sub_category: 'Hormones', requires_fasting: false, sample_type: 'Blood', turnaround_time_default_hours: 8, home_collection_possible: true, is_active: true },
+      { test_id: 1004, test_name: 'Vitamin D', test_short_name: 'Vitamin D', major_category: 'BLD', major_category_name: 'Blood Tests', sub_category: 'Vitamins', requires_fasting: false, sample_type: 'Blood', turnaround_time_default_hours: 24, home_collection_possible: true, is_active: true },
+      { test_id: 1005, test_name: 'Lipid Profile', test_short_name: 'Lipid', major_category: 'BLD', major_category_name: 'Blood Tests', sub_category: 'Biochemistry', requires_fasting: true, sample_type: 'Blood', turnaround_time_default_hours: 6, home_collection_possible: true, is_active: true },
+      { test_id: 1006, test_name: 'Kidney Function Test', test_short_name: 'RFT', major_category: 'BLD', major_category_name: 'Blood Tests', sub_category: 'Biochemistry', requires_fasting: true, sample_type: 'Blood', turnaround_time_default_hours: 6, home_collection_possible: true, is_active: true },
+      { test_id: 1007, test_name: 'Blood Sugar Fasting', test_short_name: 'BSF', major_category: 'BLD', major_category_name: 'Blood Tests', sub_category: 'Diabetes', requires_fasting: true, sample_type: 'Blood', turnaround_time_default_hours: 4, home_collection_possible: true, is_active: true },
+      { test_id: 1008, test_name: 'Blood Sugar Post Meal', test_short_name: 'PPBS', major_category: 'BLD', major_category_name: 'Blood Tests', sub_category: 'Diabetes', requires_fasting: false, sample_type: 'Blood', turnaround_time_default_hours: 4, home_collection_possible: true, is_active: true },
+      { test_id: 1009, test_name: 'HB1Ac', test_short_name: 'HB1Ac', major_category: 'BLD', major_category_name: 'Blood Tests', sub_category: 'Diabetes', requires_fasting: false, sample_type: 'Blood', turnaround_time_default_hours: 8, home_collection_possible: true, is_active: true },
+      { test_id: 1010, test_name: 'Urine Routine', test_short_name: 'Urine Routine', major_category: 'URN', major_category_name: 'Urine Tests', sub_category: 'Routine', requires_fasting: false, sample_type: 'Urine', turnaround_time_default_hours: 4, home_collection_possible: true, is_active: true },
+      { test_id: 1011, test_name: 'Urine Culture', test_short_name: 'Urine Culture', major_category: 'URN', major_category_name: 'Urine Tests', sub_category: 'Culture', requires_fasting: false, sample_type: 'Urine', turnaround_time_default_hours: 48, home_collection_possible: true, is_active: true },
+      { test_id: 1012, test_name: 'Stool Routine', test_short_name: 'Stool Routine', major_category: 'STL', major_category_name: 'Stool Tests', sub_category: 'Routine', requires_fasting: false, sample_type: 'Stool', turnaround_time_default_hours: 4, home_collection_possible: true, is_active: true },
+      { test_id: 1013, test_name: 'Stool Occult Blood', test_short_name: 'Occult Blood', major_category: 'STL', major_category_name: 'Stool Tests', sub_category: 'Screening', requires_fasting: false, sample_type: 'Stool', turnaround_time_default_hours: 4, home_collection_possible: true, is_active: true },
+      { test_id: 2001, test_name: 'Chest X-Ray', test_short_name: 'X-Ray Chest', major_category: 'IMG', major_category_name: 'Medical Imaging', sub_category: 'X-Ray', requires_fasting: false, sample_type: 'Other', turnaround_time_default_hours: 2, home_collection_possible: false, is_active: true },
+      { test_id: 2002, test_name: 'ECG', test_short_name: 'ECG', major_category: 'CRD', major_category_name: 'Cardiac Diagnostics', sub_category: 'ECG', requires_fasting: false, sample_type: 'Other', turnaround_time_default_hours: 1, home_collection_possible: true, is_active: true },
+      { test_id: 2003, test_name: '2D Echo', test_short_name: 'Echo', major_category: 'CRD', major_category_name: 'Cardiac Diagnostics', sub_category: 'Ultrasound', requires_fasting: false, sample_type: 'Other', turnaround_time_default_hours: 2, home_collection_possible: false, is_active: true },
+      { test_id: 2004, test_name: 'TMT', test_short_name: 'TMT', major_category: 'CRD', major_category_name: 'Cardiac Diagnostics', sub_category: 'Stress Test', requires_fasting: false, sample_type: 'Other', turnaround_time_default_hours: 3, home_collection_possible: false, is_active: true }
+    ]);
+
+    // ========== 2. IMPORT PROVIDERS ==========
+    const providers = await DiagnosticsProvider.insertMany([
+      { provider_id: 1, provider_name: 'ABC Diagnostics', provider_type: 'Lab', city: 'Mumbai', rating: 4.5, total_reviews: 1250, is_nabl_accredited: true, is_home_collection_available: true, is_active: true, location: { lat: 19.0760, lng: 72.8777 } },
+      { provider_id: 2, provider_name: 'City Hospital Lab', provider_type: 'Hospital', city: 'Mumbai', rating: 4.3, total_reviews: 890, is_nabl_accredited: false, is_home_collection_available: false, is_active: true, location: { lat: 19.0760, lng: 72.8777 } },
+      { provider_id: 3, provider_name: 'HealthCare Diagnostics', provider_type: 'Lab', city: 'Mumbai', rating: 4.7, total_reviews: 2100, is_nabl_accredited: true, is_home_collection_available: true, is_active: true, location: { lat: 19.0760, lng: 72.8777 } },
+      { provider_id: 4, provider_name: 'Metropolis Healthcare', provider_type: 'Lab', city: 'Delhi', rating: 4.6, total_reviews: 1800, is_nabl_accredited: true, is_home_collection_available: true, is_active: true, location: { lat: 28.6139, lng: 77.2090 } },
+      { provider_id: 5, provider_name: 'Dr Lal PathLabs', provider_type: 'Lab', city: 'Delhi', rating: 4.8, total_reviews: 3200, is_nabl_accredited: true, is_home_collection_available: true, is_active: true, location: { lat: 28.6139, lng: 77.2090 } },
+      { provider_id: 6, provider_name: 'Apollo Diagnostic', provider_type: 'Lab', city: 'Bangalore', rating: 4.9, total_reviews: 2800, is_nabl_accredited: true, is_home_collection_available: true, is_active: true, location: { lat: 12.9716, lng: 77.5946 } }
+    ]);
+
+    // Create maps for lookup
+    const testMap = {};
+    tests.forEach(t => { testMap[t.test_id] = t; });
+
+    const providerMap = {};
+    providers.forEach(p => { providerMap[p.provider_name] = p; });
+
+    // ========== 3. IMPORT PRICING ==========
+    const pricingData = [
+      { test_id: 1001, provider_name: 'ABC Diagnostics', mrp: 399, discounted_price: 199, home_collection: true, report_time_hours: 4 },
+      { test_id: 1002, provider_name: 'ABC Diagnostics', mrp: 499, discounted_price: 299, home_collection: true, report_time_hours: 6 },
+      { test_id: 1003, provider_name: 'ABC Diagnostics', mrp: 599, discounted_price: 399, home_collection: true, report_time_hours: 8 },
+      { test_id: 1004, provider_name: 'ABC Diagnostics', mrp: 999, discounted_price: 699, home_collection: true, report_time_hours: 24 },
+      { test_id: 1005, provider_name: 'ABC Diagnostics', mrp: 499, discounted_price: 299, home_collection: true, report_time_hours: 6 },
+      { test_id: 1006, provider_name: 'City Hospital Lab', mrp: 350, discounted_price: 199, home_collection: false, report_time_hours: 6 },
+      { test_id: 1007, provider_name: 'City Hospital Lab', mrp: 450, discounted_price: 299, home_collection: false, report_time_hours: 8 },
+      { test_id: 1001, provider_name: 'HealthCare Diagnostics', mrp: 450, discounted_price: 249, home_collection: true, report_time_hours: 3 },
+      { test_id: 1002, provider_name: 'HealthCare Diagnostics', mrp: 550, discounted_price: 349, home_collection: true, report_time_hours: 5 },
+      { test_id: 1003, provider_name: 'HealthCare Diagnostics', mrp: 650, discounted_price: 449, home_collection: true, report_time_hours: 6 },
+      { test_id: 1001, provider_name: 'Metropolis Healthcare', mrp: 400, discounted_price: 199, home_collection: true, report_time_hours: 4 },
+      { test_id: 1001, provider_name: 'Dr Lal PathLabs', mrp: 380, discounted_price: 189, home_collection: true, report_time_hours: 4 },
+      { test_id: 1001, provider_name: 'Apollo Diagnostic', mrp: 420, discounted_price: 209, home_collection: true, report_time_hours: 3 }
+    ];
+
+    const pricings = [];
+    for (const p of pricingData) {
+      const test = testMap[p.test_id];
+      const provider = providerMap[p.provider_name];
+      if (test && provider) {
+        pricings.push({
+          test_id: test._id,
+          provider_id: provider._id,
+          mrp: p.mrp,
+          discounted_price: p.discounted_price,
+          discount_percentage: Math.round(((p.mrp - p.discounted_price) / p.mrp) * 100),
+          home_collection_available: p.home_collection,
+          report_time_hours: p.report_time_hours,
+          is_active: true
+        });
+      }
+    }
+
+    await TestPricing.insertMany(pricings);
+
+    res.json({
+      success: true,
+      message: '✅ Complete Excel data imported successfully!',
+      data: {
+        tests: tests.length,
+        providers: providers.length,
+        pricings: pricings.length
+      }
+    });
+
+  } catch (error) {
+    console.error('Import error:', error);
+    res.status(500).json({ success: false, message: error.message });
+  }
+});
 module.exports = router;
