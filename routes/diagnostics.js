@@ -247,4 +247,69 @@ router.post('/compare', async (req, res) => {
   }
 });
 
+// POST /api/diagnostics/compare - Compare multiple tests/packages
+router.post('/compare', async (req, res) => {
+  try {
+    const { type, ids } = req.body;
+    console.log('Compare request:', { type, ids });
+    
+    let items = [];
+    
+    if (type === 'tests') {
+      // Get test details
+      const tests = await TestMaster.find({ _id: { $in: ids }, is_active: true });
+      
+      // Get pricing for each test
+      for (const test of tests) {
+        const pricing = await TestPricing.find({ test_id: test._id, is_active: true });
+        const minPrice = pricing.length > 0 ? Math.min(...pricing.map(p => p.discounted_price)) : 0;
+        items.push({
+          ...test.toObject(),
+          min_price: minPrice,
+          discounted_price: Math.round(minPrice * 0.9)
+        });
+      }
+    } else {
+      items = await HealthPackage.find({ _id: { $in: ids }, is_active: true });
+    }
+    
+    res.json({ success: true, data: items });
+  } catch (error) {
+    console.error('Compare error:', error);
+    res.status(500).json({ success: false, message: error.message });
+  }
+});
+// GET /api/diagnostics/tests/:testId/providers - Get all providers offering a specific test
+router.get('/tests/:testId/providers', async (req, res) => {
+  try {
+    const { testId } = req.params;
+    const { lat, lng } = req.query;
+    
+    const test = await TestMaster.findById(testId);
+    if (!test) {
+      return res.status(404).json({ success: false, message: 'Test not found' });
+    }
+    
+    let pricing = await TestPricing.find({ test_id: testId, is_active: true })
+      .populate('provider_id', 'provider_name rating total_reviews city location is_nabl_accredited');
+    
+    // Calculate distance if location provided
+    if (lat && lng) {
+      pricing = pricing.map(p => {
+        const provider = p.provider_id;
+        if (provider.location && provider.location.lat) {
+          const distance = calculateDistance(lat, lng, provider.location.lat, provider.location.lng);
+          return { ...p.toObject(), distance: distance.toFixed(1) };
+        }
+        return { ...p.toObject(), distance: null };
+      });
+      pricing.sort((a, b) => (a.distance || 999) - (b.distance || 999));
+    }
+    
+    res.json({ success: true, test: test.toObject(), providers: pricing });
+  } catch (error) {
+    console.error(error);
+    res.status(500).json({ success: false, message: error.message });
+  }
+});
 module.exports = router;
