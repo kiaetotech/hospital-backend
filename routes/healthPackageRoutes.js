@@ -18,6 +18,84 @@ const calculateDistance = (lat1, lon1, lat2, lon2) => {
   return R * c;
 };
 
+// ==================== SEED ENDPOINT (MUST BE FIRST) ====================
+router.get('/seed', async (req, res) => {
+  try {
+    // Get a valid provider ID from database
+    const provider = await DiagnosticsProvider.findOne();
+    
+    if (!provider) {
+      return res.status(404).json({ 
+        status: 'error', 
+        message: 'No provider found. Please run /api/diagnostics/import-all first' 
+      });
+    }
+
+    const samplePackages = [
+      {
+        package_id: 1001,
+        provider_id: provider._id,
+        package_name: "Full Body Checkup",
+        package_description: "Complete health checkup with 65+ tests including liver, kidney, thyroid, vitamins",
+        tests_included_text: "CBC, LFT, KFT, Lipid Profile, Thyroid, HbA1c, Vitamin B12, Vitamin D, Urine",
+        mrp: 2500,
+        discounted_price: 1299,
+        home_collection_available: true,
+        report_time_hours: 24,
+        gender: "Unisex",
+        is_popular: true,
+        is_active: true
+      },
+      {
+        package_id: 1002,
+        provider_id: provider._id,
+        package_name: "Cardiac Care Package",
+        package_description: "Heart health checkup with lipid profile, ECG, and cardiac enzymes",
+        tests_included_text: "Lipid Profile, ECG, Troponin, CK-MB, CRP, Homocysteine",
+        mrp: 1800,
+        discounted_price: 999,
+        home_collection_available: true,
+        report_time_hours: 12,
+        gender: "Unisex",
+        is_popular: true,
+        is_active: true
+      },
+      {
+        package_id: 1003,
+        provider_id: provider._id,
+        package_name: "Diabetes Profile",
+        package_description: "Complete diabetes screening with HbA1c, fasting glucose, and insulin",
+        tests_included_text: "HbA1c, Glucose Fasting, Glucose PP, Insulin, C-peptide, Microalbumin",
+        mrp: 1200,
+        discounted_price: 699,
+        home_collection_available: true,
+        report_time_hours: 8,
+        gender: "Unisex",
+        is_popular: true,
+        is_active: true
+      }
+    ];
+    
+    for (const pkg of samplePackages) {
+      await HealthPackage.findOneAndUpdate(
+        { package_name: pkg.package_name },
+        pkg,
+        { upsert: true, new: true }
+      );
+    }
+    
+    const totalPackages = await HealthPackage.countDocuments();
+    res.json({ 
+      status: 'success', 
+      message: `Added ${samplePackages.length} health packages. Total packages: ${totalPackages}`,
+      provider_used: provider.provider_name
+    });
+  } catch (error) {
+    console.error('Seed error:', error);
+    res.status(500).json({ status: 'error', message: error.message });
+  }
+});
+
 // ==================== PATIENT APIS ====================
 
 // GET /api/health-packages/search - Search packages
