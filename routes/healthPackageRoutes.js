@@ -608,6 +608,14 @@ router.get('/admin/health-packages/stats', async (req, res) => {
     res.status(500).json({ status: 'error', message: error.message });
   }
 });
-
+// GET /api/health-packages/types - Get all package types
+router.get('/types', async (req, res) => {
+  try {
+    const types = await HealthPackage.distinct('package_type');
+    res.json({ status: 'success', types });
+  } catch (error) {
+    res.status(500).json({ status: 'error', message: error.message });
+  }
+});
 module.exports = router;
 module.exports = router;
