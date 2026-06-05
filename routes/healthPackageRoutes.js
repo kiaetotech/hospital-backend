@@ -38,6 +38,7 @@ router.get('/seed', async (req, res) => {
         home_collection_available: true,
         report_time_hours: 24,
         gender: "Unisex",
+        package_type: "fullbody",
         is_popular: true,
         is_active: true
       },
@@ -52,6 +53,7 @@ router.get('/seed', async (req, res) => {
         home_collection_available: true,
         report_time_hours: 12,
         gender: "Unisex",
+        package_type: "cardiac",
         is_popular: true,
         is_active: true
       },
@@ -66,7 +68,23 @@ router.get('/seed', async (req, res) => {
         home_collection_available: true,
         report_time_hours: 8,
         gender: "Unisex",
+        package_type: "diabetes",
         is_popular: true,
+        is_active: true
+      },
+      {
+        package_id: 1004,
+        provider_id: provider._id,
+        package_name: "Liver Profile",
+        package_description: "Complete liver function tests",
+        tests_included_text: "LFT, PT/INR, AFP",
+        mrp: 1500,
+        discounted_price: 799,
+        home_collection_available: true,
+        report_time_hours: 8,
+        gender: "Unisex",
+        package_type: "basic",
+        is_popular: false,
         is_active: true
       }
     ];
@@ -81,6 +99,69 @@ router.get('/seed', async (req, res) => {
     
     const totalPackages = await HealthPackage.countDocuments();
     res.json({ status: 'success', message: `Added packages. Total: ${totalPackages}` });
+  } catch (error) {
+    res.status(500).json({ status: 'error', message: error.message });
+  }
+});
+
+// ==================== TYPE ROUTES (MUST BE BEFORE /:id) ====================
+
+// GET /api/health-packages/types - Get all package types
+router.get('/types', async (req, res) => {
+  try {
+    const types = await HealthPackage.distinct('package_type');
+    res.json({ status: 'success', types: types.filter(t => t) });
+  } catch (error) {
+    res.status(500).json({ status: 'error', message: error.message });
+  }
+});
+
+// GET /api/health-packages/fix-types - Fix existing package types
+router.get('/fix-types', async (req, res) => {
+  try {
+    const packages = await HealthPackage.find({});
+    let updated = 0;
+    
+    for (let pkg of packages) {
+      let newType = null;
+      const name = pkg.package_name.toLowerCase();
+      
+      if (name.includes('full body')) newType = 'fullbody';
+      else if (name.includes('cardiac')) newType = 'cardiac';
+      else if (name.includes('diabetes')) newType = 'diabetes';
+      else if (name.includes('liver')) newType = 'basic';
+      else newType = 'basic';
+      
+      if (newType && pkg.package_type !== newType) {
+        pkg.package_type = newType;
+        await pkg.save();
+        updated++;
+      }
+    }
+    
+    res.json({ status: 'success', message: `Updated ${updated} packages with proper types` });
+  } catch (error) {
+    res.status(500).json({ status: 'error', message: error.message });
+  }
+});
+
+// GET /api/health-packages/by-type/:type - Filter by package type
+router.get('/by-type/:type', async (req, res) => {
+  try {
+    const { type } = req.params;
+    const { page = 1, limit = 20 } = req.query;
+    
+    const packages = await HealthPackage.find({ 
+      package_type: type, 
+      is_active: true
+    })
+      .populate('provider_id', 'provider_name rating')
+      .skip((page - 1) * limit)
+      .limit(parseInt(limit));
+    
+    const total = await HealthPackage.countDocuments({ package_type: type, is_active: true });
+    
+    res.json({ status: 'success', packages, total, page: parseInt(page) });
   } catch (error) {
     res.status(500).json({ status: 'error', message: error.message });
   }
@@ -151,7 +232,45 @@ router.get('/popular', async (req, res) => {
   }
 });
 
-// GET /api/health-packages/:id - Get package details
+// GET /api/health-packages/nearby - Packages from nearby labs
+router.get('/nearby', async (req, res) => {
+  try {
+    const { latitude, longitude, radius = 10, limit = 20 } = req.query;
+    
+    if (!latitude || !longitude) {
+      return res.status(400).json({ status: 'error', message: 'Latitude and longitude required' });
+    }
+
+    const providers = await DiagnosticsProvider.find({
+      'location.lat': { $exists: true },
+      is_active: true
+    });
+
+    const nearbyProviders = [];
+    for (const provider of providers) {
+      const distance = calculateDistance(
+        parseFloat(latitude), parseFloat(longitude),
+        provider.location.lat, provider.location.lng
+      );
+      if (distance <= parseFloat(radius)) {
+        nearbyProviders.push(provider._id);
+      }
+    }
+
+    const packages = await HealthPackage.find({
+      provider_id: { $in: nearbyProviders },
+      is_active: true
+    })
+      .populate('provider_id', 'provider_name rating location city')
+      .limit(parseInt(limit));
+
+    res.json({ status: 'success', packages, count: packages.length });
+  } catch (error) {
+    res.status(500).json({ status: 'error', message: error.message });
+  }
+});
+
+// GET /api/health-packages/:id - Get package details (MUST BE LAST)
 router.get('/:id', async (req, res) => {
   try {
     const pkg = await HealthPackage.findById(req.params.id)
@@ -183,11 +302,58 @@ router.post('/compare', async (req, res) => {
       home_collection_available: pkg.home_collection_available,
       report_time_hours: pkg.report_time_hours,
       gender: pkg.gender,
+      package_type: pkg.package_type,
       is_popular: pkg.is_popular
     }));
 
     comparisonData.sort((a, b) => a.discounted_price - b.discounted_price);
     res.json({ status: 'success', packages: comparisonData });
+  } catch (error) {
+    res.status(500).json({ status: 'error', message: error.message });
+  }
+});
+
+// POST /api/health-packages/compare-custom - Compare custom test list against packages
+router.post('/compare-custom', async (req, res) => {
+  try {
+    const { testNames, latitude, longitude } = req.body;
+    
+    if (!testNames || testNames.length === 0) {
+      return res.status(400).json({ status: 'error', message: 'No tests provided' });
+    }
+
+    const packages = await HealthPackage.find({ is_active: true })
+      .populate('provider_id', 'provider_name rating location');
+    
+    const comparisonResults = [];
+    for (const pkg of packages) {
+      const packageTests = pkg.tests_included_text ? pkg.tests_included_text.split(',').map(t => t.trim().toLowerCase()) : [];
+      const matchedTests = testNames.filter(test => 
+        packageTests.some(pt => pt.includes(test.toLowerCase()))
+      );
+      const matchPercentage = (matchedTests.length / testNames.length) * 100;
+      
+      if (matchPercentage > 0) {
+        let distance = null;
+        if (latitude && longitude && pkg.provider_id?.location?.lat) {
+          distance = calculateDistance(
+            parseFloat(latitude), parseFloat(longitude),
+            pkg.provider_id.location.lat, pkg.provider_id.location.lng
+          ).toFixed(1);
+        }
+        
+        comparisonResults.push({
+          package: pkg,
+          match_percentage: matchPercentage,
+          matched_tests: matchedTests.length,
+          total_tests: testNames.length,
+          distance_km: distance
+        });
+      }
+    }
+    
+    comparisonResults.sort((a, b) => b.match_percentage - a.match_percentage);
+    res.json({ status: 'success', results: comparisonResults });
   } catch (error) {
     res.status(500).json({ status: 'error', message: error.message });
   }
@@ -223,6 +389,23 @@ router.post('/:id/book', async (req, res) => {
   }
 });
 
+// GET /api/bookings/:booking_id - Get booking status
+router.get('/bookings/:booking_id', async (req, res) => {
+  try {
+    const booking = await HealthPackageBooking.findById(req.params.booking_id)
+      .populate('package_id', 'package_name')
+      .populate('provider_id', 'provider_name');
+    
+    if (!booking) {
+      return res.status(404).json({ status: 'error', message: 'Booking not found' });
+    }
+    
+    res.json({ status: 'success', booking });
+  } catch (error) {
+    res.status(500).json({ status: 'error', message: error.message });
+  }
+});
+
 // POST /api/health-packages/:id/review - Submit review
 router.post('/:id/review', async (req, res) => {
   try {
@@ -239,6 +422,48 @@ router.post('/:id/review', async (req, res) => {
 
     await review.save();
     res.json({ status: 'success', message: 'Review submitted' });
+  } catch (error) {
+    res.status(500).json({ status: 'error', message: error.message });
+  }
+});
+
+// GET /api/health-packages/suggest - Smart suggestions based on age/gender/symptoms
+router.get('/suggest', async (req, res) => {
+  try {
+    const { age, gender, symptoms } = req.query;
+    let filter = { is_active: true };
+    
+    if (age) {
+      const ageNum = parseInt(age);
+      if (ageNum < 18) filter.package_type = 'child';
+      else if (ageNum >= 60) filter.package_type = 'senior';
+      else filter.package_type = { $in: ['basic', 'executive', 'fullbody'] };
+    }
+    
+    if (gender && gender === 'female') {
+      filter.package_type = { $in: ['women', filter.package_type] };
+    } else if (gender === 'male') {
+      filter.package_type = { $in: ['men', filter.package_type] };
+    }
+    
+    let packages = await HealthPackage.find(filter)
+      .populate('provider_id', 'provider_name rating')
+      .limit(10);
+    
+    if (symptoms) {
+      const symptomKeywords = symptoms.toLowerCase().split(',');
+      for (let pkg of packages) {
+        let score = 0;
+        const packageText = (pkg.package_name + ' ' + pkg.package_description + ' ' + pkg.tests_included_text).toLowerCase();
+        for (const keyword of symptomKeywords) {
+          if (packageText.includes(keyword.trim())) score += 10;
+        }
+        pkg.relevance_score = score;
+      }
+      packages.sort((a, b) => (b.relevance_score || 0) - (a.relevance_score || 0));
+    }
+    
+    res.json({ status: 'success', suggestions: packages });
   } catch (error) {
     res.status(500).json({ status: 'error', message: error.message });
   }
@@ -272,185 +497,30 @@ router.post('/provider/health-packages', async (req, res) => {
     res.status(500).json({ status: 'error', message: error.message });
   }
 });
-// ==================== ADDITIONAL PATIENT APIS ====================
 
-// GET /api/health-packages/nearby - Packages from nearby labs
-router.get('/nearby', async (req, res) => {
+// PUT /api/provider/health-packages/:id - Update package
+router.put('/provider/health-packages/:id', async (req, res) => {
   try {
-    const { latitude, longitude, radius = 10, limit = 20 } = req.query;
-    
-    if (!latitude || !longitude) {
-      return res.status(400).json({ status: 'error', message: 'Latitude and longitude required' });
+    const updateData = req.body;
+    if (updateData.mrp && updateData.discounted_price) {
+      updateData.discount_percentage = Math.round(((updateData.mrp - updateData.discounted_price) / updateData.mrp) * 100);
     }
-
-    // Get all providers with location
-    const providers = await DiagnosticsProvider.find({
-      'location.lat': { $exists: true },
-      is_active: true
-    });
-
-    // Calculate distance and find nearby providers
-    const nearbyProviders = [];
-    for (const provider of providers) {
-      const distance = calculateDistance(
-        parseFloat(latitude), parseFloat(longitude),
-        provider.location.lat, provider.location.lng
-      );
-      if (distance <= parseFloat(radius)) {
-        nearbyProviders.push(provider._id);
-      }
-    }
-
-    // Get packages from nearby providers
-    const packages = await HealthPackage.find({
-      provider_id: { $in: nearbyProviders },
-      is_active: true,
-      is_approved: true
-    })
-      .populate('provider_id', 'provider_name rating location city')
-      .limit(parseInt(limit));
-
-    res.json({ status: 'success', packages, count: packages.length });
+    const pkg = await HealthPackage.findByIdAndUpdate(req.params.id, updateData, { new: true });
+    res.json({ status: 'success', package: pkg });
   } catch (error) {
     res.status(500).json({ status: 'error', message: error.message });
   }
 });
 
-// GET /api/health-packages/by-type/:type - Filter by package type
-router.get('/by-type/:type', async (req, res) => {
+// DELETE /api/provider/health-packages/:id - Disable package
+router.delete('/provider/health-packages/:id', async (req, res) => {
   try {
-    const { type } = req.params;
-    const { page = 1, limit = 20 } = req.query;
-    
-    const packages = await HealthPackage.find({ 
-      package_type: type, 
-      is_active: true, 
-      is_approved: true 
-    })
-      .populate('provider_id', 'provider_name rating')
-      .skip((page - 1) * limit)
-      .limit(parseInt(limit));
-    
-    const total = await HealthPackage.countDocuments({ package_type: type, is_active: true, is_approved: true });
-    
-    res.json({ status: 'success', packages, total, page: parseInt(page) });
+    await HealthPackage.findByIdAndUpdate(req.params.id, { is_active: false });
+    res.json({ status: 'success', message: 'Package disabled' });
   } catch (error) {
     res.status(500).json({ status: 'error', message: error.message });
   }
 });
-
-// POST /api/health-packages/compare-custom - Compare custom test list against packages
-router.post('/compare-custom', async (req, res) => {
-  try {
-    const { testNames, latitude, longitude } = req.body;
-    
-    if (!testNames || testNames.length === 0) {
-      return res.status(400).json({ status: 'error', message: 'No tests provided' });
-    }
-
-    // Find packages that contain most of these tests
-    const packages = await HealthPackage.find({ is_active: true, is_approved: true })
-      .populate('provider_id', 'provider_name rating location');
-    
-    const comparisonResults = [];
-    for (const pkg of packages) {
-      const packageTests = pkg.tests_included_text ? pkg.tests_included_text.split(',').map(t => t.trim().toLowerCase()) : [];
-      const matchedTests = testNames.filter(test => 
-        packageTests.some(pt => pt.includes(test.toLowerCase()))
-      );
-      const matchPercentage = (matchedTests.length / testNames.length) * 100;
-      
-      if (matchPercentage > 0) {
-        let distance = null;
-        if (latitude && longitude && pkg.provider_id?.location?.lat) {
-          distance = calculateDistance(
-            parseFloat(latitude), parseFloat(longitude),
-            pkg.provider_id.location.lat, pkg.provider_id.location.lng
-          ).toFixed(1);
-        }
-        
-        comparisonResults.push({
-          package: pkg,
-          match_percentage: matchPercentage,
-          matched_tests: matchedTests.length,
-          total_tests: testNames.length,
-          distance_km: distance
-        });
-      }
-    }
-    
-    // Sort by match percentage (highest first)
-    comparisonResults.sort((a, b) => b.match_percentage - a.match_percentage);
-    
-    res.json({ status: 'success', results: comparisonResults });
-  } catch (error) {
-    res.status(500).json({ status: 'error', message: error.message });
-  }
-});
-
-// GET /api/bookings/:booking_id - Get booking status
-router.get('/bookings/:booking_id', async (req, res) => {
-  try {
-    const booking = await HealthPackageBooking.findById(req.params.booking_id)
-      .populate('package_id', 'package_name')
-      .populate('provider_id', 'provider_name');
-    
-    if (!booking) {
-      return res.status(404).json({ status: 'error', message: 'Booking not found' });
-    }
-    
-    res.json({ status: 'success', booking });
-  } catch (error) {
-    res.status(500).json({ status: 'error', message: error.message });
-  }
-});
-
-// GET /api/health-packages/suggest - Smart suggestions based on age/gender/symptoms
-router.get('/suggest', async (req, res) => {
-  try {
-    const { age, gender, symptoms } = req.query;
-    let filter = { is_active: true, is_approved: true };
-    
-    // Age-based suggestions
-    if (age) {
-      const ageNum = parseInt(age);
-      if (ageNum < 18) filter.package_type = 'child';
-      else if (ageNum >= 60) filter.package_type = 'senior';
-      else filter.package_type = { $in: ['basic', 'executive', 'fullbody'] };
-    }
-    
-    // Gender-based suggestions
-    if (gender && gender === 'female') {
-      filter.package_type = { $in: ['women', filter.package_type] };
-    } else if (gender === 'male') {
-      filter.package_type = { $in: ['men', filter.package_type] };
-    }
-    
-    let packages = await HealthPackage.find(filter)
-      .populate('provider_id', 'provider_name rating')
-      .limit(10);
-    
-    // Symptom-based matching (if symptoms provided)
-    if (symptoms) {
-      const symptomKeywords = symptoms.toLowerCase().split(',');
-      for (let pkg of packages) {
-        let score = 0;
-        const packageText = (pkg.package_name + ' ' + pkg.package_description + ' ' + pkg.tests_included_text).toLowerCase();
-        for (const keyword of symptomKeywords) {
-          if (packageText.includes(keyword.trim())) score += 10;
-        }
-        pkg.relevance_score = score;
-      }
-      packages.sort((a, b) => (b.relevance_score || 0) - (a.relevance_score || 0));
-    }
-    
-    res.json({ status: 'success', suggestions: packages });
-  } catch (error) {
-    res.status(500).json({ status: 'error', message: error.message });
-  }
-});
-
-// ==================== PROVIDER APIS ====================
 
 // POST /api/provider/health-packages/bulk-upload - Excel/CSV upload
 router.post('/provider/health-packages/bulk-upload', async (req, res) => {
@@ -460,26 +530,18 @@ router.post('/provider/health-packages/bulk-upload', async (req, res) => {
     
     for (const pkgData of packages) {
       try {
-        const slug = pkgData.package_name.toLowerCase().replace(/[^a-z0-9]+/g, '-');
-        
         const newPackage = new HealthPackage({
           package_id: Date.now(),
           provider_id,
           package_name: pkgData.package_name,
-          package_slug: slug,
           package_description: pkgData.description,
           package_type: pkgData.package_type || 'basic',
           tests_included_text: pkgData.tests_included,
           mrp: pkgData.mrp,
           discounted_price: pkgData.discounted_price,
-          discount_percentage: Math.round(((pkgData.mrp - pkgData.discounted_price) / pkgData.mrp) * 100),
           home_collection_available: pkgData.home_collection === 'Yes',
           report_time_hours: pkgData.report_time_hours || 48,
-          requires_fasting: pkgData.requires_fasting === 'Yes',
-          fasting_hours: pkgData.fasting_hours || 0,
           gender: pkgData.gender || 'unisex',
-          min_age: pkgData.min_age || 0,
-          max_age: pkgData.max_age || 100,
           tags: pkgData.tags ? pkgData.tags.split(',') : [],
           city: pkgData.city,
           is_active: true,
@@ -579,13 +641,11 @@ router.get('/admin/health-packages/stats', async (req, res) => {
     const totalBookings = await HealthPackageBooking.countDocuments();
     const completedBookings = await HealthPackageBooking.countDocuments({ booking_status: 'completed' });
     
-    // Revenue stats
     const revenue = await HealthPackageBooking.aggregate([
       { $match: { payment_status: 'completed' } },
       { $group: { _id: null, total: { $sum: '$final_amount' } } }
     ]);
     
-    // Bookings by package type
     const bookingsByType = await HealthPackageBooking.aggregate([
       { $lookup: { from: 'healthpackages', localField: 'package_id', foreignField: '_id', as: 'package' } },
       { $unwind: '$package' },
@@ -608,14 +668,5 @@ router.get('/admin/health-packages/stats', async (req, res) => {
     res.status(500).json({ status: 'error', message: error.message });
   }
 });
-// GET /api/health-packages/types - Get all package types
-router.get('/types', async (req, res) => {
-  try {
-    const types = await HealthPackage.distinct('package_type');
-    res.json({ status: 'success', types });
-  } catch (error) {
-    res.status(500).json({ status: 'error', message: error.message });
-  }
-});
-module.exports = router;
+
 module.exports = router;
