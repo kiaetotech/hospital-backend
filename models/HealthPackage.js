@@ -4,6 +4,8 @@ const healthPackageSchema = new mongoose.Schema({
   package_id: { type: Number, unique: true },
   provider_id: { type: mongoose.Schema.Types.ObjectId, ref: 'DiagnosticsProvider', required: true },
   package_name: { type: String, required: true },
+  package_type: { type: String, default: 'basic', enum: ['basic', 'executive', 'fullbody', 'women', 'men', 'senior', 'diabetes', '    
+  cardiac', 'child', 'pregnancy', 'custom'] },
   package_description: String,
   tests_included_text: String,
   mrp: { type: Number, required: true },
