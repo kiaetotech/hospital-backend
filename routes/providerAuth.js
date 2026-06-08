@@ -1,7 +1,7 @@
 const express = require('express');
 const bcrypt = require('bcryptjs');
 const jwt = require('jsonwebtoken');
-const Provider = require('../../hospital-backend/models/Provider');
+const Provider = require('../models/Provider');  // ← CHANGED THIS LINE
 const router = express.Router();
 
 // Agency Registration
