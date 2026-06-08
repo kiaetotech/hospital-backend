@@ -1,6 +1,6 @@
 const express = require('express');
-const Test = require('D:/hospital-backend/models/Test');
-const ProviderPrice = require('D:/hospital-backend/models/ProviderPrice');
+const Test = require('D:/hospital backend/models/Test');
+const ProviderPrice = require('D:/hospital backend/models/ProviderPrice');
 const router = express.Router();
 
 router.get('/search', async (req, res) => {

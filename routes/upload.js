@@ -1,8 +1,8 @@
 const express = require('express');
 const multer = require('multer');
 const XLSX = require('xlsx');
-const Test = require('D:/hospital-backend/models/Test');
-const ProviderPrice = require('D:/hospital-backend/models/ProviderPrice');
+const Test = require('D:/hospital backend/models/Test');
+const ProviderPrice = require('D:/hospital backend/models/ProviderPrice');
 const router = express.Router();
 
 const upload = multer({ storage: multer.memoryStorage() });
