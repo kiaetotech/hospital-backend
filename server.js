@@ -2,7 +2,6 @@ require('dotenv').config();
 const express = require('express');
 const mongoose = require('mongoose');
 const cors = require('cors');
-const jwt = require('jsonwebtoken');
 
 const app = express();
 app.use(cors());
@@ -44,7 +43,7 @@ const ambulanceRoutes = require('./routes/ambulance');
 const healthPackageRoutes = require('./routes/healthPackageRoutes');
 const testRoutes = require('./routes/tests');
 const uploadRoutes = require('./routes/upload');
-const providerAuthRoutes = require('./routes/providerAuth');
+//const providerAuthRoutes = require('./routes/providerAuth');
 
 // Use routes (ALL routes MUST be before app.listen)
 app.use('/api/hospitals', hospitalRoutes);
@@ -58,7 +57,7 @@ app.use('/api/health-packages', healthPackageRoutes);
 app.use('/api/provider', healthPackageRoutes);
 app.use('/api/tests', testRoutes);
 app.use('/api/upload', uploadRoutes);
-app.use('/api/provider-auth', providerAuthRoutes);
+//app.use('/api/provider-auth', providerAuthRoutes);
 
 // Simple health check
 app.get('/health', (req, res) => {
