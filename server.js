@@ -2,10 +2,36 @@ require('dotenv').config();
 const express = require('express');
 const mongoose = require('mongoose');
 const cors = require('cors');
+const jwt = require('jsonwebtoken');
 
 const app = express();
 app.use(cors());
 app.use(express.json());
+// JWT Authentication for Lab Agencies
+const jwt = require('jsonwebtoken');
+const JWT_SECRET = process.env.JWT_SECRET || 'hospital_platform_secret_key_2024';
+
+// Authentication middleware for lab agencies
+const authenticateToken = (req, res, next) => {
+  const authHeader = req.headers['authorization'];
+  const token = authHeader && authHeader.split(' ')[1];
+  
+  if (!token) {
+    return res.status(401).json({ error: 'Access denied. Please login first.' });
+  }
+  
+  jwt.verify(token, JWT_SECRET, (err, user) => {
+    if (err) {
+      return res.status(403).json({ error: 'Invalid or expired token.' });
+    }
+    req.user = user;
+    next();
+  });
+};
+
+// Make available globally
+global.authenticateToken = authenticateToken;
+global.JWT_SECRET = JWT_SECRET;
 
 // Import routes
 const hospitalRoutes = require('./routes/hospitals');
@@ -18,6 +44,7 @@ const ambulanceRoutes = require('./routes/ambulance');
 const healthPackageRoutes = require('./routes/healthPackageRoutes');
 const testRoutes = require('./routes/tests');
 const uploadRoutes = require('./routes/upload');
+const providerAuthRoutes = require('./routes/providerAuth');
 
 // Use routes (ALL routes MUST be before app.listen)
 app.use('/api/hospitals', hospitalRoutes);
@@ -31,6 +58,7 @@ app.use('/api/health-packages', healthPackageRoutes);
 app.use('/api/provider', healthPackageRoutes);
 app.use('/api/tests', testRoutes);
 app.use('/api/upload', uploadRoutes);
+app.use('/api/provider-auth', providerAuthRoutes);
 
 // Simple health check
 app.get('/health', (req, res) => {

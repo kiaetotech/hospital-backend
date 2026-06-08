@@ -34,7 +34,7 @@ router.post('/tests', upload.single('file'), async (req, res) => {
   }
 });
 
-router.post('/prices', upload.single('file'), async (req, res) => {
+router.post('/prices', global.authenticateToken, upload.single('file'), async (req, res) => {
   try {
     const workbook = XLSX.read(req.file.buffer, { type: 'buffer' });
     const sheetName = workbook.SheetNames[0];
@@ -64,5 +64,21 @@ router.post('/prices', upload.single('file'), async (req, res) => {
     res.status(500).json({ error: error.message });
   }
 });
+router.post('/prices', global.authenticateToken, upload.single('file'), async (req, res) => {
+  // ... existing code for uploading prices
+});
+
+// <----- ADD THE NEW ROUTE RIGHT HERE ----->
+
+router.get('/my-prices', global.authenticateToken, async (req, res) => {
+  try {
+    const prices = await ProviderPrice.find({ providerId: req.user.id, isActive: true });
+    res.json(prices);
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
+module.exports = router;  // <----- This is at the bottom of the file
 
 module.exports = router;
