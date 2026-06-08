@@ -11,20 +11,26 @@ app.use(express.json());
 const hospitalRoutes = require('./routes/hospitals');
 const authRoutes = require('./routes/auth');
 const caregiverRoutes = require('./routes/caregivers');
-const diagnosticsRoutes = require('./routes/diagnostics'); const diagnosticsUploadRoutes = require('./routes/diagnostics-upload');
+const diagnosticsRoutes = require('./routes/diagnostics'); 
+const diagnosticsUploadRoutes = require('./routes/diagnostics-upload');
 const paymentRoutes = require('./routes/payments');
 const ambulanceRoutes = require('./routes/ambulance');
 const healthPackageRoutes = require('./routes/healthPackageRoutes');
+const testRoutes = require('./routes/tests');
+const uploadRoutes = require('./routes/upload');
 
 // Use routes (ALL routes MUST be before app.listen)
 app.use('/api/hospitals', hospitalRoutes);
 app.use('/api/auth', authRoutes);
 app.use('/api/caregivers', caregiverRoutes);
-app.use('/api/diagnostics', diagnosticsRoutes); app.use('/api/diagnostics/upload', diagnosticsUploadRoutes);
+app.use('/api/diagnostics', diagnosticsRoutes); 
+app.use('/api/diagnostics/upload', diagnosticsUploadRoutes);
 app.use('/api/payments', paymentRoutes);
 app.use('/api/ambulance', ambulanceRoutes);
 app.use('/api/health-packages', healthPackageRoutes);
 app.use('/api/provider', healthPackageRoutes);
+app.use('/api/tests', testRoutes);
+app.use('/api/upload', uploadRoutes);
 
 // Simple health check
 app.get('/health', (req, res) => {
