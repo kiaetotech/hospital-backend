@@ -7,6 +7,7 @@ const router = express.Router();
 
 const upload = multer({ storage: multer.memoryStorage() });
 
+// Upload master tests list (Admin)
 router.post('/tests', upload.single('file'), async (req, res) => {
   try {
     const workbook = XLSX.read(req.file.buffer, { type: 'buffer' });
@@ -34,6 +35,7 @@ router.post('/tests', upload.single('file'), async (req, res) => {
   }
 });
 
+// Upload prices (Agency - requires login)
 router.post('/prices', global.authenticateToken, upload.single('file'), async (req, res) => {
   try {
     const workbook = XLSX.read(req.file.buffer, { type: 'buffer' });
@@ -43,14 +45,27 @@ router.post('/prices', global.authenticateToken, upload.single('file'), async (r
     
     let count = 0;
     for (const row of data) {
+      // Ensure test exists
+      await Test.findOneAndUpdate(
+        { testName: row.testName },
+        { 
+          testName: row.testName, 
+          category: row.category || 'Lab Tests',
+          subCategory: row.subCategory || ''
+        },
+        { upsert: true }
+      );
+      
+      // Save provider price with ID and NAME from logged-in user
       await ProviderPrice.findOneAndUpdate(
-        { providerName: row.providerName, testName: row.testName },
+        { providerId: req.user.id, testName: row.testName },
         {
-          providerName: row.providerName,
+          providerId: req.user.id,
+          providerName: req.user.providerName,  // ← FIXED: uses logged-in user's name
           testName: row.testName,
           price: row.price,
           discountedPrice: row.discountedPrice || row.price,
-          homeCollectionAvailable: row.homeCollectionAvailable === 'Yes',
+          homeCollectionAvailable: row.homeCollectionAvailable === 'Yes' || row.homeCollectionAvailable === true,
           reportTimeHours: row.reportTimeHours || 24,
           city: row.city || 'All',
           rating: row.rating || 4.0
@@ -59,17 +74,14 @@ router.post('/prices', global.authenticateToken, upload.single('file'), async (r
       );
       count++;
     }
-    res.json({ success: true, count, message: `${count} prices uploaded` });
+    
+    res.json({ success: true, count, message: `${count} prices uploaded for ${req.user.providerName}` });
   } catch (error) {
     res.status(500).json({ error: error.message });
   }
 });
-router.post('/prices', global.authenticateToken, upload.single('file'), async (req, res) => {
-  // ... existing code for uploading prices
-});
 
-// <----- ADD THE NEW ROUTE RIGHT HERE ----->
-
+// Get logged-in agency's own prices
 router.get('/my-prices', global.authenticateToken, async (req, res) => {
   try {
     const prices = await ProviderPrice.find({ providerId: req.user.id, isActive: true });
@@ -79,6 +91,14 @@ router.get('/my-prices', global.authenticateToken, async (req, res) => {
   }
 });
 
-module.exports = router;  // <----- This is at the bottom of the file
+// Get all prices (Admin)
+router.get('/prices', async (req, res) => {
+  try {
+    const prices = await ProviderPrice.find({ isActive: true });
+    res.json(prices);
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+});
 
 module.exports = router;
