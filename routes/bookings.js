@@ -36,9 +36,26 @@ router.post('/create', async (req, res) => {
     });
     
     await booking.save();
-    await sendBookingEmail(booking);
-    await sendBookingSMS(booking);
     
+    // NON-BLOCKING NOTIFICATIONS - Run in background
+    // This won't delay the response
+    Promise.resolve().then(async () => {
+      try {
+        await sendBookingEmail(booking);
+        console.log('Email sent to:', patientEmail);
+      } catch (emailError) {
+        console.error('Email error:', emailError.message);
+      }
+      
+      try {
+        await sendBookingSMS(booking);
+        console.log('SMS sent to:', patientPhone);
+      } catch (smsError) {
+        console.error('SMS error:', smsError.message);
+      }
+    });
+    
+    // Send response immediately without waiting for notifications
     res.json({ 
       success: true, 
       bookingId: booking.bookingId,
