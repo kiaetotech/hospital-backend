@@ -18,6 +18,5 @@ const providerPriceSchema = new mongoose.Schema({
 });
 
 providerPriceSchema.index({ providerId: 1, testName: 1 });
-providerPriceSchema.index({ location: '2dsphere' });
 
 module.exports = mongoose.model('ProviderPrice', providerPriceSchema);

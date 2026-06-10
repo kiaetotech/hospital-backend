@@ -6,6 +6,7 @@ const cors = require('cors');
 const app = express();
 app.use(cors());
 app.use(express.json());
+
 // JWT Authentication for Lab Agencies
 const jwt = require('jsonwebtoken');
 const JWT_SECRET = process.env.JWT_SECRET || 'hospital_platform_secret_key_2024';
@@ -45,6 +46,10 @@ const testRoutes = require('./routes/tests');
 const uploadRoutes = require('./routes/upload');
 const providerAuthRoutes = require('./routes/providerAuth');
 const bookingRoutes = require('./routes/bookings');
+const reviewRoutes = require('./routes/reviews');
+const adminRoutes = require('./routes/admin');
+const bookingStatusRoutes = require('./routes/booking-status');
+const razorpayRoutes = require('./routes/payment'); // Your existing payment route
 
 // Use routes (ALL routes MUST be before app.listen)
 app.use('/api/hospitals', hospitalRoutes);
@@ -60,6 +65,10 @@ app.use('/api/tests', testRoutes);
 app.use('/api/upload', uploadRoutes);
 app.use('/api/provider-auth', providerAuthRoutes);
 app.use('/api/bookings', bookingRoutes);
+app.use('/api/reviews', reviewRoutes);
+app.use('/api/admin', adminRoutes);
+app.use('/api/booking-status', bookingStatusRoutes);
+app.use('/api/payment', razorpayRoutes);
 
 // Simple health check
 app.get('/health', (req, res) => {
@@ -71,9 +80,18 @@ app.get('/api/test', (req, res) => {
   res.json({ success: true, message: 'API is working' });
 });
 
+// Error handling middleware (optional but recommended)
+app.use((err, req, res, next) => {
+  console.error('Error:', err);
+  res.status(500).json({ error: err.message || 'Internal server error' });
+});
+
 // MongoDB connection
 const DB_URI = process.env.DB_URI || 'mongodb://localhost:27017/hospital_db';
-mongoose.connect(DB_URI)
+mongoose.connect(DB_URI, {
+  useNewUrlParser: true,
+  useUnifiedTopology: true
+})
   .then(() => console.log('✅ MongoDB connected'))
   .catch(err => console.error('❌ MongoDB error:', err));
 

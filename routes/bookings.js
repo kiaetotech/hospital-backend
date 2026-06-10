@@ -1,6 +1,7 @@
 const express = require('express');
 const Booking = require('../models/Booking');
 const router = express.Router();
+const { sendBookingEmail, sendBookingSMS } = require('../utils/notifications');
 
 // Create a new booking (for lab tests)
 router.post('/create', async (req, res) => {
@@ -35,6 +36,8 @@ router.post('/create', async (req, res) => {
     });
     
     await booking.save();
+    await sendBookingEmail(booking);
+    await sendBookingSMS(booking);
     
     res.json({ 
       success: true, 

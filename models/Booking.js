@@ -14,9 +14,10 @@ const bookingSchema = new mongoose.Schema({
   originalAmount: { type: Number, required: true },
   discount: { type: Number, default: 0 },
   finalAmount: { type: Number, required: true },
-  paymentStatus: { type: String, enum: ['pending', 'paid', 'failed'], default: 'pending' },
+  paymentStatus: { type: String, enum: ['pending', 'paid', 'failed', 'refunded'], default: 'pending' },
   paymentId: { type: String },
-  status: { type: String, enum: ['pending', 'confirmed', 'completed', 'cancelled'], default: 'pending' },
+  orderId: { type: String },
+  status: { type: String, enum: ['pending', 'confirmed', 'sample_collected', 'processing', 'report_ready', 'completed', 'cancelled'], default: 'pending' },
   createdAt: { type: Date, default: Date.now },
   
   // Hospital/OPD/Admission fields
@@ -30,19 +31,36 @@ const bookingSchema = new mongoose.Schema({
   pickupAddress: { type: String },
   dropAddress: { type: String },
   
-  // Lab Test fields (NEW)
+  // Lab Test fields
   tests: [{ type: String }],
   providerId: { type: mongoose.Schema.Types.ObjectId, ref: 'Provider' },
   providerName: { type: String },
   homeCollectionRequested: { type: Boolean, default: false },
   homeAddress: { type: String },
-  bookingId: { type: String, unique: true }  // Unique booking ID for lab tests
+  bookingId: { type: String, unique: true },
+  
+  // NEW: Status tracking fields
+  statusHistory: [{
+    status: { type: String, enum: ['pending', 'confirmed', 'sample_collected', 'processing', 'report_ready', 'completed', 'cancelled'] },
+    timestamp: { type: Date, default: Date.now },
+    note: { type: String }
+  }],
+  estimatedReportTime: { type: Date }
 });
 
 // Generate unique booking ID before saving
 bookingSchema.pre('save', function(next) {
   if (!this.bookingId && this.bookingType === 'labtest') {
     this.bookingId = 'LAB' + Date.now() + Math.floor(Math.random() * 1000);
+  }
+  // Initialize statusHistory if empty and status is set
+  if (this.isModified('status') && (!this.statusHistory || this.statusHistory.length === 0)) {
+    this.statusHistory = this.statusHistory || [];
+    this.statusHistory.push({
+      status: this.status,
+      timestamp: new Date(),
+      note: 'Booking created'
+    });
   }
   next();
 });
