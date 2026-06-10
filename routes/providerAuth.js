@@ -28,7 +28,7 @@ router.post('/register', async (req, res) => {
       pincode,
       latitude,
       longitude,
-      isVerified: false,  // Admin approval required
+      isVerified: true,        // CHANGED: Auto-verify for testing
       isActive: true,
       rating: 0,
       createdAt: new Date()
@@ -48,14 +48,14 @@ router.post('/register', async (req, res) => {
         isVerified: provider.isVerified,
         rating: provider.rating
       },
-      message: 'Registration successful. Waiting for admin approval.'
+      message: 'Registration successful!'
     });
   } catch (error) {
     res.status(500).json({ error: error.message });
   }
 });
 
-// Agency Login (only if verified)
+// Agency Login (No verification check for testing)
 router.post('/login', async (req, res) => {
   try {
     const { email, password } = req.body;
@@ -65,10 +65,10 @@ router.post('/login', async (req, res) => {
       return res.status(401).json({ error: 'Invalid email or password' });
     }
     
-    // Check if provider is verified
-    if (!provider.isVerified) {
-      return res.status(403).json({ error: 'Your account is pending admin approval. Please wait.' });
-    }
+    // VERIFICATION CHECK REMOVED FOR TESTING
+    // if (!provider.isVerified) {
+    //   return res.status(403).json({ error: 'Your account is pending admin approval. Please wait.' });
+    // }
     
     const validPassword = await bcrypt.compare(password, provider.password);
     if (!validPassword) {
