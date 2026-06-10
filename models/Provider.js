@@ -13,11 +13,11 @@ const providerSchema = new mongoose.Schema({
   rating: { type: Number, default: 4.0 },
   isVerified: { type: Boolean, default: false },
   isActive: { type: Boolean, default: true },
-  createdAt: { type: Date, default: Date.now },
-  updatedAt: { type: Date, default: Date.now }
   adminNote: { type: String },
   verifiedAt: { type: Date },
-  verifiedBy: { type: String }
+  verifiedBy: { type: String },
+  createdAt: { type: Date, default: Date.now },
+  updatedAt: { type: Date, default: Date.now }
 });
 
 module.exports = mongoose.model('Provider', providerSchema);
