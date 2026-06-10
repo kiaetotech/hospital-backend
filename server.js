@@ -39,25 +39,26 @@ const authRoutes = require('./routes/auth');
 const caregiverRoutes = require('./routes/caregivers');
 const diagnosticsRoutes = require('./routes/diagnostics'); 
 const diagnosticsUploadRoutes = require('./routes/diagnostics-upload');
-// const paymentRoutes = require('./routes/payments'); // COMMENTED OUT - file missing
 const ambulanceRoutes = require('./routes/ambulance');
 const healthPackageRoutes = require('./routes/healthPackageRoutes');
 const testRoutes = require('./routes/tests');
 const uploadRoutes = require('./routes/upload');
 const providerAuthRoutes = require('./routes/providerAuth');
 const bookingRoutes = require('./routes/bookings');
-const reviewRoutes = require('./routes/reviews');
-const adminRoutes = require('./routes/admin');
-const bookingStatusRoutes = require('./routes/booking-status');
-const razorpayRoutes = require('./routes/payment'); // Your existing payment route
+const razorpayRoutes = require('./routes/payment');
 
-// Use routes (ALL routes MUST be before app.listen)
+// COMMENTED OUT - Missing files
+// const paymentRoutes = require('./routes/payments');
+// const reviewRoutes = require('./routes/reviews');
+// const adminRoutes = require('./routes/admin');
+// const bookingStatusRoutes = require('./routes/booking-status');
+
+// Use routes
 app.use('/api/hospitals', hospitalRoutes);
 app.use('/api/auth', authRoutes);
 app.use('/api/caregivers', caregiverRoutes);
 app.use('/api/diagnostics', diagnosticsRoutes); 
 app.use('/api/diagnostics/upload', diagnosticsUploadRoutes);
-// app.use('/api/payments', paymentRoutes); // COMMENTED OUT
 app.use('/api/ambulance', ambulanceRoutes);
 app.use('/api/health-packages', healthPackageRoutes);
 app.use('/api/provider', healthPackageRoutes);
@@ -65,10 +66,13 @@ app.use('/api/tests', testRoutes);
 app.use('/api/upload', uploadRoutes);
 app.use('/api/provider-auth', providerAuthRoutes);
 app.use('/api/bookings', bookingRoutes);
-app.use('/api/reviews', reviewRoutes);
-app.use('/api/admin', adminRoutes);
-app.use('/api/booking-status', bookingStatusRoutes);
 app.use('/api/payment', razorpayRoutes);
+
+// COMMENTED OUT - Missing routes
+// app.use('/api/payments', paymentRoutes);
+// app.use('/api/reviews', reviewRoutes);
+// app.use('/api/admin', adminRoutes);
+// app.use('/api/booking-status', bookingStatusRoutes);
 
 // Simple health check
 app.get('/health', (req, res) => {
@@ -80,7 +84,7 @@ app.get('/api/test', (req, res) => {
   res.json({ success: true, message: 'API is working' });
 });
 
-// Error handling middleware (optional but recommended)
+// Error handling middleware
 app.use((err, req, res, next) => {
   console.error('Error:', err);
   res.status(500).json({ error: err.message || 'Internal server error' });
