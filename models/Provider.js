@@ -7,6 +7,9 @@ const providerSchema = new mongoose.Schema({
   phone: { type: String },
   address: { type: String },
   city: { type: String },
+  pincode: { type: String },
+  latitude: { type: Number },
+  longitude: { type: Number },
   rating: { type: Number, default: 4.0 },
   isVerified: { type: Boolean, default: false },
   createdAt: { type: Date, default: Date.now }

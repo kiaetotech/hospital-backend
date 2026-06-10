@@ -7,7 +7,7 @@ const router = express.Router();
 // Agency Registration
 router.post('/register', async (req, res) => {
   try {
-    const { providerName, email, password, phone, city } = req.body;
+    const { providerName, email, password, phone, city, address, pincode, latitude, longitude } = req.body;
     
     const existingProvider = await Provider.findOne({ $or: [{ email }, { providerName }] });
     if (existingProvider) {
@@ -17,13 +17,17 @@ router.post('/register', async (req, res) => {
     const hashedPassword = await bcrypt.hash(password, 10);
     
     const provider = new Provider({
-      providerName,
-      email,
-      password: hashedPassword,
-      phone,
-      city,
-      isVerified: false
-    });
+  providerName,
+  email,
+  password: hashedPassword,
+  phone,
+  city,
+  address,
+  pincode,
+  latitude,
+  longitude,
+  isVerified: false
+});
     
     await provider.save();
     
