@@ -46,6 +46,7 @@ const uploadRoutes = require('./routes/upload');
 const providerAuthRoutes = require('./routes/providerAuth');
 const bookingRoutes = require('./routes/bookings');
 const razorpayRoutes = require('./routes/payment');
+const reviewRoutes = require('./routes/reviews');
 
 // COMMENTED OUT - Missing files
 // const paymentRoutes = require('./routes/payments');
@@ -67,6 +68,7 @@ app.use('/api/upload', uploadRoutes);
 app.use('/api/provider-auth', providerAuthRoutes);
 app.use('/api/bookings', bookingRoutes);
 app.use('/api/payment', razorpayRoutes);
+app.use('/api/reviews', reviewRoutes);
 
 // COMMENTED OUT - Missing routes
 // app.use('/api/payments', paymentRoutes);
