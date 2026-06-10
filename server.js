@@ -39,7 +39,7 @@ const authRoutes = require('./routes/auth');
 const caregiverRoutes = require('./routes/caregivers');
 const diagnosticsRoutes = require('./routes/diagnostics'); 
 const diagnosticsUploadRoutes = require('./routes/diagnostics-upload');
-const paymentRoutes = require('./routes/payments');
+// const paymentRoutes = require('./routes/payments'); // COMMENTED OUT - file missing
 const ambulanceRoutes = require('./routes/ambulance');
 const healthPackageRoutes = require('./routes/healthPackageRoutes');
 const testRoutes = require('./routes/tests');
@@ -57,7 +57,7 @@ app.use('/api/auth', authRoutes);
 app.use('/api/caregivers', caregiverRoutes);
 app.use('/api/diagnostics', diagnosticsRoutes); 
 app.use('/api/diagnostics/upload', diagnosticsUploadRoutes);
-app.use('/api/payments', paymentRoutes);
+// app.use('/api/payments', paymentRoutes); // COMMENTED OUT
 app.use('/api/ambulance', ambulanceRoutes);
 app.use('/api/health-packages', healthPackageRoutes);
 app.use('/api/provider', healthPackageRoutes);
