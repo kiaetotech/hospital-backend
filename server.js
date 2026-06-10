@@ -44,6 +44,7 @@ const healthPackageRoutes = require('./routes/healthPackageRoutes');
 const testRoutes = require('./routes/tests');
 const uploadRoutes = require('./routes/upload');
 const providerAuthRoutes = require('./routes/providerAuth');
+const bookingRoutes = require('./routes/bookings');
 
 // Use routes (ALL routes MUST be before app.listen)
 app.use('/api/hospitals', hospitalRoutes);
@@ -58,6 +59,7 @@ app.use('/api/provider', healthPackageRoutes);
 app.use('/api/tests', testRoutes);
 app.use('/api/upload', uploadRoutes);
 app.use('/api/provider-auth', providerAuthRoutes);
+app.use('/api/bookings', bookingRoutes);
 
 // Simple health check
 app.get('/health', (req, res) => {
