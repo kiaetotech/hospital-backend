@@ -49,6 +49,7 @@ const razorpayRoutes = require('./routes/payment');
 const reviewRoutes = require('./routes/reviews');
 const adminRoutes = require('./routes/admin');                 // NEW - will create
 const bookingStatusRoutes = require('./routes/booking-status'); // NEW - will create
+const customPackageRoutes = require('./routes/custom-packages');
 
 // COMMENTED OUT - Missing files (keep as is)
 // const paymentRoutes = require('./routes/payments');
@@ -70,6 +71,7 @@ app.use('/api/payment', razorpayRoutes);
 app.use('/api/reviews', reviewRoutes);
 app.use('/api/admin', adminRoutes);                         // NEW
 app.use('/api/booking-status', bookingStatusRoutes);       // NEW
+app.use('/api/custom-packages', customPackageRoutes);
 
 // COMMENTED OUT - Missing routes (keep as is)
 // app.use('/api/payments', paymentRoutes);
