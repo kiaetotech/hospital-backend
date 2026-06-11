@@ -47,12 +47,11 @@ const providerAuthRoutes = require('./routes/providerAuth');
 const bookingRoutes = require('./routes/bookings');
 const razorpayRoutes = require('./routes/payment');
 const reviewRoutes = require('./routes/reviews');
+const adminRoutes = require('./routes/admin');                 // NEW - will create
+const bookingStatusRoutes = require('./routes/booking-status'); // NEW - will create
 
-// COMMENTED OUT - Missing files
+// COMMENTED OUT - Missing files (keep as is)
 // const paymentRoutes = require('./routes/payments');
-// const reviewRoutes = require('./routes/reviews');
-// const adminRoutes = require('./routes/admin');
-// const bookingStatusRoutes = require('./routes/booking-status');
 
 // Use routes
 app.use('/api/hospitals', hospitalRoutes);
@@ -69,12 +68,11 @@ app.use('/api/provider-auth', providerAuthRoutes);
 app.use('/api/bookings', bookingRoutes);
 app.use('/api/payment', razorpayRoutes);
 app.use('/api/reviews', reviewRoutes);
+app.use('/api/admin', adminRoutes);                         // NEW
+app.use('/api/booking-status', bookingStatusRoutes);       // NEW
 
-// COMMENTED OUT - Missing routes
+// COMMENTED OUT - Missing routes (keep as is)
 // app.use('/api/payments', paymentRoutes);
-// app.use('/api/reviews', reviewRoutes);
-// app.use('/api/admin', adminRoutes);
-// app.use('/api/booking-status', bookingStatusRoutes);
 
 // Simple health check
 app.get('/health', (req, res) => {

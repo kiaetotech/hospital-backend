@@ -12,7 +12,6 @@ router.post('/create', async (req, res) => {
       homeCollectionRequested, homeAddress, userId
     } = req.body;
     
-    // Generate unique booking ID
     const bookingId = 'LAB' + Date.now() + Math.floor(Math.random() * 1000);
     
     const booking = new Booking({
@@ -32,13 +31,13 @@ router.post('/create', async (req, res) => {
       homeCollectionRequested: homeCollectionRequested || false,
       homeAddress: homeAddress || '',
       status: 'confirmed',
-      paymentStatus: 'pending'
+      paymentStatus: 'pending',
+      statusHistory: [{ status: 'confirmed', timestamp: new Date(), note: 'Booking confirmed' }]
     });
     
     await booking.save();
     
-    // NON-BLOCKING NOTIFICATIONS - Run in background
-    // This won't delay the response
+    // Non-blocking notifications
     Promise.resolve().then(async () => {
       try {
         await sendBookingEmail(booking);
@@ -46,7 +45,6 @@ router.post('/create', async (req, res) => {
       } catch (emailError) {
         console.error('Email error:', emailError.message);
       }
-      
       try {
         await sendBookingSMS(booking);
         console.log('SMS sent to:', patientPhone);
@@ -55,7 +53,6 @@ router.post('/create', async (req, res) => {
       }
     });
     
-    // Send response immediately without waiting for notifications
     res.json({ 
       success: true, 
       bookingId: booking.bookingId,
@@ -91,15 +88,25 @@ router.get('/patient/:phone', async (req, res) => {
   }
 });
 
-// Update booking status
+// Update booking status (with history)
 router.put('/:bookingId/status', async (req, res) => {
   try {
-    const { status } = req.body;
-    const booking = await Booking.findOneAndUpdate(
-      { bookingId: req.params.bookingId },
-      { status },
-      { new: true }
-    );
+    const { status, note } = req.body;
+    const booking = await Booking.findOne({ bookingId: req.params.bookingId });
+    
+    if (!booking) {
+      return res.status(404).json({ error: 'Booking not found' });
+    }
+    
+    booking.status = status;
+    booking.statusHistory = booking.statusHistory || [];
+    booking.statusHistory.push({
+      status: status,
+      timestamp: new Date(),
+      note: note || `Status updated to ${status}`
+    });
+    
+    await booking.save();
     res.json(booking);
   } catch (error) {
     res.status(500).json({ error: error.message });
