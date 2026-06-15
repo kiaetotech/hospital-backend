@@ -24,12 +24,35 @@ const patientSchema = new mongoose.Schema({
     conditions: [String],
     requiredServiceType: { type: String, enum: ['personal', 'skilled', 'both'], required: true }
   },
-  prescriptionUrl: { type: String }, // For skilled nursing
+  prescriptionUrl: { type: String },
   budgetRange: {
     min: Number,
     max: Number
   },
-  createdAt: { type: Date, default: Date.now }
+  
+  // ============================================
+  // LOAN MODULE ADDITIONS (DO NOT DELETE)
+  // ============================================
+  pan: { type: String },
+  aadhaar: { type: String },
+  cibilScore: { type: Number },
+  monthlyIncome: { type: Number },
+  employmentType: { type: String, enum: ['Salaried', 'Self-Employed', 'Business', 'Retired', 'Student', 'Unemployed'] },
+  
+  // Location details for lender assignment
+  locationDetails: {
+    pincode: { type: String },
+    city: { type: String },
+    district: { type: String },
+    state: { type: String },
+    coordinates: { lat: Number, lng: Number }
+  },
+  
+  // Loan history reference
+  loanApplications: [{ type: mongoose.Schema.Types.ObjectId, ref: 'LoanApplication' }],
+  
+  createdAt: { type: Date, default: Date.now },
+  updatedAt: { type: Date, default: Date.now }
 });
 
 module.exports = mongoose.model('Patient', patientSchema);
