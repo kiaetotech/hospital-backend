@@ -121,19 +121,6 @@ app.use('/api/admin', adminRoutes);
 app.use('/api/booking-status', bookingStatusRoutes);
 app.use('/api/custom-packages', customPackageRoutes);
 
-// ============================================
-// NEW LOAN MODULE ROUTES
-// ============================================
-const loanPatientRoutes = require('./routes/loanPatient');
-const loanLenderRoutes = require('./routes/loanLender');
-const loanAdminRoutes = require('./routes/loanAdmin');
-const loanWebhookRoutes = require('./routes/loanWebhook');
-
-// Use loan routes
-app.use('/api/loan/patient', loanPatientRoutes);
-app.use('/api/loan/lender', loanLenderRoutes);
-app.use('/api/loan/admin', loanAdminRoutes);
-app.use('/api/loan/webhook', loanWebhookRoutes);
 
 // ============================================
 // HEALTH CHECK & TEST ENDPOINTS
