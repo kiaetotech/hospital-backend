@@ -33,7 +33,58 @@ const authenticateToken = (req, res, next) => {
 global.authenticateToken = authenticateToken;
 global.JWT_SECRET = JWT_SECRET;
 
-// Import routes
+// ============================================
+// LOAN MODULE - AUTHENTICATION MIDDLEWARE
+// ============================================
+// Patient authentication (reuses existing JWT)
+const authenticatePatient = (req, res, next) => {
+  const authHeader = req.headers['authorization'];
+  const token = authHeader && authHeader.split(' ')[1];
+  
+  if (!token) {
+    return res.status(401).json({ error: 'Access denied. Please login first.' });
+  }
+  
+  jwt.verify(token, JWT_SECRET, (err, user) => {
+    if (err) {
+      return res.status(403).json({ error: 'Invalid or expired token.' });
+    }
+    if (user.role !== 'patient') {
+      return res.status(403).json({ error: 'Patient access required.' });
+    }
+    req.user = user;
+    next();
+  });
+};
+
+// Lender authentication
+const authenticateLender = (req, res, next) => {
+  const authHeader = req.headers['authorization'];
+  const token = authHeader && authHeader.split(' ')[1];
+  
+  if (!token) {
+    return res.status(401).json({ error: 'Access denied. Please login first.' });
+  }
+  
+  jwt.verify(token, JWT_SECRET, (err, user) => {
+    if (err) {
+      return res.status(403).json({ error: 'Invalid or expired token.' });
+    }
+    if (user.role !== 'lender') {
+      return res.status(403).json({ error: 'Lender access required.' });
+    }
+    req.user = user;
+    next();
+  });
+};
+
+// Make loan middleware available globally
+global.authenticatePatient = authenticatePatient;
+global.authenticateLender = authenticateLender;
+
+// ============================================
+// EXISTING ROUTES (UNCHANGED)
+// ============================================
 const hospitalRoutes = require('./routes/hospitals');
 const authRoutes = require('./routes/auth');
 const caregiverRoutes = require('./routes/caregivers');
@@ -47,14 +98,11 @@ const providerAuthRoutes = require('./routes/providerAuth');
 const bookingRoutes = require('./routes/bookings');
 const razorpayRoutes = require('./routes/payment');
 const reviewRoutes = require('./routes/reviews');
-const adminRoutes = require('./routes/admin');                 // NEW - will create
-const bookingStatusRoutes = require('./routes/booking-status'); // NEW - will create
+const adminRoutes = require('./routes/admin');
+const bookingStatusRoutes = require('./routes/booking-status');
 const customPackageRoutes = require('./routes/custom-packages');
 
-// COMMENTED OUT - Missing files (keep as is)
-// const paymentRoutes = require('./routes/payments');
-
-// Use routes
+// Use existing routes
 app.use('/api/hospitals', hospitalRoutes);
 app.use('/api/auth', authRoutes);
 app.use('/api/caregivers', caregiverRoutes);
@@ -69,30 +117,46 @@ app.use('/api/provider-auth', providerAuthRoutes);
 app.use('/api/bookings', bookingRoutes);
 app.use('/api/payment', razorpayRoutes);
 app.use('/api/reviews', reviewRoutes);
-app.use('/api/admin', adminRoutes);                         // NEW
-app.use('/api/booking-status', bookingStatusRoutes);       // NEW
+app.use('/api/admin', adminRoutes);
+app.use('/api/booking-status', bookingStatusRoutes);
 app.use('/api/custom-packages', customPackageRoutes);
 
-// COMMENTED OUT - Missing routes (keep as is)
-// app.use('/api/payments', paymentRoutes);
+// ============================================
+// NEW LOAN MODULE ROUTES
+// ============================================
+const loanPatientRoutes = require('./routes/loanPatient');
+const loanLenderRoutes = require('./routes/loanLender');
+const loanAdminRoutes = require('./routes/loanAdmin');
+const loanWebhookRoutes = require('./routes/loanWebhook');
 
-// Simple health check
+// Use loan routes
+app.use('/api/loan/patient', loanPatientRoutes);
+app.use('/api/loan/lender', loanLenderRoutes);
+app.use('/api/loan/admin', loanAdminRoutes);
+app.use('/api/loan/webhook', loanWebhookRoutes);
+
+// ============================================
+// HEALTH CHECK & TEST ENDPOINTS
+// ============================================
 app.get('/health', (req, res) => {
   res.json({ status: 'ok', message: 'Server is running' });
 });
 
-// Test endpoint
 app.get('/api/test', (req, res) => {
   res.json({ success: true, message: 'API is working' });
 });
 
-// Error handling middleware
+// ============================================
+// ERROR HANDLING MIDDLEWARE
+// ============================================
 app.use((err, req, res, next) => {
   console.error('Error:', err);
   res.status(500).json({ error: err.message || 'Internal server error' });
 });
 
-// MongoDB connection
+// ============================================
+// MONGODB CONNECTION
+// ============================================
 const DB_URI = process.env.DB_URI || 'mongodb://localhost:27017/hospital_db';
 mongoose.connect(DB_URI, {
   useNewUrlParser: true,
@@ -101,7 +165,11 @@ mongoose.connect(DB_URI, {
   .then(() => console.log('✅ MongoDB connected'))
   .catch(err => console.error('❌ MongoDB error:', err));
 
+// ============================================
+// SERVER START
+// ============================================
 const PORT = process.env.PORT || 5000;
 app.listen(PORT, () => {
   console.log(`🚀 Server running on port ${PORT}`);
+  console.log(`📋 Loan modules available at /api/loan/*`);
 });
