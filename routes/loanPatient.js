@@ -620,4 +620,102 @@ router.get('/test', (req, res) => {
   });
 });
 
+// ============================================
+// SEND OTP
+// ============================================
+router.post('/send-otp', async (req, res) => {
+  try {
+    const { mobile } = req.body;
+    
+    if (!mobile || mobile.length !== 10) {
+      return res.status(400).json({ error: 'Valid 10-digit mobile number required' });
+    }
+    
+    // Generate 6-digit OTP
+    const otp = Math.floor(100000 + Math.random() * 900000).toString();
+    
+    // Store OTP (in production, use Redis or database)
+    // For demo, just log it
+    console.log(`📱 OTP for ${mobile}: ${otp}`);
+    
+    res.json({ 
+      success: true, 
+      message: 'OTP sent successfully',
+      demoOtp: otp  // Remove in production
+    });
+  } catch (error) {
+    console.error('Error sending OTP:', error);
+    res.status(500).json({ error: 'Failed to send OTP' });
+  }
+});
+
+// ============================================
+// VERIFY OTP
+// ============================================
+router.post('/verify-otp', async (req, res) => {
+  try {
+    const { mobile, otp, fullName, email } = req.body;
+    
+    // For demo, accept any 6-digit OTP
+    if (!otp || otp.length !== 6) {
+      return res.status(400).json({ error: 'Valid OTP required' });
+    }
+    
+    // For demo, accept any OTP (in production, verify against stored OTP)
+    // For testing, use any 6-digit number
+    
+    // Create patient (simplified for demo)
+    let patient = await Patient.findOne({ phone: mobile });
+    
+    if (!patient) {
+      patient = new Patient({
+        fullName: fullName || 'Patient',
+        phone: mobile,
+        email: email || '',
+        isPhoneVerified: true,
+        serviceAddress: {
+          address: 'Address',
+          city: 'City',
+          state: 'State',
+          pincode: '000000'
+        },
+        emergencyContact: {
+          name: 'Emergency Contact',
+          phone: '0000000000'
+        },
+        patientDetails: {
+          requiredServiceType: 'personal'
+        }
+      });
+      await patient.save();
+    } else {
+      patient.isPhoneVerified = true;
+      if (fullName) patient.fullName = fullName;
+      if (email) patient.email = email;
+      await patient.save();
+    }
+    
+    const token = jwt.sign(
+      { id: patient._id, phone: patient.phone, role: 'patient' },
+      JWT_SECRET || 'hospital_platform_secret_key_2024',
+      { expiresIn: '30d' }
+    );
+    
+    res.json({
+      success: true,
+      token,
+      patient: {
+        id: patient._id,
+        fullName: patient.fullName,
+        phone: patient.phone,
+        email: patient.email,
+        isPhoneVerified: patient.isPhoneVerified
+      }
+    });
+  } catch (error) {
+    console.error('Verification error:', error);
+    res.status(500).json({ error: 'Verification failed' });
+  }
+});
+
 module.exports = router;
