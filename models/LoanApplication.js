@@ -2,10 +2,29 @@ const mongoose = require('mongoose');
 
 const loanApplicationSchema = new mongoose.Schema({
   applicationId: { type: String, unique: true, required: true },
-  patientId: { type: String, required: true },
-  lenderId: { type: String, required: true },
+  patientId: { type: mongoose.Schema.Types.ObjectId, ref: 'Patient', required: true },
+  lenderId: { type: mongoose.Schema.Types.ObjectId, ref: 'Lender', required: true },
   
-  // Patient Details (snapshot at application time)
+  // ============================================
+  // ASSIGNED BRANCH (Location-based assignment)
+  // ============================================
+  assignedBranchId: { type: String }, // Which branch of lender is handling this
+  assignedBranchName: { type: String },
+  assignedBranchAddress: { type: String },
+  assignedBranchPincode: { type: String },
+  assignedBranchManager: { type: String },
+  assignmentReason: { type: String }, // 'pincode_match', 'nearest_branch', 'district_match', 'state_match'
+  
+  // Patient Location (for assignment tracking)
+  patientLocation: {
+    pincode: { type: String, required: true },
+    city: String,
+    district: String,
+    state: String,
+    coordinates: { lat: Number, lng: Number }
+  },
+  
+  // Patient Details (snapshot)
   patientDetails: {
     fullName: String,
     phone: String,
@@ -13,19 +32,23 @@ const loanApplicationSchema = new mongoose.Schema({
     pan: String,
     aadhaar: String,
     address: String,
-    pincode: String
+    pincode: String,
+    city: String,
+    district: String,
+    state: String
   },
   
   // Treatment Details
   treatmentType: String,
   hospitalName: String,
   hospitalAddress: String,
-  estimatedAmount: Number,  // From tentative bill
-  finalBillAmount: Number,   // After treatment
+  estimatedAmount: Number,
+  finalBillAmount: Number,
   
   // Loan Details
-  sanctionedAmount: Number,  // Lender approved amount
-  disbursedAmount: Number,    // Actual amount paid to hospital
+  sanctionedAmount: Number,
+  disbursedAmount: Number,
+  patientLiability: Number, // If final bill > sanctioned, patient pays this
   tenure: Number,
   emi: Number,
   interestRate: Number,
@@ -48,24 +71,27 @@ const loanApplicationSchema = new mongoose.Schema({
     documentUrl: String
   },
   
-  // Status Tracking
+  // ============================================
+  // STATUS TRACKING
+  // ============================================
   status: { 
     type: String, 
-    enum: ['draft', 'submitted', 'document_pending', 'under_review', 'approved', 'rejected', 'disbursed', 'completed'],
+    enum: ['draft', 'submitted', 'document_pending', 'under_review', 'approved', 'rejected', 'pending_disbursal', 'disbursed', 'completed'],
     default: 'draft'
   },
   
   statusHistory: [{
     status: String,
     note: String,
-    updatedBy: String,  // 'patient', 'lender', 'system'
+    updatedBy: String,
+    updatedByRole: String,
     timestamp: { type: Date, default: Date.now }
   }],
   
-  // Lender Requests
+  // Lender Communication
   lenderRequests: [{
     requestId: String,
-    requestType: String,  // 'document', 'information'
+    requestType: String,
     description: String,
     requestedAt: Date,
     respondedAt: Date,
@@ -73,19 +99,29 @@ const loanApplicationSchema = new mongoose.Schema({
     status: { type: String, enum: ['pending', 'responded'], default: 'pending' }
   }],
   
-  // Commission
-  platformCommission: Number,  // Amount earned by platform
+  // Financials
+  platformCommission: Number,
   commissionPaid: { type: Boolean, default: false },
+  commissionPaidAt: Date,
   
   // Timelines
   submittedAt: Date,
+  assignedAt: Date,
   approvedAt: Date,
   rejectedAt: Date,
   disbursedAt: Date,
-  completedAt: Date,
   
-  // External reference from lender's system
-  externalReferenceId: String
+  // External reference
+  externalReferenceId: String,
+  lastSyncAt: Date
 });
+
+// Indexes for efficient queries
+loanApplicationSchema.index({ patientId: 1 });
+loanApplicationSchema.index({ lenderId: 1 });
+loanApplicationSchema.index({ assignedBranchId: 1 });
+loanApplicationSchema.index({ status: 1 });
+loanApplicationSchema.index({ 'patientLocation.pincode': 1 });
+loanApplicationSchema.index({ submittedAt: -1 });
 
 module.exports = mongoose.model('LoanApplication', loanApplicationSchema);

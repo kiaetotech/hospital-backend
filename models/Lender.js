@@ -6,26 +6,54 @@ const lenderSchema = new mongoose.Schema({
   registrationNumber: { type: String, required: true, unique: true },
   lenderType: { type: String, enum: ['national', 'regional', 'local'], default: 'regional' },
   
-  // Contact
+  // Contact Information
   email: { type: String, required: true, unique: true },
   phone: { type: String, required: true },
   password: { type: String, required: true },
   
-  // Address
-  address: {
-    street: String,
-    city: String,
-    state: String,
-    pincode: String
+  // Registered Office Address
+  registeredOffice: {
+    address: { type: String, required: true },
+    city: { type: String, required: true },
+    district: { type: String, required: true },
+    state: { type: String, required: true },
+    pincode: { type: String, required: true },
+    coordinates: { lat: Number, lng: Number }
   },
   
-  // Service Areas (PIN codes this lender serves)
-  servicePincodes: [{ type: String }],
+  // ============================================
+  // BRANCH NETWORK (Key for location-based assignment)
+  // ============================================
+  branches: [{
+    branchId: { type: String, required: true },
+    branchName: { type: String, required: true },
+    branchCode: String,
+    address: { type: String, required: true },
+    city: { type: String, required: true },
+    district: { type: String, required: true },
+    state: { type: String, required: true },
+    pincode: { type: String, required: true },
+    coordinates: { lat: Number, lng: Number },
+    managerName: String,
+    managerPhone: String,
+    managerEmail: String,
+    isActive: { type: Boolean, default: true },
+    serviceRadius: { type: Number, default: 50 } // KM radius this branch serves
+  }],
+  
+  // ============================================
+  // SERVICE AREA (PIN codes served)
+  // ============================================
+  servicePincodes: [{ type: String }], // List of PIN codes served
   serviceCities: [{ type: String }],
+  serviceDistricts: [{ type: String }],
   serviceStates: [{ type: String }],
   
-  // Loan Products
+  // ============================================
+  // LOAN PRODUCTS
+  // ============================================
   loanProducts: [{
+    productId: String,
     productName: String,
     minAmount: Number,
     maxAmount: Number,
@@ -40,21 +68,30 @@ const lenderSchema = new mongoose.Schema({
     description: String
   }],
   
-  // Commission agreed with platform
-  commissionRate: { type: Number, default: 2 }, // percentage
-  
-  // API Configuration for webhooks
+  // ============================================
+  // COMMISSION & API CONFIG
+  // ============================================
+  commissionRate: { type: Number, default: 2 },
   apiConfig: {
     webhookUrl: String,
     apiKey: String,
-    apiSecret: String
+    apiSecret: String,
+    supportsWebhook: { type: Boolean, default: false }
   },
   
-  // Status
+  // ============================================
+  // STATUS
+  // ============================================
   status: { type: String, enum: ['pending', 'active', 'suspended', 'rejected'], default: 'pending' },
   verifiedAt: Date,
+  verifiedBy: String,
   createdAt: { type: Date, default: Date.now },
   updatedAt: { type: Date, default: Date.now }
 });
+
+// Index for location-based queries
+lenderSchema.index({ 'branches.pincode': 1 });
+lenderSchema.index({ servicePincodes: 1 });
+lenderSchema.index({ lenderType: 1, status: 1 });
 
 module.exports = mongoose.model('Lender', lenderSchema);

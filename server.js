@@ -36,7 +36,6 @@ global.JWT_SECRET = JWT_SECRET;
 // ============================================
 // LOAN MODULE - AUTHENTICATION MIDDLEWARE
 // ============================================
-// Patient authentication (reuses existing JWT)
 const authenticatePatient = (req, res, next) => {
   const authHeader = req.headers['authorization'];
   const token = authHeader && authHeader.split(' ')[1];
@@ -57,7 +56,6 @@ const authenticatePatient = (req, res, next) => {
   });
 };
 
-// Lender authentication
 const authenticateLender = (req, res, next) => {
   const authHeader = req.headers['authorization'];
   const token = authHeader && authHeader.split(' ')[1];
@@ -78,12 +76,11 @@ const authenticateLender = (req, res, next) => {
   });
 };
 
-// Make loan middleware available globally
 global.authenticatePatient = authenticatePatient;
 global.authenticateLender = authenticateLender;
 
 // ============================================
-// EXISTING ROUTES (UNCHANGED)
+// EXISTING ROUTES
 // ============================================
 const hospitalRoutes = require('./routes/hospitals');
 const authRoutes = require('./routes/auth');
@@ -102,7 +99,17 @@ const adminRoutes = require('./routes/admin');
 const bookingStatusRoutes = require('./routes/booking-status');
 const customPackageRoutes = require('./routes/custom-packages');
 
-// Use existing routes
+// ============================================
+// LOAN MODULE ROUTES
+// ============================================
+const loanPatientRoutes = require('./routes/loanPatient');
+const loanLenderRoutes = require('./routes/loanLender');
+const loanAdminRoutes = require('./routes/loanAdmin');
+const loanWebhookRoutes = require('./routes/loanWebhook');
+
+// ============================================
+// USE ROUTES
+// ============================================
 app.use('/api/hospitals', hospitalRoutes);
 app.use('/api/auth', authRoutes);
 app.use('/api/caregivers', caregiverRoutes);
@@ -121,9 +128,16 @@ app.use('/api/admin', adminRoutes);
 app.use('/api/booking-status', bookingStatusRoutes);
 app.use('/api/custom-packages', customPackageRoutes);
 
+// ============================================
+// LOAN ROUTES (NEW)
+// ============================================
+app.use('/api/loan/patient', loanPatientRoutes);
+app.use('/api/loan/lender', loanLenderRoutes);
+app.use('/api/loan/admin', loanAdminRoutes);
+app.use('/api/loan/webhook', loanWebhookRoutes);
 
 // ============================================
-// HEALTH CHECK & TEST ENDPOINTS
+// HEALTH CHECK
 // ============================================
 app.get('/health', (req, res) => {
   res.json({ status: 'ok', message: 'Server is running' });
@@ -134,7 +148,7 @@ app.get('/api/test', (req, res) => {
 });
 
 // ============================================
-// ERROR HANDLING MIDDLEWARE
+// ERROR HANDLING
 // ============================================
 app.use((err, req, res, next) => {
   console.error('Error:', err);
