@@ -612,4 +612,12 @@ router.delete('/applications/:applicationId', global.authenticatePatient, async 
   }
 });
 
+// Add this test route to check if the file is loading
+router.get('/test', (req, res) => {
+  res.json({ 
+    message: 'Loan patient routes are working!',
+    timestamp: new Date().toISOString()
+  });
+});
+
 module.exports = router;
