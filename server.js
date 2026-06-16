@@ -102,10 +102,10 @@ const customPackageRoutes = require('./routes/custom-packages');
 // ============================================
 // LOAN MODULE ROUTES
 // ============================================
-//const loanPatientRoutes = require('./routes/loanPatient');
-//const loanLenderRoutes = require('./routes/loanLender');
-//const loanAdminRoutes = require('./routes/loanAdmin');
-//const loanWebhookRoutes = require('./routes/loanWebhook');
+const loanPatientRoutes = require('./routes/loanPatient');
+const loanLenderRoutes = require('./routes/loanLender');
+const loanAdminRoutes = require('./routes/loanAdmin');
+const loanWebhookRoutes = require('./routes/loanWebhook');
 
 // ============================================
 // USE ROUTES
@@ -131,10 +131,10 @@ app.use('/api/custom-packages', customPackageRoutes);
 // ============================================
 // LOAN ROUTES (NEW)
 // ============================================
-//app.use('/api/loan/patient', loanPatientRoutes);
-//app.use('/api/loan/lender', loanLenderRoutes);
-//app.use('/api/loan/admin', loanAdminRoutes);
-//app.use('/api/loan/webhook', loanWebhookRoutes);
+app.use('/api/loan/patient', loanPatientRoutes);
+app.use('/api/loan/lender', loanLenderRoutes);
+app.use('/api/loan/admin', loanAdminRoutes);
+app.use('/api/loan/webhook', loanWebhookRoutes);
 
 // ============================================
 // HEALTH CHECK
