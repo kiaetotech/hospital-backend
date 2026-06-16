@@ -33,18 +33,22 @@ const patientSchema = new mongoose.Schema({
   // ============================================
   // LOAN MODULE ADDITIONS (DO NOT DELETE)
   // ============================================
-  pan: { type: String },
-  aadhaar: { type: String },
-  cibilScore: { type: Number },
-  monthlyIncome: { type: Number },
-  employmentType: { type: String, enum: ['Salaried', 'Self-Employed', 'Business', 'Retired', 'Student', 'Unemployed'] },
+  pan: { type: String, default: '' },
+  aadhaar: { type: String, default: '' },
+  cibilScore: { type: Number, default: 0 },
+  monthlyIncome: { type: Number, default: 0 },
+  employmentType: { 
+    type: String, 
+    enum: ['Salaried', 'Self-Employed', 'Business', 'Retired', 'Student', 'Unemployed', ''],
+    default: '' 
+  },
   
   // Location details for lender assignment
   locationDetails: {
-    pincode: { type: String },
-    city: { type: String },
-    district: { type: String },
-    state: { type: String },
+    pincode: { type: String, default: '' },
+    city: { type: String, default: '' },
+    district: { type: String, default: '' },
+    state: { type: String, default: '' },
     coordinates: { lat: Number, lng: Number }
   },
   
