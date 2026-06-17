@@ -3,72 +3,72 @@ const mongoose = require('mongoose');
 const loanApplicationSchema = new mongoose.Schema({
   applicationId: { type: String, unique: true, required: true },
   patientId: { type: mongoose.Schema.Types.ObjectId, ref: 'Patient', required: true },
-  lenderId: { type: mongoose.Schema.Types.ObjectId, ref: 'Lender', required: true },
+  lenderId: { type: String, required: true },
   
   // ============================================
   // ASSIGNED BRANCH (Location-based assignment)
   // ============================================
-  assignedBranchId: { type: String }, // Which branch of lender is handling this
-  assignedBranchName: { type: String },
-  assignedBranchAddress: { type: String },
-  assignedBranchPincode: { type: String },
-  assignedBranchManager: { type: String },
-  assignmentReason: { type: String }, // 'pincode_match', 'nearest_branch', 'district_match', 'state_match'
+  assignedBranchId: { type: String, default: '' },
+  assignedBranchName: { type: String, default: '' },
+  assignedBranchAddress: { type: String, default: '' },
+  assignedBranchPincode: { type: String, default: '' },
+  assignedBranchManager: { type: String, default: '' },
+  assignmentReason: { type: String, default: '' },
   
   // Patient Location (for assignment tracking)
   patientLocation: {
-    pincode: { type: String, required: true },
-    city: String,
-    district: String,
-    state: String,
+    pincode: { type: String, default: '' },
+    city: { type: String, default: '' },
+    district: { type: String, default: '' },
+    state: { type: String, default: '' },
     coordinates: { lat: Number, lng: Number }
   },
   
   // Patient Details (snapshot)
   patientDetails: {
-    fullName: String,
-    phone: String,
-    email: String,
-    pan: String,
-    aadhaar: String,
-    address: String,
-    pincode: String,
-    city: String,
-    district: String,
-    state: String
+    fullName: { type: String, default: '' },
+    phone: { type: String, default: '' },
+    email: { type: String, default: '' },
+    pan: { type: String, default: '' },
+    aadhaar: { type: String, default: '' },
+    address: { type: String, default: '' },
+    pincode: { type: String, default: '' },
+    city: { type: String, default: '' },
+    district: { type: String, default: '' },
+    state: { type: String, default: '' }
   },
   
   // Treatment Details
-  treatmentType: String,
-  hospitalName: String,
-  hospitalAddress: String,
-  estimatedAmount: Number,
-  finalBillAmount: Number,
+  treatmentType: { type: String, default: '' },
+  hospitalName: { type: String, default: '' },
+  hospitalAddress: { type: String, default: '' },
+  estimatedAmount: { type: Number, default: 0 },
+  finalBillAmount: { type: Number, default: 0 },
   
   // Loan Details
-  sanctionedAmount: Number,
-  disbursedAmount: Number,
-  patientLiability: Number, // If final bill > sanctioned, patient pays this
-  tenure: Number,
-  emi: Number,
-  interestRate: Number,
+  sanctionedAmount: { type: Number, default: 0 },
+  disbursedAmount: { type: Number, default: 0 },
+  patientLiability: { type: Number, default: 0 },
+  tenure: { type: Number, default: 0 },
+  emi: { type: Number, default: 0 },
+  interestRate: { type: Number, default: 0 },
   
   // Documents (URLs from cloud storage)
   documents: {
-    tentativeEstimate: String,
-    finalBill: String,
-    panCard: String,
-    aadhaarCard: String,
-    salarySlip: String,
-    bankStatement: String
+    tentativeEstimate: { type: String, default: '' },
+    finalBill: { type: String, default: '' },
+    panCard: { type: String, default: '' },
+    aadhaarCard: { type: String, default: '' },
+    salarySlip: { type: String, default: '' },
+    bankStatement: { type: String, default: '' }
   },
   
   // Collateral (if secured loan)
   collateral: {
-    type: String,
-    value: Number,
-    description: String,
-    documentUrl: String
+    type: { type: String, default: '' },
+    value: { type: String, default: '' },
+    description: { type: String, default: '' },
+    documentUrl: { type: String, default: '' }
   },
   
   // ============================================
@@ -77,43 +77,43 @@ const loanApplicationSchema = new mongoose.Schema({
   status: { 
     type: String, 
     enum: ['draft', 'submitted', 'document_pending', 'under_review', 'approved', 'rejected', 'pending_disbursal', 'disbursed', 'completed'],
-    default: 'draft'
+    default: 'submitted'
   },
   
   statusHistory: [{
-    status: String,
-    note: String,
-    updatedBy: String,
-    updatedByRole: String,
+    status: { type: String, default: '' },
+    note: { type: String, default: '' },
+    updatedBy: { type: String, default: '' },
+    updatedByRole: { type: String, default: '' },
     timestamp: { type: Date, default: Date.now }
   }],
   
   // Lender Communication
   lenderRequests: [{
-    requestId: String,
-    requestType: String,
-    description: String,
-    requestedAt: Date,
-    respondedAt: Date,
-    response: String,
+    requestId: { type: String, default: '' },
+    requestType: { type: String, default: '' },
+    description: { type: String, default: '' },
+    requestedAt: { type: Date, default: Date.now },
+    respondedAt: { type: Date },
+    response: { type: String, default: '' },
     status: { type: String, enum: ['pending', 'responded'], default: 'pending' }
   }],
   
   // Financials
-  platformCommission: Number,
+  platformCommission: { type: Number, default: 0 },
   commissionPaid: { type: Boolean, default: false },
-  commissionPaidAt: Date,
+  commissionPaidAt: { type: Date },
   
   // Timelines
-  submittedAt: Date,
-  assignedAt: Date,
-  approvedAt: Date,
-  rejectedAt: Date,
-  disbursedAt: Date,
+  submittedAt: { type: Date, default: Date.now },
+  assignedAt: { type: Date },
+  approvedAt: { type: Date },
+  rejectedAt: { type: Date },
+  disbursedAt: { type: Date },
   
   // External reference
-  externalReferenceId: String,
-  lastSyncAt: Date
+  externalReferenceId: { type: String, default: '' },
+  lastSyncAt: { type: Date, default: Date.now }
 });
 
 // Indexes for efficient queries
