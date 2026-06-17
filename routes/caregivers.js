@@ -2,9 +2,28 @@ const express = require('express');
 const router = express.Router();
 const Caregiver = require('../models/Caregiver');
 const CaregiverBooking = require('../models/CaregiverBooking');
-const auth = require('../middleware/auth');
 
+// ============================================
+// HELPER: Simple auth check (temporary fix)
+// ============================================
+const auth = (req, res, next) => {
+  const token = req.header('Authorization')?.replace('Bearer ', '');
+  if (!token) {
+    return res.status(401).json({ success: false, message: 'Access denied. No token provided.' });
+  }
+  try {
+    const jwt = require('jsonwebtoken');
+    const decoded = jwt.verify(token, process.env.JWT_SECRET || 'hospital_platform_secret_key_2024');
+    req.user = decoded;
+    next();
+  } catch (error) {
+    res.status(401).json({ success: false, message: 'Invalid token.' });
+  }
+};
+
+// ============================================
 // GET /api/caregivers - Get all caregivers (public)
+// ============================================
 router.get('/', async (req, res) => {
   try {
     const { serviceType, gender, minExperience, minRating, maxHourlyRate, city } = req.query;
@@ -31,8 +50,9 @@ router.get('/', async (req, res) => {
   }
 });
 
+// ============================================
 // GET /api/caregivers/:id - Get single caregiver
-// GET /api/caregivers/:id - Get single caregiver
+// ============================================
 router.get('/:id', async (req, res) => {
   try {
     const caregiver = await Caregiver.findById(req.params.id);
@@ -43,7 +63,9 @@ router.get('/:id', async (req, res) => {
   }
 });
 
+// ============================================
 // POST /api/caregivers/profile - Create/Update caregiver profile
+// ============================================
 router.post('/profile', async (req, res) => {
   try {
     // Check if user is caregiver (simplified)
@@ -70,7 +92,9 @@ router.post('/profile', async (req, res) => {
   }
 });
 
+// ============================================
 // GET /api/caregivers/profile/me - Get my caregiver profile
+// ============================================
 router.get('/profile/me', auth, async (req, res) => {
   try {
     const caregiver = await Caregiver.findOne({ userId: req.user.id });
@@ -81,7 +105,9 @@ router.get('/profile/me', auth, async (req, res) => {
   }
 });
 
+// ============================================
 // POST /api/caregivers/book - Create booking
+// ============================================
 router.post('/book', auth, async (req, res) => {
   try {
     const booking = new CaregiverBooking({
@@ -97,7 +123,9 @@ router.post('/book', auth, async (req, res) => {
   }
 });
 
+// ============================================
 // GET /api/caregivers/my-bookings - Get patient bookings
+// ============================================
 router.get('/my-bookings', auth, async (req, res) => {
   try {
     const bookings = await CaregiverBooking.find({ patientId: req.user.id })
@@ -109,7 +137,9 @@ router.get('/my-bookings', auth, async (req, res) => {
   }
 });
 
+// ============================================
 // POST /api/caregivers/checkin/:bookingId - Check-in
+// ============================================
 router.post('/checkin/:bookingId', auth, async (req, res) => {
   try {
     const { lat, lng } = req.body;
@@ -125,7 +155,9 @@ router.post('/checkin/:bookingId', auth, async (req, res) => {
   }
 });
 
+// ============================================
 // POST /api/caregivers/checkout/:bookingId - Check-out
+// ============================================
 router.post('/checkout/:bookingId', auth, async (req, res) => {
   try {
     const { lat, lng } = req.body;
@@ -141,7 +173,9 @@ router.post('/checkout/:bookingId', auth, async (req, res) => {
   }
 });
 
+// ============================================
 // POST /api/caregivers/rate/:bookingId - Add rating
+// ============================================
 router.post('/rate/:bookingId', auth, async (req, res) => {
   try {
     const { rating, review } = req.body;
