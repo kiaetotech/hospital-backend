@@ -2,7 +2,6 @@ const express = require('express');
 const router = express.Router();
 const jwt = require('jsonwebtoken');
 const Lender = require('../models/Lender');
-const auth = require('../middleware/auth');  // ✅ Using your existing auth
 
 const JWT_SECRET = process.env.JWT_SECRET || 'hospital_platform_secret_key_2024';
 
@@ -174,13 +173,20 @@ router.post('/login', async (req, res) => {
 });
 
 // ============================================
-// GET LENDER PROFILE (Using existing auth)
+// GET LENDER PROFILE (No auth - uses token from header)
 // ============================================
 
-router.get('/profile', auth, async (req, res) => {
+router.get('/profile', async (req, res) => {
   try {
-    const lender = await Lender.findOne({ lenderId: req.user.lenderId })
+    const token = req.header('Authorization')?.replace('Bearer ', '');
+    if (!token) {
+      return res.status(401).json({ error: 'Access denied' });
+    }
+    
+    const decoded = jwt.verify(token, JWT_SECRET);
+    const lender = await Lender.findOne({ lenderId: decoded.lenderId })
       .select('-password -apiConfig.apiSecret');
+    
     if (!lender) {
       return res.status(404).json({ error: 'Lender not found' });
     }
@@ -191,11 +197,18 @@ router.get('/profile', auth, async (req, res) => {
 });
 
 // ============================================
-// UPDATE LENDER PROFILE (Using existing auth)
+// UPDATE LENDER PROFILE (No auth - uses token from header)
 // ============================================
 
-router.put('/profile', auth, async (req, res) => {
+router.put('/profile', async (req, res) => {
   try {
+    const token = req.header('Authorization')?.replace('Bearer ', '');
+    if (!token) {
+      return res.status(401).json({ error: 'Access denied' });
+    }
+    
+    const decoded = jwt.verify(token, JWT_SECRET);
+    
     const { 
       servicePincodes, 
       serviceCities, 
@@ -206,7 +219,7 @@ router.put('/profile', auth, async (req, res) => {
       branches
     } = req.body;
 
-    const lender = await Lender.findOne({ lenderId: req.user.lenderId });
+    const lender = await Lender.findOne({ lenderId: decoded.lenderId });
     if (!lender) {
       return res.status(404).json({ error: 'Lender not found' });
     }
