@@ -1,5 +1,9 @@
 const jwt = require('jsonwebtoken');
 
+module.exports = (req, res, next) => {
+  // ... middleware logic
+};
+
 // General authentication - verifies token only
 const authenticate = (req, res, next) => {
   const token = req.header('Authorization')?.replace('Bearer ', '');

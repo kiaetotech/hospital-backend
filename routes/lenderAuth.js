@@ -1,9 +1,8 @@
-// D:\hospital backend\routes\lenderAuth.js
 const express = require('express');
 const router = express.Router();
 const jwt = require('jsonwebtoken');
 const Lender = require('../models/Lender');
-const { authenticateLender } = require('../middleware/lenderAuth');
+const auth = require('../middleware/auth');  // ✅ Using your existing auth
 
 const JWT_SECRET = process.env.JWT_SECRET || 'hospital_platform_secret_key_2024';
 
@@ -48,12 +47,10 @@ router.post('/register', async (req, res) => {
       commissionRate
     } = req.body;
 
-    // Validate required fields
     if (!businessName || !registrationNumber || !email || !phone || !password || !registeredOffice) {
       return res.status(400).json({ error: 'Missing required fields' });
     }
 
-    // Check if lender already exists
     const existing = await Lender.findOne({ 
       $or: [{ email }, { registrationNumber }] 
     });
@@ -67,7 +64,6 @@ router.post('/register', async (req, res) => {
     const apiKey = generateApiKey();
     const apiSecret = generateApiSecret();
 
-    // Generate branch IDs for each branch
     const branchesWithIds = branches?.map((branch, index) => ({
       ...branch,
       branchId: `BR_${lenderId}_${index + 1}`,
@@ -102,7 +98,6 @@ router.post('/register', async (req, res) => {
 
     await lender.save();
 
-    // In production, send email notification to admin
     console.log(`📧 New lender registration: ${businessName} (${lenderId})`);
 
     res.status(201).json({
@@ -179,10 +174,10 @@ router.post('/login', async (req, res) => {
 });
 
 // ============================================
-// GET LENDER PROFILE
+// GET LENDER PROFILE (Using existing auth)
 // ============================================
 
-router.get('/profile', authenticateLender, async (req, res) => {
+router.get('/profile', auth, async (req, res) => {
   try {
     const lender = await Lender.findOne({ lenderId: req.user.lenderId })
       .select('-password -apiConfig.apiSecret');
@@ -196,10 +191,10 @@ router.get('/profile', authenticateLender, async (req, res) => {
 });
 
 // ============================================
-// UPDATE LENDER PROFILE
+// UPDATE LENDER PROFILE (Using existing auth)
 // ============================================
 
-router.put('/profile', authenticateLender, async (req, res) => {
+router.put('/profile', auth, async (req, res) => {
   try {
     const { 
       servicePincodes, 
