@@ -98,6 +98,8 @@ const reviewRoutes = require('./routes/reviews');
 const adminRoutes = require('./routes/admin');
 const bookingStatusRoutes = require('./routes/booking-status');
 const customPackageRoutes = require('./routes/custom-packages');
+const lenderAuthRoutes = require('./routes/lenderAuth');
+const adminLenderRoutes = require('./routes/adminLender');
 
 // ============================================
 // LOAN MODULE ROUTES
@@ -127,6 +129,8 @@ app.use('/api/reviews', reviewRoutes);
 app.use('/api/admin', adminRoutes);
 app.use('/api/booking-status', bookingStatusRoutes);
 app.use('/api/custom-packages', customPackageRoutes);
+app.use('/api/lender/auth', lenderAuthRoutes);
+app.use('/api/admin/lenders', adminLenderRoutes);
 
 // ============================================
 // LOAN ROUTES (NEW)
