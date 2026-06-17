@@ -2,7 +2,6 @@ const express = require('express');
 const router = express.Router();
 const jwt = require('jsonwebtoken');
 const Lender = require('../models/Lender');
-const auth = require('../middleware/auth');  // ✅ Using your existing auth
 
 const JWT_SECRET = process.env.JWT_SECRET || 'hospital_platform_secret_key_2024';
 
@@ -22,6 +21,24 @@ const generateApiKey = () => {
 
 const generateApiSecret = () => {
   return Math.random().toString(36).substring(2, 30);
+};
+
+// ============================================
+// INLINE AUTH FUNCTION
+// ============================================
+
+const authenticate = (req, res, next) => {
+  const token = req.header('Authorization')?.replace('Bearer ', '');
+  if (!token) {
+    return res.status(401).json({ error: 'Access denied. No token provided.' });
+  }
+  try {
+    const decoded = jwt.verify(token, JWT_SECRET);
+    req.user = decoded;
+    next();
+  } catch (error) {
+    res.status(401).json({ error: 'Invalid token.' });
+  }
 };
 
 // ============================================
@@ -174,10 +191,10 @@ router.post('/login', async (req, res) => {
 });
 
 // ============================================
-// GET LENDER PROFILE (Using existing auth)
+// GET LENDER PROFILE (Using inline auth)
 // ============================================
 
-router.get('/profile', auth, async (req, res) => {
+router.get('/profile', authenticate, async (req, res) => {
   try {
     const lender = await Lender.findOne({ lenderId: req.user.lenderId })
       .select('-password -apiConfig.apiSecret');
@@ -191,10 +208,10 @@ router.get('/profile', auth, async (req, res) => {
 });
 
 // ============================================
-// UPDATE LENDER PROFILE (Using existing auth)
+// UPDATE LENDER PROFILE (Using inline auth)
 // ============================================
 
-router.put('/profile', auth, async (req, res) => {
+router.put('/profile', authenticate, async (req, res) => {
   try {
     const { 
       servicePincodes, 
@@ -224,15 +241,7 @@ router.put('/profile', auth, async (req, res) => {
 
     res.json({ 
       success: true, 
-      message: 'Profile updated successfully',
-      lender: lender.toObject({ 
-        getters: true, 
-        transform: (doc, ret) => { 
-          delete ret.password; 
-          delete ret.apiConfig?.apiSecret;
-          return ret; 
-        } 
-      })
+      message: 'Profile updated successfully'
     });
   } catch (error) {
     res.status(500).json({ error: 'Failed to update profile' });
