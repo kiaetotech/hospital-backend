@@ -1,9 +1,21 @@
-// D:\hospital backend\routes\adminLender.js
 const express = require('express');
 const router = express.Router();
 const Lender = require('../models/Lender');
 const LoanApplication = require('../models/LoanApplication');
-const { isAdmin } = require('../middleware/lenderAuth');
+
+// ============================================
+// ADMIN AUTHENTICATION (Inline - No middleware)
+// ============================================
+
+const isAdmin = (req, res, next) => {
+  const adminKey = req.header('X-Admin-Key');
+  const validKey = process.env.ADMIN_KEY || 'admin_secret_key_2024';
+  
+  if (!adminKey || adminKey !== validKey) {
+    return res.status(401).json({ error: 'Admin access denied' });
+  }
+  next();
+};
 
 // ============================================
 // ADMIN - GET PENDING LENDERS
@@ -27,7 +39,7 @@ router.get('/pending', isAdmin, async (req, res) => {
 });
 
 // ============================================
-// ADMIN - GET ALL LENDERS (with filters)
+// ADMIN - GET ALL LENDERS
 // ============================================
 
 router.get('/', isAdmin, async (req, res) => {
@@ -79,7 +91,6 @@ router.get('/:lenderId', isAdmin, async (req, res) => {
       return res.status(404).json({ error: 'Lender not found' });
     }
     
-    // Get application stats for this lender
     const applicationStats = await LoanApplication.aggregate([
       { $match: { lenderId: lender._id } },
       { $group: {
@@ -100,13 +111,13 @@ router.get('/:lenderId', isAdmin, async (req, res) => {
 });
 
 // ============================================
-// ADMIN - VERIFY LENDER (Approve/Reject)
+// ADMIN - VERIFY LENDER
 // ============================================
 
 router.put('/:lenderId/verify', isAdmin, async (req, res) => {
   try {
     const { lenderId } = req.params;
-    const { status, commissionRate, adminNote, apiKey, apiSecret } = req.body;
+    const { status, commissionRate, adminNote } = req.body;
     
     if (!status || !['active', 'rejected'].includes(status)) {
       return res.status(400).json({ error: 'Invalid status. Must be active or rejected' });
@@ -117,17 +128,14 @@ router.put('/:lenderId/verify', isAdmin, async (req, res) => {
       return res.status(404).json({ error: 'Lender not found' });
     }
     
-    // If rejecting, require a reason
     if (status === 'rejected' && !req.body.rejectionReason) {
       return res.status(400).json({ error: 'Rejection reason required' });
     }
     
     lender.status = status;
     if (commissionRate) lender.commissionRate = commissionRate;
-    if (apiKey) lender.apiConfig.apiKey = apiKey;
-    if (apiSecret) lender.apiConfig.apiSecret = apiSecret;
     lender.verifiedAt = new Date();
-    lender.verifiedBy = req.user?.email || 'Admin';
+    lender.verifiedBy = 'Admin';
     lender.adminNote = adminNote || '';
     if (status === 'rejected') {
       lender.rejectionReason = req.body.rejectionReason;
@@ -136,20 +144,11 @@ router.put('/:lenderId/verify', isAdmin, async (req, res) => {
     
     await lender.save();
     
-    // In production, send email notification to lender
     console.log(`📧 Lender ${lenderId} ${status} by admin`);
     
     res.json({
       success: true,
-      message: `Lender ${status} successfully`,
-      lender: lender.toObject({ 
-        getters: true, 
-        transform: (doc, ret) => { 
-          delete ret.password; 
-          delete ret.apiConfig?.apiSecret;
-          return ret; 
-        } 
-      })
+      message: `Lender ${status} successfully`
     });
   } catch (error) {
     console.error('Error verifying lender:', error);
@@ -182,14 +181,7 @@ router.put('/:lenderId/suspend', isAdmin, async (req, res) => {
     
     res.json({
       success: true,
-      message: 'Lender suspended successfully',
-      lender: lender.toObject({ 
-        getters: true, 
-        transform: (doc, ret) => { 
-          delete ret.password; 
-          return ret; 
-        } 
-      })
+      message: 'Lender suspended successfully'
     });
   } catch (error) {
     console.error('Error suspending lender:', error);
@@ -198,7 +190,7 @@ router.put('/:lenderId/suspend', isAdmin, async (req, res) => {
 });
 
 // ============================================
-// ADMIN - DELETE/REJECT LENDER
+// ADMIN - DELETE LENDER
 // ============================================
 
 router.delete('/:lenderId', isAdmin, async (req, res) => {
@@ -210,7 +202,6 @@ router.delete('/:lenderId', isAdmin, async (req, res) => {
       return res.status(404).json({ error: 'Lender not found' });
     }
     
-    // Check if lender has active applications
     const activeApplications = await LoanApplication.countDocuments({
       lenderId: lender._id,
       status: { $in: ['submitted', 'under_review', 'approved'] }
@@ -235,7 +226,7 @@ router.delete('/:lenderId', isAdmin, async (req, res) => {
 });
 
 // ============================================
-// ADMIN - GET LENDER DASHBOARD STATS
+// ADMIN - DASHBOARD STATS
 // ============================================
 
 router.get('/stats/overview', isAdmin, async (req, res) => {
@@ -245,7 +236,6 @@ router.get('/stats/overview', isAdmin, async (req, res) => {
     const activeLenders = await Lender.countDocuments({ status: 'active' });
     const suspendedLenders = await Lender.countDocuments({ status: 'suspended' });
     
-    // Get commission stats
     const disbursedLoans = await LoanApplication.find({ status: 'disbursed' });
     const totalCommission = disbursedLoans.reduce((sum, loan) => sum + (loan.platformCommission || 0), 0);
     const paidCommission = disbursedLoans
