@@ -1,5 +1,5 @@
 const axios = require('axios');
-const twilio = require('twilio');
+// const twilio = require('twilio');  // COMMENTED OUT - Not needed in console mode
 
 const PROVIDER = process.env.SMS_PROVIDER || 'console';
 const NODE_ENV = process.env.NODE_ENV || 'development';
@@ -12,14 +12,15 @@ const MSG91_FLOW_ID = process.env.MSG91_FLOW_ID;
 const GUPSHUP_API_KEY = process.env.GUPSHUP_API_KEY;
 const GUPSHUP_SENDER_ID = process.env.GUPSHUP_SENDER_ID || 'KIAETO';
 
-const TWILIO_ACCOUNT_SID = process.env.TWILIO_ACCOUNT_SID;
-const TWILIO_AUTH_TOKEN = process.env.TWILIO_AUTH_TOKEN;
-const TWILIO_PHONE_NUMBER = process.env.TWILIO_PHONE_NUMBER;
+// Twilio config (disabled - only used if you set up Twilio)
+// const TWILIO_ACCOUNT_SID = process.env.TWILIO_ACCOUNT_SID;
+// const TWILIO_AUTH_TOKEN = process.env.TWILIO_AUTH_TOKEN;
+// const TWILIO_PHONE_NUMBER = process.env.TWILIO_PHONE_NUMBER;
 
-let twilioClient = null;
-if (TWILIO_ACCOUNT_SID && TWILIO_AUTH_TOKEN) {
-  twilioClient = twilio(TWILIO_ACCOUNT_SID, TWILIO_AUTH_TOKEN);
-}
+// let twilioClient = null;
+// if (TWILIO_ACCOUNT_SID && TWILIO_AUTH_TOKEN) {
+//   twilioClient = twilio(TWILIO_ACCOUNT_SID, TWILIO_AUTH_TOKEN);
+// }
 
 const otpStore = new Map();
 
@@ -108,25 +109,10 @@ const sendViaGupshup = async (to, message) => {
   }
 };
 
+// Twilio is disabled - only used as fallback if configured
 const sendViaTwilio = async (to, message) => {
-  try {
-    if (!twilioClient) {
-      throw new Error('Twilio not configured');
-    }
-    let formattedNumber = to.trim();
-    if (!formattedNumber.startsWith('+')) {
-      formattedNumber = `+91${formattedNumber}`;
-    }
-    const response = await twilioClient.messages.create({
-      body: message,
-      from: TWILIO_PHONE_NUMBER,
-      to: formattedNumber
-    });
-    return { success: true, provider: 'Twilio', sid: response.sid };
-  } catch (error) {
-    console.error('Twilio Error:', error.message);
-    throw error;
-  }
+  console.log(`📱 [TWILIO DISABLED] To: ${to}, Message: ${message}`);
+  return { success: true, fallback: true, provider: 'twilio_disabled' };
 };
 
 const sendSMS = async (to, message) => {
@@ -151,14 +137,6 @@ const sendSMS = async (to, message) => {
     }
   } catch (error) {
     console.error(`SMS failed via ${provider}:`, error.message);
-    if (provider !== 'twilio' && TWILIO_ACCOUNT_SID) {
-      console.log('🔄 Attempting Twilio fallback...');
-      try {
-        return await sendViaTwilio(to, message);
-      } catch (twilioError) {
-        console.error('Twilio fallback also failed:', twilioError.message);
-      }
-    }
     return { success: false, error: error.message };
   }
 };
