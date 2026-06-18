@@ -110,6 +110,11 @@ const loanAdminRoutes = require('./routes/loanAdmin');
 const loanWebhookRoutes = require('./routes/loanWebhook');
 
 // ============================================
+// PAYMENT MODULE ROUTES (NEW)
+// ============================================
+const webhookRoutes = require('./routes/webhooks');
+
+// ============================================
 // USE ROUTES
 // ============================================
 app.use('/api/hospitals', hospitalRoutes);
@@ -133,12 +138,17 @@ app.use('/api/lender/auth', lenderAuthRoutes);
 app.use('/api/admin/lenders', adminLenderRoutes);
 
 // ============================================
-// LOAN ROUTES (NEW)
+// LOAN ROUTES
 // ============================================
 app.use('/api/loan/patient', loanPatientRoutes);
 app.use('/api/loan/lender', loanLenderRoutes);
 app.use('/api/loan/admin', loanAdminRoutes);
 app.use('/api/loan/webhook', loanWebhookRoutes);
+
+// ============================================
+// PAYMENT ROUTES (NEW)
+// ============================================
+app.use('/api/webhooks', webhookRoutes);
 
 // ============================================
 // HEALTH CHECK
@@ -177,4 +187,6 @@ const PORT = process.env.PORT || 5000;
 app.listen(PORT, () => {
   console.log(`🚀 Server running on port ${PORT}`);
   console.log(`📋 Loan modules available at /api/loan/*`);
+  console.log(`💳 Payment routes available at /api/payment/*`);
+  console.log(`🔗 Webhook routes available at /api/webhooks/*`);
 });

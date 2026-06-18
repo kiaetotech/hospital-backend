@@ -1,9 +1,13 @@
 const mongoose = require('mongoose');
 
 const bookingSchema = new mongoose.Schema({
+  // ============================================
+  // YOUR EXISTING FIELDS (ALL PRESERVED)
+  // ============================================
+  
   // Common fields for all booking types
   userId: { type: String, required: true },
-  bookingType: { type: String, enum: ['opd', 'admission', 'ambulance', 'labtest'], required: true },
+  bookingType: { type: String, enum: ['opd', 'admission', 'ambulance', 'labtest', 'health_package', 'caregiver'], required: true },
   patientName: { type: String, required: true },
   patientPhone: { type: String, required: true },
   patientAge: { type: Number },
@@ -14,7 +18,7 @@ const bookingSchema = new mongoose.Schema({
   originalAmount: { type: Number, required: true },
   discount: { type: Number, default: 0 },
   finalAmount: { type: Number, required: true },
-  paymentStatus: { type: String, enum: ['pending', 'paid', 'failed', 'refunded'], default: 'pending' },
+  paymentStatus: { type: String, enum: ['pending', 'paid', 'failed', 'refunded', 'partially_refunded'], default: 'pending' },
   paymentId: { type: String },
   orderId: { type: String },
   status: { type: String, enum: ['pending', 'confirmed', 'sample_collected', 'processing', 'report_ready', 'completed', 'cancelled'], default: 'pending' },
@@ -39,21 +43,60 @@ const bookingSchema = new mongoose.Schema({
   homeAddress: { type: String },
   bookingId: { type: String, unique: true },
   
-  // NEW: Status tracking fields
+  // Status tracking fields
   statusHistory: [{
     status: { type: String, enum: ['pending', 'confirmed', 'sample_collected', 'processing', 'report_ready', 'completed', 'cancelled'] },
     timestamp: { type: Date, default: Date.now },
     note: { type: String }
   }],
-  estimatedReportTime: { type: Date }
+  estimatedReportTime: { type: Date },
+  
+  // ============================================
+  // NEW PAYMENT-RELATED FIELDS (ADDED)
+  // ============================================
+  
+  // Razorpay payment details
+  razorpayOrderId: { type: String },
+  razorpayPaymentId: { type: String },
+  razorpaySignature: { type: String },
+  
+  // Discount details
+  discountCode: { type: String },
+  discountType: { type: String, enum: ['percentage', 'fixed'] },
+  discountValue: { type: Number },
+  
+  // Payment method
+  paymentMethod: { type: String, enum: ['card', 'upi', 'netbanking', 'wallet', 'emi'] },
+  
+  // Refund details
+  refundId: { type: String },
+  refundAmount: { type: Number },
+  refundStatus: { type: String, enum: ['pending', 'processed', 'failed'] },
+  refundedAt: { type: Date },
+  
+  // Commission tracking
+  platformCommission: { type: Number, default: 0 },
+  providerCommission: { type: Number, default: 0 },
+  commissionStatus: { type: String, enum: ['pending', 'paid', 'failed'], default: 'pending' },
+  
+  // Payment failure tracking
+  paymentAttempts: { type: Number, default: 0 },
+  lastPaymentError: { type: String },
+  
+  // Settlement tracking
+  settledToProvider: { type: Boolean, default: false },
+  settledAt: { type: Date },
+  settlementId: { type: String }
 });
 
-// Generate unique booking ID before saving
+// ============================================
+// YOUR EXISTING PRE-SAVE HOOK (PRESERVED)
+// ============================================
+
 bookingSchema.pre('save', function(next) {
   if (!this.bookingId && this.bookingType === 'labtest') {
     this.bookingId = 'LAB' + Date.now() + Math.floor(Math.random() * 1000);
   }
-  // Initialize statusHistory if empty and status is set
   if (this.isModified('status') && (!this.statusHistory || this.statusHistory.length === 0)) {
     this.statusHistory = this.statusHistory || [];
     this.statusHistory.push({
@@ -64,5 +107,30 @@ bookingSchema.pre('save', function(next) {
   }
   next();
 });
+
+// ============================================
+// NEW: Virtual field for balance due
+// ============================================
+
+bookingSchema.virtual('balanceDue').get(function() {
+  if (this.paymentStatus === 'paid' || this.paymentStatus === 'refunded') {
+    return 0;
+  }
+  return this.finalAmount;
+});
+
+// ============================================
+// NEW: Check if booking is refundable
+// ============================================
+
+bookingSchema.methods.isRefundable = function() {
+  const refundableStatuses = ['paid', 'partially_refunded'];
+  return refundableStatuses.includes(this.paymentStatus) && this.finalAmount > 0;
+};
+
+bookingSchema.methods.canCancel = function() {
+  const cancelableStatuses = ['pending', 'confirmed'];
+  return cancelableStatuses.includes(this.status);
+};
 
 module.exports = mongoose.model('Booking', bookingSchema);
