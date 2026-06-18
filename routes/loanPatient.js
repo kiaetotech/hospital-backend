@@ -7,9 +7,15 @@ const Lender = require('../models/Lender');
 const LoanApplication = require('../models/LoanApplication');
 
 // ============================================
-// SMS SERVICE (NEW - Provider Agnostic)
+// SMS SERVICE (Provider Agnostic)
 // ============================================
 const { sendOTP, verifyOTP } = require('../services/smsService');
+
+// ============================================
+// CLOUDINARY UPLOAD
+// ============================================
+const { uploadDocuments } = require('../middleware/upload');
+const { uploadMultipleFiles, deleteFile } = require('../services/cloudinaryService');
 
 const JWT_SECRET = process.env.JWT_SECRET || 'hospital_platform_secret_key_2024';
 
@@ -468,6 +474,10 @@ router.post('/applications', global.authenticatePatient, async (req, res) => {
   }
 });
 
+// ============================================
+// GET APPLICATIONS
+// ============================================
+
 // Get all applications for logged-in patient
 router.get('/applications', global.authenticatePatient, async (req, res) => {
   try {
@@ -512,6 +522,110 @@ router.get('/applications/:applicationId', global.authenticatePatient, async (re
   }
 });
 
+// ============================================
+// DOCUMENT UPLOAD - CLOUDINARY
+// ============================================
+
+// Upload documents to Cloudinary
+router.post('/applications/:applicationId/upload-documents', 
+  global.authenticatePatient, 
+  uploadDocuments, 
+  async (req, res) => {
+    try {
+      const { applicationId } = req.params;
+      
+      const application = await LoanApplication.findOne({
+        applicationId,
+        patientId: req.user.id
+      });
+      
+      if (!application) {
+        return res.status(404).json({ error: 'Application not found' });
+      }
+      
+      const files = req.files || {};
+      const uploadedDocs = {};
+      
+      // Upload each document
+      const documentTypes = [
+        'tentativeEstimate', 'finalBill', 'panCard', 
+        'aadhaarCard', 'salarySlip', 'bankStatement'
+      ];
+      
+      for (const docType of documentTypes) {
+        if (files[docType] && files[docType].length > 0) {
+          const file = files[docType][0];
+          const result = await uploadMultipleFiles([file]);
+          uploadedDocs[docType] = result[0].url;
+        }
+      }
+      
+      // Update application with document URLs
+      application.documents = {
+        ...application.documents,
+        ...uploadedDocs
+      };
+      
+      await application.save();
+      
+      res.json({
+        success: true,
+        message: 'Documents uploaded successfully',
+        documents: uploadedDocs
+      });
+      
+    } catch (error) {
+      console.error('Upload error:', error);
+      res.status(500).json({ error: 'Failed to upload documents: ' + error.message });
+    }
+  }
+);
+
+// Delete document from Cloudinary
+router.delete('/applications/:applicationId/documents/:docType', 
+  global.authenticatePatient, 
+  async (req, res) => {
+    try {
+      const { applicationId, docType } = req.params;
+      
+      const application = await LoanApplication.findOne({
+        applicationId,
+        patientId: req.user.id
+      });
+      
+      if (!application) {
+        return res.status(404).json({ error: 'Application not found' });
+      }
+      
+      if (!application.documents[docType]) {
+        return res.status(404).json({ error: 'Document not found' });
+      }
+      
+      // Delete from Cloudinary (extract public_id from URL)
+      const url = application.documents[docType];
+      const publicId = url.split('/').pop().split('.')[0];
+      await deleteFile(`${process.env.CLOUDINARY_FOLDER || 'hospital_documents'}/${publicId}`);
+      
+      // Remove from database
+      application.documents[docType] = null;
+      await application.save();
+      
+      res.json({
+        success: true,
+        message: 'Document deleted successfully'
+      });
+      
+    } catch (error) {
+      console.error('Delete error:', error);
+      res.status(500).json({ error: 'Failed to delete document' });
+    }
+  }
+);
+
+// ============================================
+// FINAL BILL UPLOAD
+// ============================================
+
 // Upload final bill after treatment
 router.post('/applications/:applicationId/final-bill', global.authenticatePatient, async (req, res) => {
   try {
@@ -552,6 +666,10 @@ router.post('/applications/:applicationId/final-bill', global.authenticatePatien
   }
 });
 
+// ============================================
+// ADDITIONAL DOCUMENTS UPLOAD
+// ============================================
+
 // Upload additional documents
 router.post('/applications/:applicationId/documents', global.authenticatePatient, async (req, res) => {
   try {
@@ -581,6 +699,10 @@ router.post('/applications/:applicationId/documents', global.authenticatePatient
     res.status(500).json({ error: 'Failed to upload document' });
   }
 });
+
+// ============================================
+// CANCEL APPLICATION
+// ============================================
 
 // Cancel application
 router.delete('/applications/:applicationId', global.authenticatePatient, async (req, res) => {
