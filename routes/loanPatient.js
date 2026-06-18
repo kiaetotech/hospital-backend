@@ -6,18 +6,23 @@ const Patient = require('../models/Patient');
 const Lender = require('../models/Lender');
 const LoanApplication = require('../models/LoanApplication');
 
+// ============================================
+// SMS SERVICE (NEW - Provider Agnostic)
+// ============================================
+const { sendOTP, verifyOTP } = require('../services/smsService');
+
 const JWT_SECRET = process.env.JWT_SECRET || 'hospital_platform_secret_key_2024';
 
 // ============================================
 // HELPER FUNCTIONS
 // ============================================
 
-// Generate 6-digit OTP
+// Generate 6-digit OTP (Backup)
 const generateOTP = () => {
   return Math.floor(100000 + Math.random() * 900000).toString();
 };
 
-// Store OTP temporarily
+// Store OTP temporarily (Backup)
 const otpStore = new Map();
 
 const saveOTP = (mobile, otp) => {
@@ -25,7 +30,7 @@ const saveOTP = (mobile, otp) => {
   setTimeout(() => otpStore.delete(mobile), 10 * 60 * 1000);
 };
 
-const verifyOTP = (mobile, otp) => {
+const verifyOTPBackup = (mobile, otp) => {
   const record = otpStore.get(mobile);
   if (!record) return false;
   if (record.expiresAt < Date.now()) return false;
@@ -154,10 +159,10 @@ const assignApplicationToBranch = async (application, patientPincode, patientDis
 };
 
 // ============================================
-// PATIENT AUTHENTICATION (OTP BASED)
+// PATIENT AUTHENTICATION (OTP BASED WITH SMS)
 // ============================================
 
-// Send OTP for login/registration
+// Send OTP for login/registration (WITH REAL SMS)
 router.post('/send-otp', async (req, res) => {
   try {
     const { mobile } = req.body;
@@ -166,18 +171,25 @@ router.post('/send-otp', async (req, res) => {
       return res.status(400).json({ error: 'Valid 10-digit mobile number required' });
     }
     
-    const otp = generateOTP();
-    saveOTP(mobile, otp);
+    // Send OTP via SMS Service (Provider Agnostic)
+    const result = await sendOTP(mobile, 'Your KiaetoCare OTP is');
     
-    console.log(`📱 OTP for ${mobile}: ${otp}`);
-    
-    res.json({ 
-      success: true, 
-      message: 'OTP sent successfully',
-      demoOtp: otp
-    });
+    // In production, NEVER return the OTP in response
+    if (process.env.NODE_ENV === 'production') {
+      res.json({ 
+        success: true, 
+        message: 'OTP sent successfully to your registered mobile number'
+      });
+    } else {
+      // For development, include OTP for testing
+      res.json({ 
+        success: true, 
+        message: 'OTP sent successfully',
+        demoOtp: result.otp // Remove in production
+      });
+    }
   } catch (error) {
-    console.error(error);
+    console.error('Error sending OTP:', error);
     res.status(500).json({ error: 'Failed to send OTP' });
   }
 });
@@ -187,12 +199,18 @@ router.post('/verify-otp', async (req, res) => {
   try {
     const { mobile, otp, fullName, email } = req.body;
     
-    // Accept any 6-digit OTP for demo
+    // Validate OTP
     if (!otp || otp.length !== 6) {
-      return res.status(400).json({ error: 'Valid OTP required' });
+      return res.status(400).json({ error: 'Valid 6-digit OTP required' });
     }
     
-    // Find or create patient with default values
+    // Verify OTP using SMS Service
+    const verification = verifyOTP(mobile, otp);
+    if (!verification.valid) {
+      return res.status(401).json({ error: verification.reason });
+    }
+    
+    // Find or create patient
     let patient = await Patient.findOne({ phone: mobile });
     
     if (!patient) {
@@ -216,11 +234,16 @@ router.post('/verify-otp', async (req, res) => {
         }
       });
       await patient.save();
+    } else {
+      patient.isPhoneVerified = true;
+      if (fullName) patient.fullName = fullName;
+      if (email) patient.email = email;
+      await patient.save();
     }
     
     const token = jwt.sign(
       { id: patient._id, phone: patient.phone, role: 'patient' },
-      process.env.JWT_SECRET || 'hospital_platform_secret_key_2024',
+      JWT_SECRET,
       { expiresIn: '30d' }
     );
     
@@ -377,7 +400,6 @@ router.post('/applications', global.authenticatePatient, async (req, res) => {
     }
     
     // For demo, accept any lenderId
-    // Just create the application without checking lender
     const applicationId = generateApplicationId();
     
     const finalPatientLocation = patientLocation || patient.locationDetails || {
@@ -596,110 +618,14 @@ router.delete('/applications/:applicationId', global.authenticatePatient, async 
   }
 });
 
-// Add this test route to check if the file is loading
+// ============================================
+// TEST ROUTE
+// ============================================
 router.get('/test', (req, res) => {
   res.json({ 
     message: 'Loan patient routes are working!',
     timestamp: new Date().toISOString()
   });
-});
-
-// ============================================
-// SEND OTP
-// ============================================
-router.post('/send-otp', async (req, res) => {
-  try {
-    const { mobile } = req.body;
-    
-    if (!mobile || mobile.length !== 10) {
-      return res.status(400).json({ error: 'Valid 10-digit mobile number required' });
-    }
-    
-    // Generate 6-digit OTP
-    const otp = Math.floor(100000 + Math.random() * 900000).toString();
-    
-    // Store OTP (in production, use Redis or database)
-    // For demo, just log it
-    console.log(`📱 OTP for ${mobile}: ${otp}`);
-    
-    res.json({ 
-      success: true, 
-      message: 'OTP sent successfully',
-      demoOtp: otp  // Remove in production
-    });
-  } catch (error) {
-    console.error('Error sending OTP:', error);
-    res.status(500).json({ error: 'Failed to send OTP' });
-  }
-});
-
-// ============================================
-// VERIFY OTP
-// ============================================
-router.post('/verify-otp', async (req, res) => {
-  try {
-    const { mobile, otp, fullName, email } = req.body;
-    
-    // For demo, accept any 6-digit OTP
-    if (!otp || otp.length !== 6) {
-      return res.status(400).json({ error: 'Valid OTP required' });
-    }
-    
-    // For demo, accept any OTP (in production, verify against stored OTP)
-    // For testing, use any 6-digit number
-    
-    // Create patient (simplified for demo)
-    let patient = await Patient.findOne({ phone: mobile });
-    
-    if (!patient) {
-      patient = new Patient({
-        fullName: fullName || 'Patient',
-        phone: mobile,
-        email: email || '',
-        isPhoneVerified: true,
-        serviceAddress: {
-          address: 'Address',
-          city: 'City',
-          state: 'State',
-          pincode: '000000'
-        },
-        emergencyContact: {
-          name: 'Emergency Contact',
-          phone: '0000000000'
-        },
-        patientDetails: {
-          requiredServiceType: 'personal'
-        }
-      });
-      await patient.save();
-    } else {
-      patient.isPhoneVerified = true;
-      if (fullName) patient.fullName = fullName;
-      if (email) patient.email = email;
-      await patient.save();
-    }
-    
-    const token = jwt.sign(
-      { id: patient._id, phone: patient.phone, role: 'patient' },
-      JWT_SECRET || 'hospital_platform_secret_key_2024',
-      { expiresIn: '30d' }
-    );
-    
-    res.json({
-      success: true,
-      token,
-      patient: {
-        id: patient._id,
-        fullName: patient.fullName,
-        phone: patient.phone,
-        email: patient.email,
-        isPhoneVerified: patient.isPhoneVerified
-      }
-    });
-  } catch (error) {
-    console.error('Verification error:', error);
-    res.status(500).json({ error: 'Verification failed' });
-  }
 });
 
 module.exports = router;
