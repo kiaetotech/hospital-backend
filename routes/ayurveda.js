@@ -1,238 +1,251 @@
 const express = require('express');
 const router = express.Router();
+const bcrypt = require('bcryptjs');
+const jwt = require('jsonwebtoken');
+const AyurvedaDoctor = require('../models/AyurvedaDoctor');
+const PanchakarmaCenter = require('../models/PanchakarmaCenter');
+const AyurvedaBooking = require('../models/AyurvedaBooking');
+const Discount = require('../models/Discount');
 
 // ============================================
-// DUMMY DATABASE (Replace with MongoDB models)
-// ============================================
-const doctors = [
-  {
-    _id: 'AYD001',
-    name: 'Dr. Rajesh Sharma',
-    specialization: 'Panchakarma',
-    experience: 15,
-    languages: ['Hindi', 'English'],
-    rating: 4.8,
-    consultationFee: 500,
-    availableSlots: ['10:00 AM', '2:00 PM', '5:00 PM'],
-    city: 'Mumbai',
-    ayushRegNo: 'AYUSH-MH-2018-00123',
-    education: 'BAMS, MD (Panchakarma)',
-    about: '15+ years experience in authentic Kerala Panchakarma therapies. Specialized in chronic disease management through detoxification.',
-    available: true,
-    image: null
-  },
-  {
-    _id: 'AYD002',
-    name: 'Dr. Priya Gupta',
-    specialization: 'General Ayurveda',
-    experience: 12,
-    languages: ['Hindi', 'English', 'Marathi'],
-    rating: 4.9,
-    consultationFee: 400,
-    availableSlots: ['11:00 AM', '3:00 PM', '6:00 PM'],
-    city: 'Pune',
-    ayushRegNo: 'AYUSH-MH-2019-00456',
-    education: 'BAMS, MD (Kayachikitsa)',
-    about: 'Holistic Ayurvedic physician focusing on lifestyle disorders, women health, and preventive care.',
-    available: true,
-    image: null
-  },
-  {
-    _id: 'AYD003',
-    name: 'Dr. Amit Verma',
-    specialization: 'Kerala Ayurveda',
-    experience: 20,
-    languages: ['English', 'Malayalam', 'Hindi'],
-    rating: 4.7,
-    consultationFee: 600,
-    availableSlots: ['9:00 AM', '12:00 PM'],
-    city: 'Kochi',
-    ayushRegNo: 'AYUSH-KL-2015-00789',
-    education: 'BAMS, MD (Ayurveda), PhD',
-    about: 'Renowned Kerala Ayurveda practitioner with expertise in authentic Panchakarma and Rasayana therapies.',
-    available: false,
-    image: null
-  },
-  {
-    _id: 'AYD004',
-    name: 'Dr. Sunita Reddy',
-    specialization: 'Ayurvedic Dermatology',
-    experience: 10,
-    languages: ['Telugu', 'English'],
-    rating: 4.6,
-    consultationFee: 350,
-    availableSlots: ['3:00 PM', '5:00 PM'],
-    city: 'Hyderabad',
-    ayushRegNo: 'AYUSH-TG-2020-00321',
-    education: 'BAMS, Diploma in Dermatology',
-    about: 'Specialized in treating skin disorders through Ayurvedic herbs and therapies.',
-    available: true,
-    image: null
-  },
-  {
-    _id: 'AYD005',
-    name: 'Dr. Karan Patel',
-    specialization: 'Panchakarma',
-    experience: 8,
-    languages: ['Gujarati', 'Hindi', 'English'],
-    rating: 4.5,
-    consultationFee: 450,
-    availableSlots: ['12:00 PM', '4:00 PM'],
-    city: 'Ahmedabad',
-    ayushRegNo: 'AYUSH-GJ-2021-00654',
-    education: 'BAMS, MD (Panchakarma)',
-    about: 'Young and dynamic Panchakarma specialist focusing on modern lifestyle diseases.',
-    available: true,
-    image: null
-  }
-];
-
-const centers = [
-  {
-    _id: 'AYC001',
-    name: 'AyurVeda Retreat',
-    location: 'Rishikesh, Uttarakhand',
-    rating: 4.9,
-    packages: [
-      { name: '7-Day Panchakarma', price: 25000, duration: '7 days' },
-      { name: '14-Day Rejuvenation', price: 45000, duration: '14 days' },
-      { name: '21-Day Complete Detox', price: 65000, duration: '21 days' }
-    ],
-    facilities: ['AC Rooms', 'Organic Food', 'Yoga Hall', 'Herbal Garden'],
-    image: null
-  },
-  {
-    _id: 'AYC002',
-    name: 'Kerala Ayurveda Kendra',
-    location: 'Kochi, Kerala',
-    rating: 4.8,
-    packages: [
-      { name: '5-Day Detox', price: 18000, duration: '5 days' },
-      { name: '10-Day Panchakarma', price: 35000, duration: '10 days' }
-    ],
-    facilities: ['Traditional Therapies', 'Beach Proximity', 'Organic Meals'],
-    image: null
-  }
-];
-
-// ============================================
-// DOCTOR ROUTES
+// DOCTOR REGISTRATION & ONBOARDING
 // ============================================
 
-// GET /api/ayurveda/doctors - List all doctors with filters
-router.get('/doctors', (req, res) => {
+// POST /api/ayurveda/doctor/register
+router.post('/doctor/register', async (req, res) => {
   try {
-    let filtered = [...doctors];
+    const { name, phone, email, password, specialization, experience, education, ayushRegNo, address, consultationFee, languages } = req.body;
     
-    const { specialization, minExperience, available, language } = req.query;
-    
-    if (specialization) {
-      filtered = filtered.filter(d => d.specialization === specialization);
-    }
-    if (minExperience) {
-      filtered = filtered.filter(d => d.experience >= parseInt(minExperience));
-    }
-    if (available === 'true') {
-      filtered = filtered.filter(d => d.available === true);
-    }
-    if (language) {
-      filtered = filtered.filter(d => d.languages.includes(language));
+    // Check existing
+    const existing = await AyurvedaDoctor.findOne({ $or: [{ phone }, { ayushRegNo }] });
+    if (existing) {
+      return res.status(400).json({ success: false, error: 'Doctor already registered with this phone or AYUSH number' });
     }
     
-    res.json({ success: true, data: filtered, count: filtered.length });
-  } catch (error) {
-    res.status(500).json({ success: false, error: error.message });
-  }
-});
-
-// GET /api/ayurveda/doctors/featured - Featured doctors
-router.get('/doctors/featured', (req, res) => {
-  try {
-    const featured = doctors.filter(d => d.rating >= 4.7).slice(0, 5);
-    res.json({ success: true, data: featured });
-  } catch (error) {
-    res.status(500).json({ success: false, error: error.message });
-  }
-});
-
-// GET /api/ayurveda/doctors/:id - Doctor details
-router.get('/doctors/:id', (req, res) => {
-  try {
-    const doctor = doctors.find(d => d._id === req.params.id);
-    if (!doctor) {
-      return res.status(404).json({ success: false, error: 'Doctor not found' });
-    }
-    res.json({ success: true, data: doctor });
-  } catch (error) {
-    res.status(500).json({ success: false, error: error.message });
-  }
-});
-
-// ============================================
-// CENTER ROUTES
-// ============================================
-
-// GET /api/ayurveda/centers
-router.get('/centers', (req, res) => {
-  try {
-    res.json({ success: true, data: centers });
-  } catch (error) {
-    res.status(500).json({ success: false, error: error.message });
-  }
-});
-
-// GET /api/ayurveda/centers/:id
-router.get('/centers/:id', (req, res) => {
-  try {
-    const center = centers.find(c => c._id === req.params.id);
-    if (!center) {
-      return res.status(404).json({ success: false, error: 'Center not found' });
-    }
-    res.json({ success: true, data: center });
-  } catch (error) {
-    res.status(500).json({ success: false, error: error.message });
-  }
-});
-
-// ============================================
-// BOOKING ROUTES
-// ============================================
-
-// POST /api/ayurveda/bookings
-router.post('/bookings', (req, res) => {
-  try {
-    const { doctorId, date, time, patientName, phone, symptoms } = req.body;
+    // Hash password
+    const hashedPassword = await bcrypt.hash(password, 10);
     
-    // Validate
-    if (!doctorId || !date || !time || !patientName || !phone) {
-      return res.status(400).json({ success: false, error: 'All fields required' });
-    }
+    const doctor = new AyurvedaDoctor({
+      name, phone, email,
+      password: hashedPassword,
+      specialization, experience, education,
+      ayushRegNo,
+      address,
+      consultationFee,
+      languages: languages || [],
+      verificationStatus: 'pending',
+      isActive: false
+    });
     
-    const doctor = doctors.find(d => d._id === doctorId);
-    if (!doctor) {
-      return res.status(404).json({ success: false, error: 'Doctor not found' });
-    }
-    
-    // Simulate booking creation
-    const booking = {
-      _id: 'BKG' + Date.now(),
-      doctorId,
-      doctorName: doctor.name,
-      date,
-      time,
-      patientName,
-      phone,
-      symptoms,
-      fee: doctor.consultationFee,
-      platformCommission: doctor.consultationFee * 0.15,
-      status: 'confirmed',
-      createdAt: new Date().toISOString()
-    };
+    await doctor.save();
     
     res.status(201).json({ 
       success: true, 
-      message: 'Booking confirmed', 
-      data: booking 
+      message: 'Registration submitted. Awaiting admin verification.',
+      data: { doctorId: doctor._id }
+    });
+  } catch (error) {
+    res.status(500).json({ success: false, error: error.message });
+  }
+});
+
+// POST /api/ayurveda/doctor/login
+router.post('/doctor/login', async (req, res) => {
+  try {
+    const { phone, password } = req.body;
+    const doctor = await AyurvedaDoctor.findOne({ phone });
+    
+    if (!doctor) {
+      return res.status(401).json({ success: false, error: 'Invalid credentials' });
+    }
+    
+    const validPassword = await bcrypt.compare(password, doctor.password);
+    if (!validPassword) {
+      return res.status(401).json({ success: false, error: 'Invalid credentials' });
+    }
+    
+    if (doctor.verificationStatus !== 'approved') {
+      return res.status(403).json({ 
+        success: false, 
+        error: 'Account not approved yet',
+        status: doctor.verificationStatus 
+      });
+    }
+    
+    const token = jwt.sign(
+      { id: doctor._id, role: 'ayurveda_doctor' },
+      process.env.JWT_SECRET || 'hospital_platform_secret_key_2024',
+      { expiresIn: '30d' }
+    );
+    
+    res.json({ success: true, token, doctor: { id: doctor._id, name: doctor.name, specialization: doctor.specialization } });
+  } catch (error) {
+    res.status(500).json({ success: false, error: error.message });
+  }
+});
+
+// ============================================
+// ADMIN: VERIFY DOCTOR
+// ============================================
+
+// PUT /api/ayurveda/admin/verify-doctor/:id
+router.put('/admin/verify-doctor/:id', async (req, res) => {
+  try {
+    const { status, rejectionReason } = req.body; // 'approved' or 'rejected'
+    const adminId = req.headers['admin-id']; // Admin ID from middleware
+    
+    const doctor = await AyurvedaDoctor.findByIdAndUpdate(
+      req.params.id,
+      {
+        verificationStatus: status,
+        isActive: status === 'approved',
+        verifiedBy: adminId,
+        verifiedAt: new Date(),
+        rejectionReason: status === 'rejected' ? rejectionReason : null
+      },
+      { new: true }
+    );
+    
+    if (!doctor) {
+      return res.status(404).json({ success: false, error: 'Doctor not found' });
+    }
+    
+    res.json({ success: true, message: `Doctor ${status}`, data: doctor });
+  } catch (error) {
+    res.status(500).json({ success: false, error: error.message });
+  }
+});
+
+// GET /api/ayurveda/admin/pending-doctors
+router.get('/admin/pending-doctors', async (req, res) => {
+  try {
+    const doctors = await AyurvedaDoctor.find({ verificationStatus: 'pending' })
+      .select('name phone specialization ayushRegNo address.city documents createdAt')
+      .sort({ createdAt: -1 });
+    
+    res.json({ success: true, count: doctors.length, data: doctors });
+  } catch (error) {
+    res.status(500).json({ success: false, error: error.message });
+  }
+});
+
+// ============================================
+// DOCTOR UPLOAD DOCUMENTS
+// ============================================
+
+// POST /api/ayurveda/doctor/upload-documents/:id
+router.post('/doctor/upload-documents/:id', async (req, res) => {
+  try {
+    const { ayushCertificate, degreeCertificate, idProof, photo, clinicLicense } = req.body;
+    
+    const doctor = await AyurvedaDoctor.findByIdAndUpdate(
+      req.params.id,
+      {
+        'documents.ayushCertificate': ayushCertificate,
+        'documents.degreeCertificate': degreeCertificate,
+        'documents.idProof': idProof,
+        'documents.photo': photo,
+        'documents.clinicLicense': clinicLicense,
+        verificationStatus: 'documents_verified'
+      },
+      { new: true }
+    );
+    
+    res.json({ success: true, message: 'Documents uploaded for verification', data: doctor });
+  } catch (error) {
+    res.status(500).json({ success: false, error: error.message });
+  }
+});
+
+// ============================================
+// BOOKING WITH DISCOUNT & COMMISSION
+// ============================================
+
+// POST /api/ayurveda/bookings
+router.post('/bookings', async (req, res) => {
+  try {
+    const { doctorId, patient, bookingDate, slotTime, consultationType, symptoms, discountCode } = req.body;
+    
+    // Get doctor
+    const doctor = await AyurvedaDoctor.findById(doctorId);
+    if (!doctor || !doctor.isActive) {
+      return res.status(400).json({ success: false, error: 'Doctor not available' });
+    }
+    
+    let amount = doctor.consultationFee;
+    let discountAmount = 0;
+    let discount = null;
+    
+    // Apply discount if code provided
+    if (discountCode) {
+      discount = await Discount.findOne({ 
+        code: discountCode.toUpperCase(), 
+        isActive: true,
+        validFrom: { $lte: new Date() },
+        validTill: { $gte: new Date() }
+      });
+      
+      if (discount) {
+        if (discount.discountType === 'percentage') {
+          discountAmount = Math.min(
+            (amount * discount.value) / 100,
+            discount.maxDiscount || Infinity
+          );
+        } else {
+          discountAmount = discount.value;
+        }
+        
+        // Update usage
+        discount.usedCount += 1;
+        if (discount.usageLimit && discount.usedCount >= discount.usageLimit) {
+          discount.isActive = false;
+        }
+        await discount.save();
+      }
+    }
+    
+    const finalAmount = amount - discountAmount;
+    const commissionRate = doctor.subscription.commissionRate.firstConsult / 100;
+    const platformCommission = finalAmount * commissionRate;
+    const providerEarning = finalAmount - platformCommission;
+    
+    const booking = new AyurvedaBooking({
+      bookingId: 'AYB' + Date.now(),
+      type: 'doctor_consultation',
+      doctor: doctorId,
+      consultationType,
+      patient,
+      bookingDate,
+      slotTime,
+      symptoms,
+      amount,
+      discount: discount ? {
+        code: discountCode,
+        percentage: discount.discountType === 'percentage' ? discount.value : null,
+        amount: discountAmount
+      } : null,
+      finalAmount,
+      platformCommission,
+      providerEarning,
+      paymentStatus: 'pending',
+      status: 'pending'
+    });
+    
+    await booking.save();
+    
+    // Update doctor stats
+    doctor.stats.totalConsultations += 1;
+    await doctor.save();
+    
+    res.status(201).json({
+      success: true,
+      data: {
+        bookingId: booking.bookingId,
+        amount: finalAmount,
+        discount: discountAmount,
+        originalAmount: amount,
+        platformFee: platformCommission
+      }
     });
   } catch (error) {
     res.status(500).json({ success: false, error: error.message });
@@ -240,32 +253,128 @@ router.post('/bookings', (req, res) => {
 });
 
 // ============================================
-// PRAKRITI ROUTES
+// PATIENT RATING & REVIEW
 // ============================================
 
-// POST /api/ayurveda/prakriti
-router.post('/prakriti', (req, res) => {
+// POST /api/ayurveda/review/:bookingId
+router.post('/review/:bookingId', async (req, res) => {
   try {
-    const { answers } = req.body;
+    const { rating, comment } = req.body;
     
-    if (!answers || !Array.isArray(answers)) {
-      return res.status(400).json({ success: false, error: 'Answers required' });
+    const booking = await AyurvedaBooking.findOne({ bookingId: req.params.bookingId });
+    if (!booking) {
+      return res.status(404).json({ success: false, error: 'Booking not found' });
     }
     
-    // Simple calculation (same as frontend)
-    let vata = answers.filter(a => a === 0).length;
-    let pitta = answers.filter(a => a === 1).length;
-    let kapha = answers.filter(a => a === 2).length;
+    if (booking.reviewed) {
+      return res.status(400).json({ success: false, error: 'Already reviewed' });
+    }
     
-    const total = vata + pitta + kapha;
+    if (booking.status !== 'completed') {
+      return res.status(400).json({ success: false, error: 'Can only review completed bookings' });
+    }
+    
+    // Update booking
+    booking.reviewed = true;
+    booking.review = { rating, comment, createdAt: new Date() };
+    await booking.save();
+    
+    // Update doctor rating
+    if (booking.doctor) {
+      const doctor = await AyurvedaDoctor.findById(booking.doctor);
+      const totalRating = doctor.rating * doctor.totalReviews;
+      doctor.totalReviews += 1;
+      doctor.rating = (totalRating + rating) / doctor.totalReviews;
+      doctor.reviews.push({
+        patient: booking._id,
+        patientName: booking.patient.name,
+        rating,
+        review: comment,
+        treatment: booking.consultationType,
+        createdAt: new Date()
+      });
+      await doctor.save();
+    }
+    
+    res.json({ success: true, message: 'Review submitted successfully' });
+  } catch (error) {
+    res.status(500).json({ success: false, error: error.message });
+  }
+});
+
+// ============================================
+// DISCOUNT/COUPON MANAGEMENT
+// ============================================
+
+// POST /api/ayurveda/discounts (Admin creates platform-wide discount)
+router.post('/discounts', async (req, res) => {
+  try {
+    const { code, discountType, value, maxDiscount, minOrderAmount, applicableFor, validFrom, validTill, newUsersOnly } = req.body;
+    
+    const discount = new Discount({
+      code: code.toUpperCase(),
+      type: 'platform',
+      createdBy: { type: 'admin', id: req.body.adminId },
+      discountType, value, maxDiscount, minOrderAmount,
+      applicableFor: applicableFor || ['all'],
+      validFrom, validTill,
+      newUsersOnly: newUsersOnly || false
+    });
+    
+    await discount.save();
+    
+    res.status(201).json({ success: true, data: discount });
+  } catch (error) {
+    res.status(500).json({ success: false, error: error.message });
+  }
+});
+
+// GET /api/ayurveda/discounts/validate/:code
+router.get('/discounts/validate/:code', async (req, res) => {
+  try {
+    const discount = await Discount.findOne({
+      code: req.params.code.toUpperCase(),
+      isActive: true,
+      validFrom: { $lte: new Date() },
+      validTill: { $gte: new Date() }
+    });
+    
+    if (!discount) {
+      return res.status(404).json({ success: false, error: 'Invalid or expired discount code' });
+    }
+    
+    res.json({ success: true, data: discount });
+  } catch (error) {
+    res.status(500).json({ success: false, error: error.message });
+  }
+});
+
+// ============================================
+// ADMIN DASHBOARD
+// ============================================
+
+// GET /api/ayurveda/admin/stats
+router.get('/admin/stats', async (req, res) => {
+  try {
+    const [totalDoctors, pendingDoctors, totalCenters, totalBookings, totalRevenue] = await Promise.all([
+      AyurvedaDoctor.countDocuments({ verificationStatus: 'approved' }),
+      AyurvedaDoctor.countDocuments({ verificationStatus: 'pending' }),
+      PanchakarmaCenter.countDocuments({ verificationStatus: 'approved' }),
+      AyurvedaBooking.countDocuments(),
+      AyurvedaBooking.aggregate([
+        { $match: { paymentStatus: 'paid' } },
+        { $group: { _id: null, total: { $sum: '$platformCommission' } } }
+      ])
+    ]);
     
     res.json({
       success: true,
       data: {
-        vata: Math.round((vata/total)*100),
-        pitta: Math.round((pitta/total)*100),
-        kapha: Math.round((kapha/total)*100),
-        timestamp: new Date().toISOString()
+        totalDoctors,
+        pendingVerifications: pendingDoctors,
+        totalCenters,
+        totalBookings,
+        totalCommissionEarned: totalRevenue[0]?.total || 0
       }
     });
   } catch (error) {
