@@ -16,12 +16,12 @@ const razorpay = new Razorpay({
 });
 
 // ============================================
-// YOUR EXISTING ROUTE: Create order for lab test booking
+// CREATE ORDER (UPDATED - Added Ayurveda notes)
 // ============================================
 
 router.post('/create-order', async (req, res) => {
   try {
-    const { amount, currency = 'INR', bookingId, patientName, patientPhone, patientEmail } = req.body;
+    const { amount, currency = 'INR', bookingId, patientName, patientPhone, patientEmail, bookingType } = req.body;
     
     const receipt = `booking_${bookingId || Date.now()}`;
     
@@ -32,6 +32,7 @@ router.post('/create-order', async (req, res) => {
       payment_capture: 1,
       notes: {
         bookingId: bookingId || 'temp_' + Date.now(),
+        bookingType: bookingType || 'general',  // 🆕 Added bookingType
         patientName: patientName || 'Guest',
         patientPhone: patientPhone || 'Not provided',
         patientEmail: patientEmail || 'Not provided'
@@ -48,7 +49,7 @@ router.post('/create-order', async (req, res) => {
       netAmount: amount,
       userId: req.body.userId || 'guest',
       bookingId: bookingId,
-      bookingType: req.body.bookingType || 'labtest',
+      bookingType: bookingType || 'general',  // 🆕 Added bookingType
       paymentGateway: 'razorpay',
       status: 'initiated',
       initiatedAt: new Date()
@@ -63,7 +64,8 @@ router.post('/create-order', async (req, res) => {
         currency: order.currency,
         receipt: order.receipt
       },
-      transactionId: transaction.transactionId
+      transactionId: transaction.transactionId,
+      key_id: process.env.RAZORPAY_KEY_ID  // 🆕 Send key to frontend
     });
   } catch (error) {
     console.error('Error creating order:', error);
@@ -72,7 +74,7 @@ router.post('/create-order', async (req, res) => {
 });
 
 // ============================================
-// YOUR EXISTING ROUTE: Verify payment and update booking
+// VERIFY PAYMENT (UPDATED - Added Ayurveda handling)
 // ============================================
 
 router.post('/verify', async (req, res) => {
@@ -102,7 +104,16 @@ router.post('/verify', async (req, res) => {
       dropAddress,
       caregiverName,
       serviceType,
-      loanApplicationId
+      loanApplicationId,
+      // 🆕 AYURVEDA FIELDS
+      consultationType,
+      symptoms,
+      wellnessCenter,
+      specialization,
+      discountAmount,
+      platformFee,
+      gst,
+      finalAmount
     } = req.body;
     
     // Verify signature
@@ -266,7 +277,79 @@ router.post('/verify', async (req, res) => {
       await booking.save();
     }
     
-    // Case 5: Loan Application
+    // 🆕 CASE 5: AYURVEDA DOCTOR CONSULTATION
+    else if (bookingType === 'ayurveda_consultation') {
+      const newBookingId = bookingId || 'AYB' + Date.now();
+      
+      booking = new Booking({
+        bookingId: newBookingId,
+        userId: req.body.userId || 'guest_' + Date.now(),
+        bookingType: 'ayurveda_consultation',
+        patientName,
+        patientAge: parseInt(patientAge) || null,
+        patientGender: patientGender || '',
+        patientPhone,
+        patientEmail: patientEmail || '',
+        providerName: doctorName || providerName || '',
+        hospitalName: wellnessCenter || '',  // Using hospitalName field for wellness center
+        doctorName: doctorName || '',
+        specialization: specialization || '',
+        consultationType: consultationType || 'online',
+        timeSlot: timeSlot || '',
+        symptoms: symptoms || '',
+        originalAmount: totalAmount || finalAmount,
+        discountAmount: discountAmount || 0,
+        platformFee: platformFee || 0,
+        gst: gst || 0,
+        finalAmount: finalAmount || totalAmount,
+        appointmentDate: new Date(appointmentDate),
+        status: 'confirmed',
+        paymentStatus: 'paid',
+        paymentId: razorpay_payment_id,
+        orderId: razorpay_order_id,
+        razorpayOrderId: razorpay_order_id,
+        razorpayPaymentId: razorpay_payment_id,
+        razorpaySignature: razorpay_signature
+      });
+      
+      await booking.save();
+    }
+    
+    // 🆕 CASE 6: AYURVEDA PANCHAKARMA PACKAGE
+    else if (bookingType === 'ayurveda_panchakarma') {
+      const newBookingId = bookingId || 'AYP' + Date.now();
+      
+      booking = new Booking({
+        bookingId: newBookingId,
+        userId: req.body.userId || 'guest_' + Date.now(),
+        bookingType: 'ayurveda_panchakarma',
+        patientName,
+        patientAge: parseInt(patientAge) || null,
+        patientGender: patientGender || '',
+        patientPhone,
+        patientEmail: patientEmail || '',
+        providerName: providerName || wellnessCenter || '',
+        hospitalName: wellnessCenter || '',
+        packageName: req.body.packageName || '',
+        packageDuration: req.body.packageDuration || null,
+        originalAmount: totalAmount || finalAmount,
+        discountAmount: discountAmount || 0,
+        finalAmount: finalAmount || totalAmount,
+        appointmentDate: new Date(appointmentDate),
+        admissionDate: new Date(appointmentDate),
+        status: 'confirmed',
+        paymentStatus: 'paid',
+        paymentId: razorpay_payment_id,
+        orderId: razorpay_order_id,
+        razorpayOrderId: razorpay_order_id,
+        razorpayPaymentId: razorpay_payment_id,
+        razorpaySignature: razorpay_signature
+      });
+      
+      await booking.save();
+    }
+    
+    // Case 7: Loan Application (EXISTING)
     else if (bookingType === 'loan' && loanApplicationId) {
       const loanApp = await LoanApplication.findOne({ applicationId: loanApplicationId });
       if (loanApp) {
@@ -289,7 +372,7 @@ router.post('/verify', async (req, res) => {
 });
 
 // ============================================
-// YOUR EXISTING ROUTE: Get payment status for a booking
+// GET PAYMENT STATUS
 // ============================================
 
 router.get('/status/:bookingId', async (req, res) => {
@@ -306,7 +389,7 @@ router.get('/status/:bookingId', async (req, res) => {
       orderId: booking.orderId,
       status: booking.status,
       amount: booking.finalAmount,
-      discount: booking.discount
+      discount: booking.discountAmount || booking.discount
     });
   } catch (error) {
     res.status(500).json({ success: false, message: error.message });
@@ -314,7 +397,7 @@ router.get('/status/:bookingId', async (req, res) => {
 });
 
 // ============================================
-// NEW ROUTE: Create order for ANY booking type
+// CREATE ORDER V2 (Generic - Already there)
 // ============================================
 
 router.post('/create-order-v2', async (req, res) => {
@@ -387,7 +470,87 @@ router.post('/create-order-v2', async (req, res) => {
 });
 
 // ============================================
-// NEW ROUTE: Apply discount and get final amount
+// 🆕 AYURVEDA-SPECIFIC: Create order for consultation
+// POST /api/payment/ayurveda-create-order
+// ============================================
+
+router.post('/ayurveda-create-order', async (req, res) => {
+  try {
+    const {
+      amount,
+      bookingId,
+      doctorId,
+      doctorName,
+      patientName,
+      patientPhone,
+      patientEmail,
+      consultationType,
+      discountCode,
+      discountAmount = 0,
+      platformFee = 0,
+      gst = 0
+    } = req.body;
+
+    const finalAmount = amount - discountAmount + gst;
+    const receipt = `ayurveda_${bookingId}`;
+
+    const options = {
+      amount: Math.round(finalAmount * 100),
+      currency: 'INR',
+      receipt,
+      payment_capture: 1,
+      notes: {
+        bookingId,
+        bookingType: 'ayurveda_consultation',
+        doctorId: doctorId || '',
+        doctorName: doctorName || '',
+        patientName: patientName || 'Guest',
+        patientPhone: patientPhone || '',
+        consultationType: consultationType || 'online',
+        discountCode: discountCode || 'N/A',
+        discountAmount: discountAmount || 0,
+        platformFee: platformFee || 0,
+        gst: gst || 0
+      }
+    };
+
+    const order = await razorpay.orders.create(options);
+
+    // Save transaction
+    const transaction = new Transaction({
+      transactionId: Transaction.generateTransactionId(),
+      orderId: order.id,
+      amount: amount,
+      discountAmount: discountAmount,
+      netAmount: finalAmount,
+      userId: req.body.userId || 'guest',
+      bookingId: bookingId,
+      bookingType: 'ayurveda_consultation',
+      paymentGateway: 'razorpay',
+      status: 'initiated',
+      initiatedAt: new Date()
+    });
+    await transaction.save();
+
+    res.json({
+      success: true,
+      order: {
+        id: order.id,
+        amount: order.amount,
+        currency: order.currency,
+        receipt: order.receipt
+      },
+      transactionId: transaction.transactionId,
+      key_id: process.env.RAZORPAY_KEY_ID
+    });
+  } catch (error) {
+    console.error('Ayurveda order creation error:', error);
+    res.status(500).json({ success: false, message: error.message });
+  }
+});
+
+// ============================================
+// CALCULATE DISCOUNT (EXISTING - Works for Ayurveda too)
 // ============================================
 
 router.post('/calculate-discount', async (req, res) => {
@@ -399,8 +562,7 @@ router.post('/calculate-discount', async (req, res) => {
     let discountType = null;
     let discountValue = null;
     
-    // In production, fetch discount from database
-    // For now, mock discounts
+    // Platform-wide discount codes
     if (discountCode === 'FIRST10') {
       discountAmount = amount * 0.10;
       discountType = 'percentage';
@@ -409,6 +571,21 @@ router.post('/calculate-discount', async (req, res) => {
       discountAmount = 50;
       discountType = 'fixed';
       discountValue = 50;
+    } else if (discountCode === 'AYUR50') {
+      // 🆕 Ayurveda-specific 50% off
+      discountAmount = amount * 0.50;
+      discountType = 'percentage';
+      discountValue = 50;
+    } else if (discountCode === 'FIRST100') {
+      // 🆕 ₹100 off for first booking
+      discountAmount = Math.min(100, amount);
+      discountType = 'fixed';
+      discountValue = 100;
+    } else if (discountCode === 'WELLNESS20') {
+      // 🆕 20% off for wellness
+      discountAmount = amount * 0.20;
+      discountType = 'percentage';
+      discountValue = 20;
     }
     
     finalAmount = Math.max(0, amount - discountAmount);
@@ -428,7 +605,7 @@ router.post('/calculate-discount', async (req, res) => {
 });
 
 // ============================================
-// YOUR EXISTING ROUTE: Webhook to handle Razorpay events
+// WEBHOOK (EXISTING - Already handles all types)
 // ============================================
 
 router.post('/webhook', async (req, res) => {
@@ -510,7 +687,7 @@ router.post('/webhook', async (req, res) => {
 });
 
 // ============================================
-// YOUR EXISTING ROUTE: Refund payment (admin only)
+// REFUND (EXISTING - Works for all types)
 // ============================================
 
 router.post('/refund/:paymentId', async (req, res) => {
@@ -558,7 +735,7 @@ router.post('/refund/:paymentId', async (req, res) => {
 });
 
 // ============================================
-// NEW ROUTE: Get transaction details
+// GET TRANSACTION (EXISTING)
 // ============================================
 
 router.get('/transaction/:transactionId', async (req, res) => {
@@ -578,7 +755,7 @@ router.get('/transaction/:transactionId', async (req, res) => {
 });
 
 // ============================================
-// NEW ROUTE: Get transaction by order ID
+// GET TRANSACTION BY ORDER ID (EXISTING)
 // ============================================
 
 router.get('/transaction/order/:orderId', async (req, res) => {
