@@ -1,10 +1,18 @@
 const express = require('express');
 const router = express.Router();
 const bcrypt = require('bcryptjs');
+const jwt = require('jsonwebtoken');
 const Lender = require('../models/Lender');
 const LoanApplication = require('../models/LoanApplication');
-const { generateLenderToken, verifyToken, isLender } = require('../middleware/auth');
+const { authenticate, authenticateLender } = require('../middleware/auth');
 const generateId = require('../utils/generateId');
+
+const JWT_SECRET = process.env.JWT_SECRET || 'hospital_platform_secret_key_2024';
+
+// Generate lender token
+const generateLenderToken = (lenderId, email) => {
+  return jwt.sign({ lenderId, email, role: 'lender' }, JWT_SECRET, { expiresIn: '7d' });
+};
 
 // ============================================
 // LENDER REGISTRATION & AUTH
@@ -24,7 +32,6 @@ router.post('/register', async (req, res) => {
       commissionRate
     } = req.body;
     
-    // Check if exists
     const existing = await Lender.findOne({ $or: [{ email }, { registrationNumber }] });
     if (existing) {
       return res.status(400).json({ error: 'Lender already registered with this email or registration number' });
@@ -43,7 +50,7 @@ router.post('/register', async (req, res) => {
       address,
       loanProducts: loanProducts || [],
       commissionRate: commissionRate || 2,
-      status: 'pending',  // Requires admin approval
+      status: 'pending',
       createdAt: new Date()
     });
     
@@ -52,7 +59,7 @@ router.post('/register', async (req, res) => {
     res.json({
       success: true,
       lenderId,
-      message: 'Registration submitted for admin approval. You will receive email once verified.'
+      message: 'Registration submitted for admin approval.'
     });
   } catch (error) {
     res.status(500).json({ error: 'Registration failed' });
@@ -97,7 +104,7 @@ router.post('/login', async (req, res) => {
 });
 
 // Get lender profile
-router.get('/profile', verifyToken, isLender, async (req, res) => {
+router.get('/profile', authenticate, authenticateLender, async (req, res) => {
   try {
     const lender = await Lender.findOne({ lenderId: req.user.lenderId }).select('-password');
     if (!lender) {
@@ -114,7 +121,7 @@ router.get('/profile', verifyToken, isLender, async (req, res) => {
 // ============================================
 
 // Get applications assigned to this lender
-router.get('/applications', verifyToken, isLender, async (req, res) => {
+router.get('/applications', authenticate, authenticateLender, async (req, res) => {
   try {
     const { status, page = 1, limit = 20 } = req.query;
     
@@ -140,7 +147,7 @@ router.get('/applications', verifyToken, isLender, async (req, res) => {
 });
 
 // Get single application details
-router.get('/applications/:applicationId', verifyToken, isLender, async (req, res) => {
+router.get('/applications/:applicationId', authenticate, authenticateLender, async (req, res) => {
   try {
     const application = await LoanApplication.findOne({
       applicationId: req.params.applicationId,
@@ -158,7 +165,7 @@ router.get('/applications/:applicationId', verifyToken, isLender, async (req, re
 });
 
 // Update application status (approve/reject)
-router.put('/applications/:applicationId/status', verifyToken, isLender, async (req, res) => {
+router.put('/applications/:applicationId/status', authenticate, authenticateLender, async (req, res) => {
   try {
     const { applicationId } = req.params;
     const { status, note, sanctionedAmount, tenure, interestRate } = req.body;
@@ -186,7 +193,6 @@ router.put('/applications/:applicationId/status', verifyToken, isLender, async (
       application.interestRate = interestRate;
       application.approvedAt = new Date();
       
-      // Calculate EMI
       const monthlyRate = interestRate / 100 / 12;
       const emi = sanctionedAmount * monthlyRate * Math.pow(1 + monthlyRate, tenure) / (Math.pow(1 + monthlyRate, tenure) - 1);
       application.emi = Math.round(emi);
@@ -198,9 +204,6 @@ router.put('/applications/:applicationId/status', verifyToken, isLender, async (
     
     await application.save();
     
-    // TODO: Send notification to patient
-    // await sendNotification(application.patientId, status);
-    
     res.json({ success: true, application });
   } catch (error) {
     res.status(500).json({ error: 'Failed to update status' });
@@ -208,7 +211,7 @@ router.put('/applications/:applicationId/status', verifyToken, isLender, async (
 });
 
 // Request additional documents from patient
-router.post('/applications/:applicationId/request-document', verifyToken, isLender, async (req, res) => {
+router.post('/applications/:applicationId/request-document', authenticate, authenticateLender, async (req, res) => {
   try {
     const { applicationId } = req.params;
     const { documentType, description } = req.body;
@@ -234,17 +237,14 @@ router.post('/applications/:applicationId/request-document', verifyToken, isLend
     application.status = 'document_pending';
     await application.save();
     
-    // TODO: Send notification to patient
-    // await sendNotification(application.patientId, 'document_requested', { documentType });
-    
     res.json({ success: true, requestId });
   } catch (error) {
     res.status(500).json({ error: 'Failed to request document' });
   }
 });
 
-// Mark loan as disbursed (after final bill received)
-router.post('/applications/:applicationId/disburse', verifyToken, isLender, async (req, res) => {
+// Mark loan as disbursed
+router.post('/applications/:applicationId/disburse', authenticate, authenticateLender, async (req, res) => {
   try {
     const { applicationId } = req.params;
     const { disbursedAmount, transactionId } = req.body;
@@ -262,7 +262,6 @@ router.post('/applications/:applicationId/disburse', verifyToken, isLender, asyn
       return res.status(400).json({ error: 'Final bill not submitted yet' });
     }
     
-    // Disburse based on final bill amount (not sanctioned amount)
     const actualDisbursedAmount = Math.min(application.sanctionedAmount, application.finalBillAmount);
     
     application.disbursedAmount = actualDisbursedAmount;
@@ -275,14 +274,11 @@ router.post('/applications/:applicationId/disburse', verifyToken, isLender, asyn
       timestamp: new Date()
     });
     
-    // Calculate platform commission
     const lender = await Lender.findOne({ lenderId: req.user.lenderId });
     const commissionAmount = (actualDisbursedAmount * lender.commissionRate) / 100;
     application.platformCommission = commissionAmount;
     
     await application.save();
-    
-    // TODO: Trigger payment to platform (Razorpay)
     
     res.json({
       success: true,
@@ -296,7 +292,7 @@ router.post('/applications/:applicationId/disburse', verifyToken, isLender, asyn
 });
 
 // Get lender dashboard stats
-router.get('/stats', verifyToken, isLender, async (req, res) => {
+router.get('/stats', authenticate, authenticateLender, async (req, res) => {
   try {
     const { lenderId } = req.user;
     
