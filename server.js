@@ -102,6 +102,11 @@ const lenderAuthRoutes = require('./routes/lenderAuth');
 const adminLenderRoutes = require('./routes/adminLender');
 
 // ============================================
+// LENDER ROUTES (ADDED - WAS MISSING)
+// ============================================
+const lenderRoutes = require('./routes/lender');
+
+// ============================================
 // LOAN MODULE ROUTES
 // ============================================
 const loanPatientRoutes = require('./routes/loanPatient');
@@ -136,6 +141,11 @@ app.use('/api/booking-status', bookingStatusRoutes);
 app.use('/api/custom-packages', customPackageRoutes);
 app.use('/api/lender/auth', lenderAuthRoutes);
 app.use('/api/admin/lenders', adminLenderRoutes);
+
+// ============================================
+// LENDER ROUTES (REGISTERED - WAS MISSING)
+// ============================================
+app.use('/api/lender', lenderRoutes);
 
 // ============================================
 // LOAN ROUTES
