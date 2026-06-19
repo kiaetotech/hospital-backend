@@ -120,6 +120,11 @@ const loanWebhookRoutes = require('./routes/loanWebhook');
 const webhookRoutes = require('./routes/webhooks');
 
 // ============================================
+// 🆕 AYURVEDA MODULE ROUTES (NEW)
+// ============================================
+const ayurvedaRoutes = require('./routes/ayurveda');
+
+// ============================================
 // USE ROUTES
 // ============================================
 app.use('/api/hospitals', hospitalRoutes);
@@ -161,6 +166,11 @@ app.use('/api/loan/webhook', loanWebhookRoutes);
 app.use('/api/webhooks', webhookRoutes);
 
 // ============================================
+// 🆕 AYURVEDA ROUTES (NEW)
+// ============================================
+app.use('/api/ayurveda', ayurvedaRoutes);
+
+// ============================================
 // HEALTH CHECK
 // ============================================
 app.get('/health', (req, res) => {
@@ -199,4 +209,5 @@ app.listen(PORT, () => {
   console.log(`📋 Loan modules available at /api/loan/*`);
   console.log(`💳 Payment routes available at /api/payment/*`);
   console.log(`🔗 Webhook routes available at /api/webhooks/*`);
+  console.log(`🧘 Ayurveda module available at /api/ayurveda/*`);  // ← NEW
 });
