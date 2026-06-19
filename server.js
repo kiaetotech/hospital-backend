@@ -122,7 +122,7 @@ const webhookRoutes = require('./routes/webhooks');
 // ============================================
 // 🆕 AYURVEDA MODULE ROUTES (NEW)
 // ============================================
-const ayurvedaRoutes = require('./routes/ayurveda');
+const ayurvedaRoutes = require('./routes/ayurveda-advanced');
 
 // ============================================
 // USE ROUTES
