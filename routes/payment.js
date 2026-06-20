@@ -774,4 +774,64 @@ router.get('/transaction/order/:orderId', async (req, res) => {
   }
 });
 
+// ============================================
+// AYURVEDA PAYMENT - Create Order
+// POST /api/ayurveda/payments/create-order
+// ============================================
+router.post('/create-order', async (req, res) => {
+  try {
+    const { amount, bookingId, doctorId, patientName, patientPhone, consultationType } = req.body;
+    
+    const receipt = `ayurveda_${bookingId || Date.now()}`;
+    const finalAmount = amount || 500;
+    
+    const options = {
+      amount: Math.round(finalAmount * 100),
+      currency: 'INR',
+      receipt,
+      payment_capture: 1,
+      notes: {
+        bookingId: bookingId || 'temp_' + Date.now(),
+        bookingType: 'ayurveda_consultation',
+        doctorId: doctorId || '',
+        patientName: patientName || 'Guest',
+        patientPhone: patientPhone || '',
+        consultationType: consultationType || 'online'
+      }
+    };
+    
+    const order = await razorpay.orders.create(options);
+    
+    const Transaction = require('../models/Transaction');
+    const transaction = new Transaction({
+      transactionId: Transaction.generateTransactionId(),
+      orderId: order.id,
+      amount: finalAmount,
+      netAmount: finalAmount,
+      userId: req.body.userId || 'guest',
+      bookingId: bookingId,
+      bookingType: 'ayurveda_consultation',
+      paymentGateway: 'razorpay',
+      status: 'initiated',
+      initiatedAt: new Date()
+    });
+    await transaction.save();
+    
+    res.json({ 
+      success: true, 
+      order: {
+        id: order.id,
+        amount: order.amount,
+        currency: order.currency,
+        receipt: order.receipt
+      },
+      transactionId: transaction.transactionId,
+      key_id: process.env.RAZORPAY_KEY_ID || 'rzp_test_xxxxxxxxxxxxx'
+    });
+  } catch (error) {
+    console.error('Ayurveda order error:', error);
+    res.status(500).json({ success: false, message: error.message });
+  }
+});
+
 module.exports = router;

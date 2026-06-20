@@ -147,6 +147,7 @@ app.use('/api/booking-status', bookingStatusRoutes);
 app.use('/api/custom-packages', customPackageRoutes);
 app.use('/api/lender/auth', lenderAuthRoutes);
 app.use('/api/admin/lenders', adminLenderRoutes);
+app.use('/api/ayurveda/payments', razorpayRoutes);
 
 // ============================================
 // LENDER ROUTES (REGISTERED - WAS MISSING)
