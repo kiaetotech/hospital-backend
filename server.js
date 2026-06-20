@@ -124,6 +124,7 @@ const webhookRoutes = require('./routes/webhooks');
 // ============================================
 const ayurvedaRoutes = require('./routes/ayurveda-advanced');
 const ayurvedaCenterRoutes = require('./routes/ayurveda-centers');
+const ayurvedaReportRoutes = require('./routes/ayurveda-reports');
 
 // ============================================
 // USE ROUTES
@@ -172,6 +173,7 @@ app.use('/api/webhooks', webhookRoutes);
 // ============================================
 app.use('/api/ayurveda', ayurvedaRoutes);
 app.use('/api/ayurveda-centers', ayurvedaCenterRoutes);
+app.use('/api/ayurveda/reports', ayurvedaReportRoutes);
 
 // ============================================
 // HEALTH CHECK
