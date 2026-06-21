@@ -7,7 +7,7 @@ const bookingSchema = new mongoose.Schema({
   
   // Common fields for all booking types
   userId: { type: String, required: true },
-  bookingType: { type: String, enum: ['opd', 'admission', 'ambulance', 'labtest', 'health_package', 'caregiver'], required: true },
+  bookingType: { type: String, enum: ['opd', 'admission', 'ambulance', 'labtest', 'health_package', 'caregiver', 'ayurveda_consultation', 'homeopathy_consult', 'homeopathy_medicine'], required: true },
   patientName: { type: String, required: true },
   patientPhone: { type: String, required: true },
   patientAge: { type: Number },
@@ -21,7 +21,7 @@ const bookingSchema = new mongoose.Schema({
   paymentStatus: { type: String, enum: ['pending', 'paid', 'failed', 'refunded', 'partially_refunded'], default: 'pending' },
   paymentId: { type: String },
   orderId: { type: String },
-  status: { type: String, enum: ['pending', 'confirmed', 'sample_collected', 'processing', 'report_ready', 'completed', 'cancelled'], default: 'pending' },
+  status: { type: String, enum: ['pending', 'confirmed', 'sample_collected', 'processing', 'report_ready', 'completed', 'cancelled', 'shipped', 'out_for_delivery', 'delivered'], default: 'pending' },
   createdAt: { type: Date, default: Date.now },
   
   // Hospital/OPD/Admission fields
@@ -45,7 +45,7 @@ const bookingSchema = new mongoose.Schema({
   
   // Status tracking fields
   statusHistory: [{
-    status: { type: String, enum: ['pending', 'confirmed', 'sample_collected', 'processing', 'report_ready', 'completed', 'cancelled'] },
+    status: { type: String, enum: ['pending', 'confirmed', 'sample_collected', 'processing', 'report_ready', 'completed', 'cancelled', 'shipped', 'out_for_delivery', 'delivered'] },
     timestamp: { type: Date, default: Date.now },
     note: { type: String }
   }],
@@ -86,7 +86,16 @@ const bookingSchema = new mongoose.Schema({
   // Settlement tracking
   settledToProvider: { type: Boolean, default: false },
   settledAt: { type: Date },
-  settlementId: { type: String }
+  settlementId: { type: String },
+  
+  // Delivery OTP for medicine orders
+  deliveryOTP: { type: String },
+  
+  // Medicine order fields
+  medicines: [{ name: String, potency: String, quantity: Number, price: Number }],
+  deliveryAddress: { type: String },
+  trackingNumber: { type: String },
+  deliveryStatus: { type: String, enum: ['processing', 'shipped', 'out_for_delivery', 'delivered'] }
 });
 
 // ============================================

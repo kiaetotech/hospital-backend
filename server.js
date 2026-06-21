@@ -102,7 +102,7 @@ const lenderAuthRoutes = require('./routes/lenderAuth');
 const adminLenderRoutes = require('./routes/adminLender');
 
 // ============================================
-// LENDER ROUTES (ADDED - WAS MISSING)
+// LENDER ROUTES
 // ============================================
 const lenderRoutes = require('./routes/lender');
 
@@ -115,17 +115,22 @@ const loanAdminRoutes = require('./routes/loanAdmin');
 const loanWebhookRoutes = require('./routes/loanWebhook');
 
 // ============================================
-// PAYMENT MODULE ROUTES (NEW)
+// PAYMENT MODULE ROUTES
 // ============================================
 const webhookRoutes = require('./routes/webhooks');
 
 // ============================================
-// 🆕 AYURVEDA MODULE ROUTES (NEW)
+// AYURVEDA MODULE ROUTES
 // ============================================
 const ayurvedaRoutes = require('./routes/ayurveda-advanced');
 const ayurvedaCenterRoutes = require('./routes/ayurveda-centers');
-const ayurvedaReportRoutes = require('./routes/ayurveda-reports');
 const ayurvedaPrescriptionRoutes = require('./routes/ayurveda-prescriptions');
+const ayurvedaReportRoutes = require('./routes/ayurveda-reports');
+
+// ============================================
+// HOMEOPATHY MODULE ROUTES
+// ============================================
+const homeopathyRoutes = require('./routes/homeopathy');
 
 // ============================================
 // USE ROUTES
@@ -149,10 +154,9 @@ app.use('/api/booking-status', bookingStatusRoutes);
 app.use('/api/custom-packages', customPackageRoutes);
 app.use('/api/lender/auth', lenderAuthRoutes);
 app.use('/api/admin/lenders', adminLenderRoutes);
-app.use('/api/ayurveda/payments', razorpayRoutes);
 
 // ============================================
-// LENDER ROUTES (REGISTERED - WAS MISSING)
+// LENDER ROUTES
 // ============================================
 app.use('/api/lender', lenderRoutes);
 
@@ -165,17 +169,23 @@ app.use('/api/loan/admin', loanAdminRoutes);
 app.use('/api/loan/webhook', loanWebhookRoutes);
 
 // ============================================
-// PAYMENT ROUTES (NEW)
+// PAYMENT ROUTES
 // ============================================
 app.use('/api/webhooks', webhookRoutes);
 
 // ============================================
-// 🆕 AYURVEDA ROUTES (NEW)
+// AYURVEDA ROUTES
 // ============================================
 app.use('/api/ayurveda', ayurvedaRoutes);
 app.use('/api/ayurveda-centers', ayurvedaCenterRoutes);
-app.use('/api/ayurveda/reports', ayurvedaReportRoutes);
 app.use('/api/ayurveda/prescriptions', ayurvedaPrescriptionRoutes);
+app.use('/api/ayurveda/reports', ayurvedaReportRoutes);
+app.use('/api/ayurveda/payments', razorpayRoutes);
+
+// ============================================
+// HOMEOPATHY ROUTES
+// ============================================
+app.use('/api/homeopathy', homeopathyRoutes);
 
 // ============================================
 // HEALTH CHECK
@@ -216,5 +226,6 @@ app.listen(PORT, () => {
   console.log(`📋 Loan modules available at /api/loan/*`);
   console.log(`💳 Payment routes available at /api/payment/*`);
   console.log(`🔗 Webhook routes available at /api/webhooks/*`);
-  console.log(`🧘 Ayurveda module available at /api/ayurveda/*`);  // ← NEW
+  console.log(`🧘 Ayurveda module available at /api/ayurveda/*`);
+  console.log(`🌿 Homeopathy module available at /api/homeopathy/*`);
 });
