@@ -2,7 +2,7 @@ const express = require('express');
 const router = express.Router();
 const Otp = require('../models/Otp');
 const User = require('../models/User');
-const auth = require('../middleware/auth');
+const { authenticate: auth } = require('../middleware/auth');
 const smsService = require('../services/smsService');
 const emailService = require('../services/emailService');
 

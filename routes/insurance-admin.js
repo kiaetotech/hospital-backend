@@ -6,7 +6,7 @@ const InsurancePolicy = require('../models/InsurancePolicy');
 const Booking = require('../models/Booking');
 const Transaction = require('../models/Transaction');
 const User = require('../models/User');
-const auth = require('../middleware/auth');
+const { authenticate: auth } = require('../middleware/auth');
 const upload = require('../middleware/upload');
 
 // ============================================

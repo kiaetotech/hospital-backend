@@ -6,7 +6,10 @@ const InsurancePolicy = require('../models/InsurancePolicy');
 const Booking = require('../models/Booking');
 const Transaction = require('../models/Transaction');
 const User = require('../models/User');
-const auth = require('../middleware/auth');
+
+// ✅ FIXED: Correctly import authenticate from auth.js
+const { authenticate: auth } = require('../middleware/auth');
+
 const razorpayService = require('../services/razorpayService');
 const commissionService = require('../services/commissionService');
 const notificationService = require('../services/notificationService');
