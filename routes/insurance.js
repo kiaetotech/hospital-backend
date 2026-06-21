@@ -56,7 +56,6 @@ router.get('/plans', async (req, res) => {
       query.$text = { $search: search };
     }
 
-    // Sorting
     let sortCriteria = { isFeatured: -1, rating: -1 };
     if (sort === 'popular') {
       sortCriteria = { views: -1, applications: -1 };
@@ -149,7 +148,6 @@ router.get('/plans/:id', async (req, res) => {
       return res.status(404).json({ success: false, message: 'Plan not found' });
     }
 
-    // Increment views
     await plan.incrementViews();
 
     res.json({
@@ -197,7 +195,6 @@ router.post('/calculate-premium', async (req, res) => {
       return res.status(404).json({ success: false, message: 'Plan not found' });
     }
 
-    // Calculate premium using plan's method
     const calculation = plan.calculatePremium(
       parseInt(age) || 30,
       sumInsured ? parseInt(sumInsured) : undefined,
@@ -255,7 +252,7 @@ const checkPhoneVerified = async (req, res, next) => {
 // AUTHENTICATED ROUTES (Customer Only)
 // ============================================
 
-// Apply for insurance (creates booking and initiates payment)
+// Apply for insurance
 router.post('/apply', auth, checkPhoneVerified, async (req, res) => {
   try {
     const {
@@ -273,7 +270,6 @@ router.post('/apply', auth, checkPhoneVerified, async (req, res) => {
 
     const userId = req.user.id;
 
-    // Validate required fields
     if (!planId || !sumInsured || !startDate || !primaryInsured) {
       return res.status(400).json({
         success: false,
@@ -281,7 +277,6 @@ router.post('/apply', auth, checkPhoneVerified, async (req, res) => {
       });
     }
 
-    // Verify plan exists and is active
     const plan = await InsurancePlan.findById(planId).populate('companyId');
     if (!plan) {
       return res.status(404).json({ success: false, message: 'Plan not found' });
@@ -290,20 +285,17 @@ router.post('/apply', auth, checkPhoneVerified, async (req, res) => {
       return res.status(400).json({ success: false, message: 'Plan is not currently active' });
     }
 
-    // Get user details
     const user = await User.findById(userId);
     if (!user) {
       return res.status(404).json({ success: false, message: 'User not found' });
     }
 
-    // Calculate premium
     const age = primaryInsured.age || 30;
     const membersCount = members ? members.length + 1 : 1;
     const isSmoker = primaryInsured.isSmoker || false;
     
     const premiumCalculation = plan.calculatePremium(age, sumInsured, membersCount, isSmoker);
 
-    // Calculate add-ons total
     let addonTotal = 0;
     if (selectedAddons && selectedAddons.length > 0) {
       const planAddons = plan.addons || [];
@@ -316,18 +308,14 @@ router.post('/apply', auth, checkPhoneVerified, async (req, res) => {
       });
     }
 
-    // Calculate final premium with add-ons
     const finalPremium = premiumCalculation.totalPremium + addonTotal;
 
-    // Calculate end date (1 year from start)
     const start = new Date(startDate);
     const end = new Date(start);
     end.setFullYear(end.getFullYear() + 1);
 
-    // Generate booking ID
     const bookingId = 'INS' + Date.now().toString() + Math.floor(Math.random() * 1000).toString().padStart(3, '0');
 
-    // Create booking
     const booking = new Booking({
       userId: userId,
       bookingType: 'insurance',
@@ -348,7 +336,6 @@ router.post('/apply', auth, checkPhoneVerified, async (req, res) => {
       platformCommission: premiumCalculation.platformCommission,
       providerCommission: premiumCalculation.payoutToCompany,
       commissionStatus: 'pending',
-      // Insurance specific fields
       insurancePlanId: plan._id,
       insuranceCompanyName: plan.companyId.name,
       insurancePlanName: plan.planName,
@@ -364,7 +351,6 @@ router.post('/apply', auth, checkPhoneVerified, async (req, res) => {
 
     await booking.save();
 
-    // Create insurance policy
     const policy = new InsurancePolicy({
       bookingId: booking._id,
       planId: plan._id,
@@ -399,13 +385,11 @@ router.post('/apply', auth, checkPhoneVerified, async (req, res) => {
 
     await policy.save();
 
-    // Update booking with policy reference
     booking.insurancePolicyId = policy._id;
     await booking.save();
 
-    // Create Razorpay order
     const order = await razorpayService.createOrder({
-      amount: Math.round(finalPremium * 100), // In paise
+      amount: Math.round(finalPremium * 100),
       currency: 'INR',
       receipt: booking._id.toString(),
       notes: {
@@ -416,12 +400,10 @@ router.post('/apply', auth, checkPhoneVerified, async (req, res) => {
       }
     });
 
-    // Update booking with order ID
     booking.razorpayOrderId = order.id;
     booking.orderId = order.id;
     await booking.save();
 
-    // Create transaction
     const transaction = new Transaction({
       transactionId: Transaction.generateTransactionId(),
       applicationId: booking._id.toString(),
@@ -443,7 +425,6 @@ router.post('/apply', auth, checkPhoneVerified, async (req, res) => {
       providerAmount: premiumCalculation.payoutToCompany,
       commissionStatus: 'pending',
       settledToProvider: false,
-      // Insurance specific
       insurancePolicyId: policy._id,
       insurancePlanId: plan._id,
       premiumAmount: finalPremium,
@@ -457,7 +438,6 @@ router.post('/apply', auth, checkPhoneVerified, async (req, res) => {
 
     await transaction.save();
 
-    // Send notification
     if (notificationService && notificationService.sendEmail) {
       await notificationService.sendEmail(user.email, 'Insurance Application Initiated', {
         template: 'insurance_application',
@@ -501,7 +481,6 @@ router.post('/verify-payment', auth, async (req, res) => {
       });
     }
 
-    // Verify signature
     const isValid = razorpayService.verifyPaymentSignature({
       orderId,
       paymentId,
@@ -512,18 +491,15 @@ router.post('/verify-payment', auth, async (req, res) => {
       return res.status(400).json({ success: false, message: 'Invalid payment signature' });
     }
 
-    // Find booking
     const booking = await Booking.findById(bookingId);
     if (!booking) {
       return res.status(404).json({ success: false, message: 'Booking not found' });
     }
 
-    // Check if already paid
     if (booking.paymentStatus === 'paid') {
       return res.status(400).json({ success: false, message: 'Payment already verified' });
     }
 
-    // Update booking
     booking.paymentStatus = 'paid';
     booking.status = 'policy_issued';
     booking.paymentId = paymentId;
@@ -531,7 +507,6 @@ router.post('/verify-payment', auth, async (req, res) => {
     booking.razorpaySignature = signature;
     await booking.save();
 
-    // Update transaction
     const transaction = await Transaction.findOne({ bookingId: booking._id });
     if (transaction) {
       transaction.status = 'completed';
@@ -541,13 +516,11 @@ router.post('/verify-payment', auth, async (req, res) => {
       transaction.webhookReceived = true;
       await transaction.save();
 
-      // Calculate and process commission
       if (commissionService && commissionService.processInsuranceCommission) {
         await commissionService.processInsuranceCommission(transaction);
       }
     }
 
-    // Update policy
     const policy = await InsurancePolicy.findOne({ bookingId: booking._id });
     if (policy) {
       policy.status = 'active';
@@ -556,10 +529,8 @@ router.post('/verify-payment', auth, async (req, res) => {
       await policy.save();
     }
 
-    // Get user
     const user = await User.findById(booking.userId);
 
-    // Send confirmation notification
     if (user && notificationService && notificationService.sendEmail) {
       await notificationService.sendEmail(user.email, 'Insurance Policy Issued', {
         template: 'policy_issued',
@@ -602,7 +573,6 @@ router.get('/my-policies', auth, async (req, res) => {
       .populate('companyId', 'name companyLogo')
       .sort({ createdAt: -1 });
 
-    // Get booking details for each policy
     const policiesWithBooking = await Promise.all(policies.map(async (policy) => {
       const booking = await Booking.findById(policy.bookingId);
       return {
@@ -636,12 +606,10 @@ router.get('/my-policies/:id', auth, async (req, res) => {
       return res.status(404).json({ success: false, message: 'Policy not found' });
     }
 
-    // Check if user owns this policy
     if (policy.userId !== req.user.id && req.user.role !== 'admin') {
       return res.status(403).json({ success: false, message: 'Unauthorized' });
     }
 
-    // Get booking details
     const booking = await Booking.findById(policy.bookingId);
 
     res.json({
@@ -662,7 +630,7 @@ router.get('/my-policies/:id', auth, async (req, res) => {
   }
 });
 
-// Cancel policy (within free-look period)
+// Cancel policy
 router.post('/cancel-policy/:id', auth, async (req, res) => {
   try {
     const { reason } = req.body;
@@ -672,17 +640,14 @@ router.post('/cancel-policy/:id', auth, async (req, res) => {
       return res.status(404).json({ success: false, message: 'Policy not found' });
     }
 
-    // Check if user owns this policy
     if (policy.userId !== req.user.id) {
       return res.status(403).json({ success: false, message: 'Unauthorized' });
     }
 
-    // Check if policy is active
     if (policy.status !== 'active') {
       return res.status(400).json({ success: false, message: 'Only active policies can be cancelled' });
     }
 
-    // Check if within free-look period (15 days)
     const daysSincePurchase = (Date.now() - policy.createdAt) / (1000 * 60 * 60 * 24);
     if (daysSincePurchase > 15) {
       return res.status(400).json({ 
@@ -691,10 +656,8 @@ router.post('/cancel-policy/:id', auth, async (req, res) => {
       });
     }
 
-    // Cancel policy
     await policy.cancel(reason || 'Cancelled by customer', policy.totalAmount);
 
-    // Update booking
     const booking = await Booking.findById(policy.bookingId);
     if (booking) {
       booking.status = 'cancelled';
@@ -702,7 +665,6 @@ router.post('/cancel-policy/:id', auth, async (req, res) => {
       await booking.save();
     }
 
-    // Update transaction
     const transaction = await Transaction.findOne({ bookingId: policy.bookingId });
     if (transaction) {
       transaction.status = 'refunded';
@@ -726,7 +688,7 @@ router.post('/cancel-policy/:id', auth, async (req, res) => {
   }
 });
 
-// Get policy document
+// Download policy document
 router.get('/download-policy/:id', auth, async (req, res) => {
   try {
     const policy = await InsurancePolicy.findById(req.params.id);
@@ -735,7 +697,6 @@ router.get('/download-policy/:id', auth, async (req, res) => {
       return res.status(404).json({ success: false, message: 'Policy not found' });
     }
 
-    // Check if user owns this policy
     if (policy.userId !== req.user.id && req.user.role !== 'admin') {
       return res.status(403).json({ success: false, message: 'Unauthorized' });
     }
@@ -779,17 +740,14 @@ router.post('/claims', auth, async (req, res) => {
       return res.status(404).json({ success: false, message: 'Policy not found' });
     }
 
-    // Check if user owns this policy
     if (policy.userId !== req.user.id) {
       return res.status(403).json({ success: false, message: 'Unauthorized' });
     }
 
-    // Check if policy is active
     if (policy.status !== 'active') {
       return res.status(400).json({ success: false, message: 'Only active policies can file claims' });
     }
 
-    // Add claim
     await policy.addClaim({
       amount,
       description,
@@ -799,7 +757,6 @@ router.post('/claims', auth, async (req, res) => {
       documents: documents || []
     });
 
-    // Send notification
     const user = await User.findById(req.user.id);
     if (user && notificationService && notificationService.sendEmail) {
       await notificationService.sendEmail(user.email, 'Claim Submitted', {
@@ -836,7 +793,6 @@ router.get('/claims/:policyId', auth, async (req, res) => {
       return res.status(404).json({ success: false, message: 'Policy not found' });
     }
 
-    // Check if user owns this policy
     if (policy.userId !== req.user.id && req.user.role !== 'admin') {
       return res.status(403).json({ success: false, message: 'Unauthorized' });
     }
@@ -861,7 +817,6 @@ router.get('/claims/:policyId/:claimId', auth, async (req, res) => {
       return res.status(404).json({ success: false, message: 'Policy not found' });
     }
 
-    // Check if user owns this policy
     if (policy.userId !== req.user.id && req.user.role !== 'admin') {
       return res.status(403).json({ success: false, message: 'Unauthorized' });
     }
@@ -897,7 +852,6 @@ router.get('/stats', async (req, res) => {
     });
     const totalPolicies = await InsurancePolicy.countDocuments({ status: 'active' });
     
-    // Get claim settlement ratio (average across all plans)
     const plans = await InsurancePlan.find({ isActive: true });
     let avgSettlementRatio = 0;
     if (plans.length > 0) {
