@@ -222,11 +222,41 @@ router.post('/calculate-premium', async (req, res) => {
 });
 
 // ============================================
+// MIDDLEWARE - Check Phone Verification
+// ============================================
+
+const checkPhoneVerified = async (req, res, next) => {
+  try {
+    const user = await User.findById(req.user.id);
+    
+    if (!user.phoneVerified) {
+      return res.status(403).json({
+        success: false,
+        message: 'Phone verification required. Please verify your phone number first.',
+        requiresVerification: true,
+        data: {
+          phone: user.phone,
+          type: 'insurance_application'
+        }
+      });
+    }
+    
+    next();
+  } catch (error) {
+    console.error('Error checking phone verification:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Failed to check phone verification'
+    });
+  }
+};
+
+// ============================================
 // AUTHENTICATED ROUTES (Customer Only)
 // ============================================
 
 // Apply for insurance (creates booking and initiates payment)
-router.post('/apply', auth, async (req, res) => {
+router.post('/apply', auth, checkPhoneVerified, async (req, res) => {
   try {
     const {
       planId,
@@ -276,10 +306,10 @@ router.post('/apply', auth, async (req, res) => {
     // Calculate add-ons total
     let addonTotal = 0;
     if (selectedAddons && selectedAddons.length > 0) {
-      const addonIds = selectedAddons.map(a => a._id || a);
       const planAddons = plan.addons || [];
       selectedAddons.forEach(addon => {
-        const matchedAddon = planAddons.find(a => a._id.toString() === addon._id || a._id.toString() === addon);
+        const addonId = addon._id || addon;
+        const matchedAddon = planAddons.find(a => a._id.toString() === addonId.toString());
         if (matchedAddon) {
           addonTotal += matchedAddon.price || 0;
         }
@@ -428,16 +458,18 @@ router.post('/apply', auth, async (req, res) => {
     await transaction.save();
 
     // Send notification
-    await notificationService.sendEmail(user.email, 'Insurance Application Initiated', {
-      template: 'insurance_application',
-      data: {
-        name: user.name,
-        planName: plan.planName,
-        companyName: plan.companyId.name,
-        premium: finalPremium,
-        bookingId: booking._id
-      }
-    });
+    if (notificationService && notificationService.sendEmail) {
+      await notificationService.sendEmail(user.email, 'Insurance Application Initiated', {
+        template: 'insurance_application',
+        data: {
+          name: user.name,
+          planName: plan.planName,
+          companyName: plan.companyId.name,
+          premium: finalPremium,
+          bookingId: booking._id
+        }
+      });
+    }
 
     res.json({
       success: true,
@@ -510,7 +542,9 @@ router.post('/verify-payment', auth, async (req, res) => {
       await transaction.save();
 
       // Calculate and process commission
-      await commissionService.processInsuranceCommission(transaction);
+      if (commissionService && commissionService.processInsuranceCommission) {
+        await commissionService.processInsuranceCommission(transaction);
+      }
     }
 
     // Update policy
@@ -526,7 +560,7 @@ router.post('/verify-payment', auth, async (req, res) => {
     const user = await User.findById(booking.userId);
 
     // Send confirmation notification
-    if (user) {
+    if (user && notificationService && notificationService.sendEmail) {
       await notificationService.sendEmail(user.email, 'Insurance Policy Issued', {
         template: 'policy_issued',
         data: {
@@ -710,8 +744,6 @@ router.get('/download-policy/:id', auth, async (req, res) => {
       return res.status(404).json({ success: false, message: 'Policy document not available' });
     }
 
-    // Here you would generate or fetch the PDF document
-    // For now, return the URL
     res.json({
       success: true,
       data: {
@@ -769,7 +801,7 @@ router.post('/claims', auth, async (req, res) => {
 
     // Send notification
     const user = await User.findById(req.user.id);
-    if (user) {
+    if (user && notificationService && notificationService.sendEmail) {
       await notificationService.sendEmail(user.email, 'Claim Submitted', {
         template: 'claim_submitted',
         data: {
