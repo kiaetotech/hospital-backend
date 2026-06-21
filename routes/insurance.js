@@ -33,11 +33,66 @@ router.get('/plans', async (req, res) => {
       search,
       sort,
       page = 1,
-      limit = 20
+      limit = 20,
+      // 🆕 Search criteria from InsuranceSearchForm
+      age,
+      pincode,
+      members
     } = req.query;
 
     const query = { isActive: true };
 
+    // ============================================
+    // 🆕 FILTER BY AGE
+    // ============================================
+    if (age) {
+      const userAge = parseInt(age);
+      if (userAge >= 60) {
+        // Senior citizen - show senior citizen and family floater plans
+        query.$or = [
+          { planType: 'senior_citizen' },
+          { planType: 'family_floater' }
+        ];
+      } else if (userAge >= 40) {
+        // Mid-age - show all except critical illness (unless specifically requested)
+        // No filter - show all
+      } else if (userAge < 40) {
+        // Young - prioritize individual and family floater
+        // No filter - show all
+      }
+    }
+
+    // ============================================
+    // 🆕 FILTER BY MEMBERS (Family Floater priority)
+    // ============================================
+    if (members) {
+      try {
+        const membersData = JSON.parse(members);
+        const memberCount = Object.values(membersData).filter(v => v).length;
+        
+        if (memberCount > 1) {
+          // If multiple members selected, prioritize family floater plans
+          query.$or = [
+            { planType: 'family_floater' },
+            { planType: 'family_floater' } // This ensures family floater appears first
+          ];
+        }
+      } catch (e) {
+        console.log('Error parsing members:', e);
+      }
+    }
+
+    // ============================================
+    // 🆕 FILTER BY PINCODE (Network hospitals)
+    // ============================================
+    if (pincode) {
+      // This will be used to show network hospitals in that area
+      // For now, just log it
+      console.log('Pincode filter:', pincode);
+      // In future: filter plans that have network hospitals in this pincode
+    }
+
+    // Existing filters
     if (planType && planType !== 'all') query.planType = planType;
     if (companyId) query.companyId = companyId;
     if (isFeatured === 'true') query.isFeatured = true;
@@ -59,7 +114,20 @@ router.get('/plans', async (req, res) => {
       query.$text = { $search: search };
     }
 
+    // Sorting
     let sortCriteria = { isFeatured: -1, rating: -1 };
+    
+    // 🆕 If multiple members selected, prioritize family floater
+    if (members) {
+      try {
+        const membersData = JSON.parse(members);
+        const memberCount = Object.values(membersData).filter(v => v).length;
+        if (memberCount > 1) {
+          sortCriteria = { planType: 1, ...sortCriteria }; // family floater first
+        }
+      } catch (e) {}
+    }
+
     if (sort === 'popular') {
       sortCriteria = { views: -1, applications: -1 };
     } else if (sort === 'rating') {
@@ -83,14 +151,43 @@ router.get('/plans', async (req, res) => {
 
     const total = await InsurancePlan.countDocuments(query);
 
+    // ============================================
+    // 🆕 ADD PERSONALIZED PRICE (Based on age)
+    // ============================================
+    let personalizedPlans = plans;
+    if (age) {
+      const userAge = parseInt(age);
+      personalizedPlans = plans.map(plan => {
+        const planObj = plan.toObject();
+        // Calculate personalized premium based on age
+        let personalizedPremium = plan.basePremium;
+        if (userAge > 60) {
+          personalizedPremium = personalizedPremium * 1.5; // 50% loading for senior
+        } else if (userAge > 50) {
+          personalizedPremium = personalizedPremium * 1.2; // 20% loading
+        } else if (userAge < 25) {
+          personalizedPremium = personalizedPremium * 0.9; // 10% discount for young
+        }
+        planObj.personalizedPremium = Math.round(personalizedPremium);
+        planObj.monthlyPrice = Math.round(personalizedPremium / 12);
+        return planObj;
+      });
+    }
+
     res.json({
       success: true,
-      data: plans,
+      data: personalizedPlans,
       pagination: {
         page: parseInt(page),
         limit: parseInt(limit),
         total,
         pages: Math.ceil(total / limit)
+      },
+      // 🆕 Return search criteria for frontend
+      searchCriteria: {
+        age: age || null,
+        pincode: pincode || null,
+        members: members || null
       }
     });
   } catch (error) {
@@ -205,6 +302,9 @@ router.post('/calculate-premium', async (req, res) => {
       isSmoker || false
     );
 
+    // 🆕 Add monthly price
+    calculation.monthlyPrice = Math.round(calculation.totalPremium / 12);
+
     res.json({
       success: true,
       data: calculation,
@@ -268,7 +368,10 @@ router.post('/apply', auth, checkPhoneVerified, async (req, res) => {
       nominee,
       medicalHistory,
       declarations,
-      termsAccepted
+      termsAccepted,
+      // 🆕 From search form
+      phone,
+      pincode
     } = req.body;
 
     const userId = req.user.id;
@@ -323,7 +426,7 @@ router.post('/apply', auth, checkPhoneVerified, async (req, res) => {
       userId: userId,
       bookingType: 'insurance',
       patientName: primaryInsured.name || user.name,
-      patientPhone: user.phone,
+      patientPhone: phone || user.phone,
       patientEmail: user.email,
       patientAge: primaryInsured.age,
       patientGender: primaryInsured.gender,
@@ -349,7 +452,9 @@ router.post('/apply', auth, checkPhoneVerified, async (req, res) => {
       policyEndDate: end,
       policyRenewalDate: end,
       insuranceSettlementStatus: 'pending',
-      bookingId: bookingId
+      bookingId: bookingId,
+      // 🆕 Store pincode
+      homeAddress: pincode ? `Pincode: ${pincode}` : undefined
     });
 
     await booking.save();
@@ -454,6 +559,19 @@ router.post('/apply', auth, checkPhoneVerified, async (req, res) => {
       });
     }
 
+    // 🆕 Send SMS notification with OTP if phone provided
+    if (phone && notificationService && notificationService.sendSMS) {
+      try {
+        await notificationService.sendSMS(phone, 'insurance_application_initiated', {
+          name: user.name,
+          planName: plan.planName,
+          bookingId: booking._id
+        });
+      } catch (smsError) {
+        console.log('SMS notification failed:', smsError);
+      }
+    }
+
     res.json({
       success: true,
       data: {
@@ -547,6 +665,19 @@ router.post('/verify-payment', auth, async (req, res) => {
           endDate: booking.policyEndDate
         }
       });
+    }
+
+    // 🆕 Send SMS notification
+    if (user && notificationService && notificationService.sendSMS) {
+      try {
+        await notificationService.sendSMS(user.phone, 'policy_issued', {
+          name: user.name,
+          policyNumber: policy?.policyNumber,
+          premium: booking.finalAmount
+        });
+      } catch (smsError) {
+        console.log('SMS notification failed:', smsError);
+      }
     }
 
     res.json({
@@ -877,6 +1008,39 @@ router.get('/stats', async (req, res) => {
   } catch (error) {
     console.error('Error fetching stats:', error);
     res.status(500).json({ success: false, message: 'Failed to fetch stats' });
+  }
+});
+
+// ============================================
+// 🆕 SEARCH SUGGESTIONS
+// ============================================
+
+// Get search suggestions based on query
+router.get('/search-suggestions', async (req, res) => {
+  try {
+    const { q } = req.query;
+    if (!q || q.length < 2) {
+      return res.json({ success: true, data: [] });
+    }
+
+    const suggestions = await InsurancePlan.find({
+      isActive: true,
+      $or: [
+        { planName: { $regex: q, $options: 'i' } },
+        { description: { $regex: q, $options: 'i' } },
+        { tags: { $regex: q, $options: 'i' } }
+      ]
+    })
+      .limit(5)
+      .select('planName companyId description');
+
+    res.json({
+      success: true,
+      data: suggestions
+    });
+  } catch (error) {
+    console.error('Error fetching search suggestions:', error);
+    res.status(500).json({ success: false, message: 'Failed to fetch suggestions' });
   }
 });
 
