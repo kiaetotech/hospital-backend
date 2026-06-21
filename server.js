@@ -80,7 +80,7 @@ global.authenticatePatient = authenticatePatient;
 global.authenticateLender = authenticateLender;
 
 // ============================================
-// EXISTING ROUTES
+// EXISTING ROUTES (PRESERVED)
 // ============================================
 const hospitalRoutes = require('./routes/hospitals');
 const authRoutes = require('./routes/auth');
@@ -102,12 +102,12 @@ const lenderAuthRoutes = require('./routes/lenderAuth');
 const adminLenderRoutes = require('./routes/adminLender');
 
 // ============================================
-// LENDER ROUTES
+// LENDER ROUTES (PRESERVED)
 // ============================================
 const lenderRoutes = require('./routes/lender');
 
 // ============================================
-// LOAN MODULE ROUTES
+// LOAN MODULE ROUTES (PRESERVED)
 // ============================================
 const loanPatientRoutes = require('./routes/loanPatient');
 const loanLenderRoutes = require('./routes/loanLender');
@@ -115,12 +115,12 @@ const loanAdminRoutes = require('./routes/loanAdmin');
 const loanWebhookRoutes = require('./routes/loanWebhook');
 
 // ============================================
-// PAYMENT MODULE ROUTES
+// PAYMENT MODULE ROUTES (PRESERVED)
 // ============================================
 const webhookRoutes = require('./routes/webhooks');
 
 // ============================================
-// AYURVEDA MODULE ROUTES
+// AYURVEDA MODULE ROUTES (PRESERVED)
 // ============================================
 const ayurvedaRoutes = require('./routes/ayurveda-advanced');
 const ayurvedaCenterRoutes = require('./routes/ayurveda-centers');
@@ -128,12 +128,23 @@ const ayurvedaPrescriptionRoutes = require('./routes/ayurveda-prescriptions');
 const ayurvedaReportRoutes = require('./routes/ayurveda-reports');
 
 // ============================================
-// HOMEOPATHY MODULE ROUTES
+// HOMEOPATHY MODULE ROUTES (PRESERVED)
 // ============================================
 const homeopathyRoutes = require('./routes/homeopathy');
 
 // ============================================
-// USE ROUTES
+// 🆕 INSURANCE MODULE ROUTES (ADDED)
+// ============================================
+const insuranceRoutes = require('./routes/insurance');
+const insuranceAdminRoutes = require('./routes/insurance-admin');
+
+// ============================================
+// 🆕 OTP MODULE ROUTES (ADDED)
+// ============================================
+const otpRoutes = require('./routes/otp');
+
+// ============================================
+// USE EXISTING ROUTES (PRESERVED)
 // ============================================
 app.use('/api/hospitals', hospitalRoutes);
 app.use('/api/auth', authRoutes);
@@ -156,12 +167,12 @@ app.use('/api/lender/auth', lenderAuthRoutes);
 app.use('/api/admin/lenders', adminLenderRoutes);
 
 // ============================================
-// LENDER ROUTES
+// LENDER ROUTES (PRESERVED)
 // ============================================
 app.use('/api/lender', lenderRoutes);
 
 // ============================================
-// LOAN ROUTES
+// LOAN ROUTES (PRESERVED)
 // ============================================
 app.use('/api/loan/patient', loanPatientRoutes);
 app.use('/api/loan/lender', loanLenderRoutes);
@@ -169,12 +180,12 @@ app.use('/api/loan/admin', loanAdminRoutes);
 app.use('/api/loan/webhook', loanWebhookRoutes);
 
 // ============================================
-// PAYMENT ROUTES
+// PAYMENT ROUTES (PRESERVED)
 // ============================================
 app.use('/api/webhooks', webhookRoutes);
 
 // ============================================
-// AYURVEDA ROUTES
+// AYURVEDA ROUTES (PRESERVED)
 // ============================================
 app.use('/api/ayurveda', ayurvedaRoutes);
 app.use('/api/ayurveda-centers', ayurvedaCenterRoutes);
@@ -183,12 +194,23 @@ app.use('/api/ayurveda/reports', ayurvedaReportRoutes);
 app.use('/api/ayurveda/payments', razorpayRoutes);
 
 // ============================================
-// HOMEOPATHY ROUTES
+// HOMEOPATHY ROUTES (PRESERVED)
 // ============================================
 app.use('/api/homeopathy', homeopathyRoutes);
 
 // ============================================
-// HEALTH CHECK
+// 🆕 INSURANCE ROUTES (ADDED)
+// ============================================
+app.use('/api/insurance', insuranceRoutes);
+app.use('/api/insurance-admin', insuranceAdminRoutes);
+
+// ============================================
+// 🆕 OTP ROUTES (ADDED)
+// ============================================
+app.use('/api/otp', otpRoutes);
+
+// ============================================
+// HEALTH CHECK (PRESERVED)
 // ============================================
 app.get('/health', (req, res) => {
   res.json({ status: 'ok', message: 'Server is running' });
@@ -199,7 +221,42 @@ app.get('/api/test', (req, res) => {
 });
 
 // ============================================
-// ERROR HANDLING
+// 🆕 INSURANCE HEALTH CHECK (ADDED)
+// ============================================
+app.get('/api/insurance/health', (req, res) => {
+  res.json({
+    success: true,
+    module: 'Insurance',
+    status: 'active',
+    endpoints: {
+      plans: '/api/insurance/plans',
+      apply: '/api/insurance/apply',
+      policies: '/api/insurance/my-policies',
+      claims: '/api/insurance/claims',
+      admin: '/api/insurance-admin'
+    }
+  });
+});
+
+// ============================================
+// 🆕 OTP HEALTH CHECK (ADDED)
+// ============================================
+app.get('/api/otp/health', (req, res) => {
+  res.json({
+    success: true,
+    module: 'OTP',
+    status: 'active',
+    endpoints: {
+      send: '/api/otp/send',
+      verify: '/api/otp/verify',
+      resend: '/api/otp/resend',
+      status: '/api/otp/status'
+    }
+  });
+});
+
+// ============================================
+// ERROR HANDLING (PRESERVED)
 // ============================================
 app.use((err, req, res, next) => {
   console.error('Error:', err);
@@ -207,7 +264,7 @@ app.use((err, req, res, next) => {
 });
 
 // ============================================
-// MONGODB CONNECTION
+// MONGODB CONNECTION (PRESERVED)
 // ============================================
 const DB_URI = process.env.DB_URI || 'mongodb://localhost:27017/hospital_db';
 mongoose.connect(DB_URI, {
@@ -218,7 +275,7 @@ mongoose.connect(DB_URI, {
   .catch(err => console.error('❌ MongoDB error:', err));
 
 // ============================================
-// SERVER START
+// SERVER START (PRESERVED + UPDATED)
 // ============================================
 const PORT = process.env.PORT || 5000;
 app.listen(PORT, () => {
@@ -228,4 +285,23 @@ app.listen(PORT, () => {
   console.log(`🔗 Webhook routes available at /api/webhooks/*`);
   console.log(`🧘 Ayurveda module available at /api/ayurveda/*`);
   console.log(`🌿 Homeopathy module available at /api/homeopathy/*`);
+  console.log(`🛡️ Insurance module available at /api/insurance/*`);
+  console.log(`🛡️ Insurance Admin available at /api/insurance-admin/*`);
+  console.log(`📱 OTP module available at /api/otp/*`);
+  console.log(`✅ All modules loaded successfully!`);
+});
+
+// ============================================
+// UNHANDLED REJECTION HANDLER (PRESERVED)
+// ============================================
+process.on('unhandledRejection', (err) => {
+  console.error('❌ Unhandled Rejection:', err);
+});
+
+// ============================================
+// UNCAUGHT EXCEPTION HANDLER (PRESERVED)
+// ============================================
+process.on('uncaughtException', (err) => {
+  console.error('❌ Uncaught Exception:', err);
+  process.exit(1);
 });

@@ -7,7 +7,22 @@ const bookingSchema = new mongoose.Schema({
   
   // Common fields for all booking types
   userId: { type: String, required: true },
-  bookingType: { type: String, enum: ['opd', 'admission', 'ambulance', 'labtest', 'health_package', 'caregiver', 'ayurveda_consultation', 'homeopathy_consult', 'homeopathy_medicine'], required: true },
+  bookingType: { 
+    type: String, 
+    enum: [
+      'opd', 
+      'admission', 
+      'ambulance', 
+      'labtest', 
+      'health_package', 
+      'caregiver', 
+      'ayurveda_consultation', 
+      'homeopathy_consult', 
+      'homeopathy_medicine',
+      'insurance'  // ✅ NEW INSURANCE TYPE ADDED
+    ], 
+    required: true 
+  },
   patientName: { type: String, required: true },
   patientPhone: { type: String, required: true },
   patientAge: { type: Number },
@@ -18,10 +33,30 @@ const bookingSchema = new mongoose.Schema({
   originalAmount: { type: Number, required: true },
   discount: { type: Number, default: 0 },
   finalAmount: { type: Number, required: true },
-  paymentStatus: { type: String, enum: ['pending', 'paid', 'failed', 'refunded', 'partially_refunded'], default: 'pending' },
+  paymentStatus: { 
+    type: String, 
+    enum: ['pending', 'paid', 'failed', 'refunded', 'partially_refunded'], 
+    default: 'pending' 
+  },
   paymentId: { type: String },
   orderId: { type: String },
-  status: { type: String, enum: ['pending', 'confirmed', 'sample_collected', 'processing', 'report_ready', 'completed', 'cancelled', 'shipped', 'out_for_delivery', 'delivered'], default: 'pending' },
+  status: { 
+    type: String, 
+    enum: [
+      'pending', 
+      'confirmed', 
+      'sample_collected', 
+      'processing', 
+      'report_ready', 
+      'completed', 
+      'cancelled', 
+      'shipped', 
+      'out_for_delivery', 
+      'delivered',
+      'policy_issued'  // ✅ NEW STATUS FOR INSURANCE
+    ], 
+    default: 'pending' 
+  },
   createdAt: { type: Date, default: Date.now },
   
   // Hospital/OPD/Admission fields
@@ -45,7 +80,22 @@ const bookingSchema = new mongoose.Schema({
   
   // Status tracking fields
   statusHistory: [{
-    status: { type: String, enum: ['pending', 'confirmed', 'sample_collected', 'processing', 'report_ready', 'completed', 'cancelled', 'shipped', 'out_for_delivery', 'delivered'] },
+    status: { 
+      type: String, 
+      enum: [
+        'pending', 
+        'confirmed', 
+        'sample_collected', 
+        'processing', 
+        'report_ready', 
+        'completed', 
+        'cancelled', 
+        'shipped', 
+        'out_for_delivery', 
+        'delivered',
+        'policy_issued'  // ✅ NEW STATUS FOR INSURANCE
+      ] 
+    },
     timestamp: { type: Date, default: Date.now },
     note: { type: String }
   }],
@@ -92,10 +142,70 @@ const bookingSchema = new mongoose.Schema({
   deliveryOTP: { type: String },
   
   // Medicine order fields
-  medicines: [{ name: String, potency: String, quantity: Number, price: Number }],
+  medicines: [{ 
+    name: String, 
+    potency: String, 
+    quantity: Number, 
+    price: Number 
+  }],
   deliveryAddress: { type: String },
   trackingNumber: { type: String },
-  deliveryStatus: { type: String, enum: ['processing', 'shipped', 'out_for_delivery', 'delivered'] }
+  deliveryStatus: { type: String, enum: ['processing', 'shipped', 'out_for_delivery', 'delivered'] },
+
+  // ============================================
+  // NEW INSURANCE-SPECIFIC FIELDS (ADDED)
+  // ============================================
+  
+  // Insurance policy reference
+  insurancePolicyId: { type: mongoose.Schema.Types.ObjectId, ref: 'InsurancePolicy' },
+  insurancePlanId: { type: mongoose.Schema.Types.ObjectId, ref: 'InsurancePlan' },
+  
+  // Insurance details
+  insuranceCompanyName: { type: String },
+  insurancePlanName: { type: String },
+  policyNumber: { type: String },
+  sumInsured: { type: Number },
+  premiumAmount: { type: Number },
+  
+  // Insurance members (for family floater)
+  insuranceMembers: [{
+    name: { type: String },
+    relation: { type: String },
+    age: { type: Number },
+    gender: { type: String },
+    aadhaar: { type: String },
+    pan: { type: String }
+  }],
+  
+  // Insurance dates
+  policyStartDate: { type: Date },
+  policyEndDate: { type: Date },
+  policyRenewalDate: { type: Date },
+  
+  // Insurance claim details (if any)
+  insuranceClaimId: { type: String },
+  claimAmount: { type: Number },
+  claimStatus: { 
+    type: String, 
+    enum: ['none', 'initiated', 'document_uploaded', 'under_review', 'approved', 'rejected', 'settled'],
+    default: 'none'
+  },
+  claimDocuments: [{ type: String }],
+  claimSettledAt: { type: Date },
+
+  // Insurance settlement details
+  insuranceSettlementStatus: { 
+    type: String, 
+    enum: ['pending', 'processing', 'completed', 'failed'],
+    default: 'pending'
+  },
+  insuranceSettlementDate: { type: Date },
+  insuranceSettlementTransactionId: { type: String },
+  
+  // Insurance document URLs
+  insurancePolicyDocumentUrl: { type: String },
+  insuranceCertificateUrl: { type: String },
+  insuranceProposalFormUrl: { type: String }
 });
 
 // ============================================
@@ -105,6 +215,9 @@ const bookingSchema = new mongoose.Schema({
 bookingSchema.pre('save', function(next) {
   if (!this.bookingId && this.bookingType === 'labtest') {
     this.bookingId = 'LAB' + Date.now() + Math.floor(Math.random() * 1000);
+  }
+  if (!this.bookingId && this.bookingType === 'insurance') {
+    this.bookingId = 'INS' + Date.now() + Math.floor(Math.random() * 1000);
   }
   if (this.isModified('status') && (!this.statusHistory || this.statusHistory.length === 0)) {
     this.statusHistory = this.statusHistory || [];
@@ -140,6 +253,33 @@ bookingSchema.methods.isRefundable = function() {
 bookingSchema.methods.canCancel = function() {
   const cancelableStatuses = ['pending', 'confirmed'];
   return cancelableStatuses.includes(this.status);
+};
+
+// ============================================
+// NEW: Insurance-specific methods (ADDED)
+// ============================================
+
+bookingSchema.methods.isInsuranceBooking = function() {
+  return this.bookingType === 'insurance';
+};
+
+bookingSchema.methods.hasActivePolicy = function() {
+  if (this.bookingType !== 'insurance') return false;
+  return this.status === 'policy_issued' || this.status === 'completed';
+};
+
+bookingSchema.methods.isPolicyExpired = function() {
+  if (this.bookingType !== 'insurance') return false;
+  if (!this.policyEndDate) return false;
+  return new Date() > this.policyEndDate;
+};
+
+bookingSchema.methods.getDaysRemaining = function() {
+  if (this.bookingType !== 'insurance') return 0;
+  if (!this.policyEndDate) return 0;
+  const now = new Date();
+  const diff = this.policyEndDate - now;
+  return Math.ceil(diff / (1000 * 60 * 60 * 24));
 };
 
 module.exports = mongoose.model('Booking', bookingSchema);

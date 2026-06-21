@@ -13,11 +13,26 @@ const transactionSchema = new mongoose.Schema({
   applicationId: { type: String, required: true },
   lenderId: { type: String, required: true },
   
-  type: { type: String, enum: ['disbursal', 'commission_payment', 'refund', 'booking_payment', 'subscription', 'payout'] },
+  type: { 
+    type: String, 
+    enum: [
+      'disbursal', 
+      'commission_payment', 
+      'refund', 
+      'booking_payment', 
+      'subscription', 
+      'payout',
+      'insurance_premium'  // ✅ NEW INSURANCE TYPE
+    ] 
+  },
   amount: Number,
   commissionAmount: Number,  // Platform commission from this transaction
   
-  status: { type: String, enum: ['pending', 'completed', 'failed', 'initiated', 'captured', 'refunded', 'partially_refunded'], default: 'pending' },
+  status: { 
+    type: String, 
+    enum: ['pending', 'completed', 'failed', 'initiated', 'captured', 'refunded', 'partially_refunded'], 
+    default: 'pending' 
+  },
   
   // Payment details
   paymentGateway: String,  // 'razorpay', 'bank_transfer', etc.
@@ -53,7 +68,19 @@ const transactionSchema = new mongoose.Schema({
   
   // Booking/Service details (for non-loan transactions)
   bookingId: { type: mongoose.Schema.Types.ObjectId, ref: 'Booking' },
-  bookingType: { type: String, enum: ['opd', 'admission', 'ambulance', 'labtest', 'health_package', 'caregiver', 'loan'] },
+  bookingType: { 
+    type: String, 
+    enum: [
+      'opd', 
+      'admission', 
+      'ambulance', 
+      'labtest', 
+      'health_package', 
+      'caregiver', 
+      'loan',
+      'insurance'  // ✅ NEW INSURANCE TYPE
+    ] 
+  },
   userId: { type: String }, // Patient/User ID
   providerId: { type: mongoose.Schema.Types.ObjectId, ref: 'Provider' }, // Hospital/Lab/Caregiver
   
@@ -98,7 +125,45 @@ const transactionSchema = new mongoose.Schema({
   // Metadata
   notes: { type: String },
   metadata: { type: mongoose.Schema.Types.Mixed },
-  webhookPayload: { type: mongoose.Schema.Types.Mixed }
+  webhookPayload: { type: mongoose.Schema.Types.Mixed },
+
+  // ============================================
+  // NEW INSURANCE-SPECIFIC FIELDS (ADDED)
+  // ============================================
+  
+  // Insurance policy reference
+  insurancePolicyId: { type: mongoose.Schema.Types.ObjectId, ref: 'InsurancePolicy' },
+  insurancePlanId: { type: mongoose.Schema.Types.ObjectId, ref: 'InsurancePlan' },
+  
+  // Insurance premium details
+  premiumAmount: { type: Number },
+  gstAmount: { type: Number, default: 0 },
+  totalPremium: { type: Number },
+  policyNumber: { type: String },
+  
+  // Insurance commission breakdown
+  insuranceCommissionRate: { type: Number, default: 15 }, // Platform commission percentage
+  insurancePlatformCommission: { type: Number, default: 0 },
+  insurancePayoutToCompany: { type: Number, default: 0 },
+  
+  // Insurance settlement
+  insuranceSettlementStatus: { 
+    type: String, 
+    enum: ['pending', 'processing', 'completed', 'failed'],
+    default: 'pending'
+  },
+  insuranceSettlementDate: { type: Date },
+  insuranceSettlementTransactionId: { type: String },
+  
+  // Insurance claim payment
+  claimPaymentId: { type: String },
+  claimAmount: { type: Number },
+  claimSettlementDate: { type: Date },
+  
+  // Insurance renewal
+  isRenewal: { type: Boolean, default: false },
+  previousPolicyNumber: { type: String },
+  renewalYear: { type: Number }
 });
 
 // ============================================
@@ -115,6 +180,9 @@ transactionSchema.index({ userId: 1 });
 transactionSchema.index({ providerId: 1 });
 transactionSchema.index({ status: 1 });
 transactionSchema.index({ createdAt: -1 });
+transactionSchema.index({ insurancePolicyId: 1 }); // ✅ NEW
+transactionSchema.index({ policyNumber: 1 }); // ✅ NEW
+transactionSchema.index({ insuranceSettlementStatus: 1 }); // ✅ NEW
 
 // ============================================
 // VIRTUAL FIELDS
@@ -137,6 +205,19 @@ transactionSchema.virtual('balanceDue').get(function() {
     return 0;
   }
   return this.amount || this.netAmount || 0;
+});
+
+// ============================================
+// NEW INSURANCE VIRTUAL FIELDS (ADDED)
+// ============================================
+
+transactionSchema.virtual('isInsuranceTransaction').get(function() {
+  return this.bookingType === 'insurance' || this.type === 'insurance_premium';
+});
+
+transactionSchema.virtual('netPayoutToCompany').get(function() {
+  if (!this.isInsuranceTransaction) return 0;
+  return this.totalPremium - this.insurancePlatformCommission;
 });
 
 // ============================================
@@ -192,6 +273,42 @@ transactionSchema.methods.markCommissionPaid = function(paymentId) {
 };
 
 // ============================================
+// NEW INSURANCE-SPECIFIC METHODS (ADDED)
+// ============================================
+
+transactionSchema.methods.markInsuranceSettlementCompleted = function(transactionId) {
+  this.insuranceSettlementStatus = 'completed';
+  this.insuranceSettlementDate = new Date();
+  this.insuranceSettlementTransactionId = transactionId;
+  this.settledToProvider = true;
+  this.settledAt = new Date();
+  this.updatedAt = new Date();
+  return this.save();
+};
+
+transactionSchema.methods.markInsuranceCommissionPaid = function(paymentId) {
+  this.commissionStatus = 'paid';
+  this.commissionPaidAt = new Date();
+  this.commissionPaymentId = paymentId;
+  this.updatedAt = new Date();
+  return this.save();
+};
+
+transactionSchema.methods.calculateInsuranceCommission = function() {
+  if (!this.isInsuranceTransaction) return 0;
+  const rate = this.insuranceCommissionRate || 15;
+  this.insurancePlatformCommission = (this.totalPremium * rate) / 100;
+  this.insurancePayoutToCompany = this.totalPremium - this.insurancePlatformCommission;
+  this.platformCommission = this.insurancePlatformCommission;
+  this.providerAmount = this.insurancePayoutToCompany;
+  return {
+    platformCommission: this.insurancePlatformCommission,
+    payoutToCompany: this.insurancePayoutToCompany,
+    commissionRate: rate
+  };
+};
+
+// ============================================
 // STATIC METHODS
 // ============================================
 
@@ -200,6 +317,25 @@ transactionSchema.statics.generateTransactionId = function() {
   const timestamp = Date.now().toString(36).toUpperCase();
   const random = Math.random().toString(36).substring(2, 6).toUpperCase();
   return `${prefix}_${timestamp}_${random}`;
+};
+
+// ============================================
+// NEW INSURANCE STATIC METHODS (ADDED)
+// ============================================
+
+transactionSchema.statics.getInsuranceTransactions = function(userId) {
+  return this.find({ 
+    userId: userId, 
+    bookingType: 'insurance' 
+  }).sort({ createdAt: -1 });
+};
+
+transactionSchema.statics.getInsuranceSettlements = function(status) {
+  const query = { bookingType: 'insurance' };
+  if (status) {
+    query.insuranceSettlementStatus = status;
+  }
+  return this.find(query).sort({ createdAt: -1 });
 };
 
 // ============================================

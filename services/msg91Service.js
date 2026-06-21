@@ -153,11 +153,97 @@ const sendOTP = async (mobile, messagePrefix = 'Your KiaetoCare OTP is') => {
   };
 };
 
+// ============================================
+// 🆕 AYURVEDA NOTIFICATION METHODS
+// ============================================
+
+const FRONTEND_URL = process.env.FRONTEND_URL || 'https://hospital-frontend-kiaeto.vercel.app';
+
+// Patient: Booking confirmation
+const sendBookingConfirmation = async (phone, bookingData) => {
+  const message = `Booking Confirmed! Dr. ${bookingData.doctorName}, Date: ${new Date(bookingData.date).toLocaleDateString('en-IN')}, Time: ${bookingData.time}. ID: ${bookingData.bookingId}. - Ayurveda Wellness Hub`;
+  return await sendSMS(phone, message);
+};
+
+// Patient: Payment received
+const sendPaymentConfirmation = async (phone, amount, bookingId) => {
+  const message = `Payment of Rs.${amount} received for booking ${bookingId}. Your consultation is confirmed. - Ayurveda Wellness Hub`;
+  return await sendSMS(phone, message);
+};
+
+// Doctor: New booking alert
+const sendDoctorNewBookingAlert = async (phone, patientName, date, time) => {
+  const message = `New Booking! Patient: ${patientName}, Date: ${new Date(date).toLocaleDateString('en-IN')}, Time: ${time}. Check dashboard. - Ayurveda Wellness Hub`;
+  return await sendSMS(phone, message);
+};
+
+// Doctor/Center: Verification approved
+const sendVerificationApproved = async (phone, name) => {
+  const message = `Congratulations ${name}! Your profile has been verified and is now live on Ayurveda Wellness Hub. Start receiving patients!`;
+  return await sendSMS(phone, message);
+};
+
+// Doctor/Center: Verification rejected
+const sendVerificationRejected = async (phone, reason) => {
+  const message = `Your verification was not approved. Reason: ${reason || 'Documents incomplete'}. Please re-submit. - Ayurveda Wellness Hub`;
+  return await sendSMS(phone, message);
+};
+
+// Center: New package booking
+const sendCenterBookingAlert = async (phone, patientName, packageName, date) => {
+  const message = `New Panchakarma Booking! Patient: ${patientName}, Package: ${packageName}, Date: ${new Date(date).toLocaleDateString('en-IN')}. - Ayurveda Wellness Hub`;
+  return await sendSMS(phone, message);
+};
+
+// Patient: Booking reminder (1 hour before)
+const sendBookingReminder = async (phone, doctorName, time) => {
+  const message = `Reminder: Your consultation with Dr. ${doctorName} is at ${time} today. Please be on time. - Ayurveda Wellness Hub`;
+  return await sendSMS(phone, message);
+};
+
+// Patient: Review request (after consultation)
+const sendReviewRequest = async (phone, bookingId, doctorName) => {
+  const message = `How was your consultation with Dr. ${doctorName}? Share feedback: ${FRONTEND_URL}/ayurveda/review/${bookingId}`;
+  return await sendSMS(phone, message);
+};
+
+// Doctor/Center: Payout processed
+const sendPayoutNotification = async (phone, amount) => {
+  const message = `Your payout of Rs.${amount} has been processed. Will be credited within 2-3 business days. - Ayurveda Wellness Hub`;
+  return await sendSMS(phone, message);
+};
+
+// Patient: Prescription ready
+const sendPrescriptionReady = async (phone, doctorName) => {
+  const message = `Your e-prescription from Dr. ${doctorName} is ready. View it in My Bookings. - Ayurveda Wellness Hub`;
+  return await sendSMS(phone, message);
+};
+
+// Welcome message for new doctor/center registration
+const sendWelcomeRegistration = async (phone, name, type) => {
+  const message = `Welcome ${name}! Your ${type} registration is submitted. We will verify your documents within 24-48 hours. - Ayurveda Wellness Hub`;
+  return await sendSMS(phone, message);
+};
+
 module.exports = {
+  // Existing exports (DO NOT DELETE)
   sendSMS,
   sendOTP,
   generateOTP,
   saveOTP,
   verifyOTP,
-  otpStore
+  otpStore,
+  
+  // 🆕 Ayurveda notification exports
+  sendBookingConfirmation,
+  sendPaymentConfirmation,
+  sendDoctorNewBookingAlert,
+  sendVerificationApproved,
+  sendVerificationRejected,
+  sendCenterBookingAlert,
+  sendBookingReminder,
+  sendReviewRequest,
+  sendPayoutNotification,
+  sendPrescriptionReady,
+  sendWelcomeRegistration
 };
