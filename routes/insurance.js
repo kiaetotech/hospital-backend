@@ -1039,8 +1039,9 @@ router.get('/search-suggestions', async (req, res) => {
       data: suggestions
     });
   } catch (error) {
-    console.error('Error fetching search suggestions:', error);
-    res.status(500).json({ success: false, message: 'Failed to fetcconst express = require('express');
+  console.error('Error fetching plans:', error);
+  res.status(500).json({ success: false, message: 'Failed to fetch plans' });
+}
 const router = express.Router();
 const mongoose = require('mongoose');
 const InsurancePlan = require('../models/InsurancePlan');
