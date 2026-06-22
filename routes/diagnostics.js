@@ -3,6 +3,37 @@ const router = express.Router();
 const TestMaster = require('../models/TestMaster');
 const DiagnosticsProvider = require('../models/DiagnosticsProvider');
 const TestPricing = require('../models/TestPricing');
+const CorporateEmployee = require('../models/CorporateEmployee');
+const CorporateHR = require('../models/CorporateHR');
+
+// ============================================
+// AUTHENTICATE HR MIDDLEWARE (ADDED)
+// ============================================
+
+const authenticateHR = async (req, res, next) => {
+  try {
+    const token = req.headers.authorization?.split(' ')[1];
+    if (!token) {
+      return res.status(401).json({ success: false, message: 'Unauthorized. No token provided.' });
+    }
+
+    const jwt = require('jsonwebtoken');
+    const decoded = jwt.verify(token, process.env.JWT_SECRET);
+    const hr = await CorporateHR.findById(decoded.id);
+    if (!hr) {
+      return res.status(401).json({ success: false, message: 'HR not found' });
+    }
+    if (!hr.isActive) {
+      return res.status(403).json({ success: false, message: 'Account suspended' });
+    }
+
+    req.hr = hr;
+    req.companyId = hr.companyId;
+    next();
+  } catch (error) {
+    res.status(401).json({ success: false, message: 'Invalid token' });
+  }
+};
 
 const calculateDistance = (lat1, lon1, lat2, lon2) => {
   const R = 6371;
@@ -14,26 +45,21 @@ const calculateDistance = (lat1, lon1, lat2, lon2) => {
 };
 
 // ============================================
-// GET /api/diagnostics/tests
+// YOUR EXISTING ROUTES (PRESERVED)
 // ============================================
+
+// GET /api/diagnostics/tests
 router.get('/tests', async (req, res) => {
   try {
     const { search, page = 1, limit = 100 } = req.query;
     let query = {};
-    
-    // Remove the is_active filter temporarily
-    // query = { is_active: true };
-    
     if (search) {
       query.test_name = { $regex: search, $options: 'i' };
     }
-    
     const tests = await TestMaster.find(query)
       .limit(parseInt(limit))
       .skip((parseInt(page) - 1) * parseInt(limit));
-    
     const total = await TestMaster.countDocuments(query);
-    
     res.json({
       success: true,
       data: tests,
@@ -119,18 +145,13 @@ router.get('/categories', async (req, res) => {
     res.status(500).json({ success: false, message: error.message });
   }
 });
-// ============================================
-// SEED DATA - Complete data from your Excel
-// Visit this URL once: /api/diagnostics/seed
-// ============================================
+
 router.get('/seed', async (req, res) => {
   try {
-    // Clear existing data
     await TestMaster.deleteMany({});
     await DiagnosticsProvider.deleteMany({});
     await TestPricing.deleteMany({});
     
-    // ==================== TESTS (with boolean values) ====================
     const tests = await TestMaster.insertMany([
       { test_id: 1001, test_name: 'Complete Blood Count', test_short_name: 'CBC', major_category: 'BLD', major_category_name: 'Blood Tests', sub_category: 'Hematology', requires_fasting: false, sample_type: 'Blood', turnaround_time_default_hours: 4, home_collection_possible: true, is_active: true },
       { test_id: 1002, test_name: 'Liver Function Test', test_short_name: 'LFT', major_category: 'BLD', major_category_name: 'Blood Tests', sub_category: 'Biochemistry', requires_fasting: true, sample_type: 'Blood', turnaround_time_default_hours: 6, home_collection_possible: true, is_active: true },
@@ -148,7 +169,6 @@ router.get('/seed', async (req, res) => {
       { test_id: 2003, test_name: '2D Echo', test_short_name: 'Echo', major_category: 'CRD', major_category_name: 'Cardiac Diagnostics', sub_category: 'Ultrasound', requires_fasting: false, sample_type: 'Other', turnaround_time_default_hours: 2, home_collection_possible: false, is_active: true }
     ]);
     
-    // ==================== PROVIDERS ====================
     const providers = await DiagnosticsProvider.insertMany([
       { provider_id: 1, provider_name: 'ABC Diagnostics', provider_type: 'Lab', city: 'Mumbai', rating: 4.5, is_nabl_accredited: true, is_home_collection_available: true, is_active: true },
       { provider_id: 2, provider_name: 'City Hospital Lab', provider_type: 'Hospital', city: 'Mumbai', rating: 4.3, is_nabl_accredited: false, is_home_collection_available: false, is_active: true },
@@ -158,16 +178,12 @@ router.get('/seed', async (req, res) => {
       { provider_id: 6, provider_name: 'Apollo Diagnostic', provider_type: 'Lab', city: 'Bangalore', rating: 4.9, is_nabl_accredited: true, is_home_collection_available: true, is_active: true }
     ]);
     
-    // Create maps for lookup
     const providerMap = {};
     providers.forEach(p => { providerMap[p.provider_name] = p; });
-    
     const testMap = {};
     tests.forEach(t => { testMap[t.test_id] = t; });
     
-    // ==================== PRICING ====================
     const pricingData = [];
-    
     const excelPricing = [
       { test_id: 1001, provider_name: 'ABC Diagnostics', mrp: 399, discounted_price: 199, home_collection: true, report_time_hours: 4 },
       { test_id: 1002, provider_name: 'ABC Diagnostics', mrp: 499, discounted_price: 299, home_collection: true, report_time_hours: 6 },
@@ -187,7 +203,6 @@ router.get('/seed', async (req, res) => {
     for (const p of excelPricing) {
       const provider = providerMap[p.provider_name];
       const test = testMap[p.test_id];
-      
       if (provider && test) {
         pricingData.push({
           provider_id: provider._id,
@@ -219,18 +234,13 @@ router.get('/seed', async (req, res) => {
     res.status(500).json({ success: false, message: error.message });
   }
 });
-// ============================================
-// ONE-CLICK IMPORT - Complete Excel Data
-// Visit: /api/diagnostics/import-all
-// ============================================
+
 router.get('/import-all', async (req, res) => {
   try {
-    // Clear existing data
     await TestMaster.deleteMany({});
     await DiagnosticsProvider.deleteMany({});
     await TestPricing.deleteMany({});
 
-    // ========== 1. IMPORT TESTS ==========
     const tests = await TestMaster.insertMany([
       { test_id: 1001, test_name: 'Complete Blood Count', test_short_name: 'CBC', major_category: 'BLD', major_category_name: 'Blood Tests', sub_category: 'Hematology', requires_fasting: false, sample_type: 'Blood', turnaround_time_default_hours: 4, home_collection_possible: true, is_active: true },
       { test_id: 1002, test_name: 'Liver Function Test', test_short_name: 'LFT', major_category: 'BLD', major_category_name: 'Blood Tests', sub_category: 'Biochemistry', requires_fasting: true, sample_type: 'Blood', turnaround_time_default_hours: 6, home_collection_possible: true, is_active: true },
@@ -251,7 +261,6 @@ router.get('/import-all', async (req, res) => {
       { test_id: 2004, test_name: 'TMT', test_short_name: 'TMT', major_category: 'CRD', major_category_name: 'Cardiac Diagnostics', sub_category: 'Stress Test', requires_fasting: false, sample_type: 'Other', turnaround_time_default_hours: 3, home_collection_possible: false, is_active: true }
     ]);
 
-    // ========== 2. IMPORT PROVIDERS ==========
     const providers = await DiagnosticsProvider.insertMany([
       { provider_id: 1, provider_name: 'ABC Diagnostics', provider_type: 'Lab', city: 'Mumbai', rating: 4.5, total_reviews: 1250, is_nabl_accredited: true, is_home_collection_available: true, is_active: true, location: { lat: 19.0760, lng: 72.8777 } },
       { provider_id: 2, provider_name: 'City Hospital Lab', provider_type: 'Hospital', city: 'Mumbai', rating: 4.3, total_reviews: 890, is_nabl_accredited: false, is_home_collection_available: false, is_active: true, location: { lat: 19.0760, lng: 72.8777 } },
@@ -261,14 +270,12 @@ router.get('/import-all', async (req, res) => {
       { provider_id: 6, provider_name: 'Apollo Diagnostic', provider_type: 'Lab', city: 'Bangalore', rating: 4.9, total_reviews: 2800, is_nabl_accredited: true, is_home_collection_available: true, is_active: true, location: { lat: 12.9716, lng: 77.5946 } }
     ]);
 
-    // Create maps for lookup
     const testMap = {};
     tests.forEach(t => { testMap[t.test_id] = t; });
 
     const providerMap = {};
     providers.forEach(p => { providerMap[p.provider_name] = p; });
 
-    // ========== 3. IMPORT PRICING ==========
     const pricingData = [
       { test_id: 1001, provider_name: 'ABC Diagnostics', mrp: 399, discounted_price: 199, home_collection: true, report_time_hours: 4 },
       { test_id: 1002, provider_name: 'ABC Diagnostics', mrp: 499, discounted_price: 299, home_collection: true, report_time_hours: 6 },
@@ -320,20 +327,14 @@ router.get('/import-all', async (req, res) => {
     res.status(500).json({ success: false, message: error.message });
   }
 });
-// ============================================
-// CREATE MASTER CATALOG - All tests from your list
-// Visit: /api/diagnostics/create-master-catalog
-// ============================================
+
 router.get('/create-master-catalog', async (req, res) => {
   try {
-    // Clear existing tests
     await TestMaster.deleteMany({});
 
     const allTests = [];
 
-    // ========== 1. BLD — Blood Tests ==========
     const bloodTests = [
-      // Hematology
       { test_name: 'Complete Blood Count', test_short_name: 'CBC', sub_category: 'Hematology', requires_fasting: false, sample_type: 'Blood', turnaround_time_hours: 4 },
       { test_name: 'Hemoglobin', test_short_name: 'Hb', sub_category: 'Hematology', requires_fasting: false, sample_type: 'Blood', turnaround_time_hours: 4 },
       { test_name: 'White Blood Cell Count', test_short_name: 'WBC', sub_category: 'Hematology', requires_fasting: false, sample_type: 'Blood', turnaround_time_hours: 4 },
@@ -343,12 +344,10 @@ router.get('/create-master-catalog', async (req, res) => {
       { test_name: 'Peripheral Smear', test_short_name: 'Peripheral Smear', sub_category: 'Hematology', requires_fasting: false, sample_type: 'Blood', turnaround_time_hours: 8 },
       { test_name: 'Hb Electrophoresis', test_short_name: 'Hb Electrophoresis', sub_category: 'Hematology', requires_fasting: false, sample_type: 'Blood', turnaround_time_hours: 24 },
       { test_name: 'Reticulocyte Count', test_short_name: 'Reticulocyte', sub_category: 'Hematology', requires_fasting: false, sample_type: 'Blood', turnaround_time_hours: 8 },
-      // Coagulation
       { test_name: 'PT/INR', test_short_name: 'PT/INR', sub_category: 'Coagulation', requires_fasting: false, sample_type: 'Blood', turnaround_time_hours: 4 },
       { test_name: 'aPTT', test_short_name: 'aPTT', sub_category: 'Coagulation', requires_fasting: false, sample_type: 'Blood', turnaround_time_hours: 4 },
       { test_name: 'D-Dimer', test_short_name: 'D-Dimer', sub_category: 'Coagulation', requires_fasting: false, sample_type: 'Blood', turnaround_time_hours: 4 },
       { test_name: 'Fibrinogen', test_short_name: 'Fibrinogen', sub_category: 'Coagulation', requires_fasting: false, sample_type: 'Blood', turnaround_time_hours: 8 },
-      // Biochemistry
       { test_name: 'Glucose Fasting', test_short_name: 'Fasting Sugar', sub_category: 'Biochemistry', requires_fasting: true, sample_type: 'Blood', turnaround_time_hours: 4 },
       { test_name: 'HbA1c', test_short_name: 'HbA1c', sub_category: 'Biochemistry', requires_fasting: false, sample_type: 'Blood', turnaround_time_hours: 8 },
       { test_name: 'Liver Function Test', test_short_name: 'LFT', sub_category: 'Biochemistry', requires_fasting: true, sample_type: 'Blood', turnaround_time_hours: 6 },
@@ -364,16 +363,13 @@ router.get('/create-master-catalog', async (req, res) => {
       { test_name: 'LDH', test_short_name: 'LDH', sub_category: 'Biochemistry', requires_fasting: false, sample_type: 'Blood', turnaround_time_hours: 4 },
       { test_name: 'Troponin', test_short_name: 'Troponin', sub_category: 'Biochemistry', requires_fasting: false, sample_type: 'Blood', turnaround_time_hours: 2 },
       { test_name: 'CK-MB', test_short_name: 'CK-MB', sub_category: 'Biochemistry', requires_fasting: false, sample_type: 'Blood', turnaround_time_hours: 4 },
-      // Iron studies
       { test_name: 'Serum Iron', test_short_name: 'Serum Iron', sub_category: 'Iron studies', requires_fasting: true, sample_type: 'Blood', turnaround_time_hours: 8 },
       { test_name: 'TIBC', test_short_name: 'TIBC', sub_category: 'Iron studies', requires_fasting: true, sample_type: 'Blood', turnaround_time_hours: 8 },
       { test_name: 'Ferritin', test_short_name: 'Ferritin', sub_category: 'Iron studies', requires_fasting: false, sample_type: 'Blood', turnaround_time_hours: 8 },
       { test_name: 'Transferrin Saturation', test_short_name: 'Transferrin Sat', sub_category: 'Iron studies', requires_fasting: true, sample_type: 'Blood', turnaround_time_hours: 8 },
-      // Vitamins
       { test_name: 'Vitamin B12', test_short_name: 'B12', sub_category: 'Vitamins', requires_fasting: false, sample_type: 'Blood', turnaround_time_hours: 24 },
       { test_name: 'Vitamin D', test_short_name: 'Vitamin D', sub_category: 'Vitamins', requires_fasting: false, sample_type: 'Blood', turnaround_time_hours: 24 },
       { test_name: 'Folate', test_short_name: 'Folate', sub_category: 'Vitamins', requires_fasting: false, sample_type: 'Blood', turnaround_time_hours: 24 },
-      // Hormones
       { test_name: 'TSH', test_short_name: 'TSH', sub_category: 'Hormones', requires_fasting: false, sample_type: 'Blood', turnaround_time_hours: 8 },
       { test_name: 'T3', test_short_name: 'T3', sub_category: 'Hormones', requires_fasting: false, sample_type: 'Blood', turnaround_time_hours: 8 },
       { test_name: 'T4', test_short_name: 'T4', sub_category: 'Hormones', requires_fasting: false, sample_type: 'Blood', turnaround_time_hours: 8 },
@@ -386,13 +382,11 @@ router.get('/create-master-catalog', async (req, res) => {
       { test_name: 'Testosterone', test_short_name: 'Testosterone', sub_category: 'Hormones', requires_fasting: false, sample_type: 'Blood', turnaround_time_hours: 8 },
       { test_name: 'PTH', test_short_name: 'PTH', sub_category: 'Hormones', requires_fasting: false, sample_type: 'Blood', turnaround_time_hours: 8 },
       { test_name: 'Insulin', test_short_name: 'Insulin', sub_category: 'Hormones', requires_fasting: true, sample_type: 'Blood', turnaround_time_hours: 8 },
-      // Tumor markers
       { test_name: 'AFP', test_short_name: 'AFP', sub_category: 'Tumor markers', requires_fasting: false, sample_type: 'Blood', turnaround_time_hours: 24 },
       { test_name: 'CEA', test_short_name: 'CEA', sub_category: 'Tumor markers', requires_fasting: false, sample_type: 'Blood', turnaround_time_hours: 24 },
       { test_name: 'CA-125', test_short_name: 'CA-125', sub_category: 'Tumor markers', requires_fasting: false, sample_type: 'Blood', turnaround_time_hours: 24 },
       { test_name: 'CA 19-9', test_short_name: 'CA 19-9', sub_category: 'Tumor markers', requires_fasting: false, sample_type: 'Blood', turnaround_time_hours: 24 },
       { test_name: 'PSA', test_short_name: 'PSA', sub_category: 'Tumor markers', requires_fasting: false, sample_type: 'Blood', turnaround_time_hours: 24 },
-      // Serology/Immunology
       { test_name: 'HIV Test', test_short_name: 'HIV', sub_category: 'Serology/Immunology', requires_fasting: false, sample_type: 'Blood', turnaround_time_hours: 8 },
       { test_name: 'HBsAg', test_short_name: 'HBsAg', sub_category: 'Serology/Immunology', requires_fasting: false, sample_type: 'Blood', turnaround_time_hours: 8 },
       { test_name: 'Anti-HCV', test_short_name: 'Anti-HCV', sub_category: 'Serology/Immunology', requires_fasting: false, sample_type: 'Blood', turnaround_time_hours: 8 },
@@ -402,7 +396,6 @@ router.get('/create-master-catalog', async (req, res) => {
       { test_name: 'ANA', test_short_name: 'ANA', sub_category: 'Serology/Immunology', requires_fasting: false, sample_type: 'Blood', turnaround_time_hours: 24 }
     ];
 
-    // Add tests with BLD category
     let testId = 10000;
     bloodTests.forEach(test => {
       testId++;
@@ -421,10 +414,6 @@ router.get('/create-master-catalog', async (req, res) => {
       });
     });
 
-    // ========== Add more categories here ==========
-    // IMG, CRD, URN, STL, NEU, PFT, END, CSF, CYT, GEN, MIC, SPL
-
-    // Insert all tests into database
     await TestMaster.insertMany(allTests);
 
     res.json({
@@ -441,4 +430,255 @@ router.get('/create-master-catalog', async (req, res) => {
     res.status(500).json({ success: false, message: error.message });
   }
 });
+
+// ============================================
+// 🆕 CORPORATE CHECKUP ROUTES (ADDED)
+// ============================================
+
+/**
+ * GET /api/diagnostics/corporate/packages
+ * Get corporate health checkup packages
+ */
+router.get('/corporate/packages', async (req, res) => {
+  try {
+    const { city, minEmployees, sort, page = 1, limit = 20 } = req.query;
+
+    const query = {
+      hasCorporatePackages: true,
+      is_active: true,
+      partner_status: 'Approved'
+    };
+
+    if (city) query.city = { $regex: city, $options: 'i' };
+    if (minEmployees) query.minEmployees = { $lte: parseInt(minEmployees) };
+
+    const skip = (page - 1) * limit;
+    const providers = await DiagnosticsProvider.find(query)
+      .select('provider_name city rating corporatePackages corporateDiscount homeCollectionCorporate minEmployees')
+      .sort(sort === 'rating' ? { rating: -1 } : { provider_name: 1 })
+      .skip(skip)
+      .limit(parseInt(limit));
+
+    const total = await DiagnosticsProvider.countDocuments(query);
+
+    const packages = [];
+    providers.forEach(provider => {
+      const activePackages = provider.corporatePackages?.filter(p => p.isActive !== false) || [];
+      activePackages.forEach(pkg => {
+        packages.push({
+          ...pkg.toObject(),
+          providerId: provider._id,
+          providerName: provider.provider_name,
+          providerCity: provider.city,
+          providerRating: provider.rating,
+          discount: provider.corporateDiscount || 0,
+          minEmployees: provider.minEmployees || 10,
+          homeCollection: provider.homeCollectionCorporate || false
+        });
+      });
+    });
+
+    res.json({
+      success: true,
+      data: packages,
+      pagination: {
+        page: parseInt(page),
+        limit: parseInt(limit),
+        total,
+        pages: Math.ceil(total / limit)
+      }
+    });
+  } catch (error) {
+    console.error('Error fetching corporate packages:', error);
+    res.status(500).json({ success: false, message: error.message });
+  }
+});
+
+/**
+ * GET /api/diagnostics/corporate/packages/:id
+ * Get single corporate package details
+ */
+router.get('/corporate/packages/:id', async (req, res) => {
+  try {
+    const provider = await DiagnosticsProvider.findOne({
+      'corporatePackages._id': req.params.id,
+      hasCorporatePackages: true,
+      is_active: true
+    });
+
+    if (!provider) {
+      return res.status(404).json({ success: false, message: 'Corporate package not found' });
+    }
+
+    const packageItem = provider.corporatePackages.find(p => p._id.toString() === req.params.id);
+    if (!packageItem || packageItem.isActive === false) {
+      return res.status(404).json({ success: false, message: 'Package not active' });
+    }
+
+    res.json({
+      success: true,
+      data: {
+        package: packageItem,
+        provider: {
+          id: provider._id,
+          name: provider.provider_name,
+          city: provider.city,
+          rating: provider.rating,
+          isNABL: provider.is_nabl_accredited,
+          homeCollection: provider.homeCollectionCorporate,
+          discount: provider.corporateDiscount || 0,
+          minEmployees: provider.minEmployees || 10
+        }
+      }
+    });
+  } catch (error) {
+    console.error('Error fetching corporate package:', error);
+    res.status(500).json({ success: false, message: error.message });
+  }
+});
+
+/**
+ * GET /api/diagnostics/corporate/providers
+ * Get providers offering corporate checkups
+ */
+router.get('/corporate/providers', async (req, res) => {
+  try {
+    const { city, isNABL, homeCollection, page = 1, limit = 20 } = req.query;
+
+    const query = {
+      hasCorporatePackages: true,
+      is_active: true,
+      partner_status: 'Approved'
+    };
+
+    if (city) query.city = { $regex: city, $options: 'i' };
+    if (isNABL === 'true') query.is_nabl_accredited = true;
+    if (homeCollection === 'true') query.homeCollectionCorporate = true;
+
+    const skip = (page - 1) * limit;
+    const providers = await DiagnosticsProvider.find(query)
+      .select('provider_name city rating corporatePackages corporateDiscount homeCollectionCorporate minEmployees is_nabl_accredited')
+      .sort({ rating: -1 })
+      .skip(skip)
+      .limit(parseInt(limit));
+
+    const total = await DiagnosticsProvider.countDocuments(query);
+
+    const providersWithCount = providers.map(p => ({
+      ...p.toObject(),
+      packageCount: p.corporatePackages?.filter(pkg => pkg.isActive !== false).length || 0
+    }));
+
+    res.json({
+      success: true,
+      data: providersWithCount,
+      pagination: {
+        page: parseInt(page),
+        limit: parseInt(limit),
+        total,
+        pages: Math.ceil(total / limit)
+      }
+    });
+  } catch (error) {
+    console.error('Error fetching corporate providers:', error);
+    res.status(500).json({ success: false, message: error.message });
+  }
+});
+
+/**
+ * POST /api/diagnostics/corporate/book
+ * Book corporate checkup for employees
+ */
+router.post('/corporate/book', authenticateHR, async (req, res) => {
+  try {
+    const companyId = req.companyId;
+    const { packageId, providerId, employeeIds, scheduledDate, address } = req.body;
+
+    if (!packageId || !providerId || !employeeIds || !Array.isArray(employeeIds) || employeeIds.length === 0) {
+      return res.status(400).json({
+        success: false,
+        message: 'packageId, providerId, and employeeIds are required'
+      });
+    }
+
+    const provider = await DiagnosticsProvider.findById(providerId);
+    if (!provider) {
+      return res.status(404).json({ success: false, message: 'Provider not found' });
+    }
+
+    const packageItem = provider.corporatePackages.find(p => p._id.toString() === packageId);
+    if (!packageItem || packageItem.isActive === false) {
+      return res.status(404).json({ success: false, message: 'Package not found or inactive' });
+    }
+
+    const employees = await CorporateEmployee.find({
+      _id: { $in: employeeIds },
+      companyId: companyId,
+      isActive: true
+    });
+
+    if (employees.length === 0) {
+      return res.status(400).json({ success: false, message: 'No active employees found' });
+    }
+
+    const pricePerEmployee = packageItem.pricePerEmployee || 500;
+    const discount = provider.corporateDiscount || 0;
+    const discountedPrice = pricePerEmployee * (1 - discount / 100);
+    const totalPrice = discountedPrice * employees.length;
+
+    const booking = {
+      providerId,
+      packageId,
+      companyId,
+      employeeCount: employees.length,
+      totalPrice,
+      scheduledDate: scheduledDate || new Date(),
+      address: address || '',
+      status: 'confirmed',
+      createdAt: new Date()
+    };
+
+    provider.corporateAnalytics.totalCorporateBookings = (provider.corporateAnalytics?.totalCorporateBookings || 0) + 1;
+    provider.corporateAnalytics.totalCorporateRevenue = (provider.corporateAnalytics?.totalCorporateRevenue || 0) + totalPrice;
+    await provider.save();
+
+    res.json({
+      success: true,
+      message: 'Corporate checkup booked successfully',
+      data: {
+        booking,
+        employees: employees.map(e => ({ id: e._id, name: e.name, email: e.email })),
+        pricePerEmployee: discountedPrice,
+        totalPrice,
+        discountApplied: discount
+      }
+    });
+  } catch (error) {
+    console.error('Error booking corporate checkup:', error);
+    res.status(500).json({ success: false, message: error.message });
+  }
+});
+
+/**
+ * GET /api/diagnostics/corporate/reports
+ * Get corporate checkup reports for employees
+ */
+router.get('/corporate/reports', authenticateHR, async (req, res) => {
+  try {
+    const companyId = req.companyId;
+    const { employeeId, startDate, endDate } = req.query;
+
+    res.json({
+      success: true,
+      data: {
+        message: 'Corporate checkup reports will be available here',
+        employees: await CorporateEmployee.find({ companyId, isActive: true }).select('name email')
+      }
+    });
+  } catch (error) {
+    console.error('Error fetching corporate reports:', error);
+    res.status(500).json({ success: false, message: error.message });
+  }
+});
+
 module.exports = router;

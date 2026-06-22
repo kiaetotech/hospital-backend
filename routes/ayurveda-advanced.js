@@ -1,11 +1,43 @@
 const express = require('express');
 const router = express.Router();
 const AyurvedaDoctor = require('../models/AyurvedaDoctor');
+const CorporateEmployee = require('../models/CorporateEmployee');
+const CorporateHR = require('../models/CorporateHR');
+const WellnessCenter = require('../models/WellnessCenter');
 
 // ============================================
-// 🆕 LOCATION-BASED DOCTOR SEARCH
-// GET /api/ayurveda/search?lat=19.0760&lng=72.8777&radius=20&speciality=Panchakarma
+// AUTHENTICATE HR MIDDLEWARE (ADDED)
 // ============================================
+
+const authenticateHR = async (req, res, next) => {
+  try {
+    const token = req.headers.authorization?.split(' ')[1];
+    if (!token) {
+      return res.status(401).json({ success: false, message: 'Unauthorized. No token provided.' });
+    }
+
+    const jwt = require('jsonwebtoken');
+    const decoded = jwt.verify(token, process.env.JWT_SECRET);
+    const hr = await CorporateHR.findById(decoded.id);
+    if (!hr) {
+      return res.status(401).json({ success: false, message: 'HR not found' });
+    }
+    if (!hr.isActive) {
+      return res.status(403).json({ success: false, message: 'Account suspended' });
+    }
+
+    req.hr = hr;
+    req.companyId = hr.companyId;
+    next();
+  } catch (error) {
+    res.status(401).json({ success: false, message: 'Invalid token' });
+  }
+};
+
+// ============================================
+// YOUR EXISTING ROUTES (PRESERVED)
+// ============================================
+
 router.get('/search', async (req, res) => {
   try {
     const { 
@@ -107,10 +139,6 @@ router.get('/search', async (req, res) => {
   }
 });
 
-// ============================================
-// GET ALL DOCTORS (with filters)
-// GET /api/ayurveda/doctors
-// ============================================
 router.get('/doctors', async (req, res) => {
   try {
     const { specialization, minExperience, available } = req.query;
@@ -137,10 +165,6 @@ router.get('/doctors', async (req, res) => {
   }
 });
 
-// ============================================
-// GET FEATURED DOCTORS
-// GET /api/ayurveda/doctors/featured
-// ============================================
 router.get('/doctors/featured', async (req, res) => {
   try {
     const doctors = await AyurvedaDoctor.find({ isActive: true, verifiedKyc: true, rating: { $gte: 4.5 } })
@@ -159,10 +183,6 @@ router.get('/doctors/featured', async (req, res) => {
   }
 });
 
-// ============================================
-// GET DOCTOR BY ID
-// GET /api/ayurveda/doctors/:id
-// ============================================
 router.get('/doctors/:id', async (req, res) => {
   try {
     const doctor = await AyurvedaDoctor.findById(req.params.id);
@@ -190,10 +210,6 @@ router.get('/doctors/:id', async (req, res) => {
   }
 });
 
-// ============================================
-// GET NEARBY DOCTORS (Quick search)
-// GET /api/ayurveda/nearby?lat=19.0760&lng=72.8777
-// ============================================
 router.get('/nearby', async (req, res) => {
   try {
     const { lat, lng, radius = 10 } = req.query;
@@ -221,10 +237,6 @@ router.get('/nearby', async (req, res) => {
   }
 });
 
-// ============================================
-// SMART DOCTOR RECOMMENDATION
-// GET /api/ayurveda/recommend?lat=19.0760&lng=72.8777&symptoms=headache,insomnia
-// ============================================
 router.get('/recommend', async (req, res) => {
   try {
     const { lat, lng, symptoms } = req.query;
@@ -261,13 +273,8 @@ router.get('/recommend', async (req, res) => {
   }
 });
 
-// ============================================
-// CENTERS LIST
-// GET /api/ayurveda/centers
-// ============================================
 router.get('/centers', async (req, res) => {
   try {
-    const WellnessCenter = require('../models/WellnessCenter');
     const centers = await WellnessCenter.find({ isActive: true, verificationStatus: 'approved' }).select('name type address rating packages facilities photos');
     res.json({ success: true, data: centers });
   } catch (error) {
@@ -279,13 +286,8 @@ router.get('/centers', async (req, res) => {
   }
 });
 
-// ============================================
-// CENTER DETAIL
-// GET /api/ayurveda/centers/:id
-// ============================================
 router.get('/centers/:id', async (req, res) => {
   try {
-    const WellnessCenter = require('../models/WellnessCenter');
     const center = await WellnessCenter.findById(req.params.id);
     if (!center) return res.status(404).json({ success: false, error: 'Center not found' });
     res.json({ success: true, data: center });
@@ -294,10 +296,6 @@ router.get('/centers/:id', async (req, res) => {
   }
 });
 
-// ============================================
-// BOOKING
-// POST /api/ayurveda/bookings
-// ============================================
 router.post('/bookings', async (req, res) => {
   try {
     const { doctorId, patient, bookingDate, slotTime, consultationType, symptoms } = req.body;
@@ -314,10 +312,6 @@ router.post('/bookings', async (req, res) => {
   }
 });
 
-// ============================================
-// PRAKRITI QUIZ SUBMIT
-// POST /api/ayurveda/prakriti
-// ============================================
 router.post('/prakriti', async (req, res) => {
   try {
     const { answers } = req.body;
@@ -340,10 +334,6 @@ router.post('/prakriti', async (req, res) => {
   }
 });
 
-// ============================================
-// DOCTOR REGISTRATION
-// POST /api/ayurveda/doctor/register
-// ============================================
 router.post('/doctor/register', async (req, res) => {
   try {
     const { name, phone, email, password, specialization, experience, education, ayushRegNo, consultationFee, city, state, clinicName, languages } = req.body;
@@ -367,15 +357,12 @@ router.post('/doctor/register', async (req, res) => {
   }
 });
 
-// ============================================
-// DOCTOR LOGIN
-// POST /api/ayurveda/doctor/login
-// ============================================
 router.post('/doctor/login', async (req, res) => {
   try {
     const { phone, password } = req.body;
     const bcrypt = require('bcryptjs');
     const jwt = require('jsonwebtoken');
+    const JWT_SECRET = process.env.JWT_SECRET || 'your_jwt_secret_key';
     
     const doctor = await AyurvedaDoctor.findOne({ phone });
     if (!doctor) return res.status(401).json({ success: false, error: 'Invalid credentials' });
@@ -394,10 +381,6 @@ router.post('/doctor/login', async (req, res) => {
   }
 });
 
-// ============================================
-// DOCTOR DASHBOARD STATS
-// GET /api/ayurveda/doctor/stats/:doctorId
-// ============================================
 router.get('/doctor/stats/:doctorId', async (req, res) => {
   try {
     const doctor = await AyurvedaDoctor.findById(req.params.doctorId);
@@ -407,10 +390,6 @@ router.get('/doctor/stats/:doctorId', async (req, res) => {
   }
 });
 
-// ============================================
-// ADMIN PENDING DOCTORS
-// GET /api/ayurveda/admin/pending-doctors
-// ============================================
 router.get('/admin/pending-doctors', async (req, res) => {
   try {
     const doctors = await AyurvedaDoctor.find({ verificationStatus: 'pending' }).select('name phone specialization ayushRegNo address.city createdAt').sort({ createdAt: -1 });
@@ -420,10 +399,6 @@ router.get('/admin/pending-doctors', async (req, res) => {
   }
 });
 
-// ============================================
-// ADMIN VERIFY DOCTOR
-// PUT /api/ayurveda/admin/verify-doctor/:id
-// ============================================
 router.put('/admin/verify-doctor/:id', async (req, res) => {
   try {
     const { status, rejectionReason } = req.body;
@@ -436,6 +411,315 @@ router.put('/admin/verify-doctor/:id', async (req, res) => {
     res.json({ success: true, message: `Doctor ${status}` });
   } catch (error) {
     res.status(500).json({ success: false, error: error.message });
+  }
+});
+
+// ============================================
+// 🆕 CORPORATE WELLNESS ROUTES (ADDED)
+// ============================================
+
+/**
+ * GET /api/ayurveda/corporate/wellness
+ * Get corporate wellness packages from Ayurveda doctors
+ */
+router.get('/corporate/wellness', async (req, res) => {
+  try {
+    const { city, minEmployees, sort, page = 1, limit = 20 } = req.query;
+
+    const query = {
+      offersCorporateWellness: true,
+      isActive: true,
+      verificationStatus: 'approved'
+    };
+
+    if (city) query['address.city'] = { $regex: city, $options: 'i' };
+    if (minEmployees) query.minEmployees = { $lte: parseInt(minEmployees) };
+
+    const skip = (page - 1) * limit;
+    const doctors = await AyurvedaDoctor.find(query)
+      .select('name rating address city specialization corporateWellnessPackages corporateDiscount minEmployees')
+      .sort(sort === 'rating' ? { rating: -1 } : { name: 1 })
+      .skip(skip)
+      .limit(parseInt(limit));
+
+    const total = await AyurvedaDoctor.countDocuments(query);
+
+    const packages = [];
+    doctors.forEach(doctor => {
+      const activePackages = doctor.corporateWellnessPackages?.filter(p => p.isActive !== false) || [];
+      activePackages.forEach(pkg => {
+        packages.push({
+          ...pkg.toObject(),
+          doctorId: doctor._id,
+          doctorName: doctor.name,
+          doctorCity: doctor.address?.city,
+          doctorRating: doctor.rating,
+          specialization: doctor.specialization,
+          discount: doctor.corporateDiscount || 0,
+          minEmployees: doctor.minEmployees || 10
+        });
+      });
+    });
+
+    res.json({
+      success: true,
+      data: packages,
+      pagination: {
+        page: parseInt(page),
+        limit: parseInt(limit),
+        total,
+        pages: Math.ceil(total / limit)
+      }
+    });
+  } catch (error) {
+    console.error('Error fetching corporate wellness:', error);
+    res.status(500).json({ success: false, message: error.message });
+  }
+});
+
+/**
+ * GET /api/ayurveda/corporate/wellness/:id
+ * Get single corporate wellness package details
+ */
+router.get('/corporate/wellness/:id', async (req, res) => {
+  try {
+    const doctor = await AyurvedaDoctor.findOne({
+      'corporateWellnessPackages._id': req.params.id,
+      offersCorporateWellness: true,
+      isActive: true,
+      verificationStatus: 'approved'
+    });
+
+    if (!doctor) {
+      return res.status(404).json({ success: false, message: 'Corporate wellness package not found' });
+    }
+
+    const packageItem = doctor.corporateWellnessPackages.find(p => p._id.toString() === req.params.id);
+    if (!packageItem || packageItem.isActive === false) {
+      return res.status(404).json({ success: false, message: 'Package not active' });
+    }
+
+    res.json({
+      success: true,
+      data: {
+        package: packageItem,
+        doctor: {
+          id: doctor._id,
+          name: doctor.name,
+          city: doctor.address?.city,
+          rating: doctor.rating,
+          specialization: doctor.specialization,
+          experience: doctor.experience,
+          discount: doctor.corporateDiscount || 0,
+          minEmployees: doctor.minEmployees || 10
+        }
+      }
+    });
+  } catch (error) {
+    console.error('Error fetching corporate wellness package:', error);
+    res.status(500).json({ success: false, message: error.message });
+  }
+});
+
+/**
+ * GET /api/ayurveda/corporate/doctors
+ * Get doctors offering corporate wellness
+ */
+router.get('/corporate/doctors', async (req, res) => {
+  try {
+    const { city, specialization, minRating, page = 1, limit = 20 } = req.query;
+
+    const query = {
+      offersCorporateWellness: true,
+      isActive: true,
+      verificationStatus: 'approved'
+    };
+
+    if (city) query['address.city'] = { $regex: city, $options: 'i' };
+    if (specialization) query.specialization = specialization;
+    if (minRating) query.rating = { $gte: parseFloat(minRating) };
+
+    const skip = (page - 1) * limit;
+    const doctors = await AyurvedaDoctor.find(query)
+      .select('name rating address city specialization corporateWellnessPackages corporateDiscount minYears experience')
+      .sort({ rating: -1 })
+      .skip(skip)
+      .limit(parseInt(limit));
+
+    const total = await AyurvedaDoctor.countDocuments(query);
+
+    const doctorsWithCount = doctors.map(d => ({
+      ...d.toObject(),
+      packageCount: d.corporateWellnessPackages?.filter(pkg => pkg.isActive !== false).length || 0,
+      workshopCount: d.corporateWorkshops?.filter(w => w.isActive !== false).length || 0
+    }));
+
+    res.json({
+      success: true,
+      data: doctorsWithCount,
+      pagination: {
+        page: parseInt(page),
+        limit: parseInt(limit),
+        total,
+        pages: Math.ceil(total / limit)
+      }
+    });
+  } catch (error) {
+    console.error('Error fetching corporate doctors:', error);
+    res.status(500).json({ success: false, message: error.message });
+  }
+});
+
+/**
+ * POST /api/ayurveda/corporate/book
+ * Book corporate wellness for employees
+ */
+router.post('/corporate/book', authenticateHR, async (req, res) => {
+  try {
+    const companyId = req.companyId;
+    const { packageId, doctorId, employeeIds, scheduledDate, address, workshopId } = req.body;
+
+    if (!packageId || !doctorId || !employeeIds || !Array.isArray(employeeIds) || employeeIds.length === 0) {
+      return res.status(400).json({
+        success: false,
+        message: 'packageId, doctorId, and employeeIds are required'
+      });
+    }
+
+    const doctor = await AyurvedaDoctor.findById(doctorId);
+    if (!doctor) {
+      return res.status(404).json({ success: false, message: 'Doctor not found' });
+    }
+
+    let packageItem = null;
+    let workshopItem = null;
+    let pricePerEmployee = 0;
+    let duration = '';
+    let sessions = 1;
+    let bookingType = 'package';
+
+    if (workshopId) {
+      workshopItem = doctor.corporateWorkshops?.find(w => w._id.toString() === workshopId);
+      if (!workshopItem || workshopItem.isActive === false) {
+        return res.status(404).json({ success: false, message: 'Workshop not found or inactive' });
+      }
+      pricePerEmployee = workshopItem.price || 1000;
+      duration = workshopItem.duration || '2 hours';
+      sessions = 1;
+      bookingType = 'workshop';
+    } else {
+      packageItem = doctor.corporateWellnessPackages.find(p => p._id.toString() === packageId);
+      if (!packageItem || packageItem.isActive === false) {
+        return res.status(404).json({ success: false, message: 'Package not found or inactive' });
+      }
+      pricePerEmployee = packageItem.pricePerEmployee || 1000;
+      duration = packageItem.duration || '1-day';
+      sessions = packageItem.sessions || 1;
+    }
+
+    const employees = await CorporateEmployee.find({
+      _id: { $in: employeeIds },
+      companyId: companyId,
+      isActive: true
+    });
+
+    if (employees.length === 0) {
+      return res.status(400).json({ success: false, message: 'No active employees found' });
+    }
+
+    const discount = doctor.corporateDiscount || 0;
+    const discountedPrice = pricePerEmployee * (1 - discount / 100);
+    const totalPrice = discountedPrice * employees.length;
+
+    const booking = {
+      doctorId,
+      packageId: packageItem?._id || null,
+      workshopId: workshopItem?._id || null,
+      bookingType,
+      companyId,
+      employeeCount: employees.length,
+      totalPrice,
+      scheduledDate: scheduledDate || new Date(),
+      address: address || '',
+      status: 'confirmed',
+      createdAt: new Date()
+    };
+
+    doctor.corporateAnalytics.totalCorporateBookings = (doctor.corporateAnalytics?.totalCorporateBookings || 0) + 1;
+    doctor.corporateAnalytics.totalCorporateRevenue = (doctor.corporateAnalytics?.totalCorporateRevenue || 0) + totalPrice;
+    await doctor.save();
+
+    res.json({
+      success: true,
+      message: 'Corporate wellness booked successfully',
+      data: {
+        booking,
+        employees: employees.map(e => ({ id: e._id, name: e.name, email: e.email })),
+        pricePerEmployee: discountedPrice,
+        totalPrice,
+        discountApplied: discount,
+        duration,
+        sessions
+      }
+    });
+  } catch (error) {
+    console.error('Error booking corporate wellness:', error);
+    res.status(500).json({ success: false, message: error.message });
+  }
+});
+
+/**
+ * GET /api/ayurveda/corporate/workshops
+ * Get corporate workshops from Ayurveda doctors
+ */
+router.get('/corporate/workshops', async (req, res) => {
+  try {
+    const { city, page = 1, limit = 20 } = req.query;
+
+    const query = {
+      offersCorporateWellness: true,
+      isActive: true,
+      verificationStatus: 'approved'
+    };
+
+    if (city) query['address.city'] = { $regex: city, $options: 'i' };
+
+    const skip = (page - 1) * limit;
+    const doctors = await AyurvedaDoctor.find(query)
+      .select('name rating address city corporateWorkshops corporateDiscount')
+      .skip(skip)
+      .limit(parseInt(limit));
+
+    const total = await AyurvedaDoctor.countDocuments(query);
+
+    const workshops = [];
+    doctors.forEach(doctor => {
+      const activeWorkshops = doctor.corporateWorkshops?.filter(w => w.isActive !== false) || [];
+      activeWorkshops.forEach(ws => {
+        workshops.push({
+          ...ws.toObject(),
+          doctorId: doctor._id,
+          doctorName: doctor.name,
+          doctorCity: doctor.address?.city,
+          doctorRating: doctor.rating,
+          discount: doctor.corporateDiscount || 0
+        });
+      });
+    });
+
+    res.json({
+      success: true,
+      data: workshops,
+      pagination: {
+        page: parseInt(page),
+        limit: parseInt(limit),
+        total,
+        pages: Math.ceil(total / limit)
+      }
+    });
+  } catch (error) {
+    console.error('Error fetching corporate workshops:', error);
+    res.status(500).json({ success: false, message: error.message });
   }
 });
 
