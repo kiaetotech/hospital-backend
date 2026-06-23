@@ -15,7 +15,7 @@ const MentalHealthScreeningSchema = new mongoose.Schema({
     required: true
   },
   
-  // Depression (PHQ-9) scores
+  // Depression (PHQ-9) scores - Only populated for depression tests
   depressionScores: [{
     question: { type: Number },
     answer: { type: Number, min: 0, max: 3 }
@@ -29,10 +29,10 @@ const MentalHealthScreeningSchema = new mongoose.Schema({
   depressionSeverity: {
     type: String,
     enum: ['minimal', 'mild', 'moderate', 'moderately_severe', 'severe'],
-    required: false   // ✅ OPTIONAL - Only for depression tests
+    required: false   // ✅ CHANGED: false instead of true
   },
   
-  // Anxiety (GAD-7) scores
+  // Anxiety (GAD-7) scores - Only populated for anxiety tests
   anxietyScores: [{
     question: { type: Number },
     answer: { type: Number, min: 0, max: 3 }
@@ -46,7 +46,7 @@ const MentalHealthScreeningSchema = new mongoose.Schema({
   anxietySeverity: {
     type: String,
     enum: ['minimal', 'mild', 'moderate', 'severe'],
-    required: false   // ✅ OPTIONAL - Only for anxiety tests
+    required: false   // ✅ CHANGED: false instead of true
   },
   
   // Recommendations based on results
@@ -112,8 +112,8 @@ MentalHealthScreeningSchema.virtual('totalScore').get(function() {
   return 0;
 });
 
-// ✅ Method to get severity color
-MentalHealthScreeningSchema.methods.getSeverityColor = function() {
+// ✅ Virtual for getting severity color
+MentalHealthScreeningSchema.virtual('severityColor').get(function() {
   const colors = {
     'minimal': '#10b981',
     'mild': '#f59e0b',
@@ -123,7 +123,7 @@ MentalHealthScreeningSchema.methods.getSeverityColor = function() {
   };
   const severity = this.screeningType === 'depression' ? this.depressionSeverity : this.anxietySeverity;
   return colors[severity] || '#6b7280';
-};
+});
 
 // ✅ Method to check if emergency
 MentalHealthScreeningSchema.methods.isEmergency = function() {
