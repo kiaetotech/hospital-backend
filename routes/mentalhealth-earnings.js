@@ -4,16 +4,36 @@ const MentalHealthBooking = require('../models/MentalHealthBooking');
 const TherapistWallet = require('../models/TherapistWallet');
 const TherapistPayout = require('../models/TherapistPayout');
 const CommissionRule = require('../models/CommissionRule');
-const { authenticateToken } = require('../middleware/auth');
+
+// ============================================
+// HELPER: Verify Token
+// ============================================
+const verifyToken = (req) => {
+  const authHeader = req.headers['authorization'];
+  const token = authHeader && authHeader.split(' ')[1];
+  
+  if (!token) {
+    throw new Error('Access denied. Please login first.');
+  }
+  
+  const jwt = require('jsonwebtoken');
+  try {
+    const decoded = jwt.verify(token, process.env.JWT_SECRET || 'hospital_platform_secret_key_2024');
+    return decoded;
+  } catch (error) {
+    throw new Error('Invalid or expired token.');
+  }
+};
 
 // ============================================
 // EARNINGS DASHBOARD
 // ============================================
 
 // Get therapist earnings overview
-router.get('/overview', authenticateToken, async (req, res) => {
+router.get('/overview', async (req, res) => {
   try {
-    const therapistId = req.user.therapistId || req.user._id;
+    const decoded = verifyToken(req);
+    const therapistId = decoded.id || decoded._id;
     
     // Get wallet summary
     const wallet = await TherapistWallet.getSummary(therapistId);
@@ -27,7 +47,7 @@ router.get('/overview', authenticateToken, async (req, res) => {
           totalSessions: { $sum: 1 },
           totalRevenue: { $sum: '$patientAmount' },
           totalCommission: { $sum: '$platformCommission' },
-          totalEarnings: { $sum: '$therapistEarnings' }
+          totalEarnings: { $sum: '$therapistEarning' }
         }
       }
     ]);
@@ -41,16 +61,16 @@ router.get('/overview', authenticateToken, async (req, res) => {
         $match: {
           therapistId,
           paymentStatus: 'paid',
-          completedAt: { $exists: true }
+          scheduledDate: { $exists: true }
         }
       },
       {
         $group: {
           _id: {
-            year: { $year: '$completedAt' },
-            month: { $month: '$completedAt' }
+            year: { $year: '$scheduledDate' },
+            month: { $month: '$scheduledDate' }
           },
-          earnings: { $sum: '$therapistEarnings' },
+          earnings: { $sum: '$therapistEarning' },
           sessions: { $sum: 1 }
         }
       },
@@ -61,19 +81,19 @@ router.get('/overview', authenticateToken, async (req, res) => {
     // Format monthly data
     const monthlyData = monthlyEarnings.map(item => ({
       month: `${item._id.year}-${String(item._id.month).padStart(2, '0')}`,
-      earnings: item.earnings,
-      sessions: item.sessions
+      earnings: item.earnings || 0,
+      sessions: item.sessions || 0
     }));
     
     res.json({
       success: true,
       data: {
         wallet: {
-          balance: wallet.balance,
-          pendingBalance: wallet.pendingBalance,
-          totalEarned: wallet.totalEarned,
-          totalWithdrawn: wallet.totalWithdrawn,
-          availableBalance: wallet.availableBalance
+          balance: wallet.balance || 0,
+          pendingBalance: wallet.pendingBalance || 0,
+          totalEarned: wallet.totalEarned || 0,
+          totalWithdrawn: wallet.totalWithdrawn || 0,
+          availableBalance: wallet.availableBalance || 0
         },
         bookings: {
           totalSessions: bookingStats[0]?.totalSessions || 0,
@@ -81,58 +101,54 @@ router.get('/overview', authenticateToken, async (req, res) => {
           totalCommission: bookingStats[0]?.totalCommission || 0,
           totalEarnings: bookingStats[0]?.totalEarnings || 0
         },
-        payouts: payoutSummary,
+        payouts: payoutSummary || { totalPaid: 0, totalPending: 0, totalFailed: 0, count: 0, pendingCount: 0 },
         monthlyEarnings: monthlyData,
-        nextPayoutDate: wallet.nextPayoutDate,
-        lastPayoutDate: wallet.lastPayoutDate
+        nextPayoutDate: null,
+        lastPayoutDate: null
       }
     });
   } catch (error) {
+    if (error.message === 'Access denied. Please login first.' || error.message === 'Invalid or expired token.') {
+      return res.status(401).json({ error: error.message });
+    }
+    console.error('Error in /overview:', error);
     res.status(500).json({ error: error.message });
   }
 });
 
 // Get commission breakdown
-router.get('/commission/breakdown', authenticateToken, async (req, res) => {
+router.get('/commission/breakdown', async (req, res) => {
   try {
-    const therapistId = req.user.therapistId || req.user._id;
+    const decoded = verifyToken(req);
+    const therapistId = decoded.id || decoded._id;
     const { period = 'all' } = req.query;
     
     let dateFilter = {};
     if (period === 'month') {
       dateFilter = {
-        createdAt: { $gte: new Date(new Date().setDate(1)) }
+        scheduledDate: { $gte: new Date(new Date().setDate(1)) }
       };
     } else if (period === 'week') {
       const weekAgo = new Date();
       weekAgo.setDate(weekAgo.getDate() - 7);
-      dateFilter = { createdAt: { $gte: weekAgo } };
+      dateFilter = { scheduledDate: { $gte: weekAgo } };
     }
     
     const bookings = await MentalHealthBooking.find({
       therapistId,
       paymentStatus: 'paid',
       ...dateFilter
-    }).sort({ createdAt: -1 });
+    }).sort({ scheduledDate: -1 });
     
     // Calculate totals
     let totalPatientAmount = 0;
     let totalCommission = 0;
     let totalTherapistEarnings = 0;
     
-    const commissionBreakdown = bookings.map(booking => ({
-      bookingId: booking._id,
-      date: booking.createdAt,
-      patientAmount: booking.patientAmount,
-      commission: booking.platformCommission,
-      commissionRate: booking.commissionRate,
-      therapistEarnings: booking.therapistEarnings
-    }));
-    
     bookings.forEach(b => {
-      totalPatientAmount += b.patientAmount;
-      totalCommission += b.platformCommission;
-      totalTherapistEarnings += b.therapistEarnings;
+      totalPatientAmount += b.patientAmount || 0;
+      totalCommission += b.platformCommission || 0;
+      totalTherapistEarnings += b.therapistEarning || 0;
     });
     
     res.json({
@@ -143,38 +159,42 @@ router.get('/commission/breakdown', authenticateToken, async (req, res) => {
           totalCommission,
           totalTherapistEarnings,
           totalSessions: bookings.length,
-          averageCommissionRate: bookings.length > 0
-            ? (totalCommission / totalPatientAmount * 100).toFixed(2)
+          averageCommissionRate: bookings.length > 0 && totalPatientAmount > 0
+            ? ((totalCommission / totalPatientAmount) * 100).toFixed(2)
             : 0
         },
-        breakdown: commissionBreakdown,
         bookings: bookings.map(b => ({
           id: b._id,
-          date: b.createdAt,
-          amount: b.patientAmount,
-          commission: b.platformCommission,
-          rate: b.commissionRate,
-          earnings: b.therapistEarnings,
+          date: b.scheduledDate,
+          amount: b.patientAmount || 0,
+          commission: b.platformCommission || 0,
+          rate: b.commissionRate || 0,
+          earnings: b.therapistEarning || 0,
           paymentStatus: b.paymentStatus
         }))
       }
     });
   } catch (error) {
+    if (error.message === 'Access denied. Please login first.' || error.message === 'Invalid or expired token.') {
+      return res.status(401).json({ error: error.message });
+    }
+    console.error('Error in /commission/breakdown:', error);
     res.status(500).json({ error: error.message });
   }
 });
 
 // Get earnings report (for export)
-router.get('/report', authenticateToken, async (req, res) => {
+router.get('/report', async (req, res) => {
   try {
-    const therapistId = req.user.therapistId || req.user._id;
+    const decoded = verifyToken(req);
+    const therapistId = decoded.id || decoded._id;
     const { startDate, endDate } = req.query;
     
     let dateFilter = {};
-    if (startDate) dateFilter.createdAt = { $gte: new Date(startDate) };
+    if (startDate) dateFilter.scheduledDate = { $gte: new Date(startDate) };
     if (endDate) {
-      dateFilter.createdAt = {
-        ...dateFilter.createdAt,
+      dateFilter.scheduledDate = {
+        ...dateFilter.scheduledDate,
         $lte: new Date(endDate)
       };
     }
@@ -184,26 +204,26 @@ router.get('/report', authenticateToken, async (req, res) => {
       paymentStatus: 'paid',
       ...dateFilter
     }).populate('patientId', 'name email phone')
-      .sort({ createdAt: -1 });
+      .sort({ scheduledDate: -1 });
     
     // Generate report data
     const reportData = bookings.map(b => ({
       bookingId: b._id,
       patientName: b.patientId?.name || 'Unknown',
       patientEmail: b.patientId?.email || '',
-      date: b.createdAt,
-      amount: b.patientAmount,
-      commission: b.platformCommission,
-      earnings: b.therapistEarnings,
+      date: b.scheduledDate,
+      amount: b.patientAmount || 0,
+      commission: b.platformCommission || 0,
+      earnings: b.therapistEarning || 0,
       paymentStatus: b.paymentStatus,
       payoutStatus: b.payoutStatus
     }));
     
     // Calculate totals
     const totals = bookings.reduce((acc, b) => {
-      acc.totalAmount += b.patientAmount;
-      acc.totalCommission += b.platformCommission;
-      acc.totalEarnings += b.therapistEarnings;
+      acc.totalAmount += b.patientAmount || 0;
+      acc.totalCommission += b.platformCommission || 0;
+      acc.totalEarnings += b.therapistEarning || 0;
       return acc;
     }, { totalAmount: 0, totalCommission: 0, totalEarnings: 0 });
     
@@ -219,21 +239,26 @@ router.get('/report', authenticateToken, async (req, res) => {
       }
     });
   } catch (error) {
+    if (error.message === 'Access denied. Please login first.' || error.message === 'Invalid or expired token.') {
+      return res.status(401).json({ error: error.message });
+    }
+    console.error('Error in /report:', error);
     res.status(500).json({ error: error.message });
   }
 });
 
 // Export report as CSV
-router.get('/report/export', authenticateToken, async (req, res) => {
+router.get('/report/export', async (req, res) => {
   try {
-    const therapistId = req.user.therapistId || req.user._id;
+    const decoded = verifyToken(req);
+    const therapistId = decoded.id || decoded._id;
     const { startDate, endDate } = req.query;
     
     let dateFilter = {};
-    if (startDate) dateFilter.createdAt = { $gte: new Date(startDate) };
+    if (startDate) dateFilter.scheduledDate = { $gte: new Date(startDate) };
     if (endDate) {
-      dateFilter.createdAt = {
-        ...dateFilter.createdAt,
+      dateFilter.scheduledDate = {
+        ...dateFilter.scheduledDate,
         $lte: new Date(endDate)
       };
     }
@@ -243,7 +268,7 @@ router.get('/report/export', authenticateToken, async (req, res) => {
       paymentStatus: 'paid',
       ...dateFilter
     }).populate('patientId', 'name email')
-      .sort({ createdAt: -1 });
+      .sort({ scheduledDate: -1 });
     
     // Generate CSV
     const headers = ['Booking ID', 'Patient Name', 'Patient Email', 'Date', 'Amount', 'Commission', 'Earnings', 'Payment Status'];
@@ -251,11 +276,11 @@ router.get('/report/export', authenticateToken, async (req, res) => {
       b._id,
       b.patientId?.name || 'Unknown',
       b.patientId?.email || '',
-      b.createdAt.toISOString().split('T')[0],
-      b.patientAmount,
-      b.platformCommission,
-      b.therapistEarnings,
-      b.paymentStatus
+      b.scheduledDate ? new Date(b.scheduledDate).toISOString().split('T')[0] : '',
+      b.patientAmount || 0,
+      b.platformCommission || 0,
+      b.therapistEarning || 0,
+      b.paymentStatus || 'unknown'
     ]);
     
     let csvContent = headers.join(',') + '\n';
@@ -267,6 +292,10 @@ router.get('/report/export', authenticateToken, async (req, res) => {
     res.setHeader('Content-Disposition', 'attachment; filename=earnings_report.csv');
     res.send(csvContent);
   } catch (error) {
+    if (error.message === 'Access denied. Please login first.' || error.message === 'Invalid or expired token.') {
+      return res.status(401).json({ error: error.message });
+    }
+    console.error('Error in /report/export:', error);
     res.status(500).json({ error: error.message });
   }
 });
