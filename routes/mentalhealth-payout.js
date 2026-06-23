@@ -3,39 +3,74 @@ const router = express.Router();
 const TherapistWallet = require('../models/TherapistWallet');
 const TherapistPayout = require('../models/TherapistPayout');
 const MentalHealthBooking = require('../models/MentalHealthBooking');
-const { authenticateToken } = require('../middleware/auth');
 
 // ============================================
 // THERAPIST WALLET ROUTES
 // ============================================
 
 // Get wallet summary
-router.get('/wallet/summary', authenticateToken, async (req, res) => {
+router.get('/wallet/summary', async (req, res) => {
   try {
-    const therapistId = req.user.id || req.user._id;
+    const authHeader = req.headers['authorization'];
+    const token = authHeader && authHeader.split(' ')[1];
+    
+    if (!token) {
+      return res.status(401).json({ error: 'Access denied. Please login first.' });
+    }
+    
+    const jwt = require('jsonwebtoken');
+    const decoded = jwt.verify(token, process.env.JWT_SECRET || 'hospital_platform_secret_key_2024');
+    const therapistId = decoded.id || decoded._id;
+    
     const summary = await TherapistWallet.getSummary(therapistId);
     res.json({ success: true, data: summary });
   } catch (error) {
+    if (error.name === 'JsonWebTokenError') {
+      return res.status(403).json({ error: 'Invalid or expired token.' });
+    }
     res.status(500).json({ error: error.message });
   }
 });
 
 // Get transaction history
-router.get('/wallet/transactions', authenticateToken, async (req, res) => {
+router.get('/wallet/transactions', async (req, res) => {
   try {
-    const therapistId = req.user.id || req.user._id;
+    const authHeader = req.headers['authorization'];
+    const token = authHeader && authHeader.split(' ')[1];
+    
+    if (!token) {
+      return res.status(401).json({ error: 'Access denied. Please login first.' });
+    }
+    
+    const jwt = require('jsonwebtoken');
+    const decoded = jwt.verify(token, process.env.JWT_SECRET || 'hospital_platform_secret_key_2024');
+    const therapistId = decoded.id || decoded._id;
+    
     const { limit = 50, skip = 0 } = req.query;
     const result = await TherapistWallet.getTransactions(therapistId, parseInt(limit), parseInt(skip));
     res.json({ success: true, data: result });
   } catch (error) {
+    if (error.name === 'JsonWebTokenError') {
+      return res.status(403).json({ error: 'Invalid or expired token.' });
+    }
     res.status(500).json({ error: error.message });
   }
 });
 
 // Set bank details
-router.post('/wallet/bank-details', authenticateToken, async (req, res) => {
+router.post('/wallet/bank-details', async (req, res) => {
   try {
-    const therapistId = req.user.id || req.user._id;
+    const authHeader = req.headers['authorization'];
+    const token = authHeader && authHeader.split(' ')[1];
+    
+    if (!token) {
+      return res.status(401).json({ error: 'Access denied. Please login first.' });
+    }
+    
+    const jwt = require('jsonwebtoken');
+    const decoded = jwt.verify(token, process.env.JWT_SECRET || 'hospital_platform_secret_key_2024');
+    const therapistId = decoded.id || decoded._id;
+    
     const { accountNumber, accountHolderName, ifscCode, bankName, upiId } = req.body;
     
     if (!accountNumber || !accountHolderName || !ifscCode) {
@@ -47,14 +82,27 @@ router.post('/wallet/bank-details', authenticateToken, async (req, res) => {
     
     res.json({ success: true, message: 'Bank details updated successfully' });
   } catch (error) {
+    if (error.name === 'JsonWebTokenError') {
+      return res.status(403).json({ error: 'Invalid or expired token.' });
+    }
     res.status(500).json({ error: error.message });
   }
 });
 
 // Request payout
-router.post('/payout/request', authenticateToken, async (req, res) => {
+router.post('/payout/request', async (req, res) => {
   try {
-    const therapistId = req.user.id || req.user._id;
+    const authHeader = req.headers['authorization'];
+    const token = authHeader && authHeader.split(' ')[1];
+    
+    if (!token) {
+      return res.status(401).json({ error: 'Access denied. Please login first.' });
+    }
+    
+    const jwt = require('jsonwebtoken');
+    const decoded = jwt.verify(token, process.env.JWT_SECRET || 'hospital_platform_secret_key_2024');
+    const therapistId = decoded.id || decoded._id;
+    
     const { amount, method = 'bank_transfer' } = req.body;
     
     if (!amount || amount <= 0) {
@@ -99,14 +147,27 @@ router.post('/payout/request', authenticateToken, async (req, res) => {
       }
     });
   } catch (error) {
+    if (error.name === 'JsonWebTokenError') {
+      return res.status(403).json({ error: 'Invalid or expired token.' });
+    }
     res.status(500).json({ error: error.message });
   }
 });
 
 // Get payout history
-router.get('/payout/history', authenticateToken, async (req, res) => {
+router.get('/payout/history', async (req, res) => {
   try {
-    const therapistId = req.user.id || req.user._id;
+    const authHeader = req.headers['authorization'];
+    const token = authHeader && authHeader.split(' ')[1];
+    
+    if (!token) {
+      return res.status(401).json({ error: 'Access denied. Please login first.' });
+    }
+    
+    const jwt = require('jsonwebtoken');
+    const decoded = jwt.verify(token, process.env.JWT_SECRET || 'hospital_platform_secret_key_2024');
+    const therapistId = decoded.id || decoded._id;
+    
     const { status, limit = 50, skip = 0 } = req.query;
     
     const result = await TherapistPayout.getByTherapist(
@@ -118,17 +179,33 @@ router.get('/payout/history', authenticateToken, async (req, res) => {
     
     res.json({ success: true, data: result });
   } catch (error) {
+    if (error.name === 'JsonWebTokenError') {
+      return res.status(403).json({ error: 'Invalid or expired token.' });
+    }
     res.status(500).json({ error: error.message });
   }
 });
 
 // Get payout summary
-router.get('/payout/summary', authenticateToken, async (req, res) => {
+router.get('/payout/summary', async (req, res) => {
   try {
-    const therapistId = req.user.id || req.user._id;
+    const authHeader = req.headers['authorization'];
+    const token = authHeader && authHeader.split(' ')[1];
+    
+    if (!token) {
+      return res.status(401).json({ error: 'Access denied. Please login first.' });
+    }
+    
+    const jwt = require('jsonwebtoken');
+    const decoded = jwt.verify(token, process.env.JWT_SECRET || 'hospital_platform_secret_key_2024');
+    const therapistId = decoded.id || decoded._id;
+    
     const summary = await TherapistPayout.getSummary(therapistId);
     res.json({ success: true, data: summary });
   } catch (error) {
+    if (error.name === 'JsonWebTokenError') {
+      return res.status(403).json({ error: 'Invalid or expired token.' });
+    }
     res.status(500).json({ error: error.message });
   }
 });
@@ -138,23 +215,46 @@ router.get('/payout/summary', authenticateToken, async (req, res) => {
 // ============================================
 
 // Get all pending payouts (Admin only)
-router.get('/admin/pending', authenticateToken, async (req, res) => {
+router.get('/admin/pending', async (req, res) => {
   try {
-    if (req.user.role !== 'admin' && req.user.role !== 'super_admin') {
+    const authHeader = req.headers['authorization'];
+    const token = authHeader && authHeader.split(' ')[1];
+    
+    if (!token) {
+      return res.status(401).json({ error: 'Access denied. Please login first.' });
+    }
+    
+    const jwt = require('jsonwebtoken');
+    const decoded = jwt.verify(token, process.env.JWT_SECRET || 'hospital_platform_secret_key_2024');
+    
+    if (decoded.role !== 'admin' && decoded.role !== 'super_admin') {
       return res.status(403).json({ error: 'Admin access required' });
     }
     
     const payouts = await TherapistPayout.getPendingPayouts();
     res.json({ success: true, data: payouts });
   } catch (error) {
+    if (error.name === 'JsonWebTokenError') {
+      return res.status(403).json({ error: 'Invalid or expired token.' });
+    }
     res.status(500).json({ error: error.message });
   }
 });
 
 // Process payout (Admin only)
-router.post('/admin/process/:payoutId', authenticateToken, async (req, res) => {
+router.post('/admin/process/:payoutId', async (req, res) => {
   try {
-    if (req.user.role !== 'admin' && req.user.role !== 'super_admin') {
+    const authHeader = req.headers['authorization'];
+    const token = authHeader && authHeader.split(' ')[1];
+    
+    if (!token) {
+      return res.status(401).json({ error: 'Access denied. Please login first.' });
+    }
+    
+    const jwt = require('jsonwebtoken');
+    const decoded = jwt.verify(token, process.env.JWT_SECRET || 'hospital_platform_secret_key_2024');
+    
+    if (decoded.role !== 'admin' && decoded.role !== 'super_admin') {
       return res.status(403).json({ error: 'Admin access required' });
     }
     
@@ -190,14 +290,27 @@ router.post('/admin/process/:payoutId', authenticateToken, async (req, res) => {
       message: 'Payout processing initiated'
     });
   } catch (error) {
+    if (error.name === 'JsonWebTokenError') {
+      return res.status(403).json({ error: 'Invalid or expired token.' });
+    }
     res.status(500).json({ error: error.message });
   }
 });
 
 // Mark payout as completed (Admin only)
-router.post('/admin/complete/:payoutId', authenticateToken, async (req, res) => {
+router.post('/admin/complete/:payoutId', async (req, res) => {
   try {
-    if (req.user.role !== 'admin' && req.user.role !== 'super_admin') {
+    const authHeader = req.headers['authorization'];
+    const token = authHeader && authHeader.split(' ')[1];
+    
+    if (!token) {
+      return res.status(401).json({ error: 'Access denied. Please login first.' });
+    }
+    
+    const jwt = require('jsonwebtoken');
+    const decoded = jwt.verify(token, process.env.JWT_SECRET || 'hospital_platform_secret_key_2024');
+    
+    if (decoded.role !== 'admin' && decoded.role !== 'super_admin') {
       return res.status(403).json({ error: 'Admin access required' });
     }
     
@@ -229,14 +342,27 @@ router.post('/admin/complete/:payoutId', authenticateToken, async (req, res) => 
       message: 'Payout marked as completed'
     });
   } catch (error) {
+    if (error.name === 'JsonWebTokenError') {
+      return res.status(403).json({ error: 'Invalid or expired token.' });
+    }
     res.status(500).json({ error: error.message });
   }
 });
 
 // Mark payout as failed (Admin only)
-router.post('/admin/fail/:payoutId', authenticateToken, async (req, res) => {
+router.post('/admin/fail/:payoutId', async (req, res) => {
   try {
-    if (req.user.role !== 'admin' && req.user.role !== 'super_admin') {
+    const authHeader = req.headers['authorization'];
+    const token = authHeader && authHeader.split(' ')[1];
+    
+    if (!token) {
+      return res.status(401).json({ error: 'Access denied. Please login first.' });
+    }
+    
+    const jwt = require('jsonwebtoken');
+    const decoded = jwt.verify(token, process.env.JWT_SECRET || 'hospital_platform_secret_key_2024');
+    
+    if (decoded.role !== 'admin' && decoded.role !== 'super_admin') {
       return res.status(403).json({ error: 'Admin access required' });
     }
     
@@ -266,6 +392,9 @@ router.post('/admin/fail/:payoutId', authenticateToken, async (req, res) => {
       message: 'Payout marked as failed'
     });
   } catch (error) {
+    if (error.name === 'JsonWebTokenError') {
+      return res.status(403).json({ error: 'Invalid or expired token.' });
+    }
     res.status(500).json({ error: error.message });
   }
 });
@@ -274,9 +403,19 @@ router.post('/admin/fail/:payoutId', authenticateToken, async (req, res) => {
 // AUTO-PAYOUT SETTINGS
 // ============================================
 
-router.post('/wallet/auto-payout', authenticateToken, async (req, res) => {
+router.post('/wallet/auto-payout', async (req, res) => {
   try {
-    const therapistId = req.user.id || req.user._id;
+    const authHeader = req.headers['authorization'];
+    const token = authHeader && authHeader.split(' ')[1];
+    
+    if (!token) {
+      return res.status(401).json({ error: 'Access denied. Please login first.' });
+    }
+    
+    const jwt = require('jsonwebtoken');
+    const decoded = jwt.verify(token, process.env.JWT_SECRET || 'hospital_platform_secret_key_2024');
+    const therapistId = decoded.id || decoded._id;
+    
     const { enabled, threshold, dayOfWeek } = req.body;
     
     const wallet = await TherapistWallet.getOrCreate(therapistId);
@@ -288,6 +427,9 @@ router.post('/wallet/auto-payout', authenticateToken, async (req, res) => {
       message: 'Auto-payout settings updated'
     });
   } catch (error) {
+    if (error.name === 'JsonWebTokenError') {
+      return res.status(403).json({ error: 'Invalid or expired token.' });
+    }
     res.status(500).json({ error: error.message });
   }
 });
