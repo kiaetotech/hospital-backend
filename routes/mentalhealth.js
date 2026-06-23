@@ -146,12 +146,14 @@ router.get('/therapists/:id/slots', async (req, res) => {
 });
 
 // ============================================
-// 🆕 SCREENING ROUTES (FIXED)
+// ✅ SCREENING ROUTE - FULLY FIXED
 // ============================================
 
 // POST /api/mentalhealth/screening - Submit screening
 router.post('/screening', async (req, res) => {
   try {
+    console.log('📊 Screening request received:', req.body);
+    
     const { screeningType, answers, isAnonymous } = req.body;
 
     // Validate required fields
@@ -253,7 +255,7 @@ router.post('/screening', async (req, res) => {
     });
 
   } catch (error) {
-    console.error('Error in screening:', error);
+    console.error('❌ Screening error:', error);
     res.status(500).json({ success: false, message: error.message });
   }
 });
