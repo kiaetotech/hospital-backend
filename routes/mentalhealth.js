@@ -3,6 +3,8 @@ const router = express.Router();
 const MentalHealthTherapist = require('../models/MentalHealthTherapist');
 const MentalHealthBooking = require('../models/MentalHealthBooking');
 const MentalHealthScreening = require('../models/MentalHealthScreening');
+const TherapistWallet = require('../models/TherapistWallet');
+const CommissionRule = require('../models/CommissionRule');
 const { authenticate: auth } = require('../middleware/auth');
 const razorpayService = require('../services/razorpayService');
 
@@ -210,34 +212,112 @@ router.get('/stats', async (req, res) => {
 // ============================================
 
 // POST /api/mentalhealth/book
+// ============================================
+// MODIFIED: Added Commission Calculation & Wallet Integration
+// ============================================
+
 router.post('/book', auth, async (req, res) => {
   try {
-    const { therapistId, bookingType, scheduledDate, scheduledTime } = req.body;
+    const { 
+      therapistId, 
+      bookingType, 
+      scheduledDate, 
+      scheduledTime,
+      duration = 60,
+      mode = 'video',
+      notes = ''
+    } = req.body;
 
+    // Validate
+    if (!therapistId || !scheduledDate || !scheduledTime) {
+      return res.status(400).json({ 
+        success: false, 
+        message: 'therapistId, scheduledDate, and scheduledTime are required' 
+      });
+    }
+
+    // Get therapist
     const therapist = await MentalHealthTherapist.findById(therapistId);
     if (!therapist) {
       return res.status(404).json({ success: false, message: 'Therapist not found' });
     }
 
+    // ============================================
+    // 1. COMMISSION CALCULATION
+    // ============================================
+    
     const amount = therapist.pricing?.consultation || 500;
-    const platformCommission = amount * 0.15;
-    const therapistEarning = amount - platformCommission;
+    
+    // Get active commission rule
+    const rule = await CommissionRule.getActiveRule(
+      therapist.specializations?.[0] || 'all',
+      therapist.experience > 5 ? 'experienced_therapists' : 'new_therapists'
+    );
+    
+    // Get session count for tiered commission
+    const sessionCount = await MentalHealthBooking.countDocuments({
+      therapistId,
+      paymentStatus: 'paid'
+    });
+    
+    // Calculate commission
+    const commissionResult = await CommissionRule.calculateCommission(
+      amount,
+      sessionCount,
+      {
+        specialization: therapist.specializations?.[0] || 'all',
+        type: therapist.experience > 5 ? 'experienced_therapists' : 'new_therapists'
+      }
+    );
 
+    // ============================================
+    // 2. CREATE BOOKING WITH FINANCE DETAILS
+    // ============================================
+    
     const booking = new MentalHealthBooking({
       therapistId,
       patientId: req.user.id,
       bookingType: bookingType || 'video',
+      sessionType: 'individual',
       scheduledDate: new Date(scheduledDate),
       scheduledTime,
-      amount,
-      platformCommission,
-      therapistEarning,
+      duration: duration || 60,
+      
+      // Pricing & Finance
+      amount: amount,
+      patientAmount: amount,
+      platformCommission: commissionResult.commission,
+      therapistEarning: commissionResult.therapistEarnings,
+      commissionRate: commissionResult.commissionRate,
+      commissionRuleId: commissionResult.ruleId,
+      
+      // Status
       status: 'pending',
-      paymentStatus: 'pending'
+      paymentStatus: 'pending',
+      payoutStatus: 'pending',
+      
+      // Other fields
+      patientNotes: notes,
+      isAnonymous: false
     });
 
     await booking.save();
 
+    // ============================================
+    // 3. ADD TO THERAPIST'S PENDING EARNINGS
+    // ============================================
+    
+    await TherapistWallet.addEarnings(
+      therapistId,
+      commissionResult.therapistEarnings,
+      booking._id,
+      `Session booking - ${scheduledDate} ${scheduledTime}`
+    );
+
+    // ============================================
+    // 4. CREATE RAZORPAY ORDER
+    // ============================================
+    
     const order = await razorpayService.createOrder({
       amount: Math.round(amount * 100),
       currency: 'INR',
@@ -247,6 +327,10 @@ router.post('/book', auth, async (req, res) => {
     booking.orderId = order.id;
     await booking.save();
 
+    // ============================================
+    // 5. RESPONSE
+    // ============================================
+    
     res.json({
       success: true,
       data: {
@@ -254,25 +338,182 @@ router.post('/book', auth, async (req, res) => {
         orderId: order.id,
         amount: amount,
         therapistName: therapist.name,
-        razorpayKey: process.env.RAZORPAY_KEY_ID
+        razorpayKey: process.env.RAZORPAY_KEY_ID,
+        
+        // Finance Details (for transparency)
+        finance: {
+          patientAmount: amount,
+          platformCommission: commissionResult.commission,
+          therapistEarnings: commissionResult.therapistEarnings,
+          commissionRate: commissionResult.commissionRate,
+          ruleName: commissionResult.ruleName
+        }
       }
     });
+    
   } catch (error) {
     console.error('Error booking session:', error);
     res.status(500).json({ success: false, message: error.message });
   }
 });
 
+// ============================================
 // GET /api/mentalhealth/my-bookings
+// ============================================
+
 router.get('/my-bookings', auth, async (req, res) => {
   try {
     const bookings = await MentalHealthBooking.find({ patientId: req.user.id })
-      .populate('therapistId', 'name specializations rating')
+      .populate('therapistId', 'name specializations rating profileImage')
       .sort({ scheduledDate: -1 });
 
     res.json({
       success: true,
       data: bookings
+    });
+  } catch (error) {
+    res.status(500).json({ success: false, message: error.message });
+  }
+});
+
+// ============================================
+// GET /api/mentalhealth/booking/:id
+// ============================================
+
+router.get('/booking/:id', auth, async (req, res) => {
+  try {
+    const booking = await MentalHealthBooking.findById(req.params.id)
+      .populate('therapistId', 'name specializations rating profileImage consultationFee')
+      .populate('patientId', 'name email phone');
+    
+    if (!booking) {
+      return res.status(404).json({ success: false, message: 'Booking not found' });
+    }
+    
+    // Check authorization
+    if (booking.patientId._id.toString() !== req.user.id && 
+        booking.therapistId._id.toString() !== req.user.id) {
+      return res.status(403).json({ success: false, message: 'Unauthorized' });
+    }
+
+    res.json({
+      success: true,
+      data: booking
+    });
+  } catch (error) {
+    res.status(500).json({ success: false, message: error.message });
+  }
+});
+
+// ============================================
+// PUT /api/mentalhealth/booking/:id/cancel
+// ============================================
+
+router.put('/booking/:id/cancel', auth, async (req, res) => {
+  try {
+    const { reason } = req.body;
+    const booking = await MentalHealthBooking.findById(req.params.id);
+    
+    if (!booking) {
+      return res.status(404).json({ success: false, message: 'Booking not found' });
+    }
+    
+    // Check authorization
+    if (booking.patientId.toString() !== req.user.id && 
+        booking.therapistId.toString() !== req.user.id) {
+      return res.status(403).json({ success: false, message: 'Unauthorized' });
+    }
+    
+    // Check if booking is cancellable
+    if (['completed', 'cancelled'].includes(booking.status)) {
+      return res.status(400).json({ success: false, message: 'Booking cannot be cancelled' });
+    }
+    
+    await booking.cancel(reason || 'User cancelled');
+    
+    // Reverse wallet earnings if already added
+    // Note: This would need refund logic
+
+    res.json({
+      success: true,
+      data: booking,
+      message: 'Booking cancelled successfully'
+    });
+  } catch (error) {
+    res.status(500).json({ success: false, message: error.message });
+  }
+});
+
+// ============================================
+// POST /api/mentalhealth/booking/:id/feedback
+// ============================================
+
+router.post('/booking/:id/feedback', auth, async (req, res) => {
+  try {
+    const { rating, review } = req.body;
+    const booking = await MentalHealthBooking.findById(req.params.id);
+    
+    if (!booking) {
+      return res.status(404).json({ success: false, message: 'Booking not found' });
+    }
+    
+    // Check authorization - only patient can give feedback
+    if (booking.patientId.toString() !== req.user.id) {
+      return res.status(403).json({ success: false, message: 'Unauthorized' });
+    }
+    
+    if (booking.status !== 'completed') {
+      return res.status(400).json({ success: false, message: 'Booking must be completed to give feedback' });
+    }
+    
+    await booking.addFeedback(rating, review);
+    
+    // Update therapist rating
+    await MentalHealthTherapist.updateRating(booking.therapistId);
+
+    res.json({
+      success: true,
+      data: booking,
+      message: 'Feedback submitted successfully'
+    });
+  } catch (error) {
+    res.status(500).json({ success: false, message: error.message });
+  }
+});
+
+// ============================================
+// GET /api/mentalhealth/booking/:id/session-link
+// ============================================
+
+router.get('/booking/:id/session-link', auth, async (req, res) => {
+  try {
+    const booking = await MentalHealthBooking.findById(req.params.id);
+    
+    if (!booking) {
+      return res.status(404).json({ success: false, message: 'Booking not found' });
+    }
+    
+    // Check authorization
+    if (booking.patientId.toString() !== req.user.id && 
+        booking.therapistId.toString() !== req.user.id) {
+      return res.status(403).json({ success: false, message: 'Unauthorized' });
+    }
+    
+    // Generate session link if not exists
+    if (!booking.sessionLink) {
+      const roomId = `session_${booking._id}_${Date.now()}`;
+      // In production, integrate with video provider (Zoom, Google Meet, etc.)
+      booking.sessionLink = `https://meet.hospital-platform.com/${roomId}`;
+      await booking.save();
+    }
+
+    res.json({
+      success: true,
+      data: {
+        sessionLink: booking.sessionLink,
+        scheduledDate: booking.scheduledDate,
+        scheduledTime: booking.scheduledTime
+      }
     });
   } catch (error) {
     res.status(500).json({ success: false, message: error.message });

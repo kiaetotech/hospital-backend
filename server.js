@@ -156,6 +156,12 @@ const mentalHealthTherapistRoutes = require('./routes/mentalhealth-therapist');
 const mentalHealthAdminRoutes = require('./routes/mentalhealth-admin');
 
 // ============================================
+// 🆕 MENTAL HEALTH PAYOUT & EARNINGS ROUTES (NEW)
+// ============================================
+const mentalHealthPayoutRoutes = require('./routes/mentalhealth-payout');
+const mentalHealthEarningsRoutes = require('./routes/mentalhealth-earnings');
+
+// ============================================
 // USE EXISTING ROUTES (PRESERVED)
 // ============================================
 app.use('/api/hospitals', hospitalRoutes);
@@ -232,6 +238,12 @@ app.use('/api/corporate', corporateRoutes);
 app.use('/api/mentalhealth', mentalHealthRoutes);
 app.use('/api/mentalhealth/therapist', mentalHealthTherapistRoutes);
 app.use('/api/mentalhealth/admin', mentalHealthAdminRoutes);
+
+// ============================================
+// 🆕 MENTAL HEALTH PAYOUT & EARNINGS ROUTES (NEW)
+// ============================================
+app.use('/api/mentalhealth/payout', mentalHealthPayoutRoutes);
+app.use('/api/mentalhealth/earnings', mentalHealthEarningsRoutes);
 
 // ============================================
 // HEALTH CHECK (PRESERVED)
@@ -334,6 +346,8 @@ app.listen(PORT, () => {
   console.log(`🧠 Mental Health module available at /api/mentalhealth/*`);
   console.log(`🧠 Mental Health Therapist at /api/mentalhealth/therapist/*`);
   console.log(`🧠 Mental Health Admin at /api/mentalhealth/admin/*`);
+  console.log(`💰 Mental Health Payout at /api/mentalhealth/payout/*`);
+  console.log(`📊 Mental Health Earnings at /api/mentalhealth/earnings/*`);
   console.log(`✅ All modules loaded successfully!`);
 });
 
