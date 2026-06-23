@@ -10,7 +10,7 @@ const razorpayService = require('../services/razorpayService');
 // PUBLIC ROUTES
 // ============================================
 
-// GET /api/mentalhealth/therapists - List all therapists
+// GET /api/mentalhealth/therapists
 router.get('/therapists', async (req, res) => {
   try {
     const therapists = await MentalHealthTherapist.find({
@@ -28,7 +28,7 @@ router.get('/therapists', async (req, res) => {
   }
 });
 
-// GET /api/mentalhealth/therapists/featured - Featured therapists
+// GET /api/mentalhealth/therapists/featured
 router.get('/therapists/featured', async (req, res) => {
   try {
     const therapists = await MentalHealthTherapist.find({
@@ -50,7 +50,7 @@ router.get('/therapists/featured', async (req, res) => {
   }
 });
 
-// GET /api/mentalhealth/therapists/:id - Single therapist
+// GET /api/mentalhealth/therapists/:id
 router.get('/therapists/:id', async (req, res) => {
   try {
     const therapist = await MentalHealthTherapist.findById(req.params.id)
@@ -71,17 +71,17 @@ router.get('/therapists/:id', async (req, res) => {
 });
 
 // ============================================
-// ✅ SCREENING ROUTE - COMPLETE FIX
+// ✅ SCREENING ROUTE - FIXED POST METHOD
 // ============================================
 
-// POST /api/mentalhealth/screening - Submit screening
+// POST /api/mentalhealth/screening
 router.post('/screening', async (req, res) => {
   try {
     console.log('📊 Screening request received:', req.body);
     
     const { screeningType, answers, isAnonymous } = req.body;
 
-    // Validate required fields
+    // Validate
     if (!screeningType || !answers || !Array.isArray(answers)) {
       return res.status(400).json({
         success: false,
@@ -97,7 +97,6 @@ router.post('/screening', async (req, res) => {
     let recommendations = [];
     let requiresEmergency = false;
 
-    // Depression (PHQ-9)
     if (screeningType === 'depression') {
       if (score <= 4) severity = 'minimal';
       else if (score <= 9) severity = 'mild';
@@ -113,9 +112,7 @@ router.post('/screening', async (req, res) => {
         });
         requiresEmergency = true;
       }
-    } 
-    // Anxiety (GAD-7)
-    else if (screeningType === 'anxiety') {
+    } else if (screeningType === 'anxiety') {
       if (score <= 4) severity = 'minimal';
       else if (score <= 9) severity = 'mild';
       else if (score <= 14) severity = 'moderate';
@@ -136,15 +133,13 @@ router.post('/screening', async (req, res) => {
       });
     }
 
-    // ✅ Save screening result - severity fields will be empty for the other type
+    // ✅ Create and save screening
     const screening = new MentalHealthScreening({
       userId: req.user?.id || null,
       screeningType,
-      // For depression tests, populate depression fields
       depressionScores: screeningType === 'depression' ? answers.map((a, i) => ({ question: i + 1, answer: a })) : [],
       depressionTotal: screeningType === 'depression' ? score : 0,
       depressionSeverity: screeningType === 'depression' ? severity : undefined,
-      // For anxiety tests, populate anxiety fields
       anxietyScores: screeningType === 'anxiety' ? answers.map((a, i) => ({ question: i + 1, answer: a })) : [],
       anxietyTotal: screeningType === 'anxiety' ? score : 0,
       anxietySeverity: screeningType === 'anxiety' ? severity : undefined,
@@ -174,7 +169,7 @@ router.post('/screening', async (req, res) => {
   }
 });
 
-// GET /api/mentalhealth/crisis - Crisis helpline
+// GET /api/mentalhealth/crisis
 router.get('/crisis', (req, res) => {
   res.json({
     success: true,
@@ -188,7 +183,7 @@ router.get('/crisis', (req, res) => {
   });
 });
 
-// GET /api/mentalhealth/stats - Platform stats
+// GET /api/mentalhealth/stats
 router.get('/stats', async (req, res) => {
   try {
     const totalTherapists = await MentalHealthTherapist.countDocuments({
@@ -214,7 +209,7 @@ router.get('/stats', async (req, res) => {
 // AUTHENTICATED ROUTES
 // ============================================
 
-// POST /api/mentalhealth/book - Book session
+// POST /api/mentalhealth/book
 router.post('/book', auth, async (req, res) => {
   try {
     const { therapistId, bookingType, scheduledDate, scheduledTime } = req.body;
@@ -243,7 +238,6 @@ router.post('/book', auth, async (req, res) => {
 
     await booking.save();
 
-    // Create Razorpay order
     const order = await razorpayService.createOrder({
       amount: Math.round(amount * 100),
       currency: 'INR',
@@ -269,7 +263,7 @@ router.post('/book', auth, async (req, res) => {
   }
 });
 
-// GET /api/mentalhealth/my-bookings - Get user bookings
+// GET /api/mentalhealth/my-bookings
 router.get('/my-bookings', auth, async (req, res) => {
   try {
     const bookings = await MentalHealthBooking.find({ patientId: req.user.id })
