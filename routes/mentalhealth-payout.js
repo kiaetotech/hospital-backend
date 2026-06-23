@@ -3,7 +3,7 @@ const router = express.Router();
 const TherapistWallet = require('../models/TherapistWallet');
 const TherapistPayout = require('../models/TherapistPayout');
 const MentalHealthBooking = require('../models/MentalHealthBooking');
-const { authenticateToken, authenticateLender } = require('../middleware/auth');
+const { authenticateToken } = require('../middleware/auth');
 
 // ============================================
 // THERAPIST WALLET ROUTES
@@ -12,7 +12,7 @@ const { authenticateToken, authenticateLender } = require('../middleware/auth');
 // Get wallet summary
 router.get('/wallet/summary', authenticateToken, async (req, res) => {
   try {
-    const therapistId = req.user.therapistId || req.user._id;
+    const therapistId = req.user.id || req.user._id;
     const summary = await TherapistWallet.getSummary(therapistId);
     res.json({ success: true, data: summary });
   } catch (error) {
@@ -23,7 +23,7 @@ router.get('/wallet/summary', authenticateToken, async (req, res) => {
 // Get transaction history
 router.get('/wallet/transactions', authenticateToken, async (req, res) => {
   try {
-    const therapistId = req.user.therapistId || req.user._id;
+    const therapistId = req.user.id || req.user._id;
     const { limit = 50, skip = 0 } = req.query;
     const result = await TherapistWallet.getTransactions(therapistId, parseInt(limit), parseInt(skip));
     res.json({ success: true, data: result });
@@ -35,7 +35,7 @@ router.get('/wallet/transactions', authenticateToken, async (req, res) => {
 // Set bank details
 router.post('/wallet/bank-details', authenticateToken, async (req, res) => {
   try {
-    const therapistId = req.user.therapistId || req.user._id;
+    const therapistId = req.user.id || req.user._id;
     const { accountNumber, accountHolderName, ifscCode, bankName, upiId } = req.body;
     
     if (!accountNumber || !accountHolderName || !ifscCode) {
@@ -54,17 +54,15 @@ router.post('/wallet/bank-details', authenticateToken, async (req, res) => {
 // Request payout
 router.post('/payout/request', authenticateToken, async (req, res) => {
   try {
-    const therapistId = req.user.therapistId || req.user._id;
+    const therapistId = req.user.id || req.user._id;
     const { amount, method = 'bank_transfer' } = req.body;
     
     if (!amount || amount <= 0) {
       return res.status(400).json({ error: 'Valid amount is required' });
     }
     
-    // Get wallet
     const wallet = await TherapistWallet.getOrCreate(therapistId);
     
-    // Check balance
     if (wallet.balance < amount) {
       return res.status(400).json({ error: 'Insufficient balance' });
     }
@@ -73,10 +71,8 @@ router.post('/payout/request', authenticateToken, async (req, res) => {
       return res.status(400).json({ error: `Minimum payout amount is ₹${wallet.minimumPayout}` });
     }
     
-    // Process payout request
     await wallet.requestPayout(therapistId, amount, method);
     
-    // Create payout record
     const payout = new TherapistPayout({
       therapistId,
       walletId: wallet._id,
@@ -88,7 +84,6 @@ router.post('/payout/request', authenticateToken, async (req, res) => {
     });
     await payout.save();
     
-    // Update wallet with payout reference
     const updatedWallet = await TherapistWallet.findOne({ therapistId });
     const transaction = updatedWallet.transactions.find(t => t.amount === amount && t.type === 'debit' && t.status === 'pending');
     if (transaction) {
@@ -111,7 +106,7 @@ router.post('/payout/request', authenticateToken, async (req, res) => {
 // Get payout history
 router.get('/payout/history', authenticateToken, async (req, res) => {
   try {
-    const therapistId = req.user.therapistId || req.user._id;
+    const therapistId = req.user.id || req.user._id;
     const { status, limit = 50, skip = 0 } = req.query;
     
     const result = await TherapistPayout.getByTherapist(
@@ -130,7 +125,7 @@ router.get('/payout/history', authenticateToken, async (req, res) => {
 // Get payout summary
 router.get('/payout/summary', authenticateToken, async (req, res) => {
   try {
-    const therapistId = req.user.therapistId || req.user._id;
+    const therapistId = req.user.id || req.user._id;
     const summary = await TherapistPayout.getSummary(therapistId);
     res.json({ success: true, data: summary });
   } catch (error) {
@@ -172,11 +167,7 @@ router.post('/admin/process/:payoutId', authenticateToken, async (req, res) => {
       return res.status(400).json({ error: 'Payout is not in pending status' });
     }
     
-    // Mark as processing
     await payout.markProcessing();
-    
-    // Here you would integrate with Razorpay Payouts API
-    // For now, we'll simulate completion
     
     // Simulate payout processing
     setTimeout(async () => {
@@ -186,7 +177,6 @@ router.post('/admin/process/:payoutId', authenticateToken, async (req, res) => {
         utr: 'UTR' + Date.now()
       });
       
-      // Update wallet
       await TherapistWallet.confirmPayout(
         payout.therapistId,
         payout._id,
@@ -222,14 +212,12 @@ router.post('/admin/complete/:payoutId', authenticateToken, async (req, res) => 
     
     await payout.markCompleted(req.body.razorpayResponse || {});
     
-    // Update wallet
     await TherapistWallet.confirmPayout(
       payout.therapistId,
       payout._id,
       payout.amount
     );
     
-    // Update bookings
     await MentalHealthBooking.updateMany(
       { _id: { $in: payout.bookingIds } },
       { payoutStatus: 'completed', payoutCompletedAt: new Date() }
@@ -260,7 +248,6 @@ router.post('/admin/fail/:payoutId', authenticateToken, async (req, res) => {
     const { reason } = req.body;
     await payout.markFailed(reason);
     
-    // Revert wallet balance
     const wallet = await TherapistWallet.findOne({ therapistId: payout.therapistId });
     if (wallet) {
       wallet.balance += payout.amount;
@@ -289,7 +276,7 @@ router.post('/admin/fail/:payoutId', authenticateToken, async (req, res) => {
 
 router.post('/wallet/auto-payout', authenticateToken, async (req, res) => {
   try {
-    const therapistId = req.user.therapistId || req.user._id;
+    const therapistId = req.user.id || req.user._id;
     const { enabled, threshold, dayOfWeek } = req.body;
     
     const wallet = await TherapistWallet.getOrCreate(therapistId);
