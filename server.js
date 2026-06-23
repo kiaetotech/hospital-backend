@@ -133,15 +133,27 @@ const ayurvedaReportRoutes = require('./routes/ayurveda-reports');
 const homeopathyRoutes = require('./routes/homeopathy');
 
 // ============================================
-// 🆕 INSURANCE MODULE ROUTES (ADDED)
+// INSURANCE MODULE ROUTES (PRESERVED)
 // ============================================
 const insuranceRoutes = require('./routes/insurance');
 const insuranceAdminRoutes = require('./routes/insurance-admin');
 
 // ============================================
-// 🆕 OTP MODULE ROUTES (ADDED)
+// OTP MODULE ROUTES (PRESERVED)
 // ============================================
 const otpRoutes = require('./routes/otp');
+
+// ============================================
+// CORPORATE MODULE ROUTES (PRESERVED)
+// ============================================
+const corporateRoutes = require('./routes/corporate');
+
+// ============================================
+// 🆕 MENTAL HEALTH MODULE ROUTES (ADDED)
+// ============================================
+const mentalHealthRoutes = require('./routes/mentalhealth');
+const mentalHealthTherapistRoutes = require('./routes/mentalhealth-therapist');
+const mentalHealthAdminRoutes = require('./routes/mentalhealth-admin');
 
 // ============================================
 // USE EXISTING ROUTES (PRESERVED)
@@ -199,15 +211,27 @@ app.use('/api/ayurveda/payments', razorpayRoutes);
 app.use('/api/homeopathy', homeopathyRoutes);
 
 // ============================================
-// 🆕 INSURANCE ROUTES (ADDED)
+// INSURANCE ROUTES (PRESERVED)
 // ============================================
 app.use('/api/insurance', insuranceRoutes);
 app.use('/api/insurance-admin', insuranceAdminRoutes);
 
 // ============================================
-// 🆕 OTP ROUTES (ADDED)
+// OTP ROUTES (PRESERVED)
 // ============================================
 app.use('/api/otp', otpRoutes);
+
+// ============================================
+// CORPORATE ROUTES (PRESERVED)
+// ============================================
+app.use('/api/corporate', corporateRoutes);
+
+// ============================================
+// 🆕 MENTAL HEALTH ROUTES (ADDED)
+// ============================================
+app.use('/api/mentalhealth', mentalHealthRoutes);
+app.use('/api/mentalhealth/therapist', mentalHealthTherapistRoutes);
+app.use('/api/mentalhealth/admin', mentalHealthAdminRoutes);
 
 // ============================================
 // HEALTH CHECK (PRESERVED)
@@ -221,7 +245,7 @@ app.get('/api/test', (req, res) => {
 });
 
 // ============================================
-// 🆕 INSURANCE HEALTH CHECK (ADDED)
+// INSURANCE HEALTH CHECK (PRESERVED)
 // ============================================
 app.get('/api/insurance/health', (req, res) => {
   res.json({
@@ -239,7 +263,7 @@ app.get('/api/insurance/health', (req, res) => {
 });
 
 // ============================================
-// 🆕 OTP HEALTH CHECK (ADDED)
+// OTP HEALTH CHECK (PRESERVED)
 // ============================================
 app.get('/api/otp/health', (req, res) => {
   res.json({
@@ -251,6 +275,24 @@ app.get('/api/otp/health', (req, res) => {
       verify: '/api/otp/verify',
       resend: '/api/otp/resend',
       status: '/api/otp/status'
+    }
+  });
+});
+
+// ============================================
+// 🆕 MENTAL HEALTH HEALTH CHECK (ADDED)
+// ============================================
+app.get('/api/mentalhealth/health', (req, res) => {
+  res.json({
+    success: true,
+    module: 'Mental Health',
+    status: 'active',
+    endpoints: {
+      therapists: '/api/mentalhealth/therapists',
+      booking: '/api/mentalhealth/book',
+      screening: '/api/mentalhealth/screening',
+      crisis: '/api/mentalhealth/crisis',
+      admin: '/api/mentalhealth/admin'
     }
   });
 });
@@ -288,6 +330,10 @@ app.listen(PORT, () => {
   console.log(`🛡️ Insurance module available at /api/insurance/*`);
   console.log(`🛡️ Insurance Admin available at /api/insurance-admin/*`);
   console.log(`📱 OTP module available at /api/otp/*`);
+  console.log(`🏢 Corporate module available at /api/corporate/*`);
+  console.log(`🧠 Mental Health module available at /api/mentalhealth/*`);
+  console.log(`🧠 Mental Health Therapist at /api/mentalhealth/therapist/*`);
+  console.log(`🧠 Mental Health Admin at /api/mentalhealth/admin/*`);
   console.log(`✅ All modules loaded successfully!`);
 });
 
