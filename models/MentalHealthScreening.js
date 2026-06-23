@@ -1,64 +1,148 @@
 const mongoose = require('mongoose');
 
 const MentalHealthScreeningSchema = new mongoose.Schema({
-  userId: { type: mongoose.Schema.Types.ObjectId, ref: 'User' },
+  // User reference (optional for anonymous)
+  userId: { 
+    type: mongoose.Schema.Types.ObjectId, 
+    ref: 'User',
+    required: false 
+  },
+  
+  // Screening type
   screeningType: {
     type: String,
-    enum: ['depression', 'anxiety', 'stress', 'panic', 'ptsd', 'general'],
+    enum: ['depression', 'anxiety', 'stress', 'general'],
     required: true
   },
   
-  // PHQ-9 for Depression
+  // Depression (PHQ-9) scores
   depressionScores: [{
-    question: String,
-    answer: Number // 0-3
+    question: { type: Number },
+    answer: { type: Number, min: 0, max: 3 }
   }],
-  depressionTotal: { type: Number, default: 0 },
+  depressionTotal: { 
+    type: Number, 
+    default: 0,
+    min: 0,
+    max: 27
+  },
   depressionSeverity: {
     type: String,
-    enum: ['minimal', 'mild', 'moderate', 'moderately_severe', 'severe']
+    enum: ['minimal', 'mild', 'moderate', 'moderately_severe', 'severe'],
+    required: false   // ✅ OPTIONAL - Only for depression tests
   },
   
-  // GAD-7 for Anxiety
+  // Anxiety (GAD-7) scores
   anxietyScores: [{
-    question: String,
-    answer: Number // 0-3
+    question: { type: Number },
+    answer: { type: Number, min: 0, max: 3 }
   }],
-  anxietyTotal: { type: Number, default: 0 },
+  anxietyTotal: { 
+    type: Number, 
+    default: 0,
+    min: 0,
+    max: 21
+  },
   anxietySeverity: {
     type: String,
-    enum: ['minimal', 'mild', 'moderate', 'severe']
+    enum: ['minimal', 'mild', 'moderate', 'severe'],
+    required: false   // ✅ OPTIONAL - Only for anxiety tests
   },
   
-  // PSS-10 for Stress
-  stressScores: [{
-    question: String,
-    answer: Number // 0-4
-  }],
-  stressTotal: { type: Number, default: 0 },
-  
-  // Recommendations
+  // Recommendations based on results
   recommendations: [{
-    type: { type: String, enum: ['consultation', 'self_help', 'crisis', 'follow_up'] },
-    description: String,
-    urgency: { type: String, enum: ['low', 'medium', 'high'] },
-    therapistId: { type: mongoose.Schema.Types.ObjectId, ref: 'MentalHealthTherapist' }
+    type: { 
+      type: String, 
+      enum: ['consultation', 'self_help', 'crisis', 'follow_up'] 
+    },
+    description: { type: String },
+    urgency: { 
+      type: String, 
+      enum: ['low', 'medium', 'high'] 
+    }
   }],
   
-  // Emergency Flag
-  requiresEmergency: { type: Boolean, default: false },
-  emergencyAlertSent: { type: Boolean, default: false },
+  // Emergency flag
+  requiresEmergency: { 
+    type: Boolean, 
+    default: false 
+  },
   
-  // Anonymous
-  isAnonymous: { type: Boolean, default: false },
-  anonymousId: { type: String },
+  // Anonymous screening
+  isAnonymous: { 
+    type: Boolean, 
+    default: false 
+  },
+  anonymousId: { 
+    type: String 
+  },
   
-  createdAt: { type: Date, default: Date.now }
+  // Timestamps
+  createdAt: { 
+    type: Date, 
+    default: Date.now 
+  }
+}, {
+  timestamps: true
 });
 
-// Indexes
+// ✅ Add indexes for faster queries
 MentalHealthScreeningSchema.index({ userId: 1 });
 MentalHealthScreeningSchema.index({ screeningType: 1 });
 MentalHealthScreeningSchema.index({ requiresEmergency: 1 });
+MentalHealthScreeningSchema.index({ createdAt: -1 });
+
+// ✅ Virtual for getting severity label
+MentalHealthScreeningSchema.virtual('severityLabel').get(function() {
+  if (this.screeningType === 'depression') {
+    return this.depressionSeverity;
+  } else if (this.screeningType === 'anxiety') {
+    return this.anxietySeverity;
+  }
+  return 'Unknown';
+});
+
+// ✅ Virtual for getting total score
+MentalHealthScreeningSchema.virtual('totalScore').get(function() {
+  if (this.screeningType === 'depression') {
+    return this.depressionTotal;
+  } else if (this.screeningType === 'anxiety') {
+    return this.anxietyTotal;
+  }
+  return 0;
+});
+
+// ✅ Method to get severity color
+MentalHealthScreeningSchema.methods.getSeverityColor = function() {
+  const colors = {
+    'minimal': '#10b981',
+    'mild': '#f59e0b',
+    'moderate': '#f97316',
+    'moderately_severe': '#ef4444',
+    'severe': '#dc2626'
+  };
+  const severity = this.screeningType === 'depression' ? this.depressionSeverity : this.anxietySeverity;
+  return colors[severity] || '#6b7280';
+};
+
+// ✅ Method to check if emergency
+MentalHealthScreeningSchema.methods.isEmergency = function() {
+  return this.requiresEmergency === true;
+};
+
+// ✅ Static method to get stats
+MentalHealthScreeningSchema.statics.getStats = async function() {
+  const total = await this.countDocuments();
+  const emergency = await this.countDocuments({ requiresEmergency: true });
+  const byType = await this.aggregate([
+    { $group: { _id: '$screeningType', count: { $sum: 1 } } }
+  ]);
+  
+  return {
+    total,
+    emergency,
+    byType
+  };
+};
 
 module.exports = mongoose.model('MentalHealthScreening', MentalHealthScreeningSchema);
