@@ -2,58 +2,123 @@ const express = require('express');
 const router = express.Router();
 const bcrypt = require('bcryptjs');
 const jwt = require('jsonwebtoken');
+
 const MentalHealthTherapist = require('../models/MentalHealthTherapist');
+
+// IMPORTANT:
+// If auth.js exports:
+// module.exports = { authenticateToken }
+// keep this line:
 const { authenticateToken } = require('../middleware/auth');
 
+// If auth.js exports:
+// module.exports = authenticateToken
+// then use:
+// const authenticateToken = require('../middleware/auth');
+
+
 // ============================================
-// REGISTER ROUTE
+// REGISTER
 // ============================================
 router.post('/register', async (req, res) => {
   try {
-    console.log('📥 Request Body:', req.body);
-
     const {
-      name, phone, email, password, licenseNumber,
-      specializations, experience, about, city, state,
-      education, languages, consultationTypes,
-      consultationFee, pricing
+      name,
+      phone,
+      email,
+      password,
+      licenseNumber,
+      specializations = [],
+      experience,
+      about = '',
+      city,
+      state,
+      education = '',
+      languages = [],
+      consultationTypes = {
+        video: true,
+        audio: true,
+        text: true,
+        anonymous: true
+      },
+      consultationFee
     } = req.body;
 
-    // Validation
-    if (!name) return res.status(400).json({ success: false, message: 'Name is required' });
-    if (!phone) return res.status(400).json({ success: false, message: 'Phone is required' });
-    if (!password) return res.status(400).json({ success: false, message: 'Password is required' });
-    if (!licenseNumber) return res.status(400).json({ success: false, message: 'License number is required' });
-    if (!specializations || specializations.length === 0) {
-      return res.status(400).json({ success: false, message: 'At least one specialization is required' });
-    }
-    if (!experience) return res.status(400).json({ success: false, message: 'Experience is required' });
-    if (!city) return res.status(400).json({ success: false, message: 'City is required' });
-    if (!state) return res.status(400).json({ success: false, message: 'State is required' });
-    if (!consultationFee || parseInt(consultationFee) <= 0) {
-      return res.status(400).json({ success: false, message: 'Valid consultation fee is required' });
-    }
+    if (!name?.trim())
+      return res.status(400).json({ success: false, message: 'Name is required' });
 
-    // Check duplicates
+    if (!phone?.trim())
+      return res.status(400).json({ success: false, message: 'Phone is required' });
+
+    if (!password)
+      return res.status(400).json({ success: false, message: 'Password is required' });
+
+    if (!licenseNumber?.trim())
+      return res.status(400).json({ success: false, message: 'License number is required' });
+
+    if (!Array.isArray(specializations) || specializations.length === 0)
+      return res.status(400).json({
+        success: false,
+        message: 'At least one specialization is required'
+      });
+
+    if (experience === undefined || experience === null)
+      return res.status(400).json({
+        success: false,
+        message: 'Experience is required'
+      });
+
+    if (!city?.trim())
+      return res.status(400).json({
+        success: false,
+        message: 'City is required'
+      });
+
+    if (!state?.trim())
+      return res.status(400).json({
+        success: false,
+        message: 'State is required'
+      });
+
+    const fee = Number(consultationFee);
+
+    if (!fee || fee <= 0)
+      return res.status(400).json({
+        success: false,
+        message: 'Valid consultation fee is required'
+      });
+
     const existingPhone = await MentalHealthTherapist.findOne({ phone });
-    if (existingPhone) {
-      return res.status(400).json({ success: false, message: 'Phone already registered' });
-    }
 
-    const existingLicense = await MentalHealthTherapist.findOne({ licenseNumber });
-    if (existingLicense) {
-      return res.status(400).json({ success: false, message: 'License already registered' });
-    }
+    if (existingPhone)
+      return res.status(400).json({
+        success: false,
+        message: 'Phone already registered'
+      });
 
-    if (email) {
-      const existingEmail = await MentalHealthTherapist.findOne({ email });
-      if (existingEmail) {
-        return res.status(400).json({ success: false, message: 'Email already registered' });
-      }
+    const existingLicense = await MentalHealthTherapist.findOne({
+      licenseNumber
+    });
+
+    if (existingLicense)
+      return res.status(400).json({
+        success: false,
+        message: 'License already registered'
+      });
+
+    if (email && email.trim()) {
+      const existingEmail = await MentalHealthTherapist.findOne({
+        email: email.trim()
+      });
+
+      if (existingEmail)
+        return res.status(400).json({
+          success: false,
+          message: 'Email already registered'
+        });
     }
 
     const hashedPassword = await bcrypt.hash(password, 10);
-    const consultationFeeNum = parseInt(consultationFee) || 0;
 
     const therapist = new MentalHealthTherapist({
       name: name.trim(),
@@ -62,21 +127,23 @@ router.post('/register', async (req, res) => {
       password: hashedPassword,
       licenseNumber: licenseNumber.trim(),
       specializations,
-      experience: parseInt(experience) || 0,
-      about: about || '',
+      experience: Number(experience),
+      about,
       city: city.trim(),
       state: state.trim(),
-      education: education || '',
-      languages: languages || [],
-      consultationTypes: consultationTypes || { video: true, audio: true, text: true, anonymous: true },
-      consultationFee: consultationFeeNum,
+      education,
+      languages,
+      consultationTypes,
+      consultationFee: fee,
+
       pricing: {
-        consultation: consultationFeeNum,
-        videoTherapy: consultationFeeNum,
-        audioTherapy: Math.round(consultationFeeNum * 0.8),
-        textTherapy: Math.round(consultationFeeNum * 0.6),
+        consultation: fee,
+        videoTherapy: fee,
+        audioTherapy: Math.round(fee * 0.8),
+        textTherapy: Math.round(fee * 0.6),
         packageDiscount: 10
       },
+
       verificationStatus: 'pending',
       isActive: true
     });
@@ -84,117 +151,174 @@ router.post('/register', async (req, res) => {
     await therapist.save();
 
     const token = jwt.sign(
-      { id: therapist._id, name: therapist.name, email: therapist.email, role: 'therapist', providerType: 'mentalhealth' },
+      {
+        id: therapist._id,
+        name: therapist.name,
+        email: therapist.email,
+        role: 'therapist',
+        providerType: 'mentalhealth'
+      },
       process.env.JWT_SECRET || 'hospital_platform_secret_key_2024',
       { expiresIn: '7d' }
     );
 
-    return res.status(201).json({
+    res.status(201).json({
       success: true,
-      message: 'Registration successful! Please wait for verification.',
-      data: { id: therapist._id, name: therapist.name, phone: therapist.phone, email: therapist.email, city: therapist.city, state: therapist.state, specializations: therapist.specializations, consultationFee: therapist.consultationFee, verificationStatus: therapist.verificationStatus, token }
+      message: 'Registration successful',
+      data: {
+        therapist,
+        token
+      }
     });
 
   } catch (error) {
-    console.error('❌ Registration Error:', error);
-    return res.status(500).json({ success: false, message: error.message || 'Registration failed' });
+    console.error('REGISTER ERROR:', error);
+
+    res.status(500).json({
+      success: false,
+      message: error.message
+    });
   }
 });
 
+
 // ============================================
-// LOGIN ROUTE
+// LOGIN
 // ============================================
 router.post('/login', async (req, res) => {
   try {
+
     const { phone, password } = req.body;
 
     if (!phone || !password) {
-      return res.status(400).json({ success: false, message: 'Phone and password required' });
+      return res.status(400).json({
+        success: false,
+        message: 'Phone and password required'
+      });
     }
 
     const therapist = await MentalHealthTherapist.findOne({ phone });
+
     if (!therapist) {
-      return res.status(401).json({ success: false, message: 'Invalid credentials' });
+      return res.status(401).json({
+        success: false,
+        message: 'Invalid credentials'
+      });
     }
 
-    if (therapist.verificationStatus === 'rejected') {
-      return res.status(403).json({ success: false, message: 'Registration rejected. Contact support.' });
-    }
+    const valid = await bcrypt.compare(
+      password,
+      therapist.password
+    );
 
-    const isPasswordValid = await bcrypt.compare(password, therapist.password);
-    if (!isPasswordValid) {
-      return res.status(401).json({ success: false, message: 'Invalid credentials' });
+    if (!valid) {
+      return res.status(401).json({
+        success: false,
+        message: 'Invalid credentials'
+      });
     }
 
     const token = jwt.sign(
-      { id: therapist._id, name: therapist.name, email: therapist.email, role: 'therapist', providerType: 'mentalhealth' },
+      {
+        id: therapist._id,
+        role: 'therapist',
+        providerType: 'mentalhealth'
+      },
       process.env.JWT_SECRET || 'hospital_platform_secret_key_2024',
       { expiresIn: '7d' }
     );
 
-    return res.status(200).json({
+    res.json({
       success: true,
       message: 'Login successful',
-      data: { id: therapist._id, name: therapist.name, phone: therapist.phone, email: therapist.email, city: therapist.city, state: therapist.state, specializations: therapist.specializations, consultationFee: therapist.consultationFee, verificationStatus: therapist.verificationStatus, token }
+      token,
+      data: therapist
     });
 
   } catch (error) {
-    console.error('❌ Login Error:', error);
-    return res.status(500).json({ success: false, message: error.message });
+    console.error('LOGIN ERROR:', error);
+
+    res.status(500).json({
+      success: false,
+      message: error.message
+    });
   }
 });
 
+
 // ============================================
-// VERIFY ROUTE
+// VERIFY
 // ============================================
 router.get('/verify', authenticateToken, async (req, res) => {
-  try {
-    const therapist = await MentalHealthTherapist.findById(req.user.id).select('-password');
-    if (!therapist) {
-      return res.status(404).json({ success: false, message: 'Therapist not found' });
-    }
-    return res.status(200).json({ success: true, data: therapist });
-  } catch (error) {
-    return res.status(500).json({ success: false, message: error.message });
-  }
+  res.json({
+    success: true,
+    user: req.user
+  });
 });
 
+
 // ============================================
-// PROFILE ROUTE
+// PROFILE
 // ============================================
 router.get('/profile', authenticateToken, async (req, res) => {
   try {
-    const therapist = await MentalHealthTherapist.findById(req.user.id).select('-password');
+
+    const therapist = await MentalHealthTherapist
+      .findById(req.user.id)
+      .select('-password');
+
     if (!therapist) {
-      return res.status(404).json({ success: false, message: 'Therapist not found' });
+      return res.status(404).json({
+        success: false,
+        message: 'Therapist not found'
+      });
     }
-    return res.status(200).json({ success: true, data: therapist });
+
+    res.json({
+      success: true,
+      data: therapist
+    });
+
   } catch (error) {
-    return res.status(500).json({ success: false, message: error.message });
+    res.status(500).json({
+      success: false,
+      message: error.message
+    });
   }
 });
 
+
 // ============================================
-// UPDATE PROFILE ROUTE
+// UPDATE PROFILE
 // ============================================
 router.put('/profile', authenticateToken, async (req, res) => {
   try {
-    const updates = req.body;
+
+    const updates = { ...req.body };
+
     delete updates.password;
 
-    const therapist = await MentalHealthTherapist.findByIdAndUpdate(
-      req.user.id,
-      { $set: updates },
-      { new: true, runValidators: true }
-    ).select('-password');
+    const therapist =
+      await MentalHealthTherapist.findByIdAndUpdate(
+        req.user.id,
+        updates,
+        {
+          new: true,
+          runValidators: true
+        }
+      ).select('-password');
 
-    if (!therapist) {
-      return res.status(404).json({ success: false, message: 'Therapist not found' });
-    }
+    res.json({
+      success: true,
+      message: 'Profile updated',
+      data: therapist
+    });
 
-    return res.status(200).json({ success: true, message: 'Profile updated', data: therapist });
   } catch (error) {
-    return res.status(500).json({ success: false, message: error.message });
+    res.status(500).json({
+      success: false,
+      message: error.message
+    });
   }
 });
 
