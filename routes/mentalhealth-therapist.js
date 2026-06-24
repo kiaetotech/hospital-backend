@@ -5,8 +5,8 @@ const jwt = require('jsonwebtoken');
 
 const MentalHealthTherapist = require('../models/MentalHealthTherapist');
 
-// USE EXISTING AUTH MIDDLEWARE
-const { authenticate } = require('../middleware/auth');
+// ✅ FIXED: Use correct auth middleware import
+const { authenticateToken } = require('../middleware/auth');
 
 // ============================================
 // REGISTER
@@ -261,7 +261,7 @@ router.post('/login', async (req, res) => {
 // ============================================
 // VERIFY
 // ============================================
-router.get('/verify', authenticate, async (req, res) => {
+router.get('/verify', authenticateToken, async (req, res) => {
   return res.json({
     success: true,
     user: req.user
@@ -271,7 +271,7 @@ router.get('/verify', authenticate, async (req, res) => {
 // ============================================
 // PROFILE
 // ============================================
-router.get('/profile', authenticate, async (req, res) => {
+router.get('/profile', authenticateToken, async (req, res) => {
   try {
     const therapist = await MentalHealthTherapist
       .findById(req.user.id)
@@ -300,7 +300,7 @@ router.get('/profile', authenticate, async (req, res) => {
 // ============================================
 // UPDATE PROFILE
 // ============================================
-router.put('/profile', authenticate, async (req, res) => {
+router.put('/profile', authenticateToken, async (req, res) => {
   try {
     const updates = { ...req.body };
 
@@ -335,25 +335,53 @@ router.put('/profile', authenticate, async (req, res) => {
     });
   }
 });
-// Reset therapist password (Admin only)
+
+// ============================================
+// ✅ ADMIN: RESET THERAPIST PASSWORD
+// ============================================
 router.put('/admin/therapists/:id/reset-password', authenticateToken, async (req, res) => {
   try {
     // Check admin role
     if (req.user.role !== 'admin' && req.user.role !== 'super_admin') {
-      return res.status(403).json({ success: false, message: 'Admin access required' });
+      return res.status(403).json({ 
+        success: false, 
+        message: 'Admin access required' 
+      });
     }
 
     const { password } = req.body;
+    if (!password || password.length < 6) {
+      return res.status(400).json({ 
+        success: false, 
+        message: 'Password must be at least 6 characters' 
+      });
+    }
+
     const hashedPassword = await bcrypt.hash(password, 10);
 
-    await MentalHealthTherapist.findByIdAndUpdate(req.params.id, {
-      password: hashedPassword
-    });
+    const therapist = await MentalHealthTherapist.findByIdAndUpdate(
+      req.params.id,
+      { password: hashedPassword },
+      { new: true }
+    );
 
-    res.json({ success: true, message: 'Password reset successfully' });
+    if (!therapist) {
+      return res.status(404).json({ 
+        success: false, 
+        message: 'Therapist not found' 
+      });
+    }
+
+    res.json({ 
+      success: true, 
+      message: 'Password reset successfully' 
+    });
   } catch (error) {
     console.error('Password reset error:', error);
-    res.status(500).json({ success: false, message: error.message });
+    res.status(500).json({ 
+      success: false, 
+      message: error.message 
+    });
   }
 });
 
