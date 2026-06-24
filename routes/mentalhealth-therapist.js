@@ -335,5 +335,26 @@ router.put('/profile', authenticate, async (req, res) => {
     });
   }
 });
+// Reset therapist password (Admin only)
+router.put('/admin/therapists/:id/reset-password', authenticateToken, async (req, res) => {
+  try {
+    // Check admin role
+    if (req.user.role !== 'admin' && req.user.role !== 'super_admin') {
+      return res.status(403).json({ success: false, message: 'Admin access required' });
+    }
+
+    const { password } = req.body;
+    const hashedPassword = await bcrypt.hash(password, 10);
+
+    await MentalHealthTherapist.findByIdAndUpdate(req.params.id, {
+      password: hashedPassword
+    });
+
+    res.json({ success: true, message: 'Password reset successfully' });
+  } catch (error) {
+    console.error('Password reset error:', error);
+    res.status(500).json({ success: false, message: error.message });
+  }
+});
 
 module.exports = router;
