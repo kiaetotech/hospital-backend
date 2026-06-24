@@ -1,6 +1,58 @@
 const express = require('express');
+const jwt = require('jsonwebtoken');
 const Provider = require('../models/Provider');
 const router = express.Router();
+
+// ============================================
+// ✅ ADMIN LOGIN - Generates JWT Token
+// ============================================
+router.post('/login', async (req, res) => {
+  try {
+    const { adminKey } = req.body;
+
+    // Check admin key
+    const validAdminKey = process.env.ADMIN_KEY || 'admin_secret_key_2024';
+    
+    if (adminKey !== validAdminKey) {
+      return res.status(401).json({ 
+        success: false, 
+        message: 'Invalid admin key' 
+      });
+    }
+
+    // Generate JWT token for admin
+    const token = jwt.sign(
+      { 
+        role: 'admin', 
+        isAdmin: true,
+        type: 'admin'
+      },
+      process.env.JWT_SECRET || 'hospital_platform_secret_key_2024',
+      { expiresIn: '7d' }
+    );
+
+    res.json({
+      success: true,
+      token: token,
+      message: 'Admin login successful',
+      admin: {
+        role: 'admin',
+        name: 'Admin'
+      }
+    });
+
+  } catch (error) {
+    console.error('Admin login error:', error);
+    res.status(500).json({ 
+      success: false, 
+      message: error.message 
+    });
+  }
+});
+
+// ============================================
+// EXISTING PROVIDER ROUTES (PRESERVED)
+// ============================================
 
 // Get all unverified providers
 router.get('/providers/pending', async (req, res) => {
