@@ -13,21 +13,10 @@ router.post('/register', async (req, res) => {
     console.log('📥 Request Body:', req.body);
 
     const {
-      name,
-      phone,
-      email,
-      password,
-      licenseNumber,
-      specializations,
-      experience,
-      about,
-      city,
-      state,
-      education,
-      languages,
-      consultationTypes,
-      consultationFee,
-      pricing
+      name, phone, email, password, licenseNumber,
+      specializations, experience, about, city, state,
+      education, languages, consultationTypes,
+      consultationFee, pricing
     } = req.body;
 
     // Validation
@@ -63,11 +52,9 @@ router.post('/register', async (req, res) => {
       }
     }
 
-    // Hash password
     const hashedPassword = await bcrypt.hash(password, 10);
     const consultationFeeNum = parseInt(consultationFee) || 0;
 
-    // Create therapist
     const therapist = new MentalHealthTherapist({
       name: name.trim(),
       phone: phone.trim(),
@@ -96,15 +83,8 @@ router.post('/register', async (req, res) => {
 
     await therapist.save();
 
-    // Generate token
     const token = jwt.sign(
-      {
-        id: therapist._id,
-        name: therapist.name,
-        email: therapist.email,
-        role: 'therapist',
-        providerType: 'mentalhealth'
-      },
+      { id: therapist._id, name: therapist.name, email: therapist.email, role: 'therapist', providerType: 'mentalhealth' },
       process.env.JWT_SECRET || 'hospital_platform_secret_key_2024',
       { expiresIn: '7d' }
     );
@@ -112,26 +92,12 @@ router.post('/register', async (req, res) => {
     return res.status(201).json({
       success: true,
       message: 'Registration successful! Please wait for verification.',
-      data: {
-        id: therapist._id,
-        name: therapist.name,
-        phone: therapist.phone,
-        email: therapist.email,
-        city: therapist.city,
-        state: therapist.state,
-        specializations: therapist.specializations,
-        consultationFee: therapist.consultationFee,
-        verificationStatus: therapist.verificationStatus,
-        token
-      }
+      data: { id: therapist._id, name: therapist.name, phone: therapist.phone, email: therapist.email, city: therapist.city, state: therapist.state, specializations: therapist.specializations, consultationFee: therapist.consultationFee, verificationStatus: therapist.verificationStatus, token }
     });
 
   } catch (error) {
     console.error('❌ Registration Error:', error);
-    return res.status(500).json({
-      success: false,
-      message: error.message || 'Registration failed'
-    });
+    return res.status(500).json({ success: false, message: error.message || 'Registration failed' });
   }
 });
 
@@ -161,13 +127,7 @@ router.post('/login', async (req, res) => {
     }
 
     const token = jwt.sign(
-      {
-        id: therapist._id,
-        name: therapist.name,
-        email: therapist.email,
-        role: 'therapist',
-        providerType: 'mentalhealth'
-      },
+      { id: therapist._id, name: therapist.name, email: therapist.email, role: 'therapist', providerType: 'mentalhealth' },
       process.env.JWT_SECRET || 'hospital_platform_secret_key_2024',
       { expiresIn: '7d' }
     );
@@ -175,18 +135,7 @@ router.post('/login', async (req, res) => {
     return res.status(200).json({
       success: true,
       message: 'Login successful',
-      data: {
-        id: therapist._id,
-        name: therapist.name,
-        phone: therapist.phone,
-        email: therapist.email,
-        city: therapist.city,
-        state: therapist.state,
-        specializations: therapist.specializations,
-        consultationFee: therapist.consultationFee,
-        verificationStatus: therapist.verificationStatus,
-        token
-      }
+      data: { id: therapist._id, name: therapist.name, phone: therapist.phone, email: therapist.email, city: therapist.city, state: therapist.state, specializations: therapist.specializations, consultationFee: therapist.consultationFee, verificationStatus: therapist.verificationStatus, token }
     });
 
   } catch (error) {
@@ -196,7 +145,22 @@ router.post('/login', async (req, res) => {
 });
 
 // ============================================
-// GET PROFILE
+// VERIFY ROUTE
+// ============================================
+router.get('/verify', authenticateToken, async (req, res) => {
+  try {
+    const therapist = await MentalHealthTherapist.findById(req.user.id).select('-password');
+    if (!therapist) {
+      return res.status(404).json({ success: false, message: 'Therapist not found' });
+    }
+    return res.status(200).json({ success: true, data: therapist });
+  } catch (error) {
+    return res.status(500).json({ success: false, message: error.message });
+  }
+});
+
+// ============================================
+// PROFILE ROUTE
 // ============================================
 router.get('/profile', authenticateToken, async (req, res) => {
   try {
@@ -211,7 +175,7 @@ router.get('/profile', authenticateToken, async (req, res) => {
 });
 
 // ============================================
-// UPDATE PROFILE
+// UPDATE PROFILE ROUTE
 // ============================================
 router.put('/profile', authenticateToken, async (req, res) => {
   try {
@@ -228,11 +192,7 @@ router.put('/profile', authenticateToken, async (req, res) => {
       return res.status(404).json({ success: false, message: 'Therapist not found' });
     }
 
-    return res.status(200).json({
-      success: true,
-      message: 'Profile updated',
-      data: therapist
-    });
+    return res.status(200).json({ success: true, message: 'Profile updated', data: therapist });
   } catch (error) {
     return res.status(500).json({ success: false, message: error.message });
   }
