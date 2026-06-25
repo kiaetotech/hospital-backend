@@ -20,8 +20,27 @@ const upload = multer({
 });
 
 // ============================================
-// PUBLIC ROUTES (Patients)
+// STATIC ROUTES (Must be before /:id)
 // ============================================
+
+// Health check
+router.get('/health', (req, res) => {
+  res.json({
+    success: true,
+    module: 'Hospitals',
+    status: 'active',
+    features: {
+      search: '/api/hospitals/search',
+      details: '/api/hospitals/:id',
+      bedUpdate: '/api/hospitals/:id/bed-status',
+      whatsappUpdate: '/api/hospitals/whatsapp-update',
+      excelUpload: '/api/hospitals/:id/upload-doctors',
+      template: '/api/hospitals/template/download',
+      schemeFilter: '/api/hospitals/search?scheme=ayushman',
+      insuranceFilter: '/api/hospitals/search?insurance=star'
+    }
+  });
+});
 
 // Search hospitals with advanced filters
 router.get('/search', async (req, res) => {
@@ -63,7 +82,7 @@ router.get('/search', async (req, res) => {
             type: 'Point', 
             coordinates: [parseFloat(lng), parseFloat(lat)] 
           },
-          $maxDistance: parseFloat(radius) * 1000 // Convert km to meters
+          $maxDistance: parseFloat(radius) * 1000
         }
       };
     }
@@ -179,27 +198,7 @@ router.get('/search', async (req, res) => {
   }
 });
 
-// Get single hospital details
-router.get('/:id', async (req, res) => {
-  try {
-    const hospital = await Hospital.findById(req.params.id)
-      .select('-password')
-      .lean();
-
-    if (!hospital) {
-      return res.status(404).json({ success: false, message: 'Hospital not found' });
-    }
-
-    res.json({ success: true, data: hospital });
-  } catch (error) {
-    res.status(500).json({ success: false, message: error.message });
-  }
-});
-
-// ============================================
-// WHATSAPP BED UPDATE (Public Webhook)
-// ============================================
-
+// WhatsApp bed update webhook (Public)
 router.post('/whatsapp-update', async (req, res) => {
   try {
     const { phone, message } = req.body;
@@ -238,49 +237,6 @@ router.post('/whatsapp-update', async (req, res) => {
     res.json({ 
       success: true, 
       message: `✅ Updated! Beds:${hospital.beds.total}, Available:${hospital.beds.available}, ICU:${hospital.beds.icu_available}` 
-    });
-
-  } catch (error) {
-    res.status(500).json({ success: false, message: error.message });
-  }
-});
-
-// ============================================
-// PROTECTED ROUTES (Hospital Provider + Admin)
-// ============================================
-
-// Update bed status (Web portal)
-router.put('/:id/bed-status', authenticateToken, authorizeRoles('hospital', 'admin'), async (req, res) => {
-  try {
-    const { beds, updateMethod } = req.body;
-    
-    const hospital = await Hospital.findById(req.params.id);
-    
-    if (!hospital) {
-      return res.status(404).json({ success: false, message: 'Hospital not found' });
-    }
-
-    // Check ownership
-    if (req.user.role === 'hospital' && hospital.userId && hospital.userId.toString() !== req.user._id.toString()) {
-      return res.status(403).json({ success: false, message: 'Not authorized' });
-    }
-
-    hospital.beds = {
-      ...hospital.beds.toObject(),
-      ...beds,
-      last_updated: new Date(),
-      update_method: updateMethod || 'web_portal',
-      auto_expire_at: new Date(Date.now() + 4 * 60 * 60 * 1000)
-    };
-
-    hospital.activity_score = calculateActivityScore(hospital);
-    
-    await hospital.save();
-
-    res.json({ 
-      success: true, 
-      message: 'Bed status updated successfully',
-      data: hospital.beds 
     });
 
   } catch (error) {
@@ -327,6 +283,70 @@ router.get('/template/download', authenticateToken, authorizeRoles('hospital', '
   res.send(buffer);
 });
 
+// ============================================
+// DYNAMIC ID ROUTES (Must be AFTER static routes)
+// ============================================
+
+// Get single hospital details
+router.get('/:id', async (req, res) => {
+  try {
+    // Skip if 'id' is a known static route (safety check)
+    if (['health', 'search', 'whatsapp-update', 'template'].includes(req.params.id)) {
+      return next();
+    }
+
+    const hospital = await Hospital.findById(req.params.id)
+      .select('-password')
+      .lean();
+
+    if (!hospital) {
+      return res.status(404).json({ success: false, message: 'Hospital not found' });
+    }
+
+    res.json({ success: true, data: hospital });
+  } catch (error) {
+    res.status(500).json({ success: false, message: error.message });
+  }
+});
+
+// Update bed status (Web portal)
+router.put('/:id/bed-status', authenticateToken, authorizeRoles('hospital', 'admin'), async (req, res) => {
+  try {
+    const { beds, updateMethod } = req.body;
+    
+    const hospital = await Hospital.findById(req.params.id);
+    
+    if (!hospital) {
+      return res.status(404).json({ success: false, message: 'Hospital not found' });
+    }
+
+    if (req.user.role === 'hospital' && hospital.userId && hospital.userId.toString() !== req.user._id.toString()) {
+      return res.status(403).json({ success: false, message: 'Not authorized' });
+    }
+
+    hospital.beds = {
+      ...hospital.beds.toObject(),
+      ...beds,
+      last_updated: new Date(),
+      update_method: updateMethod || 'web_portal',
+      auto_expire_at: new Date(Date.now() + 4 * 60 * 60 * 1000)
+    };
+
+    hospital.activity_score = calculateActivityScore(hospital);
+    
+    await hospital.save();
+
+    res.json({ 
+      success: true, 
+      message: 'Bed status updated successfully',
+      data: hospital.beds 
+    });
+
+  } catch (error) {
+    res.status(500).json({ success: false, message: error.message });
+  }
+});
+
 // Upload Excel - Bulk add/update doctors
 router.post('/:id/upload-doctors', authenticateToken, authorizeRoles('hospital', 'admin'), upload.single('file'), async (req, res) => {
   try {
@@ -340,7 +360,6 @@ router.post('/:id/upload-doctors', authenticateToken, authorizeRoles('hospital',
       return res.status(404).json({ success: false, message: 'Hospital not found' });
     }
 
-    // Check ownership
     if (req.user.role === 'hospital' && hospital.userId && hospital.userId.toString() !== req.user._id.toString()) {
       return res.status(403).json({ success: false, message: 'Not authorized' });
     }
@@ -452,7 +471,6 @@ router.post('/:id/upload-data', authenticateToken, authorizeRoles('hospital', 'a
 // HELPER FUNCTIONS
 // ============================================
 
-// Parse WhatsApp message
 function parseWhatsAppMessage(message) {
   try {
     const parts = message.toUpperCase().split(' ');
@@ -484,7 +502,6 @@ function parseWhatsAppMessage(message) {
   }
 }
 
-// Calculate hospital activity score for ranking
 function calculateActivityScore(hospital) {
   const now = new Date();
   const lastBedUpdate = hospital.beds?.last_updated;
