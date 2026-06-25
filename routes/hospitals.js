@@ -168,7 +168,7 @@ router.get('/search', async (req, res) => {
         .sort(sortQuery)
         .skip(skip)
         .limit(parseInt(limit))
-        .select('-__v -password')
+        .select('-__v')
         .lean(),
       Hospital.countDocuments(query)
     ]);
