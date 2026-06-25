@@ -19,7 +19,7 @@ const bookingSchema = new mongoose.Schema({
       'ayurveda_consultation', 
       'homeopathy_consult', 
       'homeopathy_medicine',
-      'insurance'  // ✅ NEW INSURANCE TYPE ADDED
+      'insurance'
     ], 
     required: true 
   },
@@ -53,7 +53,7 @@ const bookingSchema = new mongoose.Schema({
       'shipped', 
       'out_for_delivery', 
       'delivered',
-      'policy_issued'  // ✅ NEW STATUS FOR INSURANCE
+      'policy_issued'
     ], 
     default: 'pending' 
   },
@@ -93,7 +93,7 @@ const bookingSchema = new mongoose.Schema({
         'shipped', 
         'out_for_delivery', 
         'delivered',
-        'policy_issued'  // ✅ NEW STATUS FOR INSURANCE
+        'policy_issued'
       ] 
     },
     timestamp: { type: Date, default: Date.now },
@@ -102,46 +102,37 @@ const bookingSchema = new mongoose.Schema({
   estimatedReportTime: { type: Date },
   
   // ============================================
-  // NEW PAYMENT-RELATED FIELDS (ADDED)
+  // EXISTING PAYMENT FIELDS (PRESERVED)
   // ============================================
   
-  // Razorpay payment details
   razorpayOrderId: { type: String },
   razorpayPaymentId: { type: String },
   razorpaySignature: { type: String },
   
-  // Discount details
   discountCode: { type: String },
   discountType: { type: String, enum: ['percentage', 'fixed'] },
   discountValue: { type: Number },
   
-  // Payment method
   paymentMethod: { type: String, enum: ['card', 'upi', 'netbanking', 'wallet', 'emi'] },
   
-  // Refund details
   refundId: { type: String },
   refundAmount: { type: Number },
   refundStatus: { type: String, enum: ['pending', 'processed', 'failed'] },
   refundedAt: { type: Date },
   
-  // Commission tracking
   platformCommission: { type: Number, default: 0 },
   providerCommission: { type: Number, default: 0 },
   commissionStatus: { type: String, enum: ['pending', 'paid', 'failed'], default: 'pending' },
   
-  // Payment failure tracking
   paymentAttempts: { type: Number, default: 0 },
   lastPaymentError: { type: String },
   
-  // Settlement tracking
   settledToProvider: { type: Boolean, default: false },
   settledAt: { type: Date },
   settlementId: { type: String },
   
-  // Delivery OTP for medicine orders
   deliveryOTP: { type: String },
   
-  // Medicine order fields
   medicines: [{ 
     name: String, 
     potency: String, 
@@ -153,21 +144,17 @@ const bookingSchema = new mongoose.Schema({
   deliveryStatus: { type: String, enum: ['processing', 'shipped', 'out_for_delivery', 'delivered'] },
 
   // ============================================
-  // NEW INSURANCE-SPECIFIC FIELDS (ADDED)
+  // EXISTING INSURANCE FIELDS (PRESERVED)
   // ============================================
   
-  // Insurance policy reference
   insurancePolicyId: { type: mongoose.Schema.Types.ObjectId, ref: 'InsurancePolicy' },
   insurancePlanId: { type: mongoose.Schema.Types.ObjectId, ref: 'InsurancePlan' },
-  
-  // Insurance details
   insuranceCompanyName: { type: String },
   insurancePlanName: { type: String },
   policyNumber: { type: String },
   sumInsured: { type: Number },
   premiumAmount: { type: Number },
   
-  // Insurance members (for family floater)
   insuranceMembers: [{
     name: { type: String },
     relation: { type: String },
@@ -177,12 +164,10 @@ const bookingSchema = new mongoose.Schema({
     pan: { type: String }
   }],
   
-  // Insurance dates
   policyStartDate: { type: Date },
   policyEndDate: { type: Date },
   policyRenewalDate: { type: Date },
   
-  // Insurance claim details (if any)
   insuranceClaimId: { type: String },
   claimAmount: { type: Number },
   claimStatus: { 
@@ -193,7 +178,6 @@ const bookingSchema = new mongoose.Schema({
   claimDocuments: [{ type: String }],
   claimSettledAt: { type: Date },
 
-  // Insurance settlement details
   insuranceSettlementStatus: { 
     type: String, 
     enum: ['pending', 'processing', 'completed', 'failed'],
@@ -202,47 +186,255 @@ const bookingSchema = new mongoose.Schema({
   insuranceSettlementDate: { type: Date },
   insuranceSettlementTransactionId: { type: String },
   
-  // Insurance document URLs
   insurancePolicyDocumentUrl: { type: String },
   insuranceCertificateUrl: { type: String },
-  insuranceProposalFormUrl: { type: String }
+  insuranceProposalFormUrl: { type: String },
+
+  // ============================================
+  // 🆕 OPD/ADMISSION SPECIFIC FIELDS (ADDED)
+  // ============================================
+  
+  // Doctor details (enhanced)
+  doctorSpecialization: { type: String },
+  doctorQualification: { type: String },
+  consultationFee: { type: Number },
+  
+  // Admission specific
+  roomType: { type: String },
+  roomPrice: { type: Number },
+  numberOfDays: { type: Number, default: 1 },
+  advanceAmount: { type: Number, default: 0 },
+  remainingAmount: { type: Number },
+  
+  // Guardian/Attendant details
+  guardianName: { type: String },
+  guardianPhone: { type: String },
+  relation: { type: String },
+  
+  // Visit reason
+  reason: { type: String },
+  existingReports: { type: Boolean, default: false },
+  
+  // Insurance at booking level
+  insuranceProvider: { type: String },
+  insurancePolicyNumber: { type: String },
+  schemeApplied: { type: String },
+  
+  // ============================================
+  // 🆕 CANCELLATION & REFUND FIELDS (ADDED)
+  // ============================================
+  
+  cancellation: {
+    cancelledAt: { type: Date },
+    reason: { type: String },
+    cancelledBy: { type: String },
+    refundAmount: { type: Number, default: 0 },
+    refundPercentage: { type: Number, default: 0 },
+    cancellationFee: { type: Number, default: 0 },
+    refundStatus: {
+      type: String,
+      enum: ['pending', 'processed', 'failed', 'not_applicable'],
+      default: 'not_applicable'
+    },
+    refundProcessedAt: { type: Date },
+    refundTransactionId: { type: String }
+  },
+  
+  // ============================================
+  // 🆕 REVIEW & RATING FIELDS (ADDED)
+  // ============================================
+  
+  review: {
+    rating: { type: Number, default: 0, min: 0, max: 5 },
+    review: { type: String },
+    doctorRating: { type: Number, default: 0, min: 0, max: 5 },
+    staffRating: { type: Number, default: 0, min: 0, max: 5 },
+    cleanlinessRating: { type: Number, default: 0, min: 0, max: 5 },
+    waitTimeRating: { type: Number, default: 0, min: 0, max: 5 },
+    valueForMoneyRating: { type: Number, default: 0, min: 0, max: 5 },
+    submittedAt: { type: Date },
+    isVerified: { type: Boolean, default: false },
+    response: { type: String }, // Hospital's response to review
+    responseAt: { type: Date }
+  },
+  
+  // ============================================
+  // 🆕 FEEDBACK & FOLLOW-UP FIELDS (ADDED)
+  // ============================================
+  
+  feedback: {
+    wouldRecommend: { type: Boolean },
+    feedbackText: { type: String },
+    submittedAt: { type: Date }
+  },
+  
+  followUp: {
+    required: { type: Boolean, default: false },
+    followUpDate: { type: Date },
+    followUpBooked: { type: Boolean, default: false },
+    followUpBookingId: { type: String }
+  },
+  
+  // ============================================
+  // 🆕 QUEUE & WAIT TIME FIELDS (ADDED)
+  // ============================================
+  
+  queueNumber: { type: Number },
+  estimatedWaitTime: { type: Number }, // minutes
+  actualWaitTime: { type: Number }, // minutes
+  checkInTime: { type: Date },
+  consultationStartTime: { type: Date },
+  consultationEndTime: { type: Date },
+  
+  // ============================================
+  // 🆕 PRESCRIPTION FIELDS (ADDED)
+  // ============================================
+  
+  prescription: {
+    generated: { type: Boolean, default: false },
+    prescriptionId: { type: String },
+    medicines: [{
+      name: String,
+      dosage: String,
+      duration: String,
+      instructions: String
+    }],
+    tests: [{
+      testName: String,
+      instructions: String
+    }],
+    doctorNotes: { type: String },
+    generatedAt: { type: Date }
+  },
+
+  // ============================================
+  // 🆕 NOTIFICATION TRACKING (ADDED)
+  // ============================================
+  
+  notifications: [{
+    type: { type: String, enum: ['email', 'sms', 'whatsapp', 'push'] },
+    sentAt: { type: Date, default: Date.now },
+    status: { type: String, enum: ['sent', 'failed', 'delivered', 'read'] },
+    message: { type: String }
+  }],
+  
+  // ============================================
+  // 🆕 ADMIN & PROVIDER FIELDS (ADDED)
+  // ============================================
+  
+  assignedTo: { type: String }, // Staff/Doctor assigned
+  priority: { type: String, enum: ['normal', 'urgent', 'emergency'], default: 'normal' },
+  notes: [{
+    text: { type: String },
+    addedBy: { type: String },
+    addedAt: { type: Date, default: Date.now }
+  }],
+  
+  // Report delivery tracking
+  reportDeliveryMethod: { type: String, enum: ['email', 'whatsapp', 'physical', 'portal'] },
+  reportDeliveredAt: { type: Date },
+  
+  // ============================================
+  // 🆕 SPECIAL REQUIREMENTS (ADDED)
+  // ============================================
+  
+  specialRequirements: { type: String },
+  languagePreference: { type: String },
+  wheelchairRequired: { type: Boolean, default: false },
+  interpreterRequired: { type: Boolean, default: false }
 });
 
 // ============================================
-// YOUR EXISTING PRE-SAVE HOOK (PRESERVED)
+// YOUR EXISTING PRE-SAVE HOOK (PRESERVED + ENHANCED)
 // ============================================
 
 bookingSchema.pre('save', function(next) {
-  if (!this.bookingId && this.bookingType === 'labtest') {
-    this.bookingId = 'LAB' + Date.now() + Math.floor(Math.random() * 1000);
+  // Generate booking ID based on type
+  if (!this.bookingId) {
+    const prefixMap = {
+      'labtest': 'LAB',
+      'opd': 'OPD',
+      'admission': 'ADM',
+      'ambulance': 'AMB',
+      'health_package': 'HP',
+      'caregiver': 'CG',
+      'ayurveda_consultation': 'AYU',
+      'homeopathy_consult': 'HOM',
+      'homeopathy_medicine': 'HMD',
+      'insurance': 'INS'
+    };
+    const prefix = prefixMap[this.bookingType] || 'GEN';
+    this.bookingId = prefix + Date.now() + Math.floor(Math.random() * 1000);
   }
-  if (!this.bookingId && this.bookingType === 'insurance') {
-    this.bookingId = 'INS' + Date.now() + Math.floor(Math.random() * 1000);
-  }
-  if (this.isModified('status') && (!this.statusHistory || this.statusHistory.length === 0)) {
+  
+  // Initialize status history
+  if (this.isModified('status')) {
     this.statusHistory = this.statusHistory || [];
-    this.statusHistory.push({
-      status: this.status,
-      timestamp: new Date(),
-      note: 'Booking created'
-    });
+    if (this.statusHistory.length === 0 || 
+        this.statusHistory[this.statusHistory.length - 1].status !== this.status) {
+      this.statusHistory.push({
+        status: this.status,
+        timestamp: new Date(),
+        note: this.statusHistory.length === 0 ? 'Booking created' : `Status updated to ${this.status}`
+      });
+    }
   }
+  
+  // Calculate remaining amount for admission
+  if (this.bookingType === 'admission' && this.finalAmount && this.advanceAmount) {
+    this.remainingAmount = this.finalAmount - this.advanceAmount;
+  }
+  
+  // Set completedAt when status changes to completed
+  if (this.status === 'completed' && this.isModified('status')) {
+    this.completedAt = new Date();
+  }
+  
   next();
 });
 
 // ============================================
-// NEW: Virtual field for balance due
+// VIRTUAL FIELDS (PRESERVED + ENHANCED)
 // ============================================
 
 bookingSchema.virtual('balanceDue').get(function() {
   if (this.paymentStatus === 'paid' || this.paymentStatus === 'refunded') {
     return 0;
   }
-  return this.finalAmount;
+  return this.finalAmount - (this.advanceAmount || 0);
+});
+
+bookingSchema.virtual('isRefundable').get(function() {
+  if (this.paymentStatus !== 'paid') return false;
+  if (this.status === 'cancelled') return false;
+  if (this.status === 'completed') return false;
+  return true;
+});
+
+bookingSchema.virtual('canCancel').get(function() {
+  const cancelableStatuses = ['pending', 'confirmed'];
+  return cancelableStatuses.includes(this.status);
+});
+
+bookingSchema.virtual('canReview').get(function() {
+  return this.status === 'completed' && !this.review?.submittedAt;
+});
+
+bookingSchema.virtual('refundEligibility').get(function() {
+  if (!this.appointmentDate) return { eligible: false, percentage: 0 };
+  
+  const now = new Date();
+  const appointmentTime = new Date(this.appointmentDate);
+  const hoursBefore = (appointmentTime - now) / (1000 * 60 * 60);
+  
+  if (hoursBefore > 24) return { eligible: true, percentage: 90, label: 'Full refund (90%)' };
+  if (hoursBefore > 6) return { eligible: true, percentage: 50, label: 'Partial refund (50%)' };
+  if (hoursBefore > 2) return { eligible: true, percentage: 25, label: 'Partial refund (25%)' };
+  return { eligible: false, percentage: 0, label: 'No refund' };
 });
 
 // ============================================
-// NEW: Check if booking is refundable
+// METHODS (PRESERVED + ENHANCED)
 // ============================================
 
 bookingSchema.methods.isRefundable = function() {
@@ -254,10 +446,6 @@ bookingSchema.methods.canCancel = function() {
   const cancelableStatuses = ['pending', 'confirmed'];
   return cancelableStatuses.includes(this.status);
 };
-
-// ============================================
-// NEW: Insurance-specific methods (ADDED)
-// ============================================
 
 bookingSchema.methods.isInsuranceBooking = function() {
   return this.bookingType === 'insurance';
@@ -280,6 +468,88 @@ bookingSchema.methods.getDaysRemaining = function() {
   const now = new Date();
   const diff = this.policyEndDate - now;
   return Math.ceil(diff / (1000 * 60 * 60 * 24));
+};
+
+// 🆕 Cancel booking with refund calculation
+bookingSchema.methods.cancel = async function(reason, cancelledBy) {
+  const refundInfo = this.refundEligibility;
+  
+  this.status = 'cancelled';
+  this.cancellation = {
+    cancelledAt: new Date(),
+    reason: reason || 'Cancelled by patient',
+    cancelledBy: cancelledBy || this.userId,
+    refundAmount: refundInfo.eligible ? Math.round(this.finalAmount * refundInfo.percentage / 100) : 0,
+    refundPercentage: refundInfo.percentage,
+    cancellationFee: this.finalAmount - (refundInfo.eligible ? Math.round(this.finalAmount * refundInfo.percentage / 100) : 0),
+    refundStatus: refundInfo.eligible ? 'pending' : 'not_applicable'
+  };
+  
+  this.statusHistory.push({
+    status: 'cancelled',
+    timestamp: new Date(),
+    note: `Cancelled. Refund: ₹${this.cancellation.refundAmount} (${refundInfo.percentage}%)`
+  });
+  
+  return this.save();
+};
+
+// 🆕 Submit review
+bookingSchema.methods.submitReview = async function(reviewData) {
+  this.review = {
+    ...reviewData,
+    submittedAt: new Date(),
+    isVerified: false
+  };
+  
+  this.statusHistory.push({
+    status: this.status,
+    timestamp: new Date(),
+    note: 'Review submitted by patient'
+  });
+  
+  return this.save();
+};
+
+// 🆕 Check-in patient
+bookingSchema.methods.checkIn = async function() {
+  this.checkInTime = new Date();
+  this.status = 'in_progress';
+  
+  this.statusHistory.push({
+    status: 'in_progress',
+    timestamp: new Date(),
+    note: 'Patient checked in'
+  });
+  
+  return this.save();
+};
+
+// 🆕 Complete consultation
+bookingSchema.methods.completeConsultation = async function(prescriptionData) {
+  this.status = 'completed';
+  this.completedAt = new Date();
+  this.consultationEndTime = new Date();
+  
+  if (this.checkInTime) {
+    this.actualWaitTime = Math.round((this.consultationStartTime - this.checkInTime) / (1000 * 60)) || 0;
+  }
+  
+  if (prescriptionData) {
+    this.prescription = {
+      generated: true,
+      ...prescriptionData,
+      generatedAt: new Date()
+    };
+  }
+  
+  this.statusHistory.push({
+    status: 'completed',
+    timestamp: new Date(),
+    note: 'Consultation completed'
+  });
+  
+  return this.save();
 };
 
 module.exports = mongoose.model('Booking', bookingSchema);

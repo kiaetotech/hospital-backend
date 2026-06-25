@@ -2,12 +2,33 @@ require('dotenv').config();
 const express = require('express');
 const mongoose = require('mongoose');
 const cors = require('cors');
+const rateLimit = require('express-rate-limit');
+const morgan = require('morgan');
 
 const app = express();
-app.use(cors());
-app.use(express.json());
 
-// JWT Authentication for Lab Agencies
+// ============================================
+// SECURITY MIDDLEWARE
+// ============================================
+app.use(cors());
+app.use(express.json({ limit: '10mb' }));
+app.use(express.urlencoded({ extended: true, limit: '10mb' }));
+
+// Request logging
+if (process.env.NODE_ENV !== 'production') {
+  app.use(morgan('dev'));
+}
+
+// Rate limiting for search endpoints
+const searchLimiter = rateLimit({
+  windowMs: 1 * 60 * 1000, // 1 minute
+  max: 60, // 60 requests per minute
+  message: { success: false, message: 'Too many requests, please try again later.' }
+});
+
+// ============================================
+// JWT AUTHENTICATION
+// ============================================
 const jwt = require('jsonwebtoken');
 const JWT_SECRET = process.env.JWT_SECRET || 'hospital_platform_secret_key_2024';
 
@@ -80,9 +101,10 @@ global.authenticatePatient = authenticatePatient;
 global.authenticateLender = authenticateLender;
 
 // ============================================
-// EXISTING ROUTES (PRESERVED)
+// EXISTING ROUTES (ALL PRESERVED)
 // ============================================
 const hospitalRoutes = require('./routes/hospitals');
+const hospitalProviderRoutes = require('./routes/hospitalProvider');
 const authRoutes = require('./routes/auth');
 const caregiverRoutes = require('./routes/caregivers');
 const diagnosticsRoutes = require('./routes/diagnostics'); 
@@ -147,118 +169,165 @@ const otpRoutes = require('./routes/otp');
 // CORPORATE MODULE ROUTES (PRESERVED)
 // ============================================
 const corporateRoutes = require('./routes/corporate');
+const corporateBillingRoutes = require('./routes/corporate-billing');
 
 // ============================================
-// 🆕 MENTAL HEALTH MODULE ROUTES (ADDED)
+// MENTAL HEALTH MODULE ROUTES (PRESERVED)
 // ============================================
 const mentalHealthRoutes = require('./routes/mentalhealth');
 const mentalHealthTherapistRoutes = require('./routes/mentalhealth-therapist');
 const mentalHealthAdminRoutes = require('./routes/mentalhealth-admin');
-
-// ============================================
-// 🆕 MENTAL HEALTH PAYOUT & EARNINGS ROUTES (NEW)
-// ============================================
 const mentalHealthPayoutRoutes = require('./routes/mentalhealth-payout');
 const mentalHealthEarningsRoutes = require('./routes/mentalhealth-earnings');
 
 // ============================================
-// USE EXISTING ROUTES (PRESERVED)
+// ROUTE MOUNTING - NO CONFLICTS
 // ============================================
-app.use('/api/hospitals', hospitalRoutes);
+
+// 🏥 Hospital Routes
+app.use('/api/hospitals', searchLimiter, hospitalRoutes);           // Public: search, WhatsApp webhook, details
+app.use('/api/hospitals/provider', hospitalProviderRoutes);         // Provider: auth, profile, doctors, beds, bookings, prescriptions
+
+// 🔐 Auth
 app.use('/api/auth', authRoutes);
+app.use('/api/provider-auth', providerAuthRoutes);
+
+// 🏠 Caregivers
 app.use('/api/caregivers', caregiverRoutes);
+
+// 🔬 Diagnostics
 app.use('/api/diagnostics', diagnosticsRoutes); 
 app.use('/api/diagnostics/upload', diagnosticsUploadRoutes);
+
+// 🚑 Ambulance
 app.use('/api/ambulance', ambulanceRoutes);
+
+// 📦 Health Packages
 app.use('/api/health-packages', healthPackageRoutes);
 app.use('/api/provider', healthPackageRoutes);
+
+// 🧪 Tests
 app.use('/api/tests', testRoutes);
+
+// 📤 Upload
 app.use('/api/upload', uploadRoutes);
-app.use('/api/provider-auth', providerAuthRoutes);
+
+// 📋 Bookings
 app.use('/api/bookings', bookingRoutes);
-app.use('/api/payment', razorpayRoutes);
-app.use('/api/reviews', reviewRoutes);
-app.use('/api/admin', adminRoutes);
 app.use('/api/booking-status', bookingStatusRoutes);
 app.use('/api/custom-packages', customPackageRoutes);
+
+// 💳 Payment
+app.use('/api/payment', razorpayRoutes);
+app.use('/api/webhooks', webhookRoutes);
+
+// ⭐ Reviews
+app.use('/api/reviews', reviewRoutes);
+
+// 🔧 Admin
+app.use('/api/admin', adminRoutes);
+
+// 💰 Lender
 app.use('/api/lender/auth', lenderAuthRoutes);
+app.use('/api/lender', lenderRoutes);
 app.use('/api/admin/lenders', adminLenderRoutes);
 
-// ============================================
-// LENDER ROUTES (PRESERVED)
-// ============================================
-app.use('/api/lender', lenderRoutes);
-
-// ============================================
-// LOAN ROUTES (PRESERVED)
-// ============================================
+// 💵 Loan Module
 app.use('/api/loan/patient', loanPatientRoutes);
 app.use('/api/loan/lender', loanLenderRoutes);
 app.use('/api/loan/admin', loanAdminRoutes);
 app.use('/api/loan/webhook', loanWebhookRoutes);
 
-// ============================================
-// PAYMENT ROUTES (PRESERVED)
-// ============================================
-app.use('/api/webhooks', webhookRoutes);
-
-// ============================================
-// AYURVEDA ROUTES (PRESERVED)
-// ============================================
+// 🧘 Ayurveda
 app.use('/api/ayurveda', ayurvedaRoutes);
 app.use('/api/ayurveda-centers', ayurvedaCenterRoutes);
 app.use('/api/ayurveda/prescriptions', ayurvedaPrescriptionRoutes);
 app.use('/api/ayurveda/reports', ayurvedaReportRoutes);
 app.use('/api/ayurveda/payments', razorpayRoutes);
 
-// ============================================
-// HOMEOPATHY ROUTES (PRESERVED)
-// ============================================
+// 🌿 Homeopathy
 app.use('/api/homeopathy', homeopathyRoutes);
 
-// ============================================
-// INSURANCE ROUTES (PRESERVED)
-// ============================================
+// 🛡️ Insurance
 app.use('/api/insurance', insuranceRoutes);
 app.use('/api/insurance-admin', insuranceAdminRoutes);
 
-// ============================================
-// OTP ROUTES (PRESERVED)
-// ============================================
+// 📱 OTP
 app.use('/api/otp', otpRoutes);
 
-// ============================================
-// CORPORATE ROUTES (PRESERVED)
-// ============================================
+// 🏢 Corporate
 app.use('/api/corporate', corporateRoutes);
+app.use('/api/corporate/billing', corporateBillingRoutes);
 
-// ============================================
-// 🆕 MENTAL HEALTH ROUTES (ADDED)
-// ============================================
+// 🧠 Mental Health
 app.use('/api/mentalhealth', mentalHealthRoutes);
 app.use('/api/mentalhealth/therapist', mentalHealthTherapistRoutes);
 app.use('/api/mentalhealth/admin', mentalHealthAdminRoutes);
-
-// ============================================
-// 🆕 MENTAL HEALTH PAYOUT & EARNINGS ROUTES (NEW)
-// ============================================
 app.use('/api/mentalhealth/payout', mentalHealthPayoutRoutes);
 app.use('/api/mentalhealth/earnings', mentalHealthEarningsRoutes);
 
 // ============================================
-// HEALTH CHECK (PRESERVED)
+// HEALTH CHECKS
 // ============================================
+
+// Root health check
 app.get('/health', (req, res) => {
-  res.json({ status: 'ok', message: 'Server is running' });
+  res.json({ 
+    status: 'ok', 
+    message: 'Server is running',
+    timestamp: new Date().toISOString(),
+    uptime: process.uptime()
+  });
 });
 
 app.get('/api/test', (req, res) => {
   res.json({ success: true, message: 'API is working' });
 });
 
-// ============================================
-// INSURANCE HEALTH CHECK (PRESERVED)
-// ============================================
+// Hospital Module Health Check
+app.get('/api/hospitals/health', (req, res) => {
+  res.json({
+    success: true,
+    module: 'Hospitals',
+    status: 'active',
+    version: '2.0',
+    features: {
+      public: {
+        search: '/api/hospitals/search',
+        details: '/api/hospitals/:id',
+        whatsappUpdate: '/api/hospitals/whatsapp-update'
+      },
+      provider: {
+        register: '/api/hospitals/provider/register',
+        login: '/api/hospitals/provider/login',
+        profile: '/api/hospitals/provider/profile',
+        doctors: '/api/hospitals/provider/doctors',
+        beds: '/api/hospitals/provider/bed-status',
+        bookings: '/api/hospitals/provider/bookings',
+        prescriptions: '/api/hospitals/provider/prescriptions',
+        analytics: '/api/hospitals/provider/analytics',
+        excelUpload: '/api/hospitals/provider/upload-doctors',
+        template: '/api/hospitals/provider/template/download',
+        schemes: '/api/hospitals/provider/schemes',
+        insurance: '/api/hospitals/provider/insurance',
+        facilities: '/api/hospitals/provider/facilities',
+        packages: '/api/hospitals/provider/packages',
+        offers: '/api/hospitals/provider/offers'
+      },
+      filters: {
+        scheme: '/api/hospitals/search?scheme=ayushman',
+        insurance: '/api/hospitals/search?insurance=star',
+        cashless: '/api/hospitals/search?cashless=true',
+        emergency: '/api/hospitals/search?emergency=true',
+        bedsAvailable: '/api/hospitals/search?beds_available=true',
+        rating: '/api/hospitals/search?min_rating=4.5',
+        geospatial: '/api/hospitals/search?lat=19.07&lng=72.83&radius=50'
+      }
+    }
+  });
+});
+
+// Insurance Health Check
 app.get('/api/insurance/health', (req, res) => {
   res.json({
     success: true,
@@ -274,9 +343,7 @@ app.get('/api/insurance/health', (req, res) => {
   });
 });
 
-// ============================================
-// OTP HEALTH CHECK (PRESERVED)
-// ============================================
+// OTP Health Check
 app.get('/api/otp/health', (req, res) => {
   res.json({
     success: true,
@@ -291,9 +358,7 @@ app.get('/api/otp/health', (req, res) => {
   });
 });
 
-// ============================================
-// 🆕 MENTAL HEALTH HEALTH CHECK (ADDED)
-// ============================================
+// Mental Health Health Check
 app.get('/api/mentalhealth/health', (req, res) => {
   res.json({
     success: true,
@@ -310,15 +375,49 @@ app.get('/api/mentalhealth/health', (req, res) => {
 });
 
 // ============================================
-// ERROR HANDLING (PRESERVED)
+// 404 HANDLER
 // ============================================
-app.use((err, req, res, next) => {
-  console.error('Error:', err);
-  res.status(500).json({ error: err.message || 'Internal server error' });
+app.use((req, res) => {
+  res.status(404).json({ 
+    success: false, 
+    message: `Route ${req.originalUrl} not found` 
+  });
 });
 
 // ============================================
-// MONGODB CONNECTION (PRESERVED)
+// ERROR HANDLING
+// ============================================
+app.use((err, req, res, next) => {
+  console.error('Error:', err.message);
+  
+  // Mongoose validation error
+  if (err.name === 'ValidationError') {
+    const messages = Object.values(err.errors).map(e => e.message);
+    return res.status(400).json({ success: false, message: messages.join(', ') });
+  }
+  
+  // Mongoose duplicate key error
+  if (err.code === 11000) {
+    return res.status(400).json({ success: false, message: 'Duplicate entry found' });
+  }
+  
+  // JWT errors
+  if (err.name === 'JsonWebTokenError') {
+    return res.status(401).json({ success: false, message: 'Invalid token' });
+  }
+  
+  if (err.name === 'TokenExpiredError') {
+    return res.status(401).json({ success: false, message: 'Token expired' });
+  }
+  
+  res.status(err.status || 500).json({ 
+    success: false, 
+    message: err.message || 'Internal server error' 
+  });
+});
+
+// ============================================
+// MONGODB CONNECTION
 // ============================================
 const DB_URI = process.env.DB_URI || 'mongodb://localhost:27017/hospital_db';
 mongoose.connect(DB_URI, {
@@ -329,39 +428,54 @@ mongoose.connect(DB_URI, {
   .catch(err => console.error('❌ MongoDB error:', err));
 
 // ============================================
-// SERVER START (PRESERVED + UPDATED)
+// SERVER START
 // ============================================
 const PORT = process.env.PORT || 5000;
 app.listen(PORT, () => {
-  console.log(`🚀 Server running on port ${PORT}`);
-  console.log(`📋 Loan modules available at /api/loan/*`);
-  console.log(`💳 Payment routes available at /api/payment/*`);
-  console.log(`🔗 Webhook routes available at /api/webhooks/*`);
-  console.log(`🧘 Ayurveda module available at /api/ayurveda/*`);
-  console.log(`🌿 Homeopathy module available at /api/homeopathy/*`);
-  console.log(`🛡️ Insurance module available at /api/insurance/*`);
-  console.log(`🛡️ Insurance Admin available at /api/insurance-admin/*`);
-  console.log(`📱 OTP module available at /api/otp/*`);
-  console.log(`🏢 Corporate module available at /api/corporate/*`);
-  console.log(`🧠 Mental Health module available at /api/mentalhealth/*`);
-  console.log(`🧠 Mental Health Therapist at /api/mentalhealth/therapist/*`);
-  console.log(`🧠 Mental Health Admin at /api/mentalhealth/admin/*`);
-  console.log(`💰 Mental Health Payout at /api/mentalhealth/payout/*`);
-  console.log(`📊 Mental Health Earnings at /api/mentalhealth/earnings/*`);
-  console.log(`✅ All modules loaded successfully!`);
+  console.log('═'.repeat(55));
+  console.log('🚀 HealthCare Hub Server Started');
+  console.log('═'.repeat(55));
+  console.log(`📍 Port: ${PORT}`);
+  console.log(`🌐 Environment: ${process.env.NODE_ENV || 'development'}`);
+  console.log('─'.repeat(55));
+  console.log('📦 Modules Loaded:');
+  console.log('─'.repeat(55));
+  console.log('🏥  Hospitals        → /api/hospitals/*');
+  console.log('🏥  Hospital Provider → /api/hospitals/provider/*');
+  console.log('🚑  Ambulance         → /api/ambulance/*');
+  console.log('🏠  Caregivers        → /api/caregivers/*');
+  console.log('🔬  Diagnostics       → /api/diagnostics/*');
+  console.log('🧘  Ayurveda          → /api/ayurveda/*');
+  console.log('🌿  Homeopathy        → /api/homeopathy/*');
+  console.log('🛡️  Insurance         → /api/insurance/*');
+  console.log('🛡️  Insurance Admin   → /api/insurance-admin/*');
+  console.log('🏢  Corporate         → /api/corporate/*');
+  console.log('🧠  Mental Health     → /api/mentalhealth/*');
+  console.log('💰  Loans             → /api/loan/*');
+  console.log('💰  Lenders           → /api/lender/*');
+  console.log('💳  Payments          → /api/payment/*');
+  console.log('📋  Bookings          → /api/bookings/*');
+  console.log('⭐  Reviews           → /api/reviews/*');
+  console.log('📱  OTP               → /api/otp/*');
+  console.log('🔧  Admin             → /api/admin/*');
+  console.log('─'.repeat(55));
+  console.log('✅ All modules loaded successfully!');
+  console.log('═'.repeat(55));
 });
 
 // ============================================
-// UNHANDLED REJECTION HANDLER (PRESERVED)
+// PROCESS HANDLERS
 // ============================================
 process.on('unhandledRejection', (err) => {
-  console.error('❌ Unhandled Rejection:', err);
+  console.error('❌ Unhandled Rejection:', err.message);
 });
 
-// ============================================
-// UNCAUGHT EXCEPTION HANDLER (PRESERVED)
-// ============================================
 process.on('uncaughtException', (err) => {
-  console.error('❌ Uncaught Exception:', err);
+  console.error('❌ Uncaught Exception:', err.message);
   process.exit(1);
+});
+
+process.on('SIGTERM', () => {
+  console.log('👋 SIGTERM received. Shutting down gracefully...');
+  process.exit(0);
 });

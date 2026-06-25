@@ -16,7 +16,7 @@ const razorpay = new Razorpay({
 });
 
 // ============================================
-// CREATE ORDER
+// CREATE ORDER (Generic - Used by Hospitals, Lab, etc.)
 // ============================================
 
 router.post('/create-order', async (req, res) => {
@@ -73,7 +73,7 @@ router.post('/create-order', async (req, res) => {
 });
 
 // ============================================
-// VERIFY PAYMENT
+// VERIFY PAYMENT (Handles ALL booking types)
 // ============================================
 
 router.post('/verify', async (req, res) => {
@@ -96,7 +96,9 @@ router.post('/verify', async (req, res) => {
       homeAddress,
       bookingType,
       hospitalName,
+      hospitalId,
       doctorName,
+      doctorSpecialization,
       timeSlot,
       ambulanceType,
       pickupAddress,
@@ -111,7 +113,21 @@ router.post('/verify', async (req, res) => {
       discountAmount,
       platformFee,
       gst,
-      finalAmount
+      finalAmount,
+      roomType,
+      roomPrice,
+      numberOfDays,
+      advanceAmount,
+      reason,
+      guardianName,
+      guardianPhone,
+      insuranceProvider,
+      insurancePolicyNumber,
+      schemeApplied,
+      consultationFee,
+      medicines,
+      deliveryAddress,
+      userId
     } = req.body;
     
     // Verify signature
@@ -134,166 +150,164 @@ router.post('/verify', async (req, res) => {
       transaction.completedAt = new Date();
       transaction.paymentMethod = req.body.paymentMethod || 'card';
       transaction.webhookReceived = true;
+      
+      // Calculate platform commission (10%)
+      const amount = totalAmount || finalAmount || transaction.amount;
+      transaction.platformCommission = Math.round(amount * 0.10);
+      transaction.providerAmount = amount - transaction.platformCommission;
+      transaction.commissionStatus = 'pending';
+      
       await transaction.save();
     }
     
     let booking = null;
+    const bookingAmount = totalAmount || finalAmount || 0;
+    const bookingIdPrefix = {
+      'labtest': 'LAB',
+      'opd': 'OPD',
+      'admission': 'ADM',
+      'ambulance': 'AMB',
+      'caregiver': 'CAR',
+      'ayurveda_consultation': 'AYU',
+      'ayurveda_panchakarma': 'AYP',
+      'homeopathy_consult': 'HOM',
+      'homeopathy_medicine': 'HMD'
+    };
     
+    const prefix = bookingIdPrefix[bookingType] || 'GEN';
+    const newBookingId = bookingId || (prefix + Date.now() + Math.floor(Math.random() * 1000));
+
     // ============================================
-    // CASE 1: Lab Test Booking
+    // BUILD COMMON BOOKING DATA
+    // ============================================
+    
+    const commonBookingData = {
+      bookingId: newBookingId,
+      userId: userId || req.body.userId || 'guest_' + Date.now(),
+      bookingType: bookingType || 'general',
+      patientName,
+      patientAge: parseInt(patientAge) || null,
+      patientGender: patientGender || '',
+      patientPhone,
+      patientEmail: patientEmail || '',
+      originalAmount: bookingAmount,
+      finalAmount: bookingAmount,
+      status: 'confirmed',
+      paymentStatus: 'paid',
+      paymentId: razorpay_payment_id,
+      orderId: razorpay_order_id,
+      razorpayOrderId: razorpay_order_id,
+      razorpayPaymentId: razorpay_payment_id,
+      razorpaySignature: razorpay_signature,
+      appointmentDate: appointmentDate ? new Date(appointmentDate) : new Date(),
+      platformCommission: Math.round(bookingAmount * 0.10),
+      discount: discountAmount || 0
+    };
+
+    // ============================================
+    // CASE 1: Lab Test Booking (PRESERVED)
     // ============================================
     if (bookingType === 'labtest' || tests) {
       booking = await Booking.findOne({ bookingId: bookingId });
       
       if (!booking) {
-        const newBookingId = 'LAB' + Date.now() + Math.floor(Math.random() * 1000);
-        
         booking = new Booking({
-          bookingId: newBookingId,
-          userId: req.body.userId || 'guest_' + Date.now(),
-          bookingType: 'labtest',
-          patientName,
-          patientAge: parseInt(patientAge),
-          patientGender,
-          patientPhone,
-          patientEmail,
+          ...commonBookingData,
           tests,
           providerName,
-          originalAmount: totalAmount,
-          finalAmount: totalAmount,
-          appointmentDate: new Date(appointmentDate),
           homeCollectionRequested: homeCollectionRequested || false,
-          homeAddress: homeAddress || '',
-          status: 'confirmed',
-          paymentStatus: 'paid',
-          paymentId: razorpay_payment_id,
-          orderId: razorpay_order_id,
-          razorpayOrderId: razorpay_order_id,
-          razorpayPaymentId: razorpay_payment_id,
-          razorpaySignature: razorpay_signature
+          homeAddress: homeAddress || ''
         });
-        
         await booking.save();
       } else {
-        booking.paymentStatus = 'paid';
-        booking.paymentId = razorpay_payment_id;
-        booking.orderId = razorpay_order_id;
-        booking.razorpayOrderId = razorpay_order_id;
-        booking.razorpayPaymentId = razorpay_payment_id;
-        booking.razorpaySignature = razorpay_signature;
-        booking.status = 'confirmed';
+        Object.assign(booking, commonBookingData);
         await booking.save();
       }
     }
     
     // ============================================
-    // CASE 2: Hospital OPD/Admission
+    // CASE 2: Hospital OPD Booking (ENHANCED)
     // ============================================
-    else if (bookingType === 'opd' || bookingType === 'admission') {
-      const newBookingId = (bookingType === 'opd' ? 'OPD' : 'ADM') + Date.now() + Math.floor(Math.random() * 1000);
-      
+    else if (bookingType === 'opd') {
       booking = new Booking({
-        bookingId: newBookingId,
-        userId: req.body.userId || 'guest_' + Date.now(),
-        bookingType: bookingType,
-        patientName,
-        patientAge: parseInt(patientAge),
-        patientGender,
-        patientPhone,
-        patientEmail,
-        hospitalName: hospitalName || providerName,
+        ...commonBookingData,
+        hospitalId: hospitalId || '',
+        hospitalName: hospitalName || providerName || '',
         doctorName: doctorName || '',
+        doctorSpecialization: doctorSpecialization || '',
+        consultationFee: consultationFee || bookingAmount,
         timeSlot: timeSlot || '',
-        originalAmount: totalAmount,
-        finalAmount: totalAmount,
-        appointmentDate: new Date(appointmentDate),
-        status: 'confirmed',
-        paymentStatus: 'paid',
-        paymentId: razorpay_payment_id,
-        orderId: razorpay_order_id,
-        razorpayOrderId: razorpay_order_id,
-        razorpayPaymentId: razorpay_payment_id,
-        razorpaySignature: razorpay_signature
+        reason: reason || '',
+        existingReports: req.body.existingReports || false,
+        guardianName: guardianName || '',
+        guardianPhone: guardianPhone || ''
       });
-      
       await booking.save();
     }
     
     // ============================================
-    // CASE 3: Ambulance
+    // CASE 3: Hospital Admission Booking (ENHANCED)
+    // ============================================
+    else if (bookingType === 'admission') {
+      booking = new Booking({
+        ...commonBookingData,
+        hospitalId: hospitalId || '',
+        hospitalName: hospitalName || providerName || '',
+        doctorName: doctorName || '',
+        roomType: roomType || '',
+        roomPrice: roomPrice || 0,
+        numberOfDays: numberOfDays || 1,
+        advanceAmount: advanceAmount || bookingAmount,
+        remainingAmount: (bookingAmount * (numberOfDays || 1)) - (advanceAmount || bookingAmount),
+        reason: reason || '',
+        existingReports: req.body.existingReports || false,
+        guardianName: guardianName || '',
+        guardianPhone: guardianPhone || '',
+        insuranceProvider: insuranceProvider || '',
+        insurancePolicyNumber: insurancePolicyNumber || '',
+        schemeApplied: schemeApplied || ''
+      });
+      await booking.save();
+      
+      // Update hospital bed count
+      if (hospitalId) {
+        const Hospital = require('../models/Hospital');
+        await Hospital.findByIdAndUpdate(hospitalId, {
+          $inc: { 'beds.available': -1 }
+        });
+      }
+    }
+    
+    // ============================================
+    // CASE 4: Ambulance (PRESERVED)
     // ============================================
     else if (bookingType === 'ambulance') {
-      const newBookingId = 'AMB' + Date.now() + Math.floor(Math.random() * 1000);
-      
       booking = new Booking({
-        bookingId: newBookingId,
-        userId: req.body.userId || 'guest_' + Date.now(),
-        bookingType: 'ambulance',
-        patientName,
-        patientPhone,
-        patientEmail,
+        ...commonBookingData,
         ambulanceType: ambulanceType || 'basic',
         pickupAddress: pickupAddress || '',
-        dropAddress: dropAddress || '',
-        originalAmount: totalAmount,
-        finalAmount: totalAmount,
-        appointmentDate: new Date(),
-        status: 'confirmed',
-        paymentStatus: 'paid',
-        paymentId: razorpay_payment_id,
-        orderId: razorpay_order_id,
-        razorpayOrderId: razorpay_order_id,
-        razorpayPaymentId: razorpay_payment_id,
-        razorpaySignature: razorpay_signature
+        dropAddress: dropAddress || ''
       });
-      
       await booking.save();
     }
     
     // ============================================
-    // CASE 4: Caregiver
+    // CASE 5: Caregiver (PRESERVED)
     // ============================================
     else if (bookingType === 'caregiver') {
-      const newBookingId = 'CAR' + Date.now() + Math.floor(Math.random() * 1000);
-      
       booking = new Booking({
-        bookingId: newBookingId,
-        userId: req.body.userId || 'guest_' + Date.now(),
-        bookingType: 'caregiver',
-        patientName,
-        patientPhone,
-        patientEmail,
-        providerName: providerName || caregiverName || '',
-        originalAmount: totalAmount,
-        finalAmount: totalAmount,
-        appointmentDate: new Date(appointmentDate),
-        status: 'confirmed',
-        paymentStatus: 'paid',
-        paymentId: razorpay_payment_id,
-        orderId: razorpay_order_id,
-        razorpayOrderId: razorpay_order_id,
-        razorpayPaymentId: razorpay_payment_id,
-        razorpaySignature: razorpay_signature
+        ...commonBookingData,
+        providerName: providerName || caregiverName || ''
       });
-      
       await booking.save();
     }
     
     // ============================================
-    // CASE 5: Ayurveda Doctor Consultation
+    // CASE 6: Ayurveda Doctor Consultation (PRESERVED)
     // ============================================
     else if (bookingType === 'ayurveda_consultation') {
-      const newBookingId = bookingId || 'AYB' + Date.now();
-      
       booking = new Booking({
-        bookingId: newBookingId,
-        userId: req.body.userId || 'guest_' + Date.now(),
-        bookingType: 'ayurveda_consultation',
-        patientName,
-        patientAge: parseInt(patientAge) || null,
-        patientGender: patientGender || '',
-        patientPhone,
-        patientEmail: patientEmail || '',
+        ...commonBookingData,
         providerName: doctorName || providerName || '',
         hospitalName: wellnessCenter || '',
         doctorName: doctorName || '',
@@ -301,60 +315,29 @@ router.post('/verify', async (req, res) => {
         consultationType: consultationType || 'online',
         timeSlot: timeSlot || '',
         symptoms: symptoms || '',
-        originalAmount: totalAmount || finalAmount,
         discountAmount: discountAmount || 0,
         platformFee: platformFee || 0,
-        gst: gst || 0,
-        finalAmount: finalAmount || totalAmount,
-        appointmentDate: new Date(appointmentDate),
-        status: 'confirmed',
-        paymentStatus: 'paid',
-        paymentId: razorpay_payment_id,
-        orderId: razorpay_order_id,
-        razorpayOrderId: razorpay_order_id,
-        razorpayPaymentId: razorpay_payment_id,
-        razorpaySignature: razorpay_signature
+        gst: gst || 0
       });
-      
       await booking.save();
     }
     
     // ============================================
-    // CASE 6: Ayurveda Panchakarma Package
+    // CASE 7: Ayurveda Panchakarma Package (PRESERVED)
     // ============================================
     else if (bookingType === 'ayurveda_panchakarma') {
-      const newBookingId = bookingId || 'AYP' + Date.now();
-      
       booking = new Booking({
-        bookingId: newBookingId,
-        userId: req.body.userId || 'guest_' + Date.now(),
-        bookingType: 'ayurveda_panchakarma',
-        patientName,
-        patientAge: parseInt(patientAge) || null,
-        patientGender: patientGender || '',
-        patientPhone,
-        patientEmail: patientEmail || '',
+        ...commonBookingData,
         providerName: providerName || wellnessCenter || '',
         hospitalName: wellnessCenter || '',
-        originalAmount: totalAmount || finalAmount,
         discountAmount: discountAmount || 0,
-        finalAmount: finalAmount || totalAmount,
-        appointmentDate: new Date(appointmentDate),
-        admissionDate: new Date(appointmentDate),
-        status: 'confirmed',
-        paymentStatus: 'paid',
-        paymentId: razorpay_payment_id,
-        orderId: razorpay_order_id,
-        razorpayOrderId: razorpay_order_id,
-        razorpayPaymentId: razorpay_payment_id,
-        razorpaySignature: razorpay_signature
+        admissionDate: new Date(appointmentDate)
       });
-      
       await booking.save();
     }
     
     // ============================================
-    // CASE 7: Loan Application (EXISTING - DO NOT MODIFY)
+    // CASE 8: Loan Application (PRESERVED - DO NOT MODIFY)
     // ============================================
     else if (bookingType === 'loan' && loanApplicationId) {
       const loanApp = await LoanApplication.findOne({ applicationId: loanApplicationId });
@@ -367,62 +350,41 @@ router.post('/verify', async (req, res) => {
     }
     
     // ============================================
-    // 🆕 CASE 8: Homeopathy Doctor Consultation
+    // CASE 9: Homeopathy Doctor Consultation (PRESERVED)
     // ============================================
     else if (bookingType === 'homeopathy_consult') {
-      const newBookingId = bookingId || 'HMB' + Date.now();
-      
       booking = new Booking({
-        bookingId: newBookingId,
-        userId: req.body.userId || 'guest_' + Date.now(),
-        bookingType: 'homeopathy_consult',
-        patientName,
-        patientAge: parseInt(patientAge) || null,
-        patientGender: patientGender || '',
-        patientPhone,
-        patientEmail: patientEmail || '',
+        ...commonBookingData,
         doctorName: doctorName || '',
         timeSlot: timeSlot || '',
-        symptoms: symptoms || '',
-        originalAmount: totalAmount || finalAmount,
-        finalAmount: finalAmount || totalAmount,
-        appointmentDate: new Date(appointmentDate),
-        status: 'confirmed',
-        paymentStatus: 'paid',
-        paymentId: razorpay_payment_id,
-        orderId: razorpay_order_id,
-        razorpayOrderId: razorpay_order_id,
-        razorpayPaymentId: razorpay_payment_id,
-        razorpaySignature: razorpay_signature
+        symptoms: symptoms || ''
       });
       await booking.save();
     }
     
     // ============================================
-    // 🆕 CASE 9: Homeopathy Medicine Order
+    // CASE 10: Homeopathy Medicine Order (PRESERVED)
     // ============================================
     else if (bookingType === 'homeopathy_medicine') {
-      const newBookingId = bookingId || 'HMO' + Date.now();
-      
       booking = new Booking({
-        bookingId: newBookingId,
-        userId: req.body.userId || 'guest_' + Date.now(),
-        bookingType: 'homeopathy_medicine',
-        patientName,
-        patientPhone,
-        patientEmail: patientEmail || '',
-        medicines: req.body.medicines || [],
-        deliveryAddress: req.body.deliveryAddress || '',
-        originalAmount: totalAmount || finalAmount,
-        finalAmount: finalAmount || totalAmount,
-        status: 'confirmed',
-        paymentStatus: 'paid',
-        paymentId: razorpay_payment_id,
-        orderId: razorpay_order_id,
-        razorpayOrderId: razorpay_order_id,
-        razorpayPaymentId: razorpay_payment_id,
-        razorpaySignature: razorpay_signature,
+        ...commonBookingData,
+        medicines: medicines || [],
+        deliveryAddress: deliveryAddress || '',
         deliveryOTP: Math.floor(100000 + Math.random() * 900000).toString()
+      });
+      await booking.save();
+    }
+    
+    // ============================================
+    // 🆕 CASE 11: Generic/Other booking types
+    // ============================================
+    else {
+      booking = new Booking({
+        ...commonBookingData,
+        providerName: providerName || hospitalName || '',
+        hospitalName: hospitalName || '',
+        doctorName: doctorName || '',
+        timeSlot: timeSlot || ''
       });
       await booking.save();
     }
@@ -430,7 +392,8 @@ router.post('/verify', async (req, res) => {
     res.json({ 
       success: true, 
       message: 'Payment verified and booking confirmed!',
-      bookingId: booking?.bookingId || 'N/A'
+      bookingId: booking?.bookingId || newBookingId,
+      data: booking
     });
   } catch (error) {
     console.error('Payment verification error:', error);
@@ -464,7 +427,7 @@ router.get('/status/:bookingId', async (req, res) => {
 });
 
 // ============================================
-// CREATE ORDER V2 (Generic)
+// CREATE ORDER V2 (Generic with discount)
 // ============================================
 
 router.post('/create-order-v2', async (req, res) => {
@@ -536,7 +499,7 @@ router.post('/create-order-v2', async (req, res) => {
 });
 
 // ============================================
-// AYURVEDA-SPECIFIC: Create order
+// AYURVEDA-SPECIFIC: Create order (PRESERVED)
 // ============================================
 
 router.post('/ayurveda-create-order', async (req, res) => {
@@ -601,7 +564,7 @@ router.post('/ayurveda-create-order', async (req, res) => {
 });
 
 // ============================================
-// CALCULATE DISCOUNT
+// CALCULATE DISCOUNT (PRESERVED)
 // ============================================
 
 router.post('/calculate-discount', async (req, res) => {
@@ -660,61 +623,7 @@ router.post('/calculate-discount', async (req, res) => {
 });
 
 // ============================================
-// AYURVEDA PAYMENT - Create Order
-// ============================================
-router.post('/create-order', async (req, res) => {
-  try {
-    const { amount, bookingId, doctorId, patientName, patientPhone, consultationType } = req.body;
-    
-    const receipt = `ayurveda_${bookingId || Date.now()}`;
-    const finalAmount = amount || 500;
-    
-    const options = {
-      amount: Math.round(finalAmount * 100),
-      currency: 'INR',
-      receipt,
-      payment_capture: 1,
-      notes: {
-        bookingId: bookingId || 'temp_' + Date.now(),
-        bookingType: 'ayurveda_consultation',
-        doctorId: doctorId || '',
-        patientName: patientName || 'Guest',
-        patientPhone: patientPhone || '',
-        consultationType: consultationType || 'online'
-      }
-    };
-    
-    const order = await razorpay.orders.create(options);
-    
-    const Transaction = require('../models/Transaction');
-    const transaction = new Transaction({
-      transactionId: Transaction.generateTransactionId(),
-      orderId: order.id,
-      amount: finalAmount,
-      netAmount: finalAmount,
-      userId: req.body.userId || 'guest',
-      bookingId: bookingId,
-      bookingType: 'ayurveda_consultation',
-      paymentGateway: 'razorpay',
-      status: 'initiated',
-      initiatedAt: new Date()
-    });
-    await transaction.save();
-    
-    res.json({ 
-      success: true, 
-      order: { id: order.id, amount: order.amount, currency: order.currency, receipt: order.receipt },
-      transactionId: transaction.transactionId,
-      key_id: process.env.RAZORPAY_KEY_ID || 'rzp_test_xxxxxxxxxxxxx'
-    });
-  } catch (error) {
-    console.error('Ayurveda order error:', error);
-    res.status(500).json({ success: false, message: error.message });
-  }
-});
-
-// ============================================
-// WEBHOOK
+// WEBHOOK (PRESERVED + ENHANCED)
 // ============================================
 
 router.post('/webhook', async (req, res) => {
@@ -733,6 +642,7 @@ router.post('/webhook', async (req, res) => {
     
     const { event, payload } = req.body;
     
+    // Payment captured
     if (event === 'payment.captured') {
       const payment = payload.payment.entity;
       const orderId = payment.order_id;
@@ -745,6 +655,12 @@ router.post('/webhook', async (req, res) => {
         transaction.paidAt = new Date();
         transaction.completedAt = new Date();
         transaction.webhookReceived = true;
+        
+        // Calculate commission
+        const amount = transaction.netAmount || transaction.amount;
+        transaction.platformCommission = Math.round(amount * 0.10);
+        transaction.providerAmount = amount - transaction.platformCommission;
+        
         await transaction.save();
       }
       
@@ -758,6 +674,7 @@ router.post('/webhook', async (req, res) => {
       }
     }
     
+    // Payment failed
     if (event === 'payment.failed') {
       const payment = payload.payment.entity;
       const orderId = payment.order_id;
@@ -772,17 +689,49 @@ router.post('/webhook', async (req, res) => {
       }
     }
     
-    if (event === 'refund.processed') {
+    // Refund processed
+    if (event === 'refund.processed' || event === 'refund.created') {
       const refund = payload.refund.entity;
       const paymentId = refund.payment_id;
       
       const transaction = await Transaction.findOne({ paymentId: paymentId });
       if (transaction) {
-        transaction.status = 'refunded';
+        transaction.status = transaction.refundAmount === transaction.amount ? 'refunded' : 'partially_refunded';
         transaction.refundId = refund.id;
         transaction.refundAmount = refund.amount / 100;
         transaction.refundedAt = new Date();
+        transaction.refund = {
+          ...transaction.refund,
+          gatewayRefundId: refund.id,
+          gatewayRefundStatus: refund.status,
+          processedAt: new Date()
+        };
         await transaction.save();
+      }
+      
+      const booking = await Booking.findOne({ paymentId: paymentId });
+      if (booking) {
+        booking.paymentStatus = 'refunded';
+        booking.refundId = refund.id;
+        booking.refundAmount = refund.amount / 100;
+        booking.refundedAt = new Date();
+        booking.refundStatus = 'processed';
+        
+        if (booking.cancellation) {
+          booking.cancellation.refundStatus = 'processed';
+          booking.cancellation.refundProcessedAt = new Date();
+          booking.cancellation.refundTransactionId = refund.id;
+        }
+        
+        await booking.save();
+        
+        // Restore hospital bed if admission
+        if (booking.bookingType === 'admission' && booking.hospitalId) {
+          const Hospital = require('../models/Hospital');
+          await Hospital.findByIdAndUpdate(booking.hospitalId, {
+            $inc: { 'beds.available': 1 }
+          });
+        }
       }
     }
     
@@ -794,43 +743,147 @@ router.post('/webhook', async (req, res) => {
 });
 
 // ============================================
-// REFUND
+// 🆕 REFUND (ENHANCED)
 // ============================================
 
 router.post('/refund/:paymentId', async (req, res) => {
   try {
     const { paymentId } = req.params;
-    const { amount, reason } = req.body;
+    const { amount, reason, refundType, bookingId } = req.body;
+    
+    const refundAmount = amount ? Math.round(amount * 100) : undefined;
     
     const refundOptions = {
       payment_id: paymentId,
-      amount: amount ? Math.round(amount * 100) : undefined,
-      notes: { reason: reason || 'Customer request' }
+      amount: refundAmount,
+      notes: { 
+        reason: reason || 'Customer request',
+        refundType: refundType || 'full',
+        bookingId: bookingId || ''
+      }
     };
     
+    // Initiate refund via Razorpay
     const refund = await razorpay.payments.refund(paymentId, refundOptions);
     
+    // Update booking
     const booking = await Booking.findOne({ paymentId: paymentId });
     if (booking) {
-      booking.paymentStatus = 'refunded';
+      booking.paymentStatus = refundAmount ? 'partially_refunded' : 'refunded';
       booking.status = 'cancelled';
       booking.refundId = refund.id;
       booking.refundAmount = amount || booking.finalAmount;
       booking.refundedAt = new Date();
       booking.refundStatus = 'processed';
+      
+      booking.statusHistory.push({
+        status: 'cancelled',
+        timestamp: new Date(),
+        note: `Refund of ₹${amount || booking.finalAmount} processed. Reason: ${reason || 'Customer request'}`
+      });
+      
       await booking.save();
+      
+      // Restore hospital bed if admission
+      if (booking.bookingType === 'admission' && booking.hospitalId) {
+        const Hospital = require('../models/Hospital');
+        await Hospital.findByIdAndUpdate(booking.hospitalId, {
+          $inc: { 'beds.available': 1 }
+        });
+      }
     }
     
+    // Update transaction
     const transaction = await Transaction.findOne({ paymentId: paymentId });
     if (transaction) {
-      transaction.status = 'refunded';
+      const refundedAmount = amount || transaction.amount;
+      transaction.status = refundedAmount === transaction.amount ? 'refunded' : 'partially_refunded';
       transaction.refundId = refund.id;
-      transaction.refundAmount = amount || transaction.amount;
+      transaction.refundAmount = refundedAmount;
       transaction.refundedAt = new Date();
+      transaction.refund = {
+        initiatedBy: req.body.initiatedBy || 'patient',
+        initiatedAt: new Date(),
+        reason: reason || 'Customer request',
+        refundType: refundType || 'full',
+        refundPercentage: amount ? Math.round((amount / transaction.amount) * 100) : 100,
+        cancellationFee: transaction.amount - refundedAmount,
+        processedBy: 'system',
+        processedAt: new Date(),
+        refundMode: 'gateway',
+        gatewayRefundId: refund.id,
+        gatewayRefundStatus: 'completed'
+      };
       await transaction.save();
     }
     
-    res.json({ success: true, refund });
+    res.json({ 
+      success: true, 
+      message: 'Refund processed successfully',
+      refund: {
+        id: refund.id,
+        amount: refund.amount / 100,
+        status: refund.status
+      }
+    });
+  } catch (error) {
+    console.error('Refund error:', error);
+    res.status(500).json({ success: false, message: error.message });
+  }
+});
+
+// ============================================
+// 🆕 PROCESS REFUND BY BOOKING ID
+// ============================================
+
+router.post('/refund-booking/:bookingId', async (req, res) => {
+  try {
+    const booking = await Booking.findOne({ bookingId: req.params.bookingId });
+    
+    if (!booking) {
+      return res.status(404).json({ success: false, message: 'Booking not found' });
+    }
+    
+    if (!booking.paymentId) {
+      return res.status(400).json({ success: false, message: 'No payment found for this booking' });
+    }
+    
+    if (booking.paymentStatus === 'refunded') {
+      return res.status(400).json({ success: false, message: 'Already refunded' });
+    }
+    
+    const { amount, reason } = req.body;
+    
+    const refundOptions = {
+      payment_id: booking.paymentId,
+      amount: amount ? Math.round(amount * 100) : undefined,
+      notes: { 
+        reason: reason || 'Cancellation refund',
+        bookingId: booking.bookingId
+      }
+    };
+    
+    const refund = await razorpay.payments.refund(booking.paymentId, refundOptions);
+    
+    // Update booking
+    booking.paymentStatus = 'refunded';
+    booking.status = 'cancelled';
+    booking.refundId = refund.id;
+    booking.refundAmount = amount || booking.finalAmount;
+    booking.refundedAt = new Date();
+    booking.refundStatus = 'processed';
+    
+    booking.cancellation = {
+      ...booking.cancellation,
+      refundStatus: 'processed',
+      refundProcessedAt: new Date(),
+      refundTransactionId: refund.id
+    };
+    
+    await booking.save();
+    
+    res.json({ success: true, message: 'Refund processed', refund });
+    
   } catch (error) {
     console.error('Refund error:', error);
     res.status(500).json({ success: false, message: error.message });
@@ -856,6 +909,36 @@ router.get('/transaction/order/:orderId', async (req, res) => {
     const transaction = await Transaction.findOne({ orderId: req.params.orderId });
     if (!transaction) return res.status(404).json({ success: false, message: 'Transaction not found' });
     res.json({ success: true, transaction });
+  } catch (error) {
+    res.status(500).json({ success: false, message: error.message });
+  }
+});
+
+// ============================================
+// 🆕 GET TRANSACTIONS BY USER
+// ============================================
+
+router.get('/transactions/user/:userId', async (req, res) => {
+  try {
+    const transactions = await Transaction.find({ userId: req.params.userId })
+      .sort({ createdAt: -1 })
+      .limit(50);
+    res.json({ success: true, data: transactions });
+  } catch (error) {
+    res.status(500).json({ success: false, message: error.message });
+  }
+});
+
+// ============================================
+// 🆕 GET TRANSACTIONS BY HOSPITAL
+// ============================================
+
+router.get('/transactions/hospital/:hospitalId', async (req, res) => {
+  try {
+    const transactions = await Transaction.find({ hospitalId: req.params.hospitalId })
+      .sort({ createdAt: -1 })
+      .limit(50);
+    res.json({ success: true, data: transactions });
   } catch (error) {
     res.status(500).json({ success: false, message: error.message });
   }
