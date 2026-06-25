@@ -384,7 +384,7 @@ bookingSchema.pre('save', function(next) {
 });
 
 // ============================================
-// VIRTUAL FIELDS (NO DUPLICATES)
+// VIRTUAL FIELDS (ALL UNIQUE - NO CONFLICTS)
 // ============================================
 
 bookingSchema.virtual('balanceDue').get(function() {
@@ -392,19 +392,6 @@ bookingSchema.virtual('balanceDue').get(function() {
     return 0;
   }
   return this.finalAmount - (this.advanceAmount || 0);
-});
-
-// ✅ RENAMED: Virtual isRefundable → refundEligible (avoids conflict with method)
-bookingSchema.virtual('refundEligible').get(function() {
-  if (this.paymentStatus !== 'paid') return false;
-  if (this.status === 'cancelled') return false;
-  if (this.status === 'completed') return false;
-  return true;
-});
-
-bookingSchema.virtual('canCancel').get(function() {
-  const cancelableStatuses = ['pending', 'confirmed'];
-  return cancelableStatuses.includes(this.status);
 });
 
 bookingSchema.virtual('canReview').get(function() {
@@ -425,10 +412,9 @@ bookingSchema.virtual('refundEligibility').get(function() {
 });
 
 // ============================================
-// METHODS (NO DUPLICATES WITH VIRTUALS)
+// METHODS (ALL UNIQUE - NO CONFLICTS WITH VIRTUALS)
 // ============================================
 
-// ✅ KEPT: Method name is different from virtual (refundEligible)
 bookingSchema.methods.isRefundable = function() {
   const refundableStatuses = ['paid', 'partially_refunded'];
   return refundableStatuses.includes(this.paymentStatus) && this.finalAmount > 0;
@@ -462,7 +448,7 @@ bookingSchema.methods.getDaysRemaining = function() {
   return Math.ceil(diff / (1000 * 60 * 60 * 24));
 };
 
-bookingSchema.methods.cancel = async function(reason, cancelledBy) {
+bookingSchema.methods.cancelBooking = async function(reason, cancelledBy) {
   const refundInfo = this.refundEligibility;
   
   this.status = 'cancelled';
