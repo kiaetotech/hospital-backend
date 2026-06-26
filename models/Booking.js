@@ -19,7 +19,7 @@ const bookingSchema = new mongoose.Schema({
       'ayurveda_consultation', 
       'homeopathy_consult', 
       'homeopathy_medicine',
-      'insurance'
+      'insurance',
       'online_consult'
     ], 
     required: true 
@@ -355,7 +355,7 @@ bookingSchema.pre('save', function(next) {
       'ayurveda_consultation': 'AYU',
       'homeopathy_consult': 'HOM',
       'homeopathy_medicine': 'HMD',
-      'insurance': 'INS'
+      'insurance': 'INS',
       'online_consult': 'ONC'
     };
     const prefix = prefixMap[this.bookingType] || 'GEN';
