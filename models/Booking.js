@@ -20,6 +20,7 @@ const bookingSchema = new mongoose.Schema({
       'homeopathy_consult', 
       'homeopathy_medicine',
       'insurance'
+      'online_consult'
     ], 
     required: true 
   },
@@ -355,6 +356,7 @@ bookingSchema.pre('save', function(next) {
       'homeopathy_consult': 'HOM',
       'homeopathy_medicine': 'HMD',
       'insurance': 'INS'
+      'online_consult': 'ONC'
     };
     const prefix = prefixMap[this.bookingType] || 'GEN';
     this.bookingId = prefix + Date.now() + Math.floor(Math.random() * 1000);

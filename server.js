@@ -181,12 +181,17 @@ const mentalHealthPayoutRoutes = require('./routes/mentalhealth-payout');
 const mentalHealthEarningsRoutes = require('./routes/mentalhealth-earnings');
 
 // ============================================
+// 🆕 ONLINE DOCTOR MODULE ROUTES (NEW - 1 LINE)
+// ============================================
+const onlineDoctorRoutes = require('./routes/onlineDoctor');
+
+// ============================================
 // ROUTE MOUNTING - NO CONFLICTS
 // ============================================
 
 // 🏥 Hospital Routes
-app.use('/api/hospitals', searchLimiter, hospitalRoutes);           // Public: search, WhatsApp webhook, details
-app.use('/api/hospitals/provider', hospitalProviderRoutes);         // Provider: auth, profile, doctors, beds, bookings, prescriptions
+app.use('/api/hospitals', searchLimiter, hospitalRoutes);
+app.use('/api/hospitals/provider', hospitalProviderRoutes);
 
 // 🔐 Auth
 app.use('/api/auth', authRoutes);
@@ -265,6 +270,9 @@ app.use('/api/mentalhealth/therapist', mentalHealthTherapistRoutes);
 app.use('/api/mentalhealth/admin', mentalHealthAdminRoutes);
 app.use('/api/mentalhealth/payout', mentalHealthPayoutRoutes);
 app.use('/api/mentalhealth/earnings', mentalHealthEarningsRoutes);
+
+// 📱 Online Doctor (NEW - 1 LINE)
+app.use('/api/online-doctor', searchLimiter, onlineDoctorRoutes);
 
 // ============================================
 // HEALTH CHECKS
@@ -374,6 +382,23 @@ app.get('/api/mentalhealth/health', (req, res) => {
   });
 });
 
+// 🆕 Online Doctor Health Check (NEW)
+app.get('/api/online-doctor/health', (req, res) => {
+  res.json({
+    success: true,
+    module: 'Online Doctor',
+    status: 'active',
+    endpoints: {
+      search: '/api/online-doctor/search',
+      doctor: '/api/online-doctor/doctor/:id',
+      book: '/api/online-doctor/book',
+      register: '/api/online-doctor/doctor/register',
+      login: '/api/online-doctor/doctor/login',
+      dashboard: '/api/online-doctor/doctor/dashboard'
+    }
+  });
+});
+
 // ============================================
 // 404 HANDLER
 // ============================================
@@ -420,10 +445,7 @@ app.use((err, req, res, next) => {
 // MONGODB CONNECTION
 // ============================================
 const DB_URI = process.env.DB_URI || 'mongodb://localhost:27017/hospital_db';
-mongoose.connect(DB_URI, {
-  useNewUrlParser: true,
-  useUnifiedTopology: true
-})
+mongoose.connect(DB_URI)
   .then(() => console.log('✅ MongoDB connected'))
   .catch(err => console.error('❌ MongoDB error:', err));
 
@@ -451,6 +473,7 @@ app.listen(PORT, () => {
   console.log('🛡️  Insurance Admin   → /api/insurance-admin/*');
   console.log('🏢  Corporate         → /api/corporate/*');
   console.log('🧠  Mental Health     → /api/mentalhealth/*');
+  console.log('📱  Online Doctor     → /api/online-doctor/*');
   console.log('💰  Loans             → /api/loan/*');
   console.log('💰  Lenders           → /api/lender/*');
   console.log('💳  Payments          → /api/payment/*');
