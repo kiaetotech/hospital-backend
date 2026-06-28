@@ -1,27 +1,36 @@
 const mongoose = require('mongoose');
 
 const onlineDoctorSchema = new mongoose.Schema({
-  // Basic Info
+  // ============================================
+  // BASIC INFO
+  // ============================================
   name: { type: String, required: true },
   email: { type: String, unique: true, sparse: true },
   phone: { type: String, required: true, unique: true },
   password: { type: String, required: true },
   
-  // Professional Details
+  // ============================================
+  // PROFESSIONAL DETAILS
+  // ============================================
   specialization: { type: String, required: true, index: true },
   subSpecialization: String,
   qualification: { type: String, required: true },
   experience: { type: Number, default: 0 },
+  yearsOfExperience: Number,
   languages: [{ type: String }],
   gender: { type: String, enum: ['Male', 'Female', 'Other'] },
   about: { type: String, maxlength: 1000 },
   
-  // Registration
+  // ============================================
+  // REGISTRATION
+  // ============================================
   registrationNumber: { type: String, required: true },
   medicalCouncil: { type: String, default: 'MCI' },
   registrationYear: Number,
   
-  // Consultation Settings
+  // ============================================
+  // CONSULTATION SETTINGS
+  // ============================================
   consultationFee: { type: Number, required: true },
   consultationDuration: { type: Number, default: 15 },
   consultationModes: {
@@ -29,7 +38,9 @@ const onlineDoctorSchema = new mongoose.Schema({
     audio: { type: Boolean, default: true }
   },
   
-  // Availability
+  // ============================================
+  // AVAILABILITY (Doctor-Managed)
+  // ============================================
   availability: [{
     day: { 
       type: String, 
@@ -44,19 +55,28 @@ const onlineDoctorSchema = new mongoose.Schema({
     }]
   }],
   
-  blockedDates: [{ date: Date, reason: String }],
+  // Blocked dates (vacation, holidays)
+  blockedDates: [{
+    date: Date,
+    reason: String
+  }],
+  
   isAvailable: { type: Boolean, default: true },
   
-  // Documents
+  // ============================================
+  // DOCUMENTS
+  // ============================================
   documents: {
-    registrationCert: String,
-    degreeCert: String,
-    idProof: String,
-    photo: String,
-    panCard: String
+    registrationCert: { type: String },
+    degreeCert: { type: String },
+    idProof: { type: String },
+    photo: { type: String },
+    panCard: { type: String }
   },
   
-  // Verification
+  // ============================================
+  // VERIFICATION
+  // ============================================
   verificationStatus: {
     type: String,
     enum: ['pending', 'documents_uploaded', 'verified', 'rejected', 'suspended'],
@@ -67,22 +87,29 @@ const onlineDoctorSchema = new mongoose.Schema({
   rejectionReason: String,
   isActive: { type: Boolean, default: false },
   
-  // Ratings
+  // ============================================
+  // RATINGS & REVIEWS
+  // ============================================
   ratingSummary: {
     averageRating: { type: Number, default: 0 },
     totalReviews: { type: Number, default: 0 }
   },
   
-  // Statistics
+  // ============================================
+  // STATISTICS
+  // ============================================
   stats: {
     totalConsultations: { type: Number, default: 0 },
     completedConsultations: { type: Number, default: 0 },
     cancelledConsultations: { type: Number, default: 0 },
     totalEarnings: { type: Number, default: 0 },
-    platformCommissionPaid: { type: Number, default: 0 }
+    platformCommissionPaid: { type: Number, default: 0 },
+    repeatPatients: { type: Number, default: 0 }
   },
   
-  // Commission
+  // ============================================
+  // COMMISSION (Performance-Based)
+  // ============================================
   commissionSlab: {
     type: String,
     enum: ['default', 'silver', 'gold', 'platinum', 'diamond'],
@@ -90,7 +117,9 @@ const onlineDoctorSchema = new mongoose.Schema({
   },
   commissionPercentage: { type: Number, default: 25 },
   
-  // Bank Details
+  // ============================================
+  // BANK DETAILS (For Payouts)
+  // ============================================
   bankDetails: {
     accountHolder: String,
     accountNumber: String,
@@ -100,36 +129,83 @@ const onlineDoctorSchema = new mongoose.Schema({
     upiId: String
   },
   
-  // Profile
+  // ============================================
+  // PROFILE PHOTO
+  // ============================================
   profilePhoto: String,
   
-  // Hospital Affiliation (optional mention)
+  // ============================================
+  // OPTIONAL: HOSPITAL AFFILIATION
+  // ============================================
   hospitalAffiliation: {
     mentioned: { type: Boolean, default: false },
     hospitalName: String,
     city: String
   },
   
-  // Timestamps
+  // ============================================
+  // PASSWORD RESET
+  // ============================================
+  resetPasswordToken: String,
+  resetPasswordExpires: Date,
+  
+  // ============================================
+  // OTP
+  // ============================================
+  otp: String,
+  otpExpires: Date,
+  
+  // ============================================
+  // TIMESTAMPS
+  // ============================================
   lastLoginAt: Date,
   createdAt: { type: Date, default: Date.now },
   updatedAt: { type: Date, default: Date.now }
   
 }, { timestamps: true });
 
-// Indexes
+// ============================================
+// INDEXES
+// ============================================
+
 onlineDoctorSchema.index({ specialization: 1, isActive: 1 });
 onlineDoctorSchema.index({ verificationStatus: 1 });
 onlineDoctorSchema.index({ 'ratingSummary.averageRating': -1 });
 onlineDoctorSchema.index({ consultationFee: 1 });
 onlineDoctorSchema.index({ name: 'text', specialization: 'text' });
 
-// Virtual: Full title
+// ============================================
+// VIRTUALS
+// ============================================
+
 onlineDoctorSchema.virtual('fullTitle').get(function() {
   return `Dr. ${this.name} - ${this.specialization}`;
 });
 
-// Method: Update commission slab based on performance
+onlineDoctorSchema.virtual('netEarningPerConsult').get(function() {
+  return this.consultationFee * (1 - this.commissionPercentage / 100);
+});
+
+// ============================================
+// METHODS
+// ============================================
+
+// Check if doctor is available on a specific day
+onlineDoctorSchema.methods.isAvailableOn = function(dayName) {
+  const daySchedule = this.availability?.find(a => a.day === dayName);
+  if (!daySchedule || !daySchedule.isAvailable) return false;
+  if (!this.isAvailable || !this.isActive) return false;
+  return true;
+};
+
+// Get available slots for a day
+onlineDoctorSchema.methods.getAvailableSlots = function(dayName) {
+  const daySchedule = this.availability?.find(a => a.day === dayName);
+  if (!daySchedule) return [];
+  return daySchedule.slots.filter(s => s.currentBookings < s.maxBookings);
+};
+
+// Update commission slab based on performance
 onlineDoctorSchema.methods.updateCommissionSlab = function() {
   const consults = this.stats?.completedConsultations || 0;
   const rating = this.ratingSummary?.averageRating || 0;
@@ -152,6 +228,28 @@ onlineDoctorSchema.methods.updateCommissionSlab = function() {
   }
   
   return this.commissionPercentage;
+};
+
+// Get public profile (safe data)
+onlineDoctorSchema.methods.getPublicProfile = function() {
+  return {
+    id: this._id,
+    name: this.name,
+    specialization: this.specialization,
+    qualification: this.qualification,
+    experience: this.experience,
+    languages: this.languages,
+    gender: this.gender,
+    about: this.about,
+    consultationFee: this.consultationFee,
+    consultationDuration: this.consultationDuration,
+    consultationModes: this.consultationModes,
+    ratingSummary: this.ratingSummary,
+    profilePhoto: this.profilePhoto,
+    isAvailable: this.isAvailable,
+    availability: this.availability,
+    hospitalAffiliation: this.hospitalAffiliation
+  };
 };
 
 module.exports = mongoose.model('OnlineDoctor', onlineDoctorSchema);

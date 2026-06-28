@@ -634,5 +634,367 @@ router.get('/admin/doctors', async (req, res) => {
     res.status(500).json({ success: false, message: error.message });
   }
 });
+// POST /api/online-doctor/send-reminder
+router.post('/send-reminder', async (req, res) => {
+  try {
+    const { bookingId } = req.body;
+    const booking = await Booking.findById(bookingId);
+    if (!booking) return res.status(404).json({ success: false, message: 'Booking not found' });
+
+    const doctor = await OnlineDoctor.findById(booking.doctorId);
+    const patientPhone = booking.patientPhone;
+    const doctorName = booking.doctorName;
+    const date = new Date(booking.appointmentDate).toLocaleDateString('en-IN', { weekday: 'short', day: 'numeric', month: 'short' });
+    const time = booking.timeSlot;
+
+    // Send SMS
+    if (patientPhone) {
+      await smsService.send({
+        to: patientPhone,
+        message: `HealthCare Hub: Reminder - Your consultation with ${doctorName} is on ${date} at ${time}. Join: ${process.env.FRONTEND_URL}/online-doctor/consult/${bookingId}`
+      });
+    }
+
+    // Send WhatsApp
+    if (patientPhone) {
+      await notificationService.sendWhatsApp({
+        to: patientPhone,
+        template: 'appointment_reminder',
+        data: { doctorName, date, time, bookingId }
+      });
+    }
+
+    res.json({ success: true, message: 'Reminder sent' });
+  } catch (error) {
+    res.status(500).json({ success: false, message: error.message });
+  }
+});
+
+// POST /api/online-doctor/prescription - Save prescription
+router.post('/prescription', authenticateDoctor, async (req, res) => {
+  try {
+    const { bookingId, medicines, tests, advice, followUpDate } = req.body;
+    
+    const booking = await Booking.findById(bookingId);
+    if (!booking) return res.status(404).json({ success: false, message: 'Booking not found' });
+    if (booking.doctorId.toString() !== req.user.id) return res.status(403).json({ success: false, message: 'Unauthorized' });
+
+    booking.prescription = {
+      generated: true,
+      prescriptionId: 'RX' + Date.now(),
+      medicines: medicines || [],
+      tests: tests || [],
+      doctorNotes: advice || '',
+      generatedAt: new Date()
+    };
+    
+    booking.status = 'completed';
+    booking.completedAt = new Date();
+    booking.consultationEndTime = new Date();
+    
+    await booking.save();
+
+    // Update doctor stats
+    await OnlineDoctor.findByIdAndUpdate(req.user.id, {
+      $inc: { 'stats.completedConsultations': 1, 'stats.totalEarnings': booking.providerAmount || 0 }
+    });
+
+    res.json({ success: true, data: booking.prescription });
+  } catch (error) {
+    res.status(500).json({ success: false, message: error.message });
+  }
+});
+
+// PUT /api/online-doctor/booking/:id/complete - Mark consultation complete
+router.put('/booking/:id/complete', authenticateDoctor, async (req, res) => {
+  try {
+    const booking = await Booking.findById(req.params.id);
+    if (!booking) return res.status(404).json({ success: false, message: 'Booking not found' });
+    if (booking.doctorId.toString() !== req.user.id) return res.status(403).json({ success: false, message: 'Unauthorized' });
+
+    booking.status = 'completed';
+    booking.completedAt = new Date();
+    await booking.save();
+
+    res.json({ success: true, data: booking });
+  } catch (error) {
+    res.status(500).json({ success: false, message: error.message });
+  }
+});
+// ============================================
+// FORGOT PASSWORD
+// ============================================
+
+// POST /api/online-doctor/doctor/forgot-password
+router.post('/doctor/forgot-password', async (req, res) => {
+  try {
+    const { email } = req.body;
+    if (!email) return res.status(400).json({ success: false, message: 'Email is required' });
+
+    const doctor = await OnlineDoctor.findOne({ email });
+    if (!doctor) return res.status(404).json({ success: false, message: 'No account found with this email' });
+
+    // Generate reset token (valid for 1 hour)
+    const crypto = require('crypto');
+    const resetToken = crypto.randomBytes(32).toString('hex');
+    const resetTokenExpiry = new Date(Date.now() + 3600000); // 1 hour
+
+    doctor.resetPasswordToken = resetToken;
+    doctor.resetPasswordExpires = resetTokenExpiry;
+    await doctor.save();
+
+    // Send email with reset link
+    const resetUrl = `${process.env.FRONTEND_URL || 'https://hospital-frontend-kiaeto.vercel.app'}/online-doctor/reset-password/${resetToken}`;
+    
+    try {
+      await emailService.send({
+        to: doctor.email,
+        subject: 'Password Reset - HealthCare Hub',
+        html: `<h2>Password Reset Request</h2>
+               <p>Click the link below to reset your password:</p>
+               <a href="${resetUrl}">${resetUrl}</a>
+               <p>This link expires in 1 hour.</p>
+               <p>If you didn't request this, ignore this email.</p>`
+      });
+    } catch (emailErr) {
+      console.error('Email send failed:', emailErr);
+    }
+
+    res.json({ success: true, message: 'Password reset link sent to your email' });
+  } catch (error) {
+    res.status(500).json({ success: false, message: error.message });
+  }
+});
+
+// POST /api/online-doctor/doctor/reset-password/:token
+router.post('/doctor/reset-password/:token', async (req, res) => {
+  try {
+    const { password } = req.body;
+    if (!password || password.length < 6) {
+      return res.status(400).json({ success: false, message: 'Password must be at least 6 characters' });
+    }
+
+    const doctor = await OnlineDoctor.findOne({
+      resetPasswordToken: req.params.token,
+      resetPasswordExpires: { $gt: new Date() }
+    });
+
+    if (!doctor) return res.status(400).json({ success: false, message: 'Invalid or expired reset token' });
+
+    const bcrypt = require('bcryptjs');
+    doctor.password = await bcrypt.hash(password, 10);
+    doctor.resetPasswordToken = undefined;
+    doctor.resetPasswordExpires = undefined;
+    await doctor.save();
+
+    res.json({ success: true, message: 'Password reset successful. You can now login.' });
+  } catch (error) {
+    res.status(500).json({ success: false, message: error.message });
+  }
+});
+
+// ============================================
+// OTP ENDPOINTS
+// ============================================
+
+// POST /api/online-doctor/doctor/send-otp
+router.post('/doctor/send-otp', async (req, res) => {
+  try {
+    const { phone } = req.body;
+    if (!phone) return res.status(400).json({ success: false, message: 'Phone number is required' });
+
+    // Generate 6-digit OTP
+    const otp = Math.floor(100000 + Math.random() * 900000).toString();
+    const otpExpiry = new Date(Date.now() + 600000); // 10 minutes
+
+    // Store OTP (in production, use Redis or OTP model)
+    // For now, store in doctor document temporarily
+    const doctor = await OnlineDoctor.findOne({ phone });
+    if (doctor) {
+      doctor.otp = otp;
+      doctor.otpExpires = otpExpiry;
+      await doctor.save();
+    } else {
+      // Store OTP for new registration (use a temp collection or cache)
+      // For simplicity, return OTP in response (in production, send via SMS)
+    }
+
+    // Send SMS (in production)
+    try {
+      await smsService.send({
+        to: phone,
+        message: `Your HealthCare Hub OTP is: ${otp}. Valid for 10 minutes.`
+      });
+    } catch (smsErr) {
+      console.error('SMS send failed:', smsErr);
+    }
+
+    // For development, return OTP in response
+    res.json({ 
+      success: true, 
+      message: 'OTP sent successfully',
+      otp: process.env.NODE_ENV === 'production' ? undefined : otp // Only in dev
+    });
+  } catch (error) {
+    res.status(500).json({ success: false, message: error.message });
+  }
+});
+
+// POST /api/online-doctor/doctor/verify-otp
+router.post('/doctor/verify-otp', async (req, res) => {
+  try {
+    const { phone, otp } = req.body;
+    if (!phone || !otp) return res.status(400).json({ success: false, message: 'Phone and OTP are required' });
+
+    const doctor = await OnlineDoctor.findOne({ 
+      phone, 
+      otp, 
+      otpExpires: { $gt: new Date() } 
+    });
+
+    if (!doctor) {
+      // For new registrations, just verify OTP against temp storage
+      // For dev, accept 123456
+      if (otp === '123456') {
+        return res.json({ success: true, message: 'OTP verified' });
+      }
+      return res.status(400).json({ success: false, message: 'Invalid or expired OTP' });
+    }
+
+    // Clear OTP after verification
+    doctor.otp = undefined;
+    doctor.otpExpires = undefined;
+    await doctor.save();
+
+    res.json({ success: true, message: 'OTP verified successfully' });
+  } catch (error) {
+    res.status(500).json({ success: false, message: error.message });
+  }
+});
+
+// ============================================
+// DOCTOR AVAILABILITY AUTO-SLOTS
+// ============================================
+
+// POST /api/online-doctor/doctor/auto-generate-slots
+router.post('/doctor/auto-generate-slots', authenticateDoctor, async (req, res) => {
+  try {
+    const { startTime, endTime, duration, buffer, days } = req.body;
+    
+    const doctor = await OnlineDoctor.findById(req.user.id);
+    if (!doctor) return res.status(404).json({ success: false, message: 'Doctor not found' });
+
+    const slots = [];
+    const start = parseInt(startTime.split(':')[0]) * 60 + parseInt(startTime.split(':')[1]);
+    const end = parseInt(endTime.split(':')[0]) * 60 + parseInt(endTime.split(':')[1]);
+    const slotDuration = parseInt(duration) || 15;
+    const bufferTime = parseInt(buffer) || 5;
+    const totalSlotTime = slotDuration + bufferTime;
+
+    for (let time = start; time + slotDuration <= end; time += totalSlotTime) {
+      const hours = Math.floor(time / 60);
+      const minutes = time % 60;
+      const endHours = Math.floor((time + slotDuration) / 60);
+      const endMinutes = (time + slotDuration) % 60;
+      
+      slots.push({
+        startTime: `${hours.toString().padStart(2, '0')}:${minutes.toString().padStart(2, '0')}`,
+        endTime: `${endHours.toString().padStart(2, '0')}:${endMinutes.toString().padStart(2, '0')}`,
+        maxBookings: 1,
+        currentBookings: 0
+      });
+    }
+
+    const daysArray = days || ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'];
+    
+    doctor.availability = daysArray.map(day => ({
+      day,
+      isAvailable: true,
+      slots: slots
+    }));
+
+    await doctor.save();
+
+    res.json({ success: true, data: doctor.availability, message: `${slots.length} slots generated for ${daysArray.length} days` });
+  } catch (error) {
+    res.status(500).json({ success: false, message: error.message });
+  }
+});
+
+// ============================================
+// DOCTOR STATS & ANALYTICS
+// ============================================
+
+// GET /api/online-doctor/doctor/analytics
+router.get('/doctor/analytics', authenticateDoctor, async (req, res) => {
+  try {
+    const { period = 'monthly' } = req.query;
+    const doctorId = req.user.id;
+
+    const now = new Date();
+    let startDate;
+    if (period === 'weekly') {
+      startDate = new Date(now.setDate(now.getDate() - 7));
+    } else if (period === 'monthly') {
+      startDate = new Date(now.setMonth(now.getMonth() - 1));
+    } else {
+      startDate = new Date(now.setFullYear(now.getFullYear() - 1));
+    }
+
+    const bookings = await Booking.find({
+      doctorId,
+      bookingType: 'online_consult',
+      createdAt: { $gte: startDate }
+    });
+
+    const completedBookings = bookings.filter(b => b.status === 'completed');
+    const cancelledBookings = bookings.filter(b => b.status === 'cancelled');
+    
+    const totalRevenue = completedBookings.reduce((sum, b) => sum + (b.providerAmount || 0), 0);
+    const totalCommission = completedBookings.reduce((sum, b) => sum + (b.platformCommission || 0), 0);
+
+    // Daily breakdown
+    const dailyStats = {};
+    bookings.forEach(b => {
+      const date = new Date(b.createdAt).toISOString().split('T')[0];
+      if (!dailyStats[date]) dailyStats[date] = { total: 0, completed: 0, cancelled: 0, revenue: 0 };
+      dailyStats[date].total++;
+      if (b.status === 'completed') {
+        dailyStats[date].completed++;
+        dailyStats[date].revenue += (b.providerAmount || 0);
+      }
+      if (b.status === 'cancelled') dailyStats[date].cancelled++;
+    });
+
+    // Patient demographics
+    const uniquePatients = [...new Set(bookings.map(b => b.userId))];
+    const repeatPatients = uniquePatients.filter(patientId => 
+      bookings.filter(b => b.userId === patientId).length > 1
+    );
+
+    res.json({
+      success: true,
+      data: {
+        period,
+        summary: {
+          totalBookings: bookings.length,
+          completedBookings: completedBookings.length,
+          cancelledBookings: cancelledBookings.length,
+          completionRate: bookings.length > 0 ? Math.round((completedBookings.length / bookings.length) * 100) : 0,
+          totalRevenue,
+          totalCommission,
+          netEarnings: totalRevenue,
+          uniquePatients: uniquePatients.length,
+          repeatPatients: repeatPatients.length,
+          repeatRate: uniquePatients.length > 0 ? Math.round((repeatPatients.length / uniquePatients.length) * 100) : 0,
+          averageRating: req.user.rating || 0
+        },
+        dailyStats
+      }
+    });
+  } catch (error) {
+    res.status(500).json({ success: false, message: error.message });
+  }
+});
 
 module.exports = router;
