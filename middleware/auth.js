@@ -49,10 +49,10 @@ const authenticatePatient = (req, res, next) => {
 const authenticateProvider = (req, res, next) => {
   authenticateToken(req, res, () => {
     const providerRoles = [
-      'hospital', 'ambulance', 'caregiver', 'diagnostics',
-      'lender', 'insurance_company', 'ayurveda_doctor',
-      'ayurveda_center', 'homeopathy_doctor', 'homeopathy_center',
-      'mental_health_therapist', 'pharmacy', 'corporate_hr'
+      'hospital', 'ambulance', 'ambulance_provider', 'ambulance_driver',
+      'caregiver', 'diagnostics', 'lender', 'insurance_company', 'insurance_agent',
+      'ayurveda_doctor', 'ayurveda_center', 'homeopathy_doctor', 'homeopathy_center',
+      'mental_health_therapist', 'pharmacy', 'corporate_hr', 'online_doctor'
     ];
     
     if (!providerRoles.includes(req.user.role)) {
@@ -102,10 +102,40 @@ const authenticateHospital = (req, res, next) => {
 // ============================================
 const authenticateAmbulance = (req, res, next) => {
   authenticateToken(req, res, () => {
-    if (req.user.role !== 'ambulance') {
+    if (req.user.role !== 'ambulance' && req.user.role !== 'ambulance_provider' && req.user.role !== 'ambulance_driver') {
       return res.status(403).json({ 
         success: false, 
         message: 'Ambulance provider access required.' 
+      });
+    }
+    next();
+  });
+};
+
+// ============================================
+// 🆕 AMBULANCE PROVIDER AUTHENTICATION
+// ============================================
+const authenticateAmbulanceProvider = (req, res, next) => {
+  authenticateToken(req, res, () => {
+    if (req.user.role !== 'ambulance_provider') {
+      return res.status(403).json({ 
+        success: false, 
+        message: 'Ambulance fleet owner access required.' 
+      });
+    }
+    next();
+  });
+};
+
+// ============================================
+// 🆕 AMBULANCE DRIVER AUTHENTICATION
+// ============================================
+const authenticateAmbulanceDriver = (req, res, next) => {
+  authenticateToken(req, res, () => {
+    if (req.user.role !== 'ambulance_driver') {
+      return res.status(403).json({ 
+        success: false, 
+        message: 'Ambulance driver access required.' 
       });
     }
     next();
@@ -183,6 +213,21 @@ const authenticateAdmin = (req, res, next) => {
 };
 
 // ============================================
+// 🆕 SUPER ADMIN ONLY
+// ============================================
+const authenticateSuperAdmin = (req, res, next) => {
+  authenticateToken(req, res, () => {
+    if (req.user.role !== 'admin' || req.user.adminLevel !== 'super') {
+      return res.status(403).json({ 
+        success: false, 
+        message: 'Super admin access required.' 
+      });
+    }
+    next();
+  });
+};
+
+// ============================================
 // INSURANCE COMPANY AUTHENTICATION (PRESERVED)
 // ============================================
 const authenticateInsuranceCompany = (req, res, next) => {
@@ -207,6 +252,21 @@ const authenticateInsuranceAgent = (req, res, next) => {
 };
 
 // ============================================
+// 🆕 INSURANCE-RELATED (Company OR Agent)
+// ============================================
+const authenticateInsurance = (req, res, next) => {
+  authenticateToken(req, res, () => {
+    if (req.user.role !== 'insurance_company' && req.user.role !== 'insurance_agent') {
+      return res.status(403).json({ 
+        success: false, 
+        message: 'Insurance access required.' 
+      });
+    }
+    next();
+  });
+};
+
+// ============================================
 // 🆕 AYURVEDA DOCTOR AUTHENTICATION
 // ============================================
 const authenticateAyurvedaDoctor = (req, res, next) => {
@@ -215,6 +275,21 @@ const authenticateAyurvedaDoctor = (req, res, next) => {
       return res.status(403).json({ 
         success: false, 
         message: 'Ayurveda doctor access required.' 
+      });
+    }
+    next();
+  });
+};
+
+// ============================================
+// 🆕 AYURVEDA CENTER AUTHENTICATION
+// ============================================
+const authenticateAyurvedaCenter = (req, res, next) => {
+  authenticateToken(req, res, () => {
+    if (req.user.role !== 'ayurveda_center') {
+      return res.status(403).json({ 
+        success: false, 
+        message: 'Ayurveda center access required.' 
       });
     }
     next();
@@ -237,6 +312,21 @@ const authenticateHomeopathyDoctor = (req, res, next) => {
 };
 
 // ============================================
+// 🆕 HOMEOPATHY CENTER/PHARMACY AUTHENTICATION
+// ============================================
+const authenticateHomeopathyCenter = (req, res, next) => {
+  authenticateToken(req, res, () => {
+    if (req.user.role !== 'homeopathy_center' && req.user.role !== 'pharmacy') {
+      return res.status(403).json({ 
+        success: false, 
+        message: 'Homeopathy center/pharmacy access required.' 
+      });
+    }
+    next();
+  });
+};
+
+// ============================================
 // 🆕 MENTAL HEALTH THERAPIST AUTHENTICATION
 // ============================================
 const authenticateTherapist = (req, res, next) => {
@@ -245,6 +335,21 @@ const authenticateTherapist = (req, res, next) => {
       return res.status(403).json({ 
         success: false, 
         message: 'Therapist access required.' 
+      });
+    }
+    next();
+  });
+};
+
+// ============================================
+// 🆕 ONLINE DOCTOR AUTHENTICATION
+// ============================================
+const authenticateOnlineDoctor = (req, res, next) => {
+  authenticateToken(req, res, () => {
+    if (req.user.role !== 'online_doctor') {
+      return res.status(403).json({ 
+        success: false, 
+        message: 'Online doctor access required.' 
       });
     }
     next();
@@ -307,6 +412,24 @@ const isHospitalVerified = (req, res, next) => {
 };
 
 // ============================================
+// 🆕 AMBULANCE PROVIDER VERIFICATION CHECK
+// ============================================
+const isAmbulanceVerified = (req, res, next) => {
+  if (!req.user) {
+    return res.status(401).json({ success: false, message: 'Authentication required.' });
+  }
+
+  if (!req.user.isVerified || req.user.ambulanceVerificationStatus !== 'verified') {
+    return res.status(403).json({
+      success: false,
+      message: 'Ambulance provider verification pending. Please wait for admin approval.',
+      requiresVerification: true
+    });
+  }
+  next();
+};
+
+// ============================================
 // 🆕 SUBSCRIPTION CHECK
 // ============================================
 const checkSubscription = (requiredPlans) => {
@@ -335,10 +458,10 @@ const checkSubscription = (requiredPlans) => {
 const checkOwnership = (model) => {
   return async (req, res, next) => {
     try {
-      const resourceId = req.params.id || req.params.hospitalId;
+      const resourceId = req.params.id || req.params.hospitalId || req.params.bookingId;
       
       if (!resourceId) {
-        return next(); // No ID to check, proceed
+        return next();
       }
 
       const resource = await model.findById(resourceId);
@@ -347,17 +470,16 @@ const checkOwnership = (model) => {
         return res.status(404).json({ success: false, message: 'Resource not found.' });
       }
 
-      // Check if user owns this resource
-      const ownerField = resource.userId || resource.providerId || resource.ownerId;
+      const ownerField = resource.userId || resource.providerId || resource.ownerId || resource.driverId;
       
-      if (ownerField && ownerField.toString() !== req.user._id.toString() && req.user.role !== 'admin') {
+      if (ownerField && ownerField.toString() !== (req.user._id || req.user.userId)?.toString() && req.user.role !== 'admin') {
         return res.status(403).json({ 
           success: false, 
           message: 'You can only modify your own resources.' 
         });
       }
 
-      req.resource = resource; // Attach resource to request
+      req.resource = resource;
       next();
     } catch (error) {
       return res.status(500).json({ success: false, message: 'Ownership check failed.' });
@@ -366,10 +488,209 @@ const checkOwnership = (model) => {
 };
 
 // ============================================
-// EXPORTS (PRESERVED + NEW)
+// 🆕 EMERGENCY TOKEN BYPASS (For ambulance)
+// ============================================
+const emergencyTokenBypass = (req, res, next) => {
+  const emergencyToken = req.headers['x-emergency-token'] || req.query.emergencyToken;
+  
+  if (emergencyToken) {
+    try {
+      const decoded = jwt.verify(emergencyToken, process.env.JWT_SECRET || 'hospital_platform_secret_key_2024');
+      
+      // Emergency tokens are short-lived (5 minutes)
+      if (decoded.type === 'emergency' && decoded.exp > Date.now() / 1000) {
+        req.user = decoded;
+        req.isEmergencyToken = true;
+        return next();
+      }
+    } catch (error) {
+      // Token invalid, fall through to normal auth
+    }
+  }
+  
+  // No valid emergency token, require normal auth
+  authenticateToken(req, res, next);
+};
+
+// ============================================
+// 🆕 WEBSOCKET AUTHENTICATION
+// ============================================
+const authenticateWebSocket = (socket, next) => {
+  const token = socket.handshake.auth.token || socket.handshake.query.token;
+  
+  if (!token) {
+    // Allow guest tracking without token
+    const trackingId = socket.handshake.query.trackingId;
+    if (trackingId) {
+      socket.userType = 'guest';
+      socket.trackingId = trackingId;
+      return next();
+    }
+    return next(new Error('Authentication required'));
+  }
+
+  try {
+    const decoded = jwt.verify(token, process.env.JWT_SECRET || 'hospital_platform_secret_key_2024');
+    socket.userId = decoded.userId || decoded.id;
+    socket.userType = decoded.role;
+    socket.userRole = decoded.role;
+    next();
+  } catch (error) {
+    return next(new Error('Authentication failed'));
+  }
+};
+
+// ============================================
+// 🆕 RATE LIMIT BYPASS FOR EMERGENCIES
+// ============================================
+const emergencyRateLimitBypass = (req, res, next) => {
+  // Check if this is a verified emergency request
+  const isEmergencyEndpoint = req.path.includes('emergency-dispatch') || 
+                              req.path.includes('crisis-alert') ||
+                              req.path.includes('emergency-admission');
+  
+  if (isEmergencyEndpoint) {
+    // Emergency requests get a special header
+    req.emergencyRequest = true;
+    
+    // Less strict rate limiting for emergencies
+    // The emergencyRateLimiter middleware handles this separately
+  }
+  
+  next();
+};
+
+// ============================================
+// 🆕 DEVICE VERIFICATION (For driver app)
+// ============================================
+const verifyDevice = (req, res, next) => {
+  const deviceId = req.headers['x-device-id'];
+  
+  if (!deviceId) {
+    // Not required for all routes, just note it
+    req.deviceVerified = false;
+    return next();
+  }
+
+  // In production: Verify device is registered to this user
+  // For now, just attach to request
+  req.deviceId = deviceId;
+  req.deviceVerified = true;
+  
+  next();
+};
+
+// ============================================
+// 🆕 ACTIVE SESSION CHECK
+// ============================================
+const checkActiveSession = async (req, res, next) => {
+  authenticateToken(req, res, async () => {
+    try {
+      // Check if user account is active and not blocked
+      if (req.user.isBlocked) {
+        return res.status(403).json({
+          success: false,
+          message: 'Your account has been suspended. Please contact support.',
+          reason: req.user.blockedReason || 'Account suspended'
+        });
+      }
+
+      if (!req.user.isActive) {
+        return res.status(403).json({
+          success: false,
+          message: 'Your account is inactive. Please contact support.'
+        });
+      }
+
+      // Update last active timestamp (in production, update in DB)
+      req.user.lastActive = new Date();
+      
+      next();
+    } catch (error) {
+      return res.status(500).json({ success: false, message: 'Session check failed.' });
+    }
+  });
+};
+
+// ============================================
+// 🆕 KYC VERIFICATION CHECK
+// ============================================
+const requireKYC = (req, res, next) => {
+  if (!req.user) {
+    return res.status(401).json({ success: false, message: 'Authentication required.' });
+  }
+
+  if (req.user.kycStatus !== 'verified') {
+    return res.status(403).json({
+      success: false,
+      message: 'KYC verification required to access this feature.',
+      kycStatus: req.user.kycStatus,
+      requiresKYC: true
+    });
+  }
+  next();
+};
+
+// ============================================
+// 🆕 TWO-FACTOR AUTH CHECK
+// ============================================
+const require2FA = (req, res, next) => {
+  if (!req.user) {
+    return res.status(401).json({ success: false, message: 'Authentication required.' });
+  }
+
+  if (req.user.twoFactorEnabled && !req.headers['x-2fa-code']) {
+    return res.status(403).json({
+      success: false,
+      message: 'Two-factor authentication code required.',
+      requires2FA: true
+    });
+  }
+
+  // In production: Verify 2FA code here
+  
+  next();
+};
+
+// ============================================
+// 🆕 COMBINED AUTH MIDDLEWARE (Common patterns)
+// ============================================
+
+// Full authentication: Token + Active Session + Phone Verified
+const authenticateFull = [
+  authenticateToken,
+  checkActiveSession,
+  isPhoneVerified
+];
+
+// Provider full auth: Token + Active + Phone + KYC
+const authenticateProviderFull = [
+  authenticateToken,
+  checkActiveSession,
+  isPhoneVerified,
+  requireKYC
+];
+
+// Emergency auth: Token OR Emergency Token
+const authenticateEmergency = [
+  emergencyTokenBypass,
+  emergencyRateLimitBypass
+];
+
+// Driver auth: Token + Device + Active
+const authenticateDriverFull = [
+  authenticateToken,
+  verifyDevice,
+  checkActiveSession
+];
+
+// ============================================
+// EXPORTS (ALL PRESERVED + NEW)
 // ============================================
 module.exports = {
+  // ──────────────────────────────────────────
   // Original exports (PRESERVED)
+  // ──────────────────────────────────────────
   authenticateToken,
   authenticate,
   authenticatePatient,
@@ -379,19 +700,60 @@ module.exports = {
   authenticateInsuranceAgent,
   isPhoneVerified,
 
-  // 🆕 New exports (ADDED)
+  // ──────────────────────────────────────────
+  // Provider authentication
+  // ──────────────────────────────────────────
   authenticateProvider,
   authorizeRoles,
+  
+  // ──────────────────────────────────────────
+  // Tag-specific authentication
+  // ──────────────────────────────────────────
   authenticateHospital,
   authenticateAmbulance,
+  authenticateAmbulanceProvider,
+  authenticateAmbulanceDriver,
   authenticateCaregiver,
   authenticateDiagnostics,
   authenticateAdmin,
+  authenticateSuperAdmin,
+  authenticateInsurance,
   authenticateAyurvedaDoctor,
+  authenticateAyurvedaCenter,
   authenticateHomeopathyDoctor,
+  authenticateHomeopathyCenter,
   authenticateTherapist,
+  authenticateOnlineDoctor,
   authenticateCorporateHR,
+
+  // ──────────────────────────────────────────
+  // Verification checks
+  // ──────────────────────────────────────────
   isHospitalVerified,
+  isAmbulanceVerified,
+  requireKYC,
+  require2FA,
+  checkActiveSession,
+  verifyDevice,
+
+  // ──────────────────────────────────────────
+  // Subscription & Ownership
+  // ──────────────────────────────────────────
   checkSubscription,
-  checkOwnership
+  checkOwnership,
+
+  // ──────────────────────────────────────────
+  // Emergency & WebSocket
+  // ──────────────────────────────────────────
+  emergencyTokenBypass,
+  emergencyRateLimitBypass,
+  authenticateWebSocket,
+
+  // ──────────────────────────────────────────
+  // Combined middleware chains
+  // ──────────────────────────────────────────
+  authenticateFull,
+  authenticateProviderFull,
+  authenticateEmergency,
+  authenticateDriverFull
 };

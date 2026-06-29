@@ -1,120 +1,722 @@
+// D:\hospital backend\routes\ambulance.js
+
 const express = require('express');
 const router = express.Router();
-const Ambulance = require('../models/Ambulance');
-const AmbulanceBooking = require('../models/AmbulanceBooking');
+const Booking = require('../models/Booking');
+const User = require('../models/User');
+const Transaction = require('../models/Transaction');
+const EmergencyContact = require('../models/EmergencyContact');
+const { authenticateToken } = require('../middleware/auth');
+const dispatchService = require('../services/ambulanceDispatchService');
+const locationCache = require('../services/locationCacheService');
+const commissionService = require('../services/commissionService');
+const notificationService = require('../services/notificationService');
+const smsService = require('../services/smsService');
 
-// Get available ambulances by city
-router.get('/available', async (req, res) => {
+// ============================================
+// 🚨 EMERGENCY DISPATCH ENDPOINTS
+// ============================================
+
+// ─────────────────────────────────────────────
+// POST /ambulance/emergency-dispatch
+// 🚑 Emergency button pressed by patient
+// ─────────────────────────────────────────────
+router.post('/emergency-dispatch', async (req, res) => {
   try {
-    const { city, lat, lng } = req.query;
-    let query = { isAvailable: true };
-    if (city) query.city = { $regex: new RegExp(city, 'i') };
-    
-    let ambulances = await Ambulance.find(query);
-    
-    // Calculate distance if location provided
-    if (lat && lng) {
-      ambulances = ambulances.map(a => ({
-        ...a.toObject(),
-        distance: calculateDistance(lat, lng, a.location.lat, a.location.lng)
-      }));
-      ambulances.sort((a, b) => (a.distance || 999) - (b.distance || 999));
+    const {
+      userId, patientName, patientPhone, patientAge, patientGender,
+      pickupLat, pickupLng, pickupAddress, patientCondition, emergencyType = 'blitz'
+    } = req.body;
+
+    if (!patientPhone) {
+      return res.status(400).json({ success: false, error: 'Phone number is required' });
     }
-    
-    res.json({ success: true, data: ambulances });
+    if (!pickupLat || !pickupLng) {
+      return res.status(400).json({ success: false, error: 'Location is required' });
+    }
+
+    const result = await dispatchService.dispatchEmergencyAmbulance({
+      userId: userId || 'guest',
+      patientName: patientName || 'Emergency Patient',
+      patientPhone, patientAge, patientGender,
+      pickupLat, pickupLng,
+      pickupAddress: pickupAddress || 'GPS Location',
+      patientCondition, emergencyType
+    });
+
+    if (result.success) {
+      return res.status(200).json({
+        success: true,
+        message: 'Ambulance dispatched successfully',
+        data: {
+          bookingId: result.booking.bookingId,
+          driver: {
+            name: result.driver.driverName,
+            phone: result.driver.driverPhone,
+            vehicleNumber: result.driver.vehicleNumber,
+            rating: result.driver.driverRating
+          },
+          trackingUrl: result.trackingUrl,
+          tripOtp: result.booking.tripOtp,
+          fareEstimate: result.fareEstimate
+        }
+      });
+    } else {
+      return res.status(200).json({
+        success: false,
+        reason: result.reason,
+        message: 'No ambulance available. Please call 108.',
+        bookingId: result.booking?.bookingId
+      });
+    }
   } catch (error) {
-    res.status(500).json({ success: false, message: error.message });
+    console.error('Emergency dispatch error:', error);
+    return res.status(500).json({ 
+      success: false, error: 'Emergency dispatch failed',
+      message: 'Please call 108 for immediate assistance'
+    });
   }
 });
 
-// Book ambulance
-router.post('/book', async (req, res) => {
+// ─────────────────────────────────────────────
+// POST /ambulance/accept-emergency/:bookingId
+// 🚑 Driver accepts emergency request
+// ─────────────────────────────────────────────
+router.post('/accept-emergency/:bookingId', authenticateToken, async (req, res) => {
   try {
-    const { 
-      ambulanceId, patientName, patientPhone, 
-      pickupAddress, pickupLocation, dropAddress, dropLocation, distance 
-    } = req.body;
-    
-    const ambulance = await Ambulance.findById(ambulanceId);
-    if (!ambulance) {
-      return res.status(404).json({ success: false, message: 'Ambulance not found' });
+    const { bookingId } = req.params;
+    const driverId = req.body.driverId || req.user.driverId;
+    if (!driverId) return res.status(400).json({ success: false, error: 'Driver ID required' });
+
+    const result = await dispatchService.driverAcceptEmergency(driverId, bookingId);
+    if (result.success) {
+      return res.json({ success: true, message: 'Emergency accepted', data: result.booking });
     }
-    
-    const totalAmount = ambulance.basePrice + (distance * ambulance.pricePerKm);
-    const discount = Math.round(totalAmount * 0.1);
-    const finalAmount = totalAmount - discount;
-    
-    const booking = new AmbulanceBooking({
-      userId: req.user?.id || 'guest',
-      ambulanceId,
-      patientName,
-      patientPhone,
+    return res.json({ success: false, reason: result.reason });
+  } catch (error) {
+    return res.status(500).json({ success: false, error: error.message });
+  }
+});
+
+// ─────────────────────────────────────────────
+// POST /ambulance/trip-start/:bookingId
+// 🚑 Driver reached pickup location
+// ─────────────────────────────────────────────
+router.post('/trip-start/:bookingId', authenticateToken, async (req, res) => {
+  try {
+    const result = await dispatchService.driverArrivedAtPickup(req.params.bookingId);
+    return res.json(result);
+  } catch (error) {
+    return res.status(500).json({ success: false, error: error.message });
+  }
+});
+
+// ─────────────────────────────────────────────
+// POST /ambulance/patient-onboard/:bookingId
+// 🚑 Patient onboard with OTP verification
+// ─────────────────────────────────────────────
+router.post('/patient-onboard/:bookingId', authenticateToken, async (req, res) => {
+  try {
+    const { otp } = req.body;
+    if (!otp) return res.status(400).json({ success: false, error: 'OTP required' });
+    const result = await dispatchService.patientOnboard(req.params.bookingId, otp);
+    return res.json(result);
+  } catch (error) {
+    return res.status(500).json({ success: false, error: error.message });
+  }
+});
+
+// ─────────────────────────────────────────────
+// POST /ambulance/arrived-hospital/:bookingId
+// 🚑 Arrived at hospital
+// ─────────────────────────────────────────────
+router.post('/arrived-hospital/:bookingId', authenticateToken, async (req, res) => {
+  try {
+    const { vitals } = req.body;
+    const result = await dispatchService.arrivedAtHospital(req.params.bookingId, vitals);
+    return res.json(result);
+  } catch (error) {
+    return res.status(500).json({ success: false, error: error.message });
+  }
+});
+
+// ─────────────────────────────────────────────
+// POST /ambulance/trip-complete/:bookingId
+// 🚑 Trip completed with trip sheet
+// ─────────────────────────────────────────────
+router.post('/trip-complete/:bookingId', authenticateToken, async (req, res) => {
+  try {
+    const { distance, duration, oxygenAdministered, medicationsGiven, vitals, notes } = req.body;
+    const result = await dispatchService.completeEmergencyTrip(req.params.bookingId, {
+      distance, duration, oxygenAdministered, medicationsGiven, vitals, driverNotes: notes
+    });
+    if (result.success) {
+      return res.json({ success: true, message: 'Trip completed', data: result });
+    }
+    return res.json({ success: false, reason: result.reason });
+  } catch (error) {
+    return res.status(500).json({ success: false, error: error.message });
+  }
+});
+
+// ─────────────────────────────────────────────
+// POST /ambulance/cancel-emergency/:bookingId
+// 🚑 Cancel emergency
+// ─────────────────────────────────────────────
+router.post('/cancel-emergency/:bookingId', async (req, res) => {
+  try {
+    const { reason, cancelledBy = 'patient' } = req.body;
+    const result = await dispatchService.cancelEmergency(req.params.bookingId, reason, cancelledBy);
+    return res.json(result);
+  } catch (error) {
+    return res.status(500).json({ success: false, error: error.message });
+  }
+});
+
+// ─────────────────────────────────────────────
+// POST /ambulance/send-sos-sms
+// 🚑 Send SOS to emergency contacts
+// ─────────────────────────────────────────────
+router.post('/send-sos-sms', async (req, res) => {
+  try {
+    const { bookingId, contacts } = req.body;
+    const booking = await Booking.findOne({ bookingId });
+    if (!booking) return res.status(404).json({ success: false, error: 'Booking not found' });
+
+    const emergencyData = {
+      patientName: booking.patientName,
+      ambulanceType: booking.vehicleType || 'Emergency',
+      vehicleNumber: booking.vehicleNumber,
+      driverName: booking.driverName,
+      driverPhone: booking.driverPhone,
+      eta: '5',
+      trackingUrl: booking.trackingUrl,
+      hospitalName: booking.hospitalDestination?.hospitalName || 'Nearest hospital'
+    };
+
+    await smsService.sendEmergencyContactsSMS(contacts, emergencyData);
+    return res.json({ success: true, message: 'SOS messages sent' });
+  } catch (error) {
+    return res.status(500).json({ success: false, error: error.message });
+  }
+});
+
+// ─────────────────────────────────────────────
+// POST /ambulance/notify-hospital
+// 🚑 Notify hospital ER
+// ─────────────────────────────────────────────
+router.post('/notify-hospital', async (req, res) => {
+  try {
+    const { bookingId } = req.body;
+    const booking = await Booking.findOne({ bookingId });
+    if (!booking) return res.status(404).json({ success: false, error: 'Booking not found' });
+
+    await notificationService.sendHospitalERNotification(null, null, {
+      bookingId: booking.bookingId,
+      patientName: booking.patientName,
+      patientAge: booking.patientAge,
+      patientGender: booking.patientGender,
+      chiefComplaint: booking.patientCondition?.chiefComplaint || 'Emergency',
+      ambulanceType: booking.vehicleType,
+      vehicleNumber: booking.vehicleNumber,
+      eta: '5',
+      driverPhone: booking.driverPhone
+    });
+
+    booking.hospitalNotified = true;
+    booking.hospitalNotificationTime = new Date();
+    await booking.save();
+
+    return res.json({ success: true, message: 'Hospital notified' });
+  } catch (error) {
+    return res.status(500).json({ success: false, error: error.message });
+  }
+});
+
+// ============================================
+// 📍 LOCATION & TRACKING ENDPOINTS
+// ============================================
+
+// ─────────────────────────────────────────────
+// POST /ambulance/update-location
+// 📍 Driver GPS update
+// ─────────────────────────────────────────────
+router.post('/update-location', authenticateToken, async (req, res) => {
+  try {
+    const { lat, lng, speed, heading, isAvailable, isOnTrip, tripId } = req.body;
+    const driverId = req.body.driverId || req.user.driverId;
+    if (!lat || !lng) return res.status(400).json({ success: false, error: 'Coordinates required' });
+
+    await locationCache.ambulance.updateDriverLocation(driverId, lat, lng, {
+      speed, heading, isAvailable: isAvailable !== false,
+      isOnTrip: isOnTrip || false, tripId: tripId || '',
+      vehicleType: req.body.vehicleType || 'basic',
+      providerId: req.body.providerId || ''
+    });
+    return res.json({ success: true, message: 'Location updated' });
+  } catch (error) {
+    return res.status(500).json({ success: false, error: error.message });
+  }
+});
+
+// ─────────────────────────────────────────────
+// GET /ambulance/nearby-ambulances
+// 📍 Find nearby available ambulances
+// ─────────────────────────────────────────────
+router.get('/nearby-ambulances', async (req, res) => {
+  try {
+    const { lat, lng, radius = 5, vehicleType, limit = 10 } = req.query;
+    if (!lat || !lng) return res.status(400).json({ success: false, error: 'Coordinates required' });
+
+    const drivers = await locationCache.ambulance.findNearbyDrivers(
+      parseFloat(lat), parseFloat(lng), parseFloat(radius), {
+        vehicleType: vehicleType || null,
+        limit: parseInt(limit),
+        requireAvailable: true
+      }
+    );
+
+    return res.json({
+      success: true, count: drivers.length,
+      data: drivers.map(d => ({
+        driverId: d.driverId, distance: d.distance,
+        vehicleType: d.vehicleType, rating: d.rating || 0,
+        estimatedETA: Math.round(d.distance * 2)
+      }))
+    });
+  } catch (error) {
+    return res.status(500).json({ success: false, error: error.message });
+  }
+});
+
+// ─────────────────────────────────────────────
+// GET /ambulance/active-emergency/:bookingId
+// 📍 Live tracking for active emergency
+// ─────────────────────────────────────────────
+router.get('/active-emergency/:bookingId', async (req, res) => {
+  try {
+    const booking = await Booking.findOne({ bookingId: req.params.bookingId });
+    if (!booking) return res.status(404).json({ success: false, error: 'Booking not found' });
+
+    let driverLocation = null;
+    if (booking.driverId) {
+      driverLocation = await locationCache.ambulance.getDriverLocation(booking.driverId);
+    }
+
+    return res.json({
+      success: true,
+      data: {
+        bookingId: booking.bookingId,
+        status: booking.status,
+        driver: {
+          name: booking.driverName, phone: booking.driverPhone,
+          vehicleNumber: booking.vehicleNumber, rating: booking.driverRating,
+          location: driverLocation ? { lat: driverLocation.lat, lng: driverLocation.lng } : null
+        },
+        hospital: booking.hospitalDestination,
+        timestamps: {
+          requested: booking.emergencyRequestedAt, accepted: booking.driverAcceptedAt,
+          arrived: booking.driverReachedAt, onboard: booking.patientOnboardAt,
+          completed: booking.completedAt
+        },
+        trackingUrl: booking.trackingUrl
+      }
+    });
+  } catch (error) {
+    return res.status(500).json({ success: false, error: error.message });
+  }
+});
+
+// ─────────────────────────────────────────────
+// GET /ambulance/surge-check
+// 📍 Check surge pricing in area
+// ─────────────────────────────────────────────
+router.get('/surge-check', async (req, res) => {
+  try {
+    const { lat, lng } = req.query;
+    if (!lat || !lng) return res.status(400).json({ success: false, error: 'Coordinates required' });
+
+    const surgeInfo = await dispatchService.checkSurgePricing(parseFloat(lat), parseFloat(lng));
+    return res.json({ success: true, data: surgeInfo });
+  } catch (error) {
+    return res.status(500).json({ success: false, error: error.message });
+  }
+});
+
+// ============================================
+// 📅 SCHEDULED AMBULANCE ENDPOINTS
+// ============================================
+
+// ─────────────────────────────────────────────
+// POST /ambulance/schedule-transport
+// 📅 Book non-emergency ambulance
+// ─────────────────────────────────────────────
+router.post('/schedule-transport', authenticateToken, async (req, res) => {
+  try {
+    const {
+      patientName, patientPhone, patientAge, patientGender,
+      pickupAddress, pickupLat, pickupLng,
+      destinationAddress, destinationLat, destinationLng,
+      hospitalName, ambulanceType = 'basic',
+      scheduledDate, scheduledTime,
+      requiresOxygen, requiresAttendant, mobilityType,
+      specialRequirements, isRecurring, recurringDays
+    } = req.body;
+
+    const fareEstimate = commissionService.calculateAmbulanceFare({
+      baseFare: 500,
+      distance: 10,
+      ambulanceType,
+      isEmergency: false,
+      oxygenRequired: requiresOxygen
+    });
+
+    const booking = new Booking({
+      userId: req.user.userId || req.user.id,
+      bookingType: 'ambulance',
+      emergencyType: 'scheduled',
+      patientName, patientPhone, patientAge, patientGender,
+      ambulanceType,
       pickupAddress,
-      pickupLocation,
-      dropAddress,
-      dropLocation,
-      distance,
-      totalAmount: finalAmount,
-      driverName: ambulance.driverName,
-      driverPhone: ambulance.driverPhone,
-      vehicleNumber: ambulance.vehicleNumber,
+      pickupCoordinates: { lat: pickupLat, lng: pickupLng },
+      dropAddress: destinationAddress,
+      hospitalDestination: {
+        hospitalName: hospitalName || destinationAddress,
+        address: destinationAddress,
+        coordinates: { lat: destinationLat, lng: destinationLng }
+      },
+      appointmentDate: new Date(`${scheduledDate}T${scheduledTime || '10:00'}`),
+      originalAmount: fareEstimate.breakdown.total,
+      finalAmount: fareEstimate.breakdown.total,
+      fareBreakdown: fareEstimate.breakdown,
+      scheduledTransport: {
+        isRecurring: isRecurring || false,
+        recurringDays: recurringDays || [],
+        requiresOxygen: requiresOxygen || false,
+        requiresAttendant: requiresAttendant || false,
+        mobilityType: mobilityType || 'walking',
+        specialEquipment: []
+      },
+      specialRequirements,
       status: 'pending'
     });
-    
+
     await booking.save();
-    
-    // Mark ambulance as unavailable
-    ambulance.isAvailable = false;
-    await ambulance.save();
-    
-    res.json({ 
-      success: true, 
-      data: booking,
-      message: `Ambulance booked successfully! Total: ₹${finalAmount} (10% discount applied)`
+
+    await smsService.sendAmbulanceSMS(patientPhone, 'scheduled_confirmed', {
+      date: new Date(scheduledDate).toLocaleDateString('en-IN'),
+      time: scheduledTime || 'Scheduled',
+      pickupAddress,
+      hospitalName: hospitalName || destinationAddress,
+      vehicleType: ambulanceType,
+      bookingId: booking.bookingId
+    });
+
+    return res.json({
+      success: true,
+      message: 'Ambulance scheduled successfully',
+      data: {
+        bookingId: booking.bookingId,
+        scheduledDate, scheduledTime,
+        fareEstimate: fareEstimate.breakdown
+      }
     });
   } catch (error) {
-    res.status(500).json({ success: false, message: error.message });
+    return res.status(500).json({ success: false, error: error.message });
   }
 });
 
-// Get booking status
-router.get('/booking/:id', async (req, res) => {
+// ─────────────────────────────────────────────
+// GET /ambulance/scheduled-bookings
+// 📅 Get user's scheduled ambulance bookings
+// ─────────────────────────────────────────────
+router.get('/scheduled-bookings', authenticateToken, async (req, res) => {
   try {
-    const booking = await AmbulanceBooking.findById(req.params.id);
-    if (!booking) {
-      return res.status(404).json({ success: false, message: 'Booking not found' });
+    const bookings = await Booking.find({
+      userId: req.user.userId || req.user.id,
+      bookingType: 'ambulance',
+      emergencyType: 'scheduled',
+      status: { $in: ['pending', 'confirmed', 'completed'] }
+    }).sort({ appointmentDate: -1 });
+
+    return res.json({ success: true, count: bookings.length, data: bookings });
+  } catch (error) {
+    return res.status(500).json({ success: false, error: error.message });
+  }
+});
+
+// ============================================
+// 📊 BOOKING HISTORY & DETAILS
+// ============================================
+
+// ─────────────────────────────────────────────
+// GET /ambulance/my-bookings
+// 📊 Get all ambulance bookings for user
+// ─────────────────────────────────────────────
+router.get('/my-bookings', authenticateToken, async (req, res) => {
+  try {
+    const { type, limit = 20, page = 1 } = req.query;
+    const query = {
+      userId: req.user.userId || req.user.id,
+      bookingType: { $in: ['ambulance', 'ambulance_emergency'] }
+    };
+    
+    if (type === 'emergency') query.emergencyType = 'blitz';
+    else if (type === 'scheduled') query.emergencyType = 'scheduled';
+
+    const bookings = await Booking.find(query)
+      .sort({ createdAt: -1 })
+      .skip((page - 1) * limit)
+      .limit(parseInt(limit));
+
+    const total = await Booking.countDocuments(query);
+
+    return res.json({
+      success: true,
+      data: bookings,
+      pagination: { total, page: parseInt(page), pages: Math.ceil(total / limit) }
+    });
+  } catch (error) {
+    return res.status(500).json({ success: false, error: error.message });
+  }
+});
+
+// ─────────────────────────────────────────────
+// GET /ambulance/booking/:bookingId
+// 📊 Get single booking details
+// ─────────────────────────────────────────────
+router.get('/booking/:bookingId', async (req, res) => {
+  try {
+    const booking = await Booking.findOne({ bookingId: req.params.bookingId });
+    if (!booking) return res.status(404).json({ success: false, error: 'Booking not found' });
+    return res.json({ success: true, data: booking });
+  } catch (error) {
+    return res.status(500).json({ success: false, error: error.message });
+  }
+});
+
+// ─────────────────────────────────────────────
+// GET /ambulance/trip-sheet/:bookingId
+// 📊 Get digital trip sheet for insurance
+// ─────────────────────────────────────────────
+router.get('/trip-sheet/:bookingId', async (req, res) => {
+  try {
+    const booking = await Booking.findOne({ bookingId: req.params.bookingId });
+    if (!booking) return res.status(404).json({ success: false, error: 'Booking not found' });
+    if (!booking.digitalTripSheet?.generated) {
+      return res.status(400).json({ success: false, error: 'Trip sheet not yet generated' });
     }
-    res.json({ success: true, data: booking });
+
+    return res.json({
+      success: true,
+      data: {
+        tripSheetId: booking.digitalTripSheet.tripSheetId,
+        bookingId: booking.bookingId,
+        patientName: booking.patientName,
+        driverName: booking.driverName,
+        vehicleNumber: booking.vehicleNumber,
+        ambulanceType: booking.vehicleType,
+        pickupAddress: booking.pickupAddress,
+        hospitalDestination: booking.hospitalDestination?.hospitalName,
+        pickupTime: booking.digitalTripSheet.pickupTime || booking.driverAcceptedAt,
+        dropTime: booking.digitalTripSheet.dropTime || booking.completedAt,
+        distance: booking.digitalTripSheet.distance,
+        duration: booking.digitalTripSheet.duration,
+        vitals: booking.digitalTripSheet.vitals,
+        oxygenAdministered: booking.digitalTripSheet.oxygenAdministered,
+        medicationsGiven: booking.digitalTripSheet.medicationsGiven,
+        fareBreakdown: booking.fareBreakdown,
+        generatedAt: booking.digitalTripSheet.generatedAt,
+        insuranceReady: true
+      }
+    });
   } catch (error) {
-    res.status(500).json({ success: false, message: error.message });
+    return res.status(500).json({ success: false, error: error.message });
   }
 });
 
-// Update booking status (for driver app)
-router.put('/booking/:id/status', async (req, res) => {
+// ============================================
+// 👨‍⚕️ DRIVER ENDPOINTS
+// ============================================
+
+// ─────────────────────────────────────────────
+// GET /ambulance/driver/dashboard
+// 👨‍⚕️ Driver dashboard with stats
+// ─────────────────────────────────────────────
+router.get('/driver/dashboard', authenticateToken, async (req, res) => {
   try {
-    const { status } = req.body;
-    const booking = await AmbulanceBooking.findByIdAndUpdate(
-      req.params.id,
-      { status },
-      { new: true }
-    );
-    res.json({ success: true, data: booking });
+    const driverId = req.query.driverId || req.user.driverId;
+    if (!driverId) return res.status(400).json({ success: false, error: 'Driver ID required' });
+
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    const tomorrow = new Date(today);
+    tomorrow.setDate(tomorrow.getDate() + 1);
+
+    const [todayTrips, totalTrips, recentTrips, driverLocation] = await Promise.all([
+      Booking.countDocuments({ driverId, bookingType: 'ambulance_emergency', createdAt: { $gte: today, $lt: tomorrow }, status: 'completed' }),
+      Booking.countDocuments({ driverId, status: 'completed' }),
+      Booking.find({ driverId, status: 'completed' }).sort({ completedAt: -1 }).limit(5),
+      locationCache.ambulance.getDriverLocation(driverId)
+    ]);
+
+    const todayEarnings = await Transaction.aggregate([
+      { $match: { ambulanceDriverId: driverId, createdAt: { $gte: today, $lt: tomorrow }, status: 'completed' } },
+      { $group: { _id: null, total: { $sum: '$ambulanceCommission.driverEarnings' } } }
+    ]);
+
+    return res.json({
+      success: true,
+      data: {
+        todayTrips,
+        todayEarnings: todayEarnings[0]?.total || 0,
+        totalTrips,
+        recentTrips,
+        currentLocation: driverLocation,
+        rating: req.user.driverRating || 0
+      }
+    });
   } catch (error) {
-    res.status(500).json({ success: false, message: error.message });
+    return res.status(500).json({ success: false, error: error.message });
   }
 });
 
-function calculateDistance(lat1, lon1, lat2, lon2) {
-  if (!lat1 || !lon1 || !lat2 || !lon2) return 999;
-  const R = 6371;
-  const dLat = (lat2 - lat1) * Math.PI / 180;
-  const dLon = (lon2 - lon1) * Math.PI / 180;
-  const a = Math.sin(dLat/2) * Math.sin(dLat/2) +
-            Math.cos(lat1 * Math.PI/180) * Math.cos(lat2 * Math.PI/180) *
-            Math.sin(dLon/2) * Math.sin(dLon/2);
-  const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
-  return parseFloat((R * c).toFixed(1));
-}
+// ─────────────────────────────────────────────
+// POST /ambulance/driver/toggle-availability
+// 👨‍⚕️ Toggle driver online/offline
+// ─────────────────────────────────────────────
+router.post('/driver/toggle-availability', authenticateToken, async (req, res) => {
+  try {
+    const driverId = req.body.driverId || req.user.driverId;
+    const { isAvailable } = req.body;
+
+    await locationCache.ambulance.updateDriverStatus(driverId, { isAvailable });
+
+    return res.json({ success: true, isAvailable });
+  } catch (error) {
+    return res.status(500).json({ success: false, error: error.message });
+  }
+});
+
+// ─────────────────────────────────────────────
+// GET /ambulance/driver/trip-history
+// 👨‍⚕️ Driver trip history
+// ─────────────────────────────────────────────
+router.get('/driver/trip-history', authenticateToken, async (req, res) => {
+  try {
+    const driverId = req.query.driverId || req.user.driverId;
+    const { limit = 20, page = 1 } = req.query;
+
+    const trips = await Booking.find({ driverId, status: 'completed' })
+      .sort({ completedAt: -1 })
+      .skip((page - 1) * limit)
+      .limit(parseInt(limit));
+
+    const total = await Booking.countDocuments({ driverId, status: 'completed' });
+
+    return res.json({
+      success: true,
+      data: trips,
+      pagination: { total, page: parseInt(page), pages: Math.ceil(total / limit) }
+    });
+  } catch (error) {
+    return res.status(500).json({ success: false, error: error.message });
+  }
+});
+
+// ============================================
+// 💰 FARE & COMMISSION ENDPOINTS
+// ============================================
+
+// ─────────────────────────────────────────────
+// GET /ambulance/fare-estimate
+// 💰 Get fare estimate before booking
+// ─────────────────────────────────────────────
+router.get('/fare-estimate', async (req, res) => {
+  try {
+    const { distance, ambulanceType = 'basic', isEmergency = 'false', isNightTime = 'false' } = req.query;
+
+    const fareEstimate = commissionService.calculateAmbulanceFare({
+      baseFare: 500,
+      distance: parseFloat(distance) || 5,
+      ambulanceType,
+      isEmergency: isEmergency === 'true',
+      isNightTime: isNightTime === 'true'
+    });
+
+    return res.json({
+      success: true,
+      data: {
+        fareBreakdown: fareEstimate.breakdown,
+        total: fareEstimate.breakdown.total,
+        platformFee: isEmergency === 'true' ? 0 : 50
+      }
+    });
+  } catch (error) {
+    return res.status(500).json({ success: false, error: error.message });
+  }
+});
+
+// ============================================
+// 🛡️ EMERGENCY CONTACTS ENDPOINTS
+// ============================================
+
+// ─────────────────────────────────────────────
+// GET /ambulance/emergency-contacts
+// 🛡️ Get user's emergency contacts
+// ─────────────────────────────────────────────
+router.get('/emergency-contacts', authenticateToken, async (req, res) => {
+  try {
+    const userId = req.user.userId || req.user.id;
+    const emergencyProfile = await EmergencyContact.findByUserId(userId);
+    
+    if (!emergencyProfile) {
+      return res.json({ success: true, data: { contacts: [], medicalInfo: null } });
+    }
+
+    return res.json({
+      success: true,
+      data: {
+        contacts: emergencyProfile.contacts,
+        medicalInfo: emergencyProfile.medicalInfo,
+        insuranceInfo: emergencyProfile.insuranceInfo,
+        ambulancePreferences: emergencyProfile.ambulancePreferences
+      }
+    });
+  } catch (error) {
+    return res.status(500).json({ success: false, error: error.message });
+  }
+});
+
+// ─────────────────────────────────────────────
+// POST /ambulance/emergency-contacts
+// 🛡️ Update emergency contacts
+// ─────────────────────────────────────────────
+router.post('/emergency-contacts', authenticateToken, async (req, res) => {
+  try {
+    const userId = req.user.userId || req.user.id;
+    const { contacts, medicalInfo, insuranceInfo, ambulancePreferences } = req.body;
+
+    let emergencyProfile = await EmergencyContact.findByUserId(userId);
+    
+    if (!emergencyProfile) {
+      emergencyProfile = new EmergencyContact({ userId, contacts, medicalInfo, insuranceInfo, ambulancePreferences });
+    } else {
+      if (contacts) emergencyProfile.contacts = contacts;
+      if (medicalInfo) emergencyProfile.medicalInfo = { ...emergencyProfile.medicalInfo, ...medicalInfo };
+      if (insuranceInfo) emergencyProfile.insuranceInfo = insuranceInfo;
+      if (ambulancePreferences) emergencyProfile.ambulancePreferences = ambulancePreferences;
+    }
+
+    await emergencyProfile.save();
+    return res.json({ success: true, message: 'Emergency contacts updated' });
+  } catch (error) {
+    return res.status(500).json({ success: false, error: error.message });
+  }
+});
+
+// ============================================
+// EXPORT
+// ============================================
 
 module.exports = router;

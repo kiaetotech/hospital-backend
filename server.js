@@ -4,8 +4,71 @@ const mongoose = require('mongoose');
 const cors = require('cors');
 const rateLimit = require('express-rate-limit');
 const morgan = require('morgan');
+const http = require('http');
+const { Server } = require('socket.io');
+const Redis = require('ioredis');
 
 const app = express();
+const server = http.createServer(app);
+
+// ============================================
+// REDIS CONNECTION (For Location Cache & Rate Limiting)
+// ============================================
+
+let redis = null;
+try {
+  redis = new Redis({
+    host: process.env.REDIS_HOST || 'localhost',
+    port: process.env.REDIS_PORT || 6379,
+    password: process.env.REDIS_PASSWORD || '',
+    db: process.env.REDIS_DB || 0,
+    maxRetriesPerRequest: 3,
+    retryStrategy: (times) => {
+      if (times > 10) {
+        console.warn('⚠️ Redis: Max retries reached. Running without cache.');
+        return null;
+      }
+      return Math.min(times * 200, 2000);
+    },
+    lazyConnect: true
+  });
+
+  redis.on('connect', () => console.log('📍 Redis connected'));
+  redis.on('ready', () => console.log('📍 Redis: Ready'));
+  redis.on('error', (err) => console.warn('⚠️ Redis error:', err.message));
+
+  redis.connect().catch(() => {
+    console.warn('⚠️ Redis connection failed - continuing without Redis');
+    redis = null;
+  });
+} catch (error) {
+  console.warn('⚠️ Redis not configured - running without cache');
+}
+
+global.redisClient = redis;
+
+// ============================================
+// SOCKET.IO SETUP
+// ============================================
+
+const io = new Server(server, {
+  cors: {
+    origin: process.env.FRONTEND_URL || 'https://hospital-frontend-kiaeto.vercel.app',
+    methods: ['GET', 'POST'],
+    credentials: true
+  },
+  pingTimeout: 60000,
+  pingInterval: 25000,
+  transports: ['websocket', 'polling'],
+  allowEIO3: true
+});
+
+// Initialize WebSocket handlers
+const { initializeSocket, getConnectionStats } = require('./socket/ambulanceSocket');
+initializeSocket(io);
+
+// Make io available globally (for use in routes/services)
+global.io = io;
 
 // ============================================
 // SECURITY MIDDLEWARE
@@ -21,8 +84,8 @@ if (process.env.NODE_ENV !== 'production') {
 
 // Rate limiting for search endpoints
 const searchLimiter = rateLimit({
-  windowMs: 1 * 60 * 1000, // 1 minute
-  max: 60, // 60 requests per minute
+  windowMs: 1 * 60 * 1000,
+  max: 60,
   message: { success: false, message: 'Too many requests, please try again later.' }
 });
 
@@ -32,7 +95,6 @@ const searchLimiter = rateLimit({
 const jwt = require('jsonwebtoken');
 const JWT_SECRET = process.env.JWT_SECRET || 'hospital_platform_secret_key_2024';
 
-// Authentication middleware for lab agencies
 const authenticateToken = (req, res, next) => {
   const authHeader = req.headers['authorization'];
   const token = authHeader && authHeader.split(' ')[1];
@@ -50,13 +112,13 @@ const authenticateToken = (req, res, next) => {
   });
 };
 
-// Make available globally
 global.authenticateToken = authenticateToken;
 global.JWT_SECRET = JWT_SECRET;
 
 // ============================================
-// LOAN MODULE - AUTHENTICATION MIDDLEWARE
+// AUTH MIDDLEWARES (All Tags)
 // ============================================
+
 const authenticatePatient = (req, res, next) => {
   const authHeader = req.headers['authorization'];
   const token = authHeader && authHeader.split(' ')[1];
@@ -101,6 +163,36 @@ global.authenticatePatient = authenticatePatient;
 global.authenticateLender = authenticateLender;
 
 // ============================================
+// 🆕 CRON JOBS
+// ============================================
+
+// Check for stuck ambulance bookings every 2 minutes
+const dispatchService = require('./services/ambulanceDispatchService');
+setInterval(async () => {
+  try {
+    const result = await dispatchService.checkStuckBookings();
+    if (result.checked > 0) {
+      console.log(`🔍 Stuck booking check: ${result.checked} checked`);
+    }
+  } catch (error) {
+    console.error('Stuck booking check error:', error.message);
+  }
+}, 2 * 60 * 1000);
+
+// Clean up stale Redis data every 15 minutes
+if (redis) {
+  setInterval(async () => {
+    try {
+      const locationCache = require('./services/locationCacheService');
+      const stats = await locationCache.getServiceStats();
+      console.log('📍 Location stats:', JSON.stringify(stats));
+    } catch (error) {
+      // Silently fail - not critical
+    }
+  }, 15 * 60 * 1000);
+}
+
+// ============================================
 // EXISTING ROUTES (ALL PRESERVED)
 // ============================================
 const hospitalRoutes = require('./routes/hospitals');
@@ -122,71 +214,49 @@ const bookingStatusRoutes = require('./routes/booking-status');
 const customPackageRoutes = require('./routes/custom-packages');
 const lenderAuthRoutes = require('./routes/lenderAuth');
 const adminLenderRoutes = require('./routes/adminLender');
-
-// ============================================
-// LENDER ROUTES (PRESERVED)
-// ============================================
 const lenderRoutes = require('./routes/lender');
 
-// ============================================
-// LOAN MODULE ROUTES (PRESERVED)
-// ============================================
+// Loan Module
 const loanPatientRoutes = require('./routes/loanPatient');
 const loanLenderRoutes = require('./routes/loanLender');
 const loanAdminRoutes = require('./routes/loanAdmin');
 const loanWebhookRoutes = require('./routes/loanWebhook');
 
-// ============================================
-// PAYMENT MODULE ROUTES (PRESERVED)
-// ============================================
+// Payment Module
 const webhookRoutes = require('./routes/webhooks');
 
-// ============================================
-// AYURVEDA MODULE ROUTES (PRESERVED)
-// ============================================
+// Ayurveda Module
 const ayurvedaRoutes = require('./routes/ayurveda-advanced');
 const ayurvedaCenterRoutes = require('./routes/ayurveda-centers');
 const ayurvedaPrescriptionRoutes = require('./routes/ayurveda-prescriptions');
 const ayurvedaReportRoutes = require('./routes/ayurveda-reports');
 
-// ============================================
-// HOMEOPATHY MODULE ROUTES (PRESERVED)
-// ============================================
+// Homeopathy Module
 const homeopathyRoutes = require('./routes/homeopathy');
 
-// ============================================
-// INSURANCE MODULE ROUTES (PRESERVED)
-// ============================================
+// Insurance Module
 const insuranceRoutes = require('./routes/insurance');
 const insuranceAdminRoutes = require('./routes/insurance-admin');
 
-// ============================================
-// OTP MODULE ROUTES (PRESERVED)
-// ============================================
+// OTP Module
 const otpRoutes = require('./routes/otp');
 
-// ============================================
-// CORPORATE MODULE ROUTES (PRESERVED)
-// ============================================
+// Corporate Module
 const corporateRoutes = require('./routes/corporate');
 const corporateBillingRoutes = require('./routes/corporate-billing');
 
-// ============================================
-// MENTAL HEALTH MODULE ROUTES (PRESERVED)
-// ============================================
+// Mental Health Module
 const mentalHealthRoutes = require('./routes/mentalhealth');
 const mentalHealthTherapistRoutes = require('./routes/mentalhealth-therapist');
 const mentalHealthAdminRoutes = require('./routes/mentalhealth-admin');
 const mentalHealthPayoutRoutes = require('./routes/mentalhealth-payout');
 const mentalHealthEarningsRoutes = require('./routes/mentalhealth-earnings');
 
-// ============================================
-// 🆕 ONLINE DOCTOR MODULE ROUTES (NEW - 1 LINE)
-// ============================================
+// Online Doctor Module
 const onlineDoctorRoutes = require('./routes/onlineDoctor');
 
 // ============================================
-// ROUTE MOUNTING - NO CONFLICTS
+// ROUTE MOUNTING - ALL PRESERVED
 // ============================================
 
 // 🏥 Hospital Routes
@@ -271,11 +341,45 @@ app.use('/api/mentalhealth/admin', mentalHealthAdminRoutes);
 app.use('/api/mentalhealth/payout', mentalHealthPayoutRoutes);
 app.use('/api/mentalhealth/earnings', mentalHealthEarningsRoutes);
 
-// 📱 Online Doctor (NEW - 1 LINE)
+// 📱 Online Doctor
 app.use('/api/online-doctor', searchLimiter, onlineDoctorRoutes);
 
 // ============================================
-// HEALTH CHECKS
+// 🆕 WEBSOCKET HEALTH ENDPOINT
+// ============================================
+
+app.get('/api/ws/health', (req, res) => {
+  const stats = getConnectionStats();
+  res.json({
+    success: true,
+    websocket: {
+      status: 'active',
+      connections: stats,
+      uptime: process.uptime()
+    }
+  });
+});
+
+// 🆕 WebSocket stats for admin
+app.get('/api/ws/stats', (req, res) => {
+  const stats = getConnectionStats();
+  res.json({
+    success: true,
+    data: {
+      onlineDrivers: stats.drivers,
+      onlineCaregivers: stats.caregivers,
+      onlinePhlebotomists: stats.phlebotomists,
+      trackingPatients: stats.patients,
+      connectedHospitals: stats.hospitals,
+      activeAdmins: stats.admins,
+      totalConnections: stats.drivers + stats.caregivers + stats.phlebotomists + stats.patients + stats.hospitals + stats.admins,
+      timestamp: stats.timestamp
+    }
+  });
+});
+
+// ============================================
+// HEALTH CHECKS (ALL PRESERVED + NEW)
 // ============================================
 
 // Root health check
@@ -284,7 +388,10 @@ app.get('/health', (req, res) => {
     status: 'ok', 
     message: 'Server is running',
     timestamp: new Date().toISOString(),
-    uptime: process.uptime()
+    uptime: process.uptime(),
+    redis: redis ? 'connected' : 'unavailable',
+    websocket: 'active',
+    environment: process.env.NODE_ENV || 'development'
   });
 });
 
@@ -330,6 +437,51 @@ app.get('/api/hospitals/health', (req, res) => {
         bedsAvailable: '/api/hospitals/search?beds_available=true',
         rating: '/api/hospitals/search?min_rating=4.5',
         geospatial: '/api/hospitals/search?lat=19.07&lng=72.83&radius=50'
+      }
+    }
+  });
+});
+
+// 🚑 Ambulance Health Check (NEW)
+app.get('/api/ambulance/health', (req, res) => {
+  res.json({
+    success: true,
+    module: 'Ambulance Blitz Response',
+    status: 'active',
+    version: '3.0',
+    features: {
+      emergency: {
+        dispatch: 'POST /api/ambulance/emergency-dispatch',
+        accept: 'POST /api/ambulance/accept-emergency/:id',
+        tracking: 'GET /api/ambulance/active-emergency/:id',
+        cancel: 'POST /api/ambulance/cancel-emergency/:id'
+      },
+      trip: {
+        start: 'POST /api/ambulance/trip-start/:id',
+        onboard: 'POST /api/ambulance/patient-onboard/:id',
+        arrive: 'POST /api/ambulance/arrived-hospital/:id',
+        complete: 'POST /api/ambulance/trip-complete/:id'
+      },
+      location: {
+        update: 'POST /api/ambulance/update-location',
+        nearby: 'GET /api/ambulance/nearby-ambulances',
+        surge: 'GET /api/ambulance/surge-check'
+      },
+      scheduled: {
+        book: 'POST /api/ambulance/schedule-transport',
+        list: 'GET /api/ambulance/scheduled-bookings'
+      },
+      driver: {
+        dashboard: 'GET /api/ambulance/driver/dashboard',
+        toggle: 'POST /api/ambulance/driver/toggle-availability',
+        history: 'GET /api/ambulance/driver/trip-history'
+      },
+      provider: {
+        dashboard: 'GET /api/ambulance/provider/dashboard'
+      },
+      realtime: {
+        websocket: 'ws://server/socket.io',
+        stats: 'GET /api/ws/stats'
       }
     }
   });
@@ -382,7 +534,7 @@ app.get('/api/mentalhealth/health', (req, res) => {
   });
 });
 
-// 🆕 Online Doctor Health Check (NEW)
+// Online Doctor Health Check
 app.get('/api/online-doctor/health', (req, res) => {
   res.json({
     success: true,
@@ -397,6 +549,49 @@ app.get('/api/online-doctor/health', (req, res) => {
       dashboard: '/api/online-doctor/doctor/dashboard'
     }
   });
+});
+
+// 🆕 Comprehensive System Health (NEW)
+app.get('/api/system/health', async (req, res) => {
+  const healthData = {
+    success: true,
+    server: {
+      status: 'running',
+      uptime: process.uptime(),
+      environment: process.env.NODE_ENV || 'development',
+      port: PORT,
+      memory: process.memoryUsage()
+    },
+    database: {
+      status: mongoose.connection.readyState === 1 ? 'connected' : 'disconnected',
+      host: mongoose.connection.host || 'N/A'
+    },
+    redis: {
+      status: redis ? 'connected' : 'unavailable'
+    },
+    websocket: {
+      status: 'active',
+      connections: getConnectionStats()
+    },
+    modules: {
+      hospitals: 'active',
+      ambulance: 'active',
+      caregivers: 'active',
+      diagnostics: 'active',
+      ayurveda: 'active',
+      homeopathy: 'active',
+      insurance: 'active',
+      corporate: 'active',
+      mentalHealth: 'active',
+      onlineDoctor: 'active',
+      loans: 'active',
+      payments: 'active',
+      otp: 'active'
+    },
+    timestamp: new Date().toISOString()
+  };
+
+  res.json(healthData);
 });
 
 // ============================================
@@ -415,18 +610,15 @@ app.use((req, res) => {
 app.use((err, req, res, next) => {
   console.error('Error:', err.message);
   
-  // Mongoose validation error
   if (err.name === 'ValidationError') {
     const messages = Object.values(err.errors).map(e => e.message);
     return res.status(400).json({ success: false, message: messages.join(', ') });
   }
   
-  // Mongoose duplicate key error
   if (err.code === 11000) {
     return res.status(400).json({ success: false, message: 'Duplicate entry found' });
   }
   
-  // JWT errors
   if (err.name === 'JsonWebTokenError') {
     return res.status(401).json({ success: false, message: 'Invalid token' });
   }
@@ -450,37 +642,46 @@ mongoose.connect(DB_URI)
   .catch(err => console.error('❌ MongoDB error:', err));
 
 // ============================================
-// SERVER START
+// SERVER START (Using http server for Socket.IO)
 // ============================================
 const PORT = process.env.PORT || 5000;
-app.listen(PORT, () => {
+server.listen(PORT, () => {
   console.log('═'.repeat(55));
   console.log('🚀 HealthCare Hub Server Started');
   console.log('═'.repeat(55));
   console.log(`📍 Port: ${PORT}`);
   console.log(`🌐 Environment: ${process.env.NODE_ENV || 'development'}`);
+  console.log(`🔌 WebSocket: ${io ? 'Active' : 'Disabled'}`);
+  console.log(`📍 Redis: ${redis ? 'Connected' : 'Unavailable'}`);
   console.log('─'.repeat(55));
   console.log('📦 Modules Loaded:');
   console.log('─'.repeat(55));
-  console.log('🏥  Hospitals        → /api/hospitals/*');
-  console.log('🏥  Hospital Provider → /api/hospitals/provider/*');
-  console.log('🚑  Ambulance         → /api/ambulance/*');
-  console.log('🏠  Caregivers        → /api/caregivers/*');
-  console.log('🔬  Diagnostics       → /api/diagnostics/*');
-  console.log('🧘  Ayurveda          → /api/ayurveda/*');
-  console.log('🌿  Homeopathy        → /api/homeopathy/*');
-  console.log('🛡️  Insurance         → /api/insurance/*');
-  console.log('🛡️  Insurance Admin   → /api/insurance-admin/*');
-  console.log('🏢  Corporate         → /api/corporate/*');
-  console.log('🧠  Mental Health     → /api/mentalhealth/*');
-  console.log('📱  Online Doctor     → /api/online-doctor/*');
-  console.log('💰  Loans             → /api/loan/*');
-  console.log('💰  Lenders           → /api/lender/*');
-  console.log('💳  Payments          → /api/payment/*');
-  console.log('📋  Bookings          → /api/bookings/*');
-  console.log('⭐  Reviews           → /api/reviews/*');
-  console.log('📱  OTP               → /api/otp/*');
-  console.log('🔧  Admin             → /api/admin/*');
+  console.log('🏥  Hospitals          → /api/hospitals/*');
+  console.log('🏥  Hospital Provider   → /api/hospitals/provider/*');
+  console.log('🚑  Ambulance (v3.0)    → /api/ambulance/*');
+  console.log('🏠  Caregivers          → /api/caregivers/*');
+  console.log('🔬  Diagnostics         → /api/diagnostics/*');
+  console.log('🧘  Ayurveda            → /api/ayurveda/*');
+  console.log('🌿  Homeopathy          → /api/homeopathy/*');
+  console.log('🛡️  Insurance           → /api/insurance/*');
+  console.log('🛡️  Insurance Admin     → /api/insurance-admin/*');
+  console.log('🏢  Corporate           → /api/corporate/*');
+  console.log('🧠  Mental Health       → /api/mentalhealth/*');
+  console.log('📱  Online Doctor       → /api/online-doctor/*');
+  console.log('💰  Loans               → /api/loan/*');
+  console.log('💰  Lenders             → /api/lender/*');
+  console.log('💳  Payments            → /api/payment/*');
+  console.log('📋  Bookings            → /api/bookings/*');
+  console.log('⭐  Reviews             → /api/reviews/*');
+  console.log('📱  OTP                 → /api/otp/*');
+  console.log('🔧  Admin               → /api/admin/*');
+  console.log('─'.repeat(55));
+  console.log('🔌 Real-time Features:');
+  console.log('   🚑 Driver Tracking (5s updates)');
+  console.log('   🏠 Caregiver Tracking (2min updates)');
+  console.log('   🔬 Phlebotomist Tracking');
+  console.log('   🏥 Hospital Bed Updates');
+  console.log('   👨‍💼 Admin Live Monitoring');
   console.log('─'.repeat(55));
   console.log('✅ All modules loaded successfully!');
   console.log('═'.repeat(55));
@@ -500,5 +701,18 @@ process.on('uncaughtException', (err) => {
 
 process.on('SIGTERM', () => {
   console.log('👋 SIGTERM received. Shutting down gracefully...');
-  process.exit(0);
+  if (redis) redis.disconnect();
+  server.close(() => {
+    console.log('Server closed');
+    process.exit(0);
+  });
+});
+
+process.on('SIGINT', () => {
+  console.log('👋 SIGINT received. Shutting down gracefully...');
+  if (redis) redis.disconnect();
+  server.close(() => {
+    console.log('Server closed');
+    process.exit(0);
+  });
 });

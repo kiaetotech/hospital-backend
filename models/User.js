@@ -20,7 +20,12 @@ const userSchema = new mongoose.Schema({
       // ============================================
       'insurance_company',   // Insurance company admin
       'insurance_agent',     // Insurance agent/broker
-      'corporate_hr'         // Corporate HR for employee plans
+      'corporate_hr',        // Corporate HR for employee plans
+      // ============================================
+      // 🚑 NEW AMBULANCE ROLES (ADDED)
+      // ============================================
+      'ambulance_provider',  // Ambulance company/fleet owner
+      'ambulance_driver'     // Individual ambulance driver
     ], 
     default: 'patient' 
   },
@@ -103,6 +108,207 @@ const userSchema = new mongoose.Schema({
     pincode: { type: String },
     country: { type: String, default: 'India' }
   },
+
+  // ============================================
+  // 🚑 AMBULANCE PROVIDER FIELDS (NEW)
+  // ============================================
+
+  // Ambulance company/fleet details
+  ambulanceCompanyName: { type: String },
+  ambulanceCompanyPhone: { type: String },
+  ambulanceCompanyEmail: { type: String },
+  ambulanceCompanyAddress: {
+    line1: { type: String },
+    line2: { type: String },
+    city: { type: String },
+    state: { type: String },
+    pincode: { type: String },
+    country: { type: String, default: 'India' }
+  },
+  ambulanceCompanyGST: { type: String },
+  ambulanceCompanyPAN: { type: String },
+
+  // Ambulance fleet
+  ambulanceFleet: [{
+    vehicleId: { type: String },
+    vehicleNumber: { type: String },
+    vehicleType: { 
+      type: String, 
+      enum: ['basic', 'cardiac', 'ventilator', 'neonatal', 'mortuary', 'wheelchair']
+    },
+    make: { type: String },           // Tata, Force, Maruti, etc.
+    model: { type: String },          // Winger, Traveller, Eeco, etc.
+    year: { type: Number },
+    registrationCertificate: { type: String },    // Cloudinary URL
+    insuranceDocument: { type: String },          // Cloudinary URL
+    fitnessCertificate: { type: String },         // Cloudinary URL
+    pollutionCertificate: { type: String },       // Cloudinary URL
+    permitsDocument: { type: String },            // Cloudinary URL
+    isVerified: { type: Boolean, default: false },
+    isActive: { type: Boolean, default: true },
+    equipment: [{ 
+      name: { type: String },         // Oxygen cylinder, Defibrillator, Suction machine, etc.
+      available: { type: Boolean, default: true },
+      lastServiced: { type: Date }
+    }],
+    basePrice: { type: Number },                  // Base fare for this vehicle
+    pricePerKm: { type: Number, default: 25 },    // Per km charge
+    minimumCharge: { type: Number, default: 500 }, // Minimum fare
+    nightChargeMultiplier: { type: Number, default: 1.5 },
+    oxygenCharge: { type: Number, default: 200 },
+    createdAt: { type: Date, default: Date.now }
+  }],
+
+  // Ambulance drivers (managed by provider)
+  ambulanceDrivers: [{
+    driverId: { type: String },
+    name: { type: String },
+    phone: { type: String },
+    email: { type: String },
+    dateOfBirth: { type: Date },
+    licenseNumber: { type: String },
+    licenseDocument: { type: String },            // Cloudinary URL
+    aadhaarCard: { type: String },                // Cloudinary URL
+    photo: { type: String },                      // Cloudinary URL
+    experience: { type: Number },                 // Years of experience
+    trainingCertifications: [{ 
+      name: { type: String },                     // BLS, ACLS, First Aid, etc.
+      document: { type: String },                 // Cloudinary URL
+      issuedDate: { type: Date },
+      expiryDate: { type: Date }
+    }],
+    isVerified: { type: Boolean, default: false },
+    isAvailable: { type: Boolean, default: false },
+    currentLocation: {
+      type: { type: String, enum: ['Point'], default: 'Point' },
+      coordinates: { type: [Number] }             // [longitude, latitude]
+    },
+    lastLocationUpdate: { type: Date },
+    assignedVehicle: { type: String },            // vehicleId reference
+    rating: { type: Number, default: 0 },
+    totalTrips: { type: Number, default: 0 },
+    totalEarnings: { type: Number, default: 0 },
+    emergencyTripsCompleted: { type: Number, default: 0 },
+    acceptanceRate: { type: Number, default: 100 }, // Percentage
+    averageResponseTime: { type: Number },         // Seconds
+    isOnTrip: { type: Boolean, default: false },
+    currentTripId: { type: String },
+    joinedAt: { type: Date, default: Date.now }
+  }],
+
+  // Ambulance provider settings
+  ambulanceSettings: {
+    serviceArea: { type: String },                // City/Region name
+    serviceAreaCoordinates: {
+      center: {
+        lat: { type: Number },
+        lng: { type: Number }
+      },
+      radius: { type: Number }                    // Service radius in km
+    },
+    operatingHours: {
+      open: { type: String, default: '00:00' },   // 24/7 by default
+      close: { type: String, default: '23:59' }
+    },
+    acceptsEmergency: { type: Boolean, default: true },
+    acceptsScheduled: { type: Boolean, default: true },
+    acceptsIntercity: { type: Boolean, default: false },
+    emergencyResponseTime: { type: Number },       // Target response time in minutes
+    maxConcurrentEmergencies: { type: Number, default: 5 },
+    autoAcceptEmergencies: { type: Boolean, default: false },
+    commissionRate: { type: Number, default: 15 }, // Platform commission
+    settlementTerms: {
+      type: String,
+      enum: ['daily', 'weekly', 'biweekly', 'monthly'],
+      default: 'weekly'
+    },
+    paymentMethod: {
+      type: String,
+      enum: ['bank_transfer', 'upi', 'both'],
+      default: 'bank_transfer'
+    }
+  },
+
+  // Ambulance provider bank details
+  ambulanceBankDetails: {
+    accountNumber: { type: String },
+    ifscCode: { type: String },
+    accountHolderName: { type: String },
+    bankName: { type: String },
+    branchName: { type: String },
+    upiId: { type: String }
+  },
+
+  // Ambulance provider documents
+  ambulanceDocuments: [{
+    name: { type: String },
+    url: { type: String },
+    type: { type: String },              // pan_card, gst_certificate, fleet_registration, etc.
+    uploadedAt: { type: Date, default: Date.now },
+    verified: { type: Boolean, default: false },
+    verifiedAt: { type: Date },
+    rejectionReason: { type: String }
+  }],
+
+  // Ambulance provider statistics
+  ambulanceStats: {
+    totalTripsCompleted: { type: Number, default: 0 },
+    emergencyTripsCompleted: { type: Number, default: 0 },
+    scheduledTripsCompleted: { type: Number, default: 0 },
+    totalEarnings: { type: Number, default: 0 },
+    totalCommissionPaid: { type: Number, default: 0 },
+    averageRating: { type: Number, default: 0 },
+    averageResponseTime: { type: Number },       // Seconds across all trips
+    cancellationRate: { type: Number, default: 0 },
+    activeVehicles: { type: Number, default: 0 },
+    activeDrivers: { type: Number, default: 0 },
+    lastUpdated: { type: Date, default: Date.now }
+  },
+
+  // Ambulance provider verification status
+  ambulanceVerificationStatus: {
+    type: String,
+    enum: ['pending', 'under_review', 'verified', 'rejected', 'suspended'],
+    default: 'pending'
+  },
+  ambulanceVerificationNotes: { type: String },
+  ambulanceVerifiedAt: { type: Date },
+  ambulanceVerifiedBy: { type: String },         // Admin ID who verified
+
+  // 🚑 Ambulance DRIVER-specific fields (for role: 'ambulance_driver')
+  driverProviderId: { type: String },            // Linked ambulance_provider ID
+  driverProviderName: { type: String },
+  driverLicenseNumber: { type: String },
+  driverLicenseDocument: { type: String },
+  driverPhoto: { type: String },
+  driverAadhaar: { type: String },
+  driverExperience: { type: Number },
+  driverTrainingCertifications: [{
+    name: { type: String },
+    document: { type: String },
+    issuedDate: { type: Date },
+    expiryDate: { type: Date }
+  }],
+  driverAssignedVehicle: { type: String },
+  driverCurrentLocation: {
+    type: { type: String, enum: ['Point'], default: 'Point' },
+    coordinates: { type: [Number] }
+  },
+  driverLastLocationUpdate: { type: Date },
+  driverIsAvailable: { type: Boolean, default: false },
+  driverIsOnTrip: { type: Boolean, default: false },
+  driverCurrentTripId: { type: String },
+  driverRating: { type: Number, default: 0 },
+  driverTotalTrips: { type: Number, default: 0 },
+  driverTotalEarnings: { type: Number, default: 0 },
+  driverEmergencyTripsCompleted: { type: Number, default: 0 },
+  driverAcceptanceRate: { type: Number, default: 100 },
+  driverAverageResponseTime: { type: Number },
+  driverVerificationStatus: {
+    type: String,
+    enum: ['pending', 'under_review', 'verified', 'rejected', 'suspended'],
+    default: 'pending'
+  },
   
   // ============================================
   // EXISTING FIELDS CONTINUED
@@ -181,16 +387,16 @@ const userSchema = new mongoose.Schema({
   // ADDITIONAL PHONE VERIFICATION FIELDS (NEW - ADDED)
   // ============================================
   
-  phoneVerificationDate: { type: Date }, // When phone was verified
-  phoneVerificationAttempts: { type: Number, default: 0 }, // Failed attempts
-  phoneVerificationBlockedUntil: { type: Date }, // Block until date if too many attempts
+  phoneVerificationDate: { type: Date },
+  phoneVerificationAttempts: { type: Number, default: 0 },
+  phoneVerificationBlockedUntil: { type: Date },
   
   // ============================================
   // ADDITIONAL EMAIL VERIFICATION FIELDS (NEW - ADDED)
   // ============================================
   
-  emailVerificationDate: { type: Date }, // When email was verified
-  emailVerificationAttempts: { type: Number, default: 0 }, // Failed attempts
+  emailVerificationDate: { type: Date },
+  emailVerificationAttempts: { type: Number, default: 0 },
   
   // ============================================
   // KYC STATUS (EXISTING - PRESERVED)
@@ -285,11 +491,20 @@ userSchema.index({ role: 1 });
 userSchema.index({ referralCode: 1 });
 userSchema.index({ isActive: 1 });
 userSchema.index({ isVerified: 1 });
-userSchema.index({ companyName: 1 }); // ✅ NEW
-userSchema.index({ irdaRegistration: 1 }); // ✅ NEW
-userSchema.index({ corporateName: 1 }); // ✅ NEW
-userSchema.index({ phoneVerified: 1 }); // ✅ NEW - For phone verification queries
-userSchema.index({ emailVerified: 1 }); // ✅ NEW - For email verification queries
+userSchema.index({ companyName: 1 });
+userSchema.index({ irdaRegistration: 1 });
+userSchema.index({ corporateName: 1 });
+userSchema.index({ phoneVerified: 1 });
+userSchema.index({ emailVerified: 1 });
+// 🚑 NEW: Ambulance indexes
+userSchema.index({ ambulanceCompanyName: 1 });
+userSchema.index({ ambulanceVerificationStatus: 1 });
+userSchema.index({ 'ambulanceDrivers.currentLocation': '2dsphere' });
+userSchema.index({ driverCurrentLocation: '2dsphere' });
+userSchema.index({ 'ambulanceDrivers.driverId': 1 });
+userSchema.index({ 'ambulanceDrivers.isAvailable': 1, 'ambulanceDrivers.isOnTrip': 1 });
+userSchema.index({ driverIsAvailable: 1, driverIsOnTrip: 1 });
+userSchema.index({ ambulanceSettings: 1 });
 
 // ============================================
 // VIRTUAL FIELDS (EXISTING + NEW)
@@ -308,7 +523,7 @@ userSchema.virtual('isCaregiver').get(function() {
 });
 
 // ============================================
-// NEW INSURANCE VIRTUAL FIELDS (ADDED)
+// INSURANCE VIRTUAL FIELDS
 // ============================================
 
 userSchema.virtual('isInsuranceCompany').get(function() {
@@ -336,7 +551,56 @@ userSchema.virtual('corporateDisplayName').get(function() {
 });
 
 // ============================================
-// NEW VERIFICATION VIRTUAL FIELDS (ADDED)
+// 🚑 AMBULANCE VIRTUAL FIELDS (NEW)
+// ============================================
+
+userSchema.virtual('isAmbulanceProvider').get(function() {
+  return this.role === 'ambulance_provider';
+});
+
+userSchema.virtual('isAmbulanceDriver').get(function() {
+  return this.role === 'ambulance_driver';
+});
+
+userSchema.virtual('isAmbulanceUser').get(function() {
+  return ['ambulance_provider', 'ambulance_driver'].includes(this.role);
+});
+
+userSchema.virtual('ambulanceDisplayName').get(function() {
+  return this.ambulanceCompanyName || this.name;
+});
+
+userSchema.virtual('availableDrivers').get(function() {
+  if (!this.ambulanceDrivers) return [];
+  return this.ambulanceDrivers.filter(d => d.isAvailable && !d.isOnTrip && d.isVerified);
+});
+
+userSchema.virtual('availableVehicles').get(function() {
+  if (!this.ambulanceFleet) return [];
+  return this.ambulanceFleet.filter(v => v.isActive && v.isVerified);
+});
+
+userSchema.virtual('activeEmergencyDrivers').get(function() {
+  if (!this.ambulanceDrivers) return [];
+  return this.ambulanceDrivers.filter(d => d.isAvailable && d.isVerified && !d.isOnTrip);
+});
+
+userSchema.virtual('fleetSize').get(function() {
+  return this.ambulanceFleet ? this.ambulanceFleet.length : 0;
+});
+
+userSchema.virtual('driverCount').get(function() {
+  return this.ambulanceDrivers ? this.ambulanceDrivers.length : 0;
+});
+
+userSchema.virtual('averageDriverRating').get(function() {
+  if (!this.ambulanceDrivers || this.ambulanceDrivers.length === 0) return 0;
+  const total = this.ambulanceDrivers.reduce((sum, d) => sum + (d.rating || 0), 0);
+  return Math.round((total / this.ambulanceDrivers.length) * 10) / 10;
+});
+
+// ============================================
+// VERIFICATION VIRTUAL FIELDS
 // ============================================
 
 userSchema.virtual('isPhoneVerified').get(function() {
@@ -359,7 +623,7 @@ userSchema.virtual('isPhoneBlocked').get(function() {
 userSchema.virtual('phoneBlockRemaining').get(function() {
   if (!this.phoneVerificationBlockedUntil) return 0;
   const remaining = this.phoneVerificationBlockedUntil - new Date();
-  return Math.ceil(remaining / (60 * 1000)); // Minutes remaining
+  return Math.ceil(remaining / (60 * 1000));
 });
 
 // ============================================
@@ -375,7 +639,7 @@ userSchema.methods.hasCompletedKYC = function() {
 };
 
 // ============================================
-// NEW VERIFICATION METHODS (ADDED)
+// VERIFICATION METHODS
 // ============================================
 
 userSchema.methods.markPhoneVerified = function() {
@@ -397,9 +661,8 @@ userSchema.methods.markPhoneUnverified = function() {
 userSchema.methods.incrementPhoneAttempts = function() {
   this.phoneVerificationAttempts = (this.phoneVerificationAttempts || 0) + 1;
   
-  // Block after 5 failed attempts
   if (this.phoneVerificationAttempts >= 5) {
-    this.phoneVerificationBlockedUntil = new Date(Date.now() + 30 * 60 * 1000); // Block for 30 minutes
+    this.phoneVerificationBlockedUntil = new Date(Date.now() + 30 * 60 * 1000);
   }
   
   return this.save();
@@ -437,7 +700,7 @@ userSchema.methods.resetEmailAttempts = function() {
 };
 
 // ============================================
-// NEW INSURANCE METHODS (ADDED)
+// INSURANCE METHODS
 // ============================================
 
 userSchema.methods.isVerifiedInsuranceCompany = function() {
@@ -462,6 +725,224 @@ userSchema.methods.getAgentCommissionRate = function() {
 };
 
 // ============================================
+// 🚑 AMBULANCE PROVIDER METHODS (NEW)
+// ============================================
+
+// Check if ambulance provider is verified
+userSchema.methods.isVerifiedAmbulanceProvider = function() {
+  if (!this.isAmbulanceProvider) return false;
+  return this.ambulanceVerificationStatus === 'verified';
+};
+
+// Check if provider can accept emergency dispatches
+userSchema.methods.canAcceptEmergencies = function() {
+  if (!this.isAmbulanceProvider) return false;
+  return this.isVerifiedAmbulanceProvider() && 
+         this.ambulanceSettings?.acceptsEmergency === true &&
+         this.isActive && !this.isBlocked;
+};
+
+// Get all available drivers for dispatch
+userSchema.methods.getAvailableDrivers = function() {
+  if (!this.ambulanceDrivers) return [];
+  return this.ambulanceDrivers.filter(d => 
+    d.isAvailable && !d.isOnTrip && d.isVerified
+  );
+};
+
+// Get drivers near a location (within radius)
+userSchema.methods.getNearbyDrivers = function(lat, lng, radiusKm) {
+  if (!this.ambulanceDrivers) return [];
+  
+  return this.ambulanceDrivers.filter(d => {
+    if (!d.isAvailable || d.isOnTrip || !d.isVerified || !d.currentLocation?.coordinates) {
+      return false;
+    }
+    
+    const [driverLng, driverLat] = d.currentLocation.coordinates;
+    const distance = getDistanceFromLatLngInKm(lat, lng, driverLat, driverLng);
+    return distance <= radiusKm;
+  });
+};
+
+// Get vehicles of a specific type
+userSchema.methods.getVehiclesByType = function(type) {
+  if (!this.ambulanceFleet) return [];
+  return this.ambulanceFleet.filter(v => 
+    v.vehicleType === type && v.isActive && v.isVerified
+  );
+};
+
+// Add a vehicle to fleet
+userSchema.methods.addVehicle = function(vehicleData) {
+  const vehicleId = 'VEH' + Date.now();
+  this.ambulanceFleet.push({
+    vehicleId,
+    ...vehicleData,
+    createdAt: new Date()
+  });
+  this.ambulanceStats.activeVehicles = this.ambulanceFleet.filter(v => v.isActive).length;
+  return this.save();
+};
+
+// Add a driver
+userSchema.methods.addDriver = function(driverData) {
+  const driverId = 'DRV' + Date.now();
+  this.ambulanceDrivers.push({
+    driverId,
+    ...driverData,
+    joinedAt: new Date()
+  });
+  this.ambulanceStats.activeDrivers = this.ambulanceDrivers.filter(d => d.isVerified).length;
+  return this.save();
+};
+
+// Toggle driver availability
+userSchema.methods.toggleDriverAvailability = function(driverId, isAvailable) {
+  const driver = this.ambulanceDrivers.find(d => d.driverId === driverId);
+  if (driver) {
+    driver.isAvailable = isAvailable;
+    if (!isAvailable) {
+      driver.currentLocation = undefined;
+      driver.lastLocationUpdate = undefined;
+    }
+  }
+  return this.save();
+};
+
+// Update driver location
+userSchema.methods.updateDriverLocation = function(driverId, lat, lng) {
+  const driver = this.ambulanceDrivers.find(d => d.driverId === driverId);
+  if (driver) {
+    driver.currentLocation = {
+      type: 'Point',
+      coordinates: [lng, lat]
+    };
+    driver.lastLocationUpdate = new Date();
+  }
+  return this.save();
+};
+
+// Set driver on trip status
+userSchema.methods.setDriverOnTrip = function(driverId, tripId) {
+  const driver = this.ambulanceDrivers.find(d => d.driverId === driverId);
+  if (driver) {
+    driver.isOnTrip = true;
+    driver.currentTripId = tripId;
+  }
+  return this.save();
+};
+
+// Clear driver trip status
+userSchema.methods.clearDriverTrip = function(driverId) {
+  const driver = this.ambulanceDrivers.find(d => d.driverId === driverId);
+  if (driver) {
+    driver.isOnTrip = false;
+    driver.currentTripId = undefined;
+  }
+  return this.save();
+};
+
+// Update driver stats after trip completion
+userSchema.methods.updateDriverStats = function(driverId, tripData) {
+  const driver = this.ambulanceDrivers.find(d => d.driverId === driverId);
+  if (driver) {
+    driver.totalTrips += 1;
+    driver.totalEarnings += tripData.driverEarnings || 0;
+    if (tripData.isEmergency) {
+      driver.emergencyTripsCompleted += 1;
+    }
+    if (tripData.responseTime) {
+      const currentAvg = driver.averageResponseTime || 0;
+      const currentTrips = driver.totalTrips - 1;
+      driver.averageResponseTime = Math.round(
+        ((currentAvg * currentTrips) + tripData.responseTime) / driver.totalTrips
+      );
+    }
+  }
+  
+  // Update provider stats
+  this.ambulanceStats.totalTripsCompleted += 1;
+  this.ambulanceStats.totalEarnings += tripData.providerEarnings || 0;
+  if (tripData.isEmergency) {
+    this.ambulanceStats.emergencyTripsCompleted += 1;
+  }
+  this.ambulanceStats.lastUpdated = new Date();
+  
+  return this.save();
+};
+
+// Get provider commission rate
+userSchema.methods.getAmbulanceCommissionRate = function() {
+  return this.ambulanceSettings?.commissionRate || 15;
+};
+
+// Check if provider is operational (within operating hours)
+userSchema.methods.isOperational = function() {
+  if (!this.ambulanceSettings?.operatingHours) return true; // 24/7 by default
+  
+  const now = new Date();
+  const currentHour = now.getHours();
+  const currentMinute = now.getMinutes();
+  const currentTime = currentHour * 60 + currentMinute;
+  
+  const [openHour, openMinute] = (this.ambulanceSettings.operatingHours.open || '00:00').split(':').map(Number);
+  const [closeHour, closeMinute] = (this.ambulanceSettings.operatingHours.close || '23:59').split(':').map(Number);
+  
+  const openTime = openHour * 60 + openMinute;
+  const closeTime = closeHour * 60 + closeMinute;
+  
+  return currentTime >= openTime && currentTime <= closeTime;
+};
+
+// ============================================
+// 🚑 AMBULANCE DRIVER METHODS (for role: 'ambulance_driver')
+// ============================================
+
+userSchema.methods.isVerifiedDriver = function() {
+  if (!this.isAmbulanceDriver) return false;
+  return this.driverVerificationStatus === 'verified';
+};
+
+userSchema.methods.toggleDriverAvailable = function(isAvailable) {
+  this.driverIsAvailable = isAvailable;
+  if (!isAvailable) {
+    this.driverCurrentLocation = undefined;
+    this.driverLastLocationUpdate = undefined;
+  }
+  return this.save();
+};
+
+userSchema.methods.updateDriverLocation = function(lat, lng) {
+  this.driverCurrentLocation = {
+    type: 'Point',
+    coordinates: [lng, lat]
+  };
+  this.driverLastLocationUpdate = new Date();
+  return this.save();
+};
+
+userSchema.methods.startTrip = function(tripId) {
+  this.driverIsOnTrip = true;
+  this.driverCurrentTripId = tripId;
+  return this.save();
+};
+
+userSchema.methods.endTrip = function() {
+  this.driverIsOnTrip = false;
+  this.driverCurrentTripId = undefined;
+  return this.save();
+};
+
+userSchema.methods.canAcceptEmergency = function() {
+  return this.isVerifiedDriver() && 
+         this.driverIsAvailable && 
+         !this.driverIsOnTrip &&
+         this.isActive && 
+         !this.isBlocked;
+};
+
+// ============================================
 // STATIC METHODS (EXISTING + NEW)
 // ============================================
 
@@ -474,7 +955,7 @@ userSchema.statics.findActiveUsers = function() {
 };
 
 // ============================================
-// NEW INSURANCE STATIC METHODS (ADDED)
+// INSURANCE STATIC METHODS
 // ============================================
 
 userSchema.statics.findInsuranceCompanies = function(verifiedOnly = false) {
@@ -499,7 +980,107 @@ userSchema.statics.findCorporateHR = function() {
 };
 
 // ============================================
-// NEW VERIFICATION STATIC METHODS (ADDED)
+// 🚑 AMBULANCE STATIC METHODS (NEW)
+// ============================================
+
+// Find all verified ambulance providers
+userSchema.statics.findAmbulanceProviders = function(verifiedOnly = false) {
+  const query = { role: 'ambulance_provider', isActive: true };
+  if (verifiedOnly) {
+    query.ambulanceVerificationStatus = 'verified';
+  }
+  return this.find(query);
+};
+
+// Find ambulance providers in a service area
+userSchema.statics.findProvidersInArea = function(city, state) {
+  return this.find({
+    role: 'ambulance_provider',
+    isActive: true,
+    ambulanceVerificationStatus: 'verified',
+    $or: [
+      { 'ambulanceCompanyAddress.city': { $regex: city, $options: 'i' } },
+      { 'ambulanceCompanyAddress.state': { $regex: state, $options: 'i' } },
+      { 'ambulanceSettings.serviceArea': { $regex: city, $options: 'i' } }
+    ]
+  });
+};
+
+// Find providers that accept emergency dispatches
+userSchema.statics.findEmergencyProviders = function() {
+  return this.find({
+    role: 'ambulance_provider',
+    isActive: true,
+    ambulanceVerificationStatus: 'verified',
+    'ambulanceSettings.acceptsEmergency': true
+  });
+};
+
+// Find available drivers near a location (using geospatial query)
+userSchema.statics.findNearbyDrivers = function(lat, lng, maxDistanceMeters = 5000) {
+  return this.find({
+    role: 'ambulance_driver',
+    isActive: true,
+    driverVerificationStatus: 'verified',
+    driverIsAvailable: true,
+    driverIsOnTrip: false,
+    driverCurrentLocation: {
+      $near: {
+        $geometry: {
+          type: 'Point',
+          coordinates: [lng, lat]
+        },
+        $maxDistance: maxDistanceMeters
+      }
+    }
+  }).limit(10);
+};
+
+// Find available drivers from providers (embedded array query)
+userSchema.statics.findProvidersWithNearbyDrivers = function(lat, lng, maxDistanceMeters = 5000) {
+  return this.find({
+    role: 'ambulance_provider',
+    isActive: true,
+    ambulanceVerificationStatus: 'verified',
+    'ambulanceSettings.acceptsEmergency': true,
+    'ambulanceDrivers': {
+      $elemMatch: {
+        isAvailable: true,
+        isOnTrip: false,
+        isVerified: true,
+        currentLocation: {
+          $near: {
+            $geometry: {
+              type: 'Point',
+              coordinates: [lng, lat]
+            },
+            $maxDistance: maxDistanceMeters
+          }
+        }
+      }
+    }
+  });
+};
+
+// Find unverified ambulance providers (for admin review)
+userSchema.statics.findUnverifiedAmbulanceProviders = function() {
+  return this.find({
+    role: 'ambulance_provider',
+    ambulanceVerificationStatus: { $in: ['pending', 'under_review'] }
+  });
+};
+
+// Find ambulance drivers by provider
+userSchema.statics.findDriversByProvider = function(providerId) {
+  return this.find({
+    role: 'ambulance_driver',
+    driverProviderId: providerId,
+    isActive: true
+  });
+};
+
+// ============================================
+// VERIFICATION STATIC METHODS
 // ============================================
 
 userSchema.statics.findUnverifiedUsers = function() {
@@ -519,6 +1100,26 @@ userSchema.statics.findByEmail = function(email) {
 };
 
 // ============================================
+// HELPER: Haversine distance calculation
+// ============================================
+
+function getDistanceFromLatLngInKm(lat1, lng1, lat2, lng2) {
+  const R = 6371; // Earth's radius in km
+  const dLat = deg2rad(lat2 - lat1);
+  const dLng = deg2rad(lng2 - lng1);
+  const a = 
+    Math.sin(dLat / 2) * Math.sin(dLat / 2) +
+    Math.cos(deg2rad(lat1)) * Math.cos(deg2rad(lat2)) * 
+    Math.sin(dLng / 2) * Math.sin(dLng / 2);
+  const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+  return R * c;
+}
+
+function deg2rad(deg) {
+  return deg * (Math.PI / 180);
+}
+
+// ============================================
 // PRE-SAVE HOOKS (EXISTING + NEW)
 // ============================================
 
@@ -530,9 +1131,15 @@ userSchema.pre('save', function(next) {
     this.referralCode = prefix + random;
   }
   
-  // Auto-set phoneVerified if token is cleared
-  if (!this.phoneVerificationToken && !this.phoneVerificationExpires) {
-    // Only if phoneVerified is not already true
+  // 🚑 Update ambulance stats on save
+  if (this.isAmbulanceProvider) {
+    if (this.ambulanceFleet) {
+      this.ambulanceStats.activeVehicles = this.ambulanceFleet.filter(v => v.isActive).length;
+    }
+    if (this.ambulanceDrivers) {
+      this.ambulanceStats.activeDrivers = this.ambulanceDrivers.filter(d => d.isVerified).length;
+    }
+    this.ambulanceStats.lastUpdated = new Date();
   }
   
   this.updatedAt = new Date();

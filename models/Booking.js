@@ -2,10 +2,9 @@ const mongoose = require('mongoose');
 
 const bookingSchema = new mongoose.Schema({
   // ============================================
-  // YOUR EXISTING FIELDS (ALL PRESERVED)
+  // COMMON FIELDS FOR ALL BOOKING TYPES
   // ============================================
   
-  // Common fields for all booking types
   userId: { type: String, required: true },
   bookingType: { 
     type: String, 
@@ -13,6 +12,7 @@ const bookingSchema = new mongoose.Schema({
       'opd', 
       'admission', 
       'ambulance', 
+      'ambulance_emergency',     // 🚑 NEW: Emergency ambulance dispatch
       'labtest', 
       'health_package', 
       'caregiver', 
@@ -54,24 +54,220 @@ const bookingSchema = new mongoose.Schema({
       'shipped', 
       'out_for_delivery', 
       'delivered',
-      'policy_issued'
+      'policy_issued',
+      // 🚑 NEW: Ambulance emergency statuses
+      'driver_assigned',
+      'driver_en_route',
+      'driver_arrived',
+      'patient_onboard',
+      'arrived_hospital',
+      'no_driver_found'
     ], 
     default: 'pending' 
   },
   createdAt: { type: Date, default: Date.now },
   
-  // Hospital/OPD/Admission fields
+  // ============================================
+  // HOSPITAL / OPD / ADMISSION FIELDS
+  // ============================================
+  
   hospitalId: { type: String },
   hospitalName: { type: String },
   doctorName: { type: String },
   timeSlot: { type: String },
   
-  // Ambulance fields
-  ambulanceType: { type: String },
+  // ============================================
+  // 🚑 AMBULANCE FIELDS (ENHANCED FOR BLITZ RESPONSE SYSTEM)
+  // ============================================
+  
+  ambulanceType: { 
+    type: String,
+    enum: ['basic', 'cardiac', 'ventilator', 'neonatal', 'mortuary', 'wheelchair']
+  },
   pickupAddress: { type: String },
   dropAddress: { type: String },
+
+  // 🚑 Emergency type classification
+  emergencyType: {
+    type: String,
+    enum: ['blitz', 'scheduled', 'intercity'],
+    default: 'scheduled'
+  },
+
+  // 🚑 Patient condition assessment (from triage quiz)
+  patientCondition: {
+    isBreathing: { type: Boolean },
+    isConscious: { type: Boolean },
+    isBleeding: { type: Boolean },
+    chiefComplaint: { type: String },
+    additionalNotes: { type: String },
+    ageGroup: { type: String, enum: ['infant', 'child', 'adult', 'senior'] }
+  },
+
+  // 🚑 Geo-location for real-time tracking
+  location: {
+    type: { type: String, enum: ['Point'], default: 'Point' },
+    coordinates: { type: [Number] }  // [longitude, latitude]
+  },
+
+  pickupCoordinates: {
+    lat: { type: Number },
+    lng: { type: Number }
+  },
+
+  pickupLocation: {
+    address: { type: String },
+    landmark: { type: String },
+    city: { type: String },
+    pincode: { type: String }
+  },
+
+  // 🚑 Hospital destination details
+  hospitalDestination: {
+    hospitalId: { type: String },
+    hospitalName: { type: String },
+    address: { type: String },
+    coordinates: {
+      lat: { type: Number },
+      lng: { type: Number }
+    },
+    emergencyDepartment: { type: String },
+    bedAvailability: {
+      general: { type: Number },
+      icu: { type: Number },
+      ventilator: { type: Number }
+    }
+  },
+
+  // 🚑 Driver assignment & tracking
+  driverId: { type: String },
+  driverName: { type: String },
+  driverPhone: { type: String },
+  driverRating: { type: Number },
+  vehicleNumber: { type: String },
+  vehicleType: { type: String },
+
+  // 🚑 Emergency timestamps for SLA tracking
+  emergencyRequestedAt: { type: Date },
+  driverAcceptedAt: { type: Date },
+  driverReachedAt: { type: Date },
+  patientOnboardAt: { type: Date },
+  arrivedHospitalAt: { type: Date },
+  completedAt: { type: Date },
+
+  // 🚑 Dispatch metadata
+  dispatchAttempts: { type: Number, default: 0 },
+  driversContacted: [{ 
+    driverId: String, 
+    driverName: String,
+    accepted: Boolean, 
+    responseTime: Number  // seconds
+  }],
+  dispatchRadius: { type: Number },  // km
+  retryCount: { type: Number, default: 0 },
+
+  // 🚑 Trip OTP for patient-driver verification
+  tripOtp: { type: String },
+  otpVerified: { type: Boolean, default: false },
+
+  // 🚑 Emergency contacts notified during emergency
+  emergencyContacts: [{
+    name: { type: String },
+    phone: { type: String },
+    relationship: { type: String },
+    notified: { type: Boolean, default: false },
+    notifiedAt: { type: Date }
+  }],
+
+  // 🚑 Hospital ER notification tracking
+  hospitalNotified: { type: Boolean, default: false },
+  hospitalNotificationId: { type: String },
+  hospitalNotificationTime: { type: Date },
+
+  // 🚑 Insurance card sharing with hospital
+  insuranceCardShared: { type: Boolean, default: false },
+  insuranceInfo: {
+    provider: { type: String },
+    policyNumber: { type: String },
+    cardImageUrl: { type: String }
+  },
+
+  // 🚑 Digital trip sheet (insurance claim ready)
+  digitalTripSheet: {
+    generated: { type: Boolean, default: false },
+    tripSheetId: { type: String },
+    pickupTime: { type: Date },
+    dropTime: { type: Date },
+    distance: { type: Number },  // km
+    duration: { type: Number },  // minutes
+    vitals: {
+      bloodPressure: { type: String },
+      pulse: { type: Number },
+      spo2: { type: Number },
+      temperature: { type: Number },
+      glucose: { type: Number }
+    },
+    oxygenAdministered: { type: Boolean, default: false },
+    oxygenFlowRate: { type: Number },  // L/min
+    medicationsGiven: [{ 
+      name: String, 
+      dosage: String, 
+      time: Date 
+    }],
+    proceduresDone: [{ type: String }],
+    patientConditionDuringTransport: { type: String },
+    driverNotes: { type: String },
+    generatedAt: { type: Date }
+  },
+
+  // 🚑 Surge pricing
+  surgeMultiplier: { type: Number, default: 1.0 },
+  surgeReason: { type: String },
+  isPeakHour: { type: Boolean, default: false },
+
+  // 🚑 Detailed fare breakdown
+  fareBreakdown: {
+    baseFare: { type: Number },
+    distanceCharge: { type: Number },
+    waitingCharge: { type: Number },
+    nightCharge: { type: Number },
+    oxygenCharge: { type: Number },
+    equipmentCharge: { type: Number },
+    surgeCharge: { type: Number },
+    platformFee: { type: Number },
+    gst: { type: Number },
+    total: { type: Number }
+  },
+
+  // 🚑 Live tracking
+  trackingUrl: { type: String },
+  liveTrackingEnabled: { type: Boolean, default: false },
+
+  // 🚑 Emergency-specific cancellation
+  emergencyCancellation: {
+    cancelledAt: { type: Date },
+    cancelledBy: { type: String, enum: ['patient', 'driver', 'system'] },
+    reason: { type: String },
+    driverReachedBeforeCancel: { type: Boolean, default: false },
+    cancellationFee: { type: Number },
+    refundAmount: { type: Number }
+  },
+
+  // 🚑 Non-emergency scheduled transport
+  scheduledTransport: {
+    isRecurring: { type: Boolean, default: false },
+    recurringDays: [{ type: String }],  // ['monday', 'wednesday', 'friday']
+    recurringEndDate: { type: Date },
+    requiresOxygen: { type: Boolean, default: false },
+    requiresAttendant: { type: Boolean, default: false },
+    mobilityType: { type: String, enum: ['walking', 'wheelchair', 'stretcher'] },
+    specialEquipment: [{ type: String }]
+  },
   
-  // Lab Test fields
+  // ============================================
+  // LAB TEST / DIAGNOSTICS FIELDS
+  // ============================================
+  
   tests: [{ type: String }],
   providerId: { type: mongoose.Schema.Types.ObjectId, ref: 'Provider' },
   providerName: { type: String },
@@ -79,7 +275,10 @@ const bookingSchema = new mongoose.Schema({
   homeAddress: { type: String },
   bookingId: { type: String, unique: true },
   
-  // Status tracking fields
+  // ============================================
+  // STATUS TRACKING
+  // ============================================
+  
   statusHistory: [{
     status: { 
       type: String, 
@@ -94,7 +293,14 @@ const bookingSchema = new mongoose.Schema({
         'shipped', 
         'out_for_delivery', 
         'delivered',
-        'policy_issued'
+        'policy_issued',
+        // 🚑 Ambulance statuses in history
+        'driver_assigned',
+        'driver_en_route',
+        'driver_arrived',
+        'patient_onboard',
+        'arrived_hospital',
+        'no_driver_found'
       ] 
     },
     timestamp: { type: Date, default: Date.now },
@@ -103,7 +309,7 @@ const bookingSchema = new mongoose.Schema({
   estimatedReportTime: { type: Date },
   
   // ============================================
-  // EXISTING PAYMENT FIELDS (PRESERVED)
+  // PAYMENT FIELDS
   // ============================================
   
   razorpayOrderId: { type: String },
@@ -134,6 +340,10 @@ const bookingSchema = new mongoose.Schema({
   
   deliveryOTP: { type: String },
   
+  // ============================================
+  // MEDICINE / HOMEOPATHY PHARMACY FIELDS
+  // ============================================
+  
   medicines: [{ 
     name: String, 
     potency: String, 
@@ -145,7 +355,7 @@ const bookingSchema = new mongoose.Schema({
   deliveryStatus: { type: String, enum: ['processing', 'shipped', 'out_for_delivery', 'delivered'] },
 
   // ============================================
-  // EXISTING INSURANCE FIELDS (PRESERVED)
+  // INSURANCE FIELDS
   // ============================================
   
   insurancePolicyId: { type: mongoose.Schema.Types.ObjectId, ref: 'InsurancePolicy' },
@@ -192,7 +402,7 @@ const bookingSchema = new mongoose.Schema({
   insuranceProposalFormUrl: { type: String },
 
   // ============================================
-  // OPD/ADMISSION SPECIFIC FIELDS
+  // OPD / ADMISSION SPECIFIC FIELDS
   // ============================================
   
   doctorSpecialization: { type: String },
@@ -217,7 +427,7 @@ const bookingSchema = new mongoose.Schema({
   schemeApplied: { type: String },
   
   // ============================================
-  // CANCELLATION & REFUND FIELDS
+  // CANCELLATION & REFUND
   // ============================================
   
   cancellation: {
@@ -237,7 +447,7 @@ const bookingSchema = new mongoose.Schema({
   },
   
   // ============================================
-  // REVIEW & RATING FIELDS
+  // REVIEW & RATING
   // ============================================
   
   review: {
@@ -255,7 +465,7 @@ const bookingSchema = new mongoose.Schema({
   },
   
   // ============================================
-  // FEEDBACK & FOLLOW-UP FIELDS
+  // FEEDBACK & FOLLOW-UP
   // ============================================
   
   feedback: {
@@ -272,7 +482,7 @@ const bookingSchema = new mongoose.Schema({
   },
   
   // ============================================
-  // QUEUE & WAIT TIME FIELDS
+  // QUEUE & WAIT TIME
   // ============================================
   
   queueNumber: { type: Number },
@@ -283,7 +493,7 @@ const bookingSchema = new mongoose.Schema({
   consultationEndTime: { type: Date },
   
   // ============================================
-  // PRESCRIPTION FIELDS
+  // PRESCRIPTION
   // ============================================
   
   prescription: {
@@ -315,7 +525,7 @@ const bookingSchema = new mongoose.Schema({
   }],
   
   // ============================================
-  // ADMIN & PROVIDER FIELDS
+  // ADMIN & PROVIDER METADATA
   // ============================================
   
   assignedTo: { type: String },
@@ -344,12 +554,14 @@ const bookingSchema = new mongoose.Schema({
 // ============================================
 
 bookingSchema.pre('save', function(next) {
+  // Generate unique booking ID
   if (!this.bookingId) {
     const prefixMap = {
       'labtest': 'LAB',
       'opd': 'OPD',
       'admission': 'ADM',
       'ambulance': 'AMB',
+      'ambulance_emergency': 'AMB',  // 🚑 Same AMB prefix for emergency
       'health_package': 'HP',
       'caregiver': 'CG',
       'ayurveda_consultation': 'AYU',
@@ -362,6 +574,7 @@ bookingSchema.pre('save', function(next) {
     this.bookingId = prefix + Date.now() + Math.floor(Math.random() * 1000);
   }
   
+  // Track status changes
   if (this.isModified('status')) {
     this.statusHistory = this.statusHistory || [];
     if (this.statusHistory.length === 0 || 
@@ -374,10 +587,32 @@ bookingSchema.pre('save', function(next) {
     }
   }
   
+  // Calculate remaining amount for admissions
   if (this.bookingType === 'admission' && this.finalAmount && this.advanceAmount) {
     this.remainingAmount = this.finalAmount - this.advanceAmount;
   }
   
+  // 🚑 Generate trip OTP for emergency ambulance bookings
+  if ((this.bookingType === 'ambulance_emergency' || this.emergencyType === 'blitz') && !this.tripOtp) {
+    this.tripOtp = Math.floor(1000 + Math.random() * 9000).toString();
+  }
+
+  // 🚑 Set emergency requested timestamp for blitz bookings
+  if ((this.bookingType === 'ambulance_emergency' || this.emergencyType === 'blitz') && !this.emergencyRequestedAt) {
+    this.emergencyRequestedAt = new Date();
+  }
+
+  // 🚑 Auto-set priority to emergency for blitz bookings
+  if (this.emergencyType === 'blitz') {
+    this.priority = 'emergency';
+  }
+
+  // 🚑 Enable live tracking for blitz emergencies
+  if (this.emergencyType === 'blitz') {
+    this.liveTrackingEnabled = true;
+  }
+
+  // Set completed timestamp
   if (this.status === 'completed' && this.isModified('status')) {
     this.completedAt = new Date();
   }
@@ -386,7 +621,7 @@ bookingSchema.pre('save', function(next) {
 });
 
 // ============================================
-// VIRTUAL FIELDS (ALL UNIQUE - NO CONFLICTS)
+// VIRTUAL FIELDS
 // ============================================
 
 bookingSchema.virtual('balanceDue').get(function() {
@@ -413,8 +648,33 @@ bookingSchema.virtual('refundEligibility').get(function() {
   return { eligible: false, percentage: 0, label: 'No refund' };
 });
 
+// 🚑 Virtual: Check if booking is an active emergency
+bookingSchema.virtual('isActiveEmergency').get(function() {
+  if (this.bookingType !== 'ambulance_emergency' && this.emergencyType !== 'blitz') {
+    return false;
+  }
+  const activeStatuses = ['confirmed', 'driver_assigned', 'driver_en_route', 'driver_arrived', 'patient_onboard'];
+  return activeStatuses.includes(this.status);
+});
+
+// 🚑 Virtual: Get emergency response time in seconds
+bookingSchema.virtual('emergencyResponseTime').get(function() {
+  if (this.emergencyRequestedAt && this.driverAcceptedAt) {
+    return Math.round((this.driverAcceptedAt - this.emergencyRequestedAt) / 1000);
+  }
+  return null;
+});
+
+// 🚑 Virtual: Get total trip time in minutes
+bookingSchema.virtual('totalTripTime').get(function() {
+  if (this.driverAcceptedAt && this.arrivedHospitalAt) {
+    return Math.round((this.arrivedHospitalAt - this.driverAcceptedAt) / (1000 * 60));
+  }
+  return null;
+});
+
 // ============================================
-// METHODS (ALL UNIQUE - NO CONFLICTS WITH VIRTUALS)
+// INSTANCE METHODS
 // ============================================
 
 bookingSchema.methods.isRefundable = function() {
@@ -527,5 +787,249 @@ bookingSchema.methods.completeConsultation = async function(prescriptionData) {
   
   return this.save();
 };
+
+// ============================================
+// 🚑 AMBULANCE-SPECIFIC METHODS
+// ============================================
+
+// Assign a driver to emergency booking
+bookingSchema.methods.assignDriver = async function(driverData) {
+  this.status = 'driver_assigned';
+  this.driverId = driverData.driverId;
+  this.driverName = driverData.name;
+  this.driverPhone = driverData.phone;
+  this.driverRating = driverData.rating || 0;
+  this.vehicleNumber = driverData.vehicleNumber;
+  this.vehicleType = driverData.vehicleType;
+  this.driverAcceptedAt = new Date();
+  
+  this.statusHistory.push({
+    status: 'driver_assigned',
+    timestamp: new Date(),
+    note: `🚑 Driver ${driverData.name} (${driverData.vehicleNumber}) assigned. Response time: ${this.emergencyResponseTime}s`
+  });
+  
+  return this.save();
+};
+
+// Driver reached pickup location
+bookingSchema.methods.driverArrived = async function() {
+  this.status = 'driver_arrived';
+  this.driverReachedAt = new Date();
+  
+  this.statusHistory.push({
+    status: 'driver_arrived',
+    timestamp: new Date(),
+    note: '🚑 Driver arrived at pickup location'
+  });
+  
+  return this.save();
+};
+
+// Patient onboard, heading to hospital
+bookingSchema.methods.patientOnboard = async function() {
+  this.status = 'patient_onboard';
+  this.patientOnboardAt = new Date();
+  this.otpVerified = true;
+  
+  this.statusHistory.push({
+    status: 'patient_onboard',
+    timestamp: new Date(),
+    note: '🚑 Patient onboard, heading to hospital'
+  });
+  
+  return this.save();
+};
+
+// Reached hospital
+bookingSchema.methods.arrivedHospital = async function(vitalsData) {
+  this.status = 'arrived_hospital';
+  this.arrivedHospitalAt = new Date();
+  
+  if (vitalsData && this.digitalTripSheet) {
+    this.digitalTripSheet.vitals = vitalsData;
+  }
+  
+  this.statusHistory.push({
+    status: 'arrived_hospital',
+    timestamp: new Date(),
+    note: `🚑 Arrived at ${this.hospitalDestination?.hospitalName || 'hospital'}`
+  });
+  
+  return this.save();
+};
+
+// Complete emergency trip
+bookingSchema.methods.completeEmergencyTrip = async function(tripData) {
+  this.status = 'completed';
+  this.completedAt = new Date();
+  
+  if (tripData) {
+    if (!this.digitalTripSheet) this.digitalTripSheet = {};
+    Object.assign(this.digitalTripSheet, tripData);
+    this.digitalTripSheet.generated = true;
+    this.digitalTripSheet.tripSheetId = 'TRIP' + Date.now();
+    this.digitalTripSheet.generatedAt = new Date();
+  }
+  
+  this.statusHistory.push({
+    status: 'completed',
+    timestamp: new Date(),
+    note: '🚑 Emergency trip completed'
+  });
+  
+  return this.save();
+};
+
+// Cancel emergency with different logic than regular cancellation
+bookingSchema.methods.cancelEmergency = async function(reason, cancelledBy) {
+  const now = new Date();
+  
+  this.status = 'cancelled';
+  this.emergencyCancellation = {
+    cancelledAt: now,
+    cancelledBy: cancelledBy || 'patient',
+    reason: reason || 'Cancelled by patient',
+    driverReachedBeforeCancel: this.status === 'driver_arrived',
+    cancellationFee: this.status === 'driver_arrived' ? Math.round(this.finalAmount * 0.3) : 0,
+    refundAmount: this.status === 'driver_arrived' 
+      ? Math.round(this.finalAmount * 0.7) 
+      : this.finalAmount
+  };
+  
+  this.statusHistory.push({
+    status: 'cancelled',
+    timestamp: now,
+    note: `🚑 Emergency cancelled by ${cancelledBy}. Reason: ${reason}`
+  });
+  
+  return this.save();
+};
+
+// Verify trip OTP
+bookingSchema.methods.verifyTripOtp = async function(otp) {
+  if (this.tripOtp === otp) {
+    this.otpVerified = true;
+    await this.save();
+    return true;
+  }
+  return false;
+};
+
+// Generate digital trip sheet for insurance claims
+bookingSchema.methods.generateTripSheet = async function(tripData) {
+  this.digitalTripSheet = {
+    ...this.digitalTripSheet,
+    ...tripData,
+    generated: true,
+    tripSheetId: 'TRIP' + Date.now(),
+    generatedAt: new Date()
+  };
+  
+  this.statusHistory.push({
+    status: this.status,
+    timestamp: new Date(),
+    note: '🚑 Digital trip sheet generated for insurance'
+  });
+  
+  return this.save();
+};
+
+// Calculate ambulance fare based on distance and other factors
+bookingSchema.methods.calculateFare = function() {
+  const baseFare = this.fareBreakdown?.baseFare || 500;
+  const perKm = 25;
+  const distance = this.digitalTripSheet?.distance || 0;
+  const nightCharge = this.isPeakHour ? baseFare * 0.5 : 0;
+  const surgeCharge = this.surgeMultiplier > 1 ? baseFare * (this.surgeMultiplier - 1) : 0;
+  const oxygenCharge = this.digitalTripSheet?.oxygenAdministered ? 200 : 0;
+  const platformFee = 50;
+  
+  const subTotal = baseFare + (distance * perKm) + nightCharge + surgeCharge + oxygenCharge;
+  const gst = Math.round(subTotal * 0.05);
+  const total = subTotal + gst + platformFee;
+  
+  this.fareBreakdown = {
+    baseFare,
+    distanceCharge: distance * perKm,
+    waitingCharge: 0,
+    nightCharge,
+    oxygenCharge,
+    equipmentCharge: 0,
+    surgeCharge,
+    platformFee,
+    gst,
+    total
+  };
+  
+  this.originalAmount = total;
+  this.finalAmount = total;
+  
+  return this.fareBreakdown;
+};
+
+// Check if booking can be dispatched (has required data)
+bookingSchema.methods.canDispatch = function() {
+  return !!(
+    this.pickupCoordinates?.lat &&
+    this.pickupCoordinates?.lng &&
+    this.patientPhone &&
+    this.emergencyType === 'blitz'
+  );
+};
+
+// Add a driver to contacted list
+bookingSchema.methods.addContactedDriver = async function(driverId, driverName, accepted, responseTime) {
+  this.driversContacted.push({
+    driverId,
+    driverName,
+    accepted,
+    responseTime
+  });
+  this.dispatchAttempts += 1;
+  return this.save();
+};
+
+// Mark emergency contacts as notified
+bookingSchema.methods.notifyEmergencyContacts = async function() {
+  if (this.emergencyContacts && this.emergencyContacts.length > 0) {
+    this.emergencyContacts = this.emergencyContacts.map(contact => ({
+      ...contact,
+      notified: true,
+      notifiedAt: new Date()
+    }));
+  }
+  return this.save();
+};
+
+// Share insurance card with hospital
+bookingSchema.methods.shareInsuranceWithHospital = async function(insuranceData) {
+  this.insuranceCardShared = true;
+  this.insuranceInfo = insuranceData;
+  return this.save();
+};
+
+// Notify hospital ER
+bookingSchema.methods.notifyHospital = async function(notificationId) {
+  this.hospitalNotified = true;
+  this.hospitalNotificationId = notificationId;
+  this.hospitalNotificationTime = new Date();
+  return this.save();
+};
+
+// ============================================
+// GEOSPATIAL INDEXES FOR AMBULANCE QUERIES
+// ============================================
+
+bookingSchema.index({ 'pickupCoordinates': '2dsphere' });
+bookingSchema.index({ 'location': '2dsphere' });
+bookingSchema.index({ bookingType: 1, emergencyType: 1, status: 1 });
+bookingSchema.index({ driverId: 1, status: 1 });
+bookingSchema.index({ emergencyRequestedAt: -1 });
+bookingSchema.index({ 'hospitalDestination.hospitalId': 1, status: 1 });
+
+// ============================================
+// EXPORT
+// ============================================
 
 module.exports = mongoose.model('Booking', bookingSchema);
