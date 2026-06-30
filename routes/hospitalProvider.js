@@ -1659,4 +1659,59 @@ router.post('/template/city/:city/apply', authenticateHospital, async (req, res)
   }
 });
 
+// ============================================
+// LAB TESTS, PACKAGES, AMBULANCE ENDPOINTS
+// ============================================
+
+// Save lab tests
+router.put('/lab-tests', authenticateHospital, async (req, res) => {
+  try {
+    const hospital = await Hospital.findById(req.user._id);
+    hospital.diagnostics = hospital.diagnostics || {};
+    hospital.diagnostics.tests = req.body.tests || [];
+    await hospital.save();
+    res.json({ success: true, message: 'Lab tests saved' });
+  } catch (error) {
+    res.status(400).json({ success: false, message: error.message });
+  }
+});
+
+// Save health packages
+router.put('/packages', authenticateHospital, async (req, res) => {
+  try {
+    const hospital = await Hospital.findById(req.user._id);
+    hospital.pricing = hospital.pricing || {};
+    hospital.pricing.health_packages = req.body.packages || [];
+    await hospital.save();
+    res.json({ success: true, message: 'Packages saved' });
+  } catch (error) {
+    res.status(400).json({ success: false, message: error.message });
+  }
+});
+
+// Save ambulance fleet
+router.put('/ambulance', authenticateHospital, async (req, res) => {
+  try {
+    const hospital = await Hospital.findById(req.user._id);
+    hospital.ambulance_fleet = req.body.fleet || [];
+    await hospital.save();
+    res.json({ success: true, message: 'Ambulance fleet saved' });
+  } catch (error) {
+    res.status(400).json({ success: false, message: error.message });
+  }
+});
+
+// Save diseases & procedures
+router.put('/diseases', authenticateHospital, async (req, res) => {
+  try {
+    const hospital = await Hospital.findById(req.user._id);
+    hospital.diseases_treated = req.body.diseases || [];
+    hospital.procedures_available = req.body.procedures || [];
+    await hospital.save();
+    res.json({ success: true, message: 'Diseases & procedures saved' });
+  } catch (error) {
+    res.status(400).json({ success: false, message: error.message });
+  }
+});
+
 module.exports = router;
