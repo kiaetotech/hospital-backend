@@ -16,7 +16,7 @@ const upload = multer({
       cb(new Error('Only Excel files allowed'), false);
     }
   },
-  limits: { fileSize: 5 * 1024 * 1024 } // 5MB
+  limits: { fileSize: 5 * 1024 * 1024 }
 });
 
 // ============================================
@@ -50,28 +50,27 @@ router.get('/search', async (req, res) => {
       scheme, insurance, cashless,
       emergency, beds_available, min_rating,
       facility, accreditation, specialty,
+      disease, procedure,
       opd_fee_min, opd_fee_max,
       sort = 'relevance', page = 1, limit = 10 
     } = req.query;
 
     const query = {};
 
-    // ============================================
-    // SAFE QUERY BUILDING (No 500 errors)
-    // ============================================
-
-    // Text search
+    // Text search - searches name, diseases, specialties, doctors
     if (q && q.trim() !== '') {
       const searchRegex = { $regex: q.trim(), $options: 'i' };
       query.$or = [
         { name: searchRegex },
         { diseases_treated: searchRegex },
         { specialties: searchRegex },
+        { procedures_available: searchRegex },
+        { 'doctors.name': searchRegex },
         { 'doctors.specialization': searchRegex }
       ];
     }
 
-    // City filter - safe regex
+    // City filter
     if (city && city.trim() !== '') {
       query['address.city'] = { $regex: city.trim(), $options: 'i' };
     }
@@ -81,19 +80,26 @@ router.get('/search', async (req, res) => {
       query['address.state'] = { $regex: state.trim(), $options: 'i' };
     }
 
-    // Geospatial search - only if valid coordinates
+    // Geospatial search
     const parsedLat = parseFloat(lat);
     const parsedLng = parseFloat(lng);
     if (!isNaN(parsedLat) && !isNaN(parsedLng) && parsedLat !== 0 && parsedLng !== 0) {
       query.location = {
         $near: {
-          $geometry: { 
-            type: 'Point', 
-            coordinates: [parsedLng, parsedLat] 
-          },
+          $geometry: { type: 'Point', coordinates: [parsedLng, parsedLat] },
           $maxDistance: (parseFloat(radius) || 50) * 1000
         }
       };
+    }
+
+    // Disease filter
+    if (disease && disease.trim() !== '') {
+      query.diseases_treated = { $regex: disease.trim(), $options: 'i' };
+    }
+
+    // Procedure filter
+    if (procedure && procedure.trim() !== '') {
+      query.procedures_available = { $regex: procedure.trim(), $options: 'i' };
     }
 
     // Government schemes filter
@@ -131,7 +137,7 @@ router.get('/search', async (req, res) => {
 
     // Facility filter
     if (facility && facility.trim() !== '') {
-      query.facilities = { $in: [facility.trim()] };
+      query['facilities.name'] = { $regex: facility.trim(), $options: 'i' };
     }
 
     // Accreditation filter
@@ -144,10 +150,9 @@ router.get('/search', async (req, res) => {
       query.specialties = { $regex: specialty.trim(), $options: 'i' };
     }
 
-    // OPD fee range filter - SAFE parsing
+    // OPD fee range filter
     const parsedFeeMin = parseFloat(opd_fee_min);
     const parsedFeeMax = parseFloat(opd_fee_max);
-    
     if (!isNaN(parsedFeeMin) || !isNaN(parsedFeeMax)) {
       query['pricing.consultation'] = {};
       if (!isNaN(parsedFeeMin) && parsedFeeMin >= 0) {
@@ -158,14 +163,11 @@ router.get('/search', async (req, res) => {
       }
     }
 
-    // ============================================
-    // SORT LOGIC
-    // ============================================
+    // Sort logic
     let sortQuery = {};
     switch(sort) {
       case 'distance':
         if (!isNaN(parsedLat) && !isNaN(parsedLng)) {
-          // $near sorts by distance automatically
           sortQuery = {};
         } else {
           sortQuery = { 'ratings.average': -1 };
@@ -187,9 +189,7 @@ router.get('/search', async (req, res) => {
         sortQuery = { 'activity_score': -1, 'ratings.average': -1 };
     }
 
-    // ============================================
-    // PAGINATION
-    // ============================================
+    // Pagination
     const pageNum = Math.max(1, parseInt(page) || 1);
     const limitNum = Math.min(50, Math.max(1, parseInt(limit) || 10));
     const skip = (pageNum - 1) * limitNum;
@@ -239,7 +239,8 @@ router.get('/seed', async (req, res) => {
         address: { city: 'Mumbai', state: 'Maharashtra' },
         location: { coordinates: [72.8344, 19.1079], lat: 19.1079, lng: 72.8344 },
         specialties: ['Cardiology', 'Neurology', 'Orthopedics'],
-        diseases_treated: ['heart attack', 'chest pain', 'stroke'],
+        diseases_treated: ['heart_attack', 'coronary_artery_disease', 'stroke', 'arthritis', 'kidney_stones', 'diabetes_type2'],
+        procedures_available: ['angioplasty', 'cabg', 'angiography', 'knee_replacement', 'dialysis'],
         has24x7ER: true,
         beds: { total: 350, available: 45, icu_available: 12 },
         pricing: { consultation: 1200, icu_bed_per_day: 8000, general_bed_per_day: 3000 },
@@ -252,15 +253,22 @@ router.get('/seed', async (req, res) => {
         cashless_available: true,
         accreditations: ['NABH', 'JCI'],
         lab_tests_available: true,
+        facilities: [
+          { name: 'MRI 3T', category: 'Imaging', available_24x7: false },
+          { name: 'CT 128 Slice', category: 'Imaging', available_24x7: true },
+          { name: 'Cath Lab', category: 'Cardiac', available_24x7: true }
+        ],
         ratings: { average: 4.8, count: 1240 },
-        contact: { phone: '9876543210', email: 'contact@apollo.com' }
+        contact: { phone: '9876543210', email: 'contact@apollo.com' },
+        is_verified: true
       },
       {
         name: 'Manipal Hospital Bangalore',
         address: { city: 'Bangalore', state: 'Karnataka' },
         location: { coordinates: [77.6451, 12.9592], lat: 12.9592, lng: 77.6451 },
         specialties: ['Neurology', 'Oncology'],
-        diseases_treated: ['stroke', 'brain tumor', 'cancer'],
+        diseases_treated: ['stroke', 'brain_tumor', 'breast_cancer', 'lung_cancer'],
+        procedures_available: ['chemotherapy', 'radiation', 'biopsy'],
         has24x7ER: true,
         beds: { total: 420, available: 56, icu_available: 15 },
         pricing: { consultation: 1000, icu_bed_per_day: 7500, general_bed_per_day: 2500 },
@@ -272,15 +280,21 @@ router.get('/seed', async (req, res) => {
         cashless_available: true,
         accreditations: ['NABH'],
         lab_tests_available: true,
+        facilities: [
+          { name: 'MRI 3T', category: 'Imaging', available_24x7: true },
+          { name: 'Radiation Therapy', category: 'Cancer', available_24x7: false }
+        ],
         ratings: { average: 4.9, count: 2100 },
-        contact: { phone: '8765432109', email: 'contact@manipal.com' }
+        contact: { phone: '8765432109', email: 'contact@manipal.com' },
+        is_verified: true
       },
       {
         name: 'Narayana Health Kolkata',
         address: { city: 'Kolkata', state: 'West Bengal' },
         location: { coordinates: [88.3639, 22.5726], lat: 22.5726, lng: 88.3639 },
         specialties: ['Cardiology', 'Oncology'],
-        diseases_treated: ['heart attack', 'cancer'],
+        diseases_treated: ['heart_attack', 'coronary_artery_disease', 'blood_cancer'],
+        procedures_available: ['angioplasty', 'angiography', 'chemotherapy'],
         has24x7ER: true,
         beds: { total: 450, available: 42, icu_available: 8 },
         pricing: { consultation: 900, icu_bed_per_day: 6800, general_bed_per_day: 2200 },
@@ -292,13 +306,17 @@ router.get('/seed', async (req, res) => {
         cashless_available: false,
         accreditations: ['NABH'],
         lab_tests_available: false,
+        facilities: [
+          { name: 'Cath Lab', category: 'Cardiac', available_24x7: true }
+        ],
         ratings: { average: 4.5, count: 980 },
-        contact: { phone: '7654321098', email: 'contact@narayana.com' }
+        contact: { phone: '7654321098', email: 'contact@narayana.com' },
+        is_verified: true
       }
     ];
     
     await Hospital.insertMany(hospitals);
-    res.json({ success: true, message: '3 hospitals seeded successfully' });
+    res.json({ success: true, message: '3 hospitals seeded with diseases, procedures, and facilities' });
   } catch (error) {
     res.status(500).json({ success: false, message: error.message });
   }
@@ -516,6 +534,8 @@ function calculateActivityScore(hospital) {
   if (hospital.doctors?.length > 0) score += 10;
   if (hospital.schemes_accepted?.length > 0) score += 5;
   if (hospital.insurance_accepted?.length > 0) score += 5;
+  if (hospital.diseases_treated?.length > 0) score += 5;
+  if (hospital.procedures_available?.length > 0) score += 5;
   return Math.max(0, Math.min(100, score));
 }
 

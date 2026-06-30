@@ -25,7 +25,7 @@ const doctorSchema = new mongoose.Schema({
     max_patients: { type: Number, default: 20 }
   },
   opd_room: String,
-  consultation_duration: { type: Number, default: 15 }, // minutes
+  consultation_duration: { type: Number, default: 15 },
   accepting_new_patients: { type: Boolean, default: true }
 });
 
@@ -70,15 +70,16 @@ const hospitalSchema = new mongoose.Schema({
       default: 'Point'
     },
     coordinates: {
-      type: [Number], // [longitude, latitude]
+      type: [Number],
       index: '2dsphere'
     },
-    lat: Number, // Keeping for backward compatibility
+    lat: Number,
     lng: Number
   },
   
   // ============ MEDICAL INFO ============
   diseases_treated: [{ type: String, index: true }],
+  procedures_available: [{ type: String }],
   specialties: [{ type: String, index: true }],
   has24x7ER: { type: Boolean, default: false },
   trauma_center: { type: Boolean, default: false },
@@ -104,43 +105,21 @@ const hospitalSchema = new mongoose.Schema({
     emergency_beds: { type: Number, default: 0 },
     isolation_beds: { type: Number, default: 0 },
     
-    // Bed categories pricing
     categories: {
-      general_ward: { 
-        total: Number, 
-        available: Number, 
-        price_per_day: Number 
-      },
-      semi_private: { 
-        total: Number, 
-        available: Number, 
-        price_per_day: Number 
-      },
-      private: { 
-        total: Number, 
-        available: Number, 
-        price_per_day: Number 
-      },
-      deluxe: { 
-        total: Number, 
-        available: Number, 
-        price_per_day: Number 
-      },
-      suite: { 
-        total: Number, 
-        available: Number, 
-        price_per_day: Number 
-      }
+      general_ward: { total: Number, available: Number, price_per_day: Number },
+      semi_private: { total: Number, available: Number, price_per_day: Number },
+      private: { total: Number, available: Number, price_per_day: Number },
+      deluxe: { total: Number, available: Number, price_per_day: Number },
+      suite: { total: Number, available: Number, price_per_day: Number }
     },
     
-    // Bed update tracking
     last_updated: { type: Date, default: Date.now },
     update_method: {
       type: String,
       enum: ['whatsapp', 'web_portal', 'mobile_app', 'api', 'excel_upload', 'manual'],
       default: 'manual'
     },
-    auto_expire_at: Date // Auto-expire after 4 hours for non-API updates
+    auto_expire_at: Date
   },
   
   // ============ PRICING ============
@@ -150,7 +129,6 @@ const hospitalSchema = new mongoose.Schema({
     follow_up: Number,
     emergency_consultation: Number,
     
-    // IPD pricing
     icu_bed_per_day: { type: Number, default: 0 },
     general_bed_per_day: { type: Number, default: 0 },
     semi_private_per_day: Number,
@@ -158,11 +136,9 @@ const hospitalSchema = new mongoose.Schema({
     deluxe_per_day: Number,
     suite_per_day: Number,
     
-    // Discounts
-    online_booking_discount: { type: Number, default: 10 }, // percentage
+    online_booking_discount: { type: Number, default: 10 },
     first_time_discount: Number,
     
-    // Packages
     health_packages: [{
       name: String,
       original_price: Number,
@@ -171,7 +147,6 @@ const hospitalSchema = new mongoose.Schema({
       valid_till: Date
     }],
     
-    // Current offers
     offers: [{
       title: String,
       description: String,
@@ -220,7 +195,6 @@ const hospitalSchema = new mongoose.Schema({
   ambulance_available: { type: Boolean, default: false },
   ambulance_count: { type: Number, default: 0 },
   
-  // Technology
   technology: [{
     type: String,
     enum: [
@@ -238,7 +212,6 @@ const hospitalSchema = new mongoose.Schema({
     robotic: Boolean
   },
   
-  // Amenities
   amenities: [{
     type: String,
     enum: [
@@ -248,6 +221,14 @@ const hospitalSchema = new mongoose.Schema({
       'International Patient Services', 'Language Translator',
       'Airport Pickup', 'Currency Exchange'
     ]
+  }],
+  
+  // ============ FACILITIES LIST (Custom) ============
+  facilities: [{
+    name: String,
+    category: String,
+    available_24x7: Boolean,
+    description: String
   }],
   
   // ============ RATINGS & REVIEWS ============
@@ -261,7 +242,7 @@ const hospitalSchema = new mongoose.Schema({
       wait_time: { type: Number, default: 0 },
       value_for_money: { type: Number, default: 0 }
     },
-    avg_wait_time: { type: Number, default: 0 } // minutes
+    avg_wait_time: { type: Number, default: 0 }
   },
   
   reviews: [reviewSchema],
@@ -283,10 +264,7 @@ const hospitalSchema = new mongoose.Schema({
   },
   
   // ============ OPERATIONAL ============
-  working_hours: {
-    type: String,
-    default: '24x7'
-  },
+  working_hours: { type: String, default: '24x7' },
   opd_timings: {
     morning: { start: String, end: String },
     evening: { start: String, end: String }
@@ -322,6 +300,30 @@ const hospitalSchema = new mongoose.Schema({
   emi_available: { type: Boolean, default: false },
   emi_partners: [String],
   
+  // ============ AMBULANCE FLEET ============
+  ambulance_fleet: [{
+    vehicle_number: String,
+    type: { type: String, enum: ['basic', 'cardiac', 'ventilator', 'neonatal', 'wheelchair'] },
+    driver_name: String,
+    driver_phone: String,
+    base_fare: Number,
+    per_km: Number,
+    available_24x7: { type: Boolean, default: true }
+  }],
+  
+  // ============ DIAGNOSTICS ============
+  diagnostics: {
+    tests: [{
+      name: String,
+      category: String,
+      price: Number,
+      home_collection: Boolean,
+      fasting_required: Boolean,
+      report_time: Number,
+      sample_type: String
+    }]
+  },
+  
   // ============ USER LINKING ============
   userId: {
     type: mongoose.Schema.Types.ObjectId,
@@ -333,7 +335,20 @@ const hospitalSchema = new mongoose.Schema({
   is_active: { type: Boolean, default: true },
   is_verified: { type: Boolean, default: false },
   verification_date: Date,
+  verification_status: {
+    type: String,
+    enum: ['pending', 'under_review', 'verified', 'rejected'],
+    default: 'pending'
+  },
+  verification_submitted_at: Date,
   
+  // ============ DATA SOURCE ============
+  data_filled_via: {
+    type: String,
+    enum: ['manual', 'excel_upload', 'city_template', 'api'],
+    default: 'manual'
+  },
+
   // ============ TIMESTAMPS ============
   created_at: { type: Date, default: Date.now },
   updated_at: { type: Date, default: Date.now }
@@ -345,7 +360,6 @@ const hospitalSchema = new mongoose.Schema({
 
 // ============ INDEXES ============
 
-// Text index for search
 hospitalSchema.index({ 
   name: 'text', 
   specialties: 'text', 
@@ -354,33 +368,28 @@ hospitalSchema.index({
   'doctors.specialization': 'text'
 });
 
-// Geospatial index for location searches
 hospitalSchema.index({ 'location.coordinates': '2dsphere' });
-
-// Compound indexes for common queries
 hospitalSchema.index({ 'address.city': 1, 'ratings.average': -1 });
 hospitalSchema.index({ schemes_accepted: 1, cashless_available: 1 });
 hospitalSchema.index({ activity_score: -1 });
+hospitalSchema.index({ diseases_treated: 1 });
+hospitalSchema.index({ procedures_available: 1 });
 
 // ============ MIDDLEWARE ============
 
-// Auto-expire bed updates after 4 hours if manual/WhatsApp
 hospitalSchema.pre('save', function(next) {
   if (this.beds && this.beds.update_method && 
       ['whatsapp', 'web_portal', 'manual'].includes(this.beds.update_method)) {
-    
     const fourHours = 4 * 60 * 60 * 1000;
     this.beds.auto_expire_at = new Date(Date.now() + fourHours);
   }
   
-  // Update activity score
   this.activity_score = calculateActivityScore(this);
   this.last_activity = new Date();
   
   next();
 });
 
-// Auto-update ratings when reviews change
 hospitalSchema.pre('save', function(next) {
   if (this.isModified('reviews')) {
     const totalRating = this.reviews.reduce((sum, r) => sum + r.rating, 0);
@@ -433,12 +442,13 @@ function calculateActivityScore(hospital) {
   else if (hoursSinceUpdate > 4) score -= 20;
   else if (hoursSinceUpdate > 2) score -= 10;
   
-  // Bonus for complete profile
   if (hospital.doctors?.length > 0) score += 10;
   if (hospital.schemes_accepted?.length > 0) score += 5;
   if (hospital.insurance_accepted?.length > 0) score += 5;
   if (hospital.accreditations?.length > 0) score += 5;
   if (hospital.technology?.length > 0) score += 5;
+  if (hospital.diseases_treated?.length > 0) score += 5;
+  if (hospital.procedures_available?.length > 0) score += 5;
   
   return Math.max(0, Math.min(100, score));
 }
