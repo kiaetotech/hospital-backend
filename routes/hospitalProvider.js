@@ -1359,4 +1359,232 @@ function calculateActivityScore(hospital) {
   return Math.max(0, Math.min(100, score));
 }
 
+// ============================================
+// 🆕 COMPLETE REGISTRATION WITH EXCEL UPLOAD
+// ============================================
+
+// Download COMPLETE hospital template (all 5 sheets)
+router.get('/template/complete', authenticateHospital, async (req, res) => {
+  try {
+    const excelService = require('../services/excelService');
+    const filePath = excelService.generateHospitalTemplate();
+    res.download(filePath, 'hospital_complete_template.xlsx');
+  } catch (error) {
+    res.status(500).json({ success: false, message: error.message });
+  }
+});
+
+// Download individual sheet templates
+router.get('/template/:type', authenticateHospital, async (req, res) => {
+  try {
+    const excelService = require('../services/excelService');
+    let wb, fileName;
+    
+    switch(req.params.type) {
+      case 'doctors':
+        wb = excelService.generateDoctorsTemplate();
+        fileName = 'doctors_template.xlsx';
+        break;
+      case 'pricing':
+        wb = excelService.generatePricingTemplate();
+        fileName = 'pricing_template.xlsx';
+        break;
+      case 'facilities':
+        wb = excelService.generateFacilitiesTemplate();
+        fileName = 'facilities_template.xlsx';
+        break;
+      case 'schemes':
+        wb = excelService.generateSchemesTemplate();
+        fileName = 'schemes_template.xlsx';
+        break;
+      case 'insurance':
+        wb = excelService.generateInsuranceTemplate();
+        fileName = 'insurance_template.xlsx';
+        break;
+      default:
+        return res.status(400).json({ success: false, message: 'Invalid template type' });
+    }
+    
+    const buffer = XLSX.write(wb, { type: 'buffer', bookType: 'xlsx' });
+    res.setHeader('Content-Type', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
+    res.setHeader('Content-Disposition', `attachment; filename=${fileName}`);
+    res.send(buffer);
+  } catch (error) {
+    res.status(500).json({ success: false, message: error.message });
+  }
+});
+
+// Upload complete hospital data via Excel (all data in one file)
+router.post('/upload-complete', authenticateHospital, upload.single('file'), async (req, res) => {
+  try {
+    if (!req.file) {
+      return res.status(400).json({ success: false, message: 'Please upload an Excel file' });
+    }
+
+    const excelService = require('../services/excelService');
+    const fs = require('fs');
+    const path = require('path');
+    
+    // Save uploaded file temporarily
+    const tempPath = path.join(excelService.UPLOAD_DIR, `${req.user._id}_${Date.now()}.xlsx`);
+    fs.writeFileSync(tempPath, req.file.buffer);
+    
+    // Parse Excel
+    const data = excelService.parseHospitalExcel(tempPath);
+    
+    // Clean up temp file
+    fs.unlinkSync(tempPath);
+    
+    // Update hospital with parsed data
+    const hospital = await Hospital.findById(req.user._id);
+    
+    // Update doctors
+    if (data.doctors.length > 0) {
+      hospital.doctors = data.doctors.map(doc => ({
+        name: doc.name,
+        specialization: doc.specialization,
+        sub_specialization: doc.subSpecialization,
+        qualification: doc.qualification,
+        experience: doc.experience,
+        consultation_fee: doc.consultationFee,
+        languages: doc.languages,
+        gender: doc.gender,
+        rating: 0,
+        reviewCount: 0,
+        availability: {
+          status: 'available',
+          slots_available: doc.maxPatientsPerDay,
+          days: ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'],
+          morning_slots: `${doc.morningStart}-${doc.morningEnd}`,
+          evening_slots: doc.eveningStart ? `${doc.eveningStart}-${doc.eveningEnd}` : '',
+          max_patients: doc.maxPatientsPerDay
+        },
+        online_consult: doc.onlineConsult,
+        online_consult_fee: doc.onlineFee
+      }));
+    }
+    
+    // Update pricing
+    if (data.pricing.length > 0) {
+      hospital.pricing = hospital.pricing || {};
+      data.pricing.forEach(p => {
+        switch(p.roomType.toLowerCase().replace(/\s/g, '_')) {
+          case 'general_ward': hospital.pricing.general_bed_per_day = p.perDayCharge; break;
+          case 'semi-private': hospital.pricing.semi_private_per_day = p.perDayCharge; break;
+          case 'private': hospital.pricing.private_per_day = p.perDayCharge; break;
+          case 'deluxe': hospital.pricing.deluxe_per_day = p.perDayCharge; break;
+          case 'icu': hospital.pricing.icu_bed_per_day = p.perDayCharge; break;
+          case 'nicu': hospital.pricing.nicu_per_day = p.perDayCharge; break;
+          case 'emergency': hospital.pricing.emergency_bed_per_day = p.perDayCharge; break;
+        }
+      });
+    }
+    
+    // Update facilities
+    if (data.facilities.length > 0) {
+      hospital.facilities = data.facilities.map(f => ({
+        name: f.name,
+        category: f.category,
+        available_24x7: f.available24x7,
+        description: f.description
+      }));
+    }
+    
+    // Update schemes
+    if (data.schemes.length > 0) {
+      hospital.schemes_accepted = data.schemes.map(s => s.code);
+      hospital.scheme_details = data.schemes.map(s => ({
+        code: s.code,
+        name: s.name,
+        active: true
+      }));
+    }
+    
+    // Update insurance
+    if (data.insurance.length > 0) {
+      hospital.insurance_accepted = data.insurance.map(i => i.company);
+      hospital.cashless_available = data.insurance.some(i => i.cashlessAvailable);
+      hospital.tpa_desk_available = data.insurance.some(i => i.tpaDesk);
+      hospital.tpa_partners = data.insurance.filter(i => i.tpaName).map(i => i.tpaName);
+    }
+    
+    hospital.updated_at = new Date();
+    hospital.activity_score = calculateActivityScore(hospital);
+    await hospital.save();
+    
+    res.json({
+      success: true,
+      message: 'Complete hospital data uploaded successfully',
+      data: {
+        doctors: hospital.doctors.length,
+        pricing: data.pricing.length,
+        facilities: hospital.facilities.length,
+        schemes: hospital.schemes_accepted.length,
+        insurance: hospital.insurance_accepted.length
+      }
+    });
+  } catch (error) {
+    console.error('Excel upload error:', error);
+    res.status(400).json({ success: false, message: error.message });
+  }
+});
+
+// Get registration progress
+router.get('/registration-progress', authenticateHospital, async (req, res) => {
+  try {
+    const hospital = await Hospital.findById(req.user._id).select('name doctors facilities schemes_accepted insurance_accepted pricing accreditations is_verified');
+    
+    const steps = {
+      basicInfo: !!(hospital.name),
+      doctors: (hospital.doctors?.length || 0) > 0,
+      pricing: !!(hospital.pricing?.consultation || hospital.pricing?.general_bed_per_day),
+      facilities: (hospital.facilities?.length || 0) > 0,
+      schemes: (hospital.schemes_accepted?.length || 0) > 0,
+      insurance: (hospital.insurance_accepted?.length || 0) > 0,
+      verified: hospital.is_verified
+    };
+    
+    const completedSteps = Object.values(steps).filter(Boolean).length;
+    const totalSteps = Object.keys(steps).length;
+    
+    res.json({
+      success: true,
+      data: {
+        steps,
+        completedSteps,
+        totalSteps,
+        percentage: Math.round((completedSteps / totalSteps) * 100),
+        isComplete: completedSteps >= 5
+      }
+    });
+  } catch (error) {
+    res.status(500).json({ success: false, message: error.message });
+  }
+});
+
+// Submit for verification
+router.post('/submit-verification', authenticateHospital, async (req, res) => {
+  try {
+    const hospital = await Hospital.findById(req.user._id);
+    
+    // Check if minimum data is filled
+    if (!hospital.doctors || hospital.doctors.length === 0) {
+      return res.status(400).json({ success: false, message: 'Please add at least one doctor before submitting' });
+    }
+    if (!hospital.pricing?.consultation && !hospital.pricing?.general_bed_per_day) {
+      return res.status(400).json({ success: false, message: 'Please add pricing details before submitting' });
+    }
+    
+    hospital.is_verified = false;
+    hospital.verification_status = 'pending';
+    hospital.verification_submitted_at = new Date();
+    hospital.updated_at = new Date();
+    await hospital.save();
+    
+    res.json({ success: true, message: 'Hospital submitted for verification. We will review and activate within 24-48 hours.' });
+  } catch (error) {
+    res.status(400).json({ success: false, message: error.message });
+  }
+});
+
 module.exports = router;
