@@ -1714,4 +1714,33 @@ router.put('/diseases', authenticateHospital, async (req, res) => {
   }
 });
 
+// Deactivate hospital account
+router.put('/deactivate', authenticateHospital, async (req, res) => {
+  try {
+    await Hospital.findByIdAndUpdate(req.user._id, { 
+      is_active: false, 
+      deactivated_at: new Date(),
+      deactivation_reason: req.body.reason || 'Requested by hospital'
+    });
+    res.json({ success: true, message: 'Account deactivated. You can reactivate by contacting support.' });
+  } catch (error) {
+    res.status(500).json({ success: false, message: error.message });
+  }
+});
+
+// Delete hospital account (soft delete - keeps data for 30 days)
+router.delete('/delete', authenticateHospital, async (req, res) => {
+  try {
+    await Hospital.findByIdAndUpdate(req.user._id, { 
+      is_active: false, 
+      marked_for_deletion: true,
+      deletion_requested_at: new Date(),
+      deletion_scheduled_at: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000)
+    });
+    res.json({ success: true, message: 'Account deletion requested. Data will be removed in 30 days.' });
+  } catch (error) {
+    res.status(500).json({ success: false, message: error.message });
+  }
+});
+
 module.exports = router;

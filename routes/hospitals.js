@@ -539,4 +539,20 @@ function calculateActivityScore(hospital) {
   return Math.max(0, Math.min(100, score));
 }
 
+// ============================================
+// MEDICAL MASTER DATA ENDPOINT
+// ============================================
+const MEDICAL_MASTER_DATA = require('../data/medicalMasterData');
+
+router.get('/medical-data', (req, res) => {
+  res.json({
+    success: true,
+    data: {
+      specialties: MEDICAL_MASTER_DATA.specialties,
+      diseases: MEDICAL_MASTER_DATA.diseases,
+      procedures: MEDICAL_MASTER_DATA.procedures
+    }
+  });
+});
+
 module.exports = router;
