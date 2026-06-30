@@ -1,4 +1,5 @@
 require('dotenv').config();
+require('dotenv').config({ path: '.env.local', override: true });
 const express = require('express');
 const mongoose = require('mongoose');
 const cors = require('cors');
@@ -163,7 +164,7 @@ global.authenticatePatient = authenticatePatient;
 global.authenticateLender = authenticateLender;
 
 // ============================================
-// 🆕 CRON JOBS
+// CRON JOBS
 // ============================================
 
 // Check for stuck ambulance bookings every 2 minutes
@@ -178,6 +179,25 @@ setInterval(async () => {
     console.error('Stuck booking check error:', error.message);
   }
 }, 2 * 60 * 1000);
+
+// Hospital status: Send scheduled WhatsApp requests every hour
+const hospitalStatusService = require('./services/hospitalStatusService');
+setInterval(async () => {
+  try {
+    await hospitalStatusService.sendScheduledRequests();
+  } catch (error) {
+    console.error('Hospital status request error:', error.message);
+  }
+}, 60 * 60 * 1000);
+
+// Hospital status: Expire stale statuses every 30 minutes
+setInterval(async () => {
+  try {
+    await hospitalStatusService.expireStaleStatuses();
+  } catch (error) {
+    console.error('Status expiry error:', error.message);
+  }
+}, 30 * 60 * 1000);
 
 // Clean up stale Redis data every 15 minutes
 if (redis) {
@@ -255,13 +275,17 @@ const mentalHealthEarningsRoutes = require('./routes/mentalhealth-earnings');
 // Online Doctor Module
 const onlineDoctorRoutes = require('./routes/onlineDoctor');
 
+// 🆕 Hospital Status Module
+const hospitalStatusRoutes = require('./routes/hospitalStatus');
+
 // ============================================
-// ROUTE MOUNTING - ALL PRESERVED
+// ROUTE MOUNTING - ALL PRESERVED + NEW
 // ============================================
 
 // 🏥 Hospital Routes
 app.use('/api/hospitals', searchLimiter, hospitalRoutes);
 app.use('/api/hospitals/provider', hospitalProviderRoutes);
+app.use('/api/hospital-status', hospitalStatusRoutes);  // 🆕
 
 // 🔐 Auth
 app.use('/api/auth', authRoutes);
@@ -345,7 +369,7 @@ app.use('/api/mentalhealth/earnings', mentalHealthEarningsRoutes);
 app.use('/api/online-doctor', searchLimiter, onlineDoctorRoutes);
 
 // ============================================
-// 🆕 WEBSOCKET HEALTH ENDPOINT
+// WEBSOCKET HEALTH ENDPOINT
 // ============================================
 
 app.get('/api/ws/health', (req, res) => {
@@ -360,7 +384,7 @@ app.get('/api/ws/health', (req, res) => {
   });
 });
 
-// 🆕 WebSocket stats for admin
+// WebSocket stats for admin
 app.get('/api/ws/stats', (req, res) => {
   const stats = getConnectionStats();
   res.json({
@@ -442,7 +466,24 @@ app.get('/api/hospitals/health', (req, res) => {
   });
 });
 
-// 🚑 Ambulance Health Check (NEW)
+// 🆕 Hospital Status Health Check
+app.get('/api/hospital-status/health', (req, res) => {
+  res.json({
+    success: true,
+    module: 'Hospital Status (Green Light System)',
+    status: 'active',
+    version: '1.0',
+    features: {
+      statusUpdate: 'WhatsApp tap - Hospital updates status in 1 second',
+      autoRequest: 'System sends status request at 8AM, 2PM, 8PM',
+      autoExpire: 'Status auto-expires after 4 hours of no update',
+      webhook: 'POST /api/hospital-status/webhook/whatsapp',
+      bulk: 'POST /api/hospital-status/bulk'
+    }
+  });
+});
+
+// Ambulance Health Check
 app.get('/api/ambulance/health', (req, res) => {
   res.json({
     success: true,
@@ -551,7 +592,7 @@ app.get('/api/online-doctor/health', (req, res) => {
   });
 });
 
-// 🆕 Comprehensive System Health (NEW)
+// Comprehensive System Health
 app.get('/api/system/health', async (req, res) => {
   const healthData = {
     success: true,
@@ -575,6 +616,7 @@ app.get('/api/system/health', async (req, res) => {
     },
     modules: {
       hospitals: 'active',
+      hospitalStatus: 'active',
       ambulance: 'active',
       caregivers: 'active',
       diagnostics: 'active',
@@ -656,25 +698,32 @@ server.listen(PORT, () => {
   console.log('─'.repeat(55));
   console.log('📦 Modules Loaded:');
   console.log('─'.repeat(55));
-  console.log('🏥  Hospitals          → /api/hospitals/*');
-  console.log('🏥  Hospital Provider   → /api/hospitals/provider/*');
-  console.log('🚑  Ambulance (v3.0)    → /api/ambulance/*');
-  console.log('🏠  Caregivers          → /api/caregivers/*');
-  console.log('🔬  Diagnostics         → /api/diagnostics/*');
-  console.log('🧘  Ayurveda            → /api/ayurveda/*');
-  console.log('🌿  Homeopathy          → /api/homeopathy/*');
-  console.log('🛡️  Insurance           → /api/insurance/*');
-  console.log('🛡️  Insurance Admin     → /api/insurance-admin/*');
-  console.log('🏢  Corporate           → /api/corporate/*');
-  console.log('🧠  Mental Health       → /api/mentalhealth/*');
-  console.log('📱  Online Doctor       → /api/online-doctor/*');
-  console.log('💰  Loans               → /api/loan/*');
-  console.log('💰  Lenders             → /api/lender/*');
-  console.log('💳  Payments            → /api/payment/*');
-  console.log('📋  Bookings            → /api/bookings/*');
-  console.log('⭐  Reviews             → /api/reviews/*');
-  console.log('📱  OTP                 → /api/otp/*');
-  console.log('🔧  Admin               → /api/admin/*');
+  console.log('🏥  Hospitals            → /api/hospitals/*');
+  console.log('🏥  Hospital Provider     → /api/hospitals/provider/*');
+  console.log('🏥  Hospital Status       → /api/hospital-status/*');
+  console.log('🚑  Ambulance (v3.0)      → /api/ambulance/*');
+  console.log('🏠  Caregivers            → /api/caregivers/*');
+  console.log('🔬  Diagnostics           → /api/diagnostics/*');
+  console.log('🧘  Ayurveda              → /api/ayurveda/*');
+  console.log('🌿  Homeopathy            → /api/homeopathy/*');
+  console.log('🛡️  Insurance             → /api/insurance/*');
+  console.log('🛡️  Insurance Admin       → /api/insurance-admin/*');
+  console.log('🏢  Corporate             → /api/corporate/*');
+  console.log('🧠  Mental Health         → /api/mentalhealth/*');
+  console.log('📱  Online Doctor         → /api/online-doctor/*');
+  console.log('💰  Loans                 → /api/loan/*');
+  console.log('💰  Lenders               → /api/lender/*');
+  console.log('💳  Payments              → /api/payment/*');
+  console.log('📋  Bookings              → /api/bookings/*');
+  console.log('⭐  Reviews               → /api/reviews/*');
+  console.log('📱  OTP                   → /api/otp/*');
+  console.log('🔧  Admin                 → /api/admin/*');
+  console.log('─'.repeat(55));
+  console.log('🆕 New Feature: Hospital Green Light System');
+  console.log('   🟢 Accepting  🟡 Limited  🔴 Full  ❓ Unknown');
+  console.log('   📱 WhatsApp tap update (1 second, free)');
+  console.log('   ⏰ Auto-request at 8AM, 2PM, 8PM');
+  console.log('   🕐 Auto-expire after 4 hours');
   console.log('─'.repeat(55));
   console.log('🔌 Real-time Features:');
   console.log('   🚑 Driver Tracking (5s updates)');
