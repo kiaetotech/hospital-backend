@@ -1587,4 +1587,76 @@ router.post('/submit-verification', authenticateHospital, async (req, res) => {
   }
 });
 
+// ============================================
+// 🆕 CITY TEMPLATE SYSTEM
+// ============================================
+
+const cityTemplateService = require('../services/cityTemplateService');
+
+// Get available cities with templates
+router.get('/template/cities', async (req, res) => {
+  try {
+    const cities = cityTemplateService.getAvailableCities();
+    res.json({ success: true, data: cities });
+  } catch (error) {
+    res.status(500).json({ success: false, message: error.message });
+  }
+});
+
+// Get template for a city (what data will be pre-filled)
+router.get('/template/city/:city', async (req, res) => {
+  try {
+    const { sections } = req.query;
+    const sectionList = sections ? sections.split(',') : [];
+    const template = cityTemplateService.getPartialTemplate(req.params.city, sectionList);
+    res.json({ success: true, data: template });
+  } catch (error) {
+    res.status(500).json({ success: false, message: error.message });
+  }
+});
+
+// Preview template before applying
+router.get('/template/city/:city/preview', async (req, res) => {
+  try {
+    const template = cityTemplateService.getCityTemplate(req.params.city);
+    res.json({
+      success: true,
+      data: {
+        city: req.params.city,
+        preview: {
+          accreditations: `${template.commonAccreditations.length} accreditations (e.g., ${template.commonAccreditations.slice(0, 3).join(', ')})`,
+          facilities: `${template.commonFacilities.length} facilities (e.g., ${template.commonFacilities.slice(0, 3).map(f => f.name).join(', ')})`,
+          insurance: `${template.commonInsurance.length} insurance partners`,
+          schemes: `${template.commonSchemes.length} government schemes`,
+          tests: `${(template.commonTests || []).length} lab tests`,
+          packages: `${(template.commonPackages || []).length} health packages`
+        },
+        sampleData: {
+          accreditations: template.commonAccreditations.slice(0, 3),
+          facilities: template.commonFacilities.slice(0, 5),
+          insurance: template.commonInsurance.slice(0, 3),
+          schemes: template.commonSchemes.slice(0, 3)
+        }
+      }
+    });
+  } catch (error) {
+    res.status(500).json({ success: false, message: error.message });
+  }
+});
+
+// Apply city template to hospital
+router.post('/template/city/:city/apply', authenticateHospital, async (req, res) => {
+  try {
+    const { sections } = req.body;
+    const result = await cityTemplateService.applyTemplate(
+      req.user._id,
+      req.params.city,
+      sections || []
+    );
+    res.json(result);
+  } catch (error) {
+    res.status(400).json({ success: false, message: error.message });
+  }
+});
+
 module.exports = router;
