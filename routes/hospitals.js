@@ -36,10 +36,28 @@ router.get('/health', (req, res) => {
       whatsappUpdate: '/api/hospitals/whatsapp-update',
       excelUpload: '/api/hospitals/:id/upload-doctors',
       template: '/api/hospitals/template/download',
+      medicalData: '/api/hospitals/medical-data',
       schemeFilter: '/api/hospitals/search?scheme=ayushman',
       insuranceFilter: '/api/hospitals/search?insurance=star'
     }
   });
+});
+
+// Medical master data - MUST be before /:id
+router.get('/medical-data', (req, res) => {
+  try {
+    const MEDICAL_MASTER_DATA = require('../data/medicalMasterData');
+    res.json({
+      success: true,
+      data: {
+        specialties: MEDICAL_MASTER_DATA.specialties,
+        diseases: MEDICAL_MASTER_DATA.diseases,
+        procedures: MEDICAL_MASTER_DATA.procedures
+      }
+    });
+  } catch (error) {
+    res.status(500).json({ success: false, message: 'Medical data unavailable' });
+  }
 });
 
 // Search hospitals with advanced filters
@@ -57,7 +75,6 @@ router.get('/search', async (req, res) => {
 
     const query = {};
 
-    // Text search - searches name, diseases, specialties, doctors
     if (q && q.trim() !== '') {
       const searchRegex = { $regex: q.trim(), $options: 'i' };
       query.$or = [
@@ -70,17 +87,14 @@ router.get('/search', async (req, res) => {
       ];
     }
 
-    // City filter
     if (city && city.trim() !== '') {
       query['address.city'] = { $regex: city.trim(), $options: 'i' };
     }
 
-    // State filter
     if (state && state.trim() !== '') {
       query['address.state'] = { $regex: state.trim(), $options: 'i' };
     }
 
-    // Geospatial search
     const parsedLat = parseFloat(lat);
     const parsedLng = parseFloat(lng);
     if (!isNaN(parsedLat) && !isNaN(parsedLng) && parsedLat !== 0 && parsedLng !== 0) {
@@ -92,42 +106,34 @@ router.get('/search', async (req, res) => {
       };
     }
 
-    // Disease filter
     if (disease && disease.trim() !== '') {
       query.diseases_treated = { $regex: disease.trim(), $options: 'i' };
     }
 
-    // Procedure filter
     if (procedure && procedure.trim() !== '') {
       query.procedures_available = { $regex: procedure.trim(), $options: 'i' };
     }
 
-    // Government schemes filter
     if (scheme && scheme.trim() !== '') {
       query['schemes_accepted'] = { $in: [scheme.trim().toLowerCase()] };
     }
 
-    // Insurance filter
     if (insurance && insurance.trim() !== '') {
       query['insurance_accepted'] = { $regex: insurance.trim(), $options: 'i' };
     }
 
-    // Cashless filter
     if (cashless === 'true') {
       query.cashless_available = true;
     }
 
-    // Emergency filter
     if (emergency === 'true') {
       query.has24x7ER = true;
     }
 
-    // Beds available filter
     if (beds_available === 'true') {
       query['beds.available'] = { $gt: 0 };
     }
 
-    // Minimum rating filter
     if (min_rating && !isNaN(parseFloat(min_rating))) {
       const rating = parseFloat(min_rating);
       if (rating > 0) {
@@ -135,22 +141,18 @@ router.get('/search', async (req, res) => {
       }
     }
 
-    // Facility filter
     if (facility && facility.trim() !== '') {
       query['facilities.name'] = { $regex: facility.trim(), $options: 'i' };
     }
 
-    // Accreditation filter
     if (accreditation && accreditation.trim() !== '') {
       query.accreditations = { $in: [accreditation.trim().toUpperCase()] };
     }
 
-    // Specialty filter
     if (specialty && specialty.trim() !== '') {
       query.specialties = { $regex: specialty.trim(), $options: 'i' };
     }
 
-    // OPD fee range filter
     const parsedFeeMin = parseFloat(opd_fee_min);
     const parsedFeeMax = parseFloat(opd_fee_max);
     if (!isNaN(parsedFeeMin) || !isNaN(parsedFeeMax)) {
@@ -163,44 +165,24 @@ router.get('/search', async (req, res) => {
       }
     }
 
-    // Sort logic
     let sortQuery = {};
     switch(sort) {
       case 'distance':
-        if (!isNaN(parsedLat) && !isNaN(parsedLng)) {
-          sortQuery = {};
-        } else {
-          sortQuery = { 'ratings.average': -1 };
-        }
+        sortQuery = (!isNaN(parsedLat) && !isNaN(parsedLng)) ? {} : { 'ratings.average': -1 };
         break;
-      case 'fee':
-        sortQuery = { 'pricing.consultation': 1 };
-        break;
-      case 'rating':
-        sortQuery = { 'ratings.average': -1 };
-        break;
-      case 'beds':
-        sortQuery = { 'beds.available': -1 };
-        break;
-      case 'reviews':
-        sortQuery = { 'ratings.count': -1 };
-        break;
-      default:
-        sortQuery = { 'activity_score': -1, 'ratings.average': -1 };
+      case 'fee': sortQuery = { 'pricing.consultation': 1 }; break;
+      case 'rating': sortQuery = { 'ratings.average': -1 }; break;
+      case 'beds': sortQuery = { 'beds.available': -1 }; break;
+      case 'reviews': sortQuery = { 'ratings.count': -1 }; break;
+      default: sortQuery = { 'activity_score': -1, 'ratings.average': -1 };
     }
 
-    // Pagination
     const pageNum = Math.max(1, parseInt(page) || 1);
     const limitNum = Math.min(50, Math.max(1, parseInt(limit) || 10));
     const skip = (pageNum - 1) * limitNum;
     
     const [hospitals, total] = await Promise.all([
-      Hospital.find(query)
-        .sort(sortQuery)
-        .skip(skip)
-        .limit(limitNum)
-        .select('-__v -password')
-        .lean(),
+      Hospital.find(query).sort(sortQuery).skip(skip).limit(limitNum).select('-__v -password').lean(),
       Hospital.countDocuments(query)
     ]);
 
@@ -217,11 +199,7 @@ router.get('/search', async (req, res) => {
 
   } catch (error) {
     console.error('Search error:', error.message);
-    res.status(500).json({ 
-      success: false, 
-      message: 'Search failed. Please try again.',
-      error: process.env.NODE_ENV === 'development' ? error.message : undefined
-    });
+    res.status(500).json({ success: false, message: 'Search failed. Please try again.' });
   }
 });
 
@@ -243,7 +221,7 @@ router.get('/seed', async (req, res) => {
         procedures_available: ['angioplasty', 'cabg', 'angiography', 'knee_replacement', 'dialysis'],
         has24x7ER: true,
         beds: { total: 350, available: 45, icu_available: 12 },
-        pricing: { consultation: 1200, icu_bed_per_day: 8000, general_bed_per_day: 3000 },
+        pricing: { consultation: 1200, icu_bed_per_day: 8000, general_bed_per_day: 3000, semi_private_per_day: 4500, private_per_day: 6000 },
         doctors: [
           { name: 'Dr. Rajesh Mehta', specialization: 'Cardiologist', qualification: 'MBBS, MD, DM', consultation_fee: 1300, experience: '20 years', rating: 4.8, reviewCount: 210, languages: ['English', 'Hindi'], availability: { status: 'available', slots_available: 4 } },
           { name: 'Dr. Priya Sharma', specialization: 'Neurologist', qualification: 'MBBS, MD, DNB', consultation_fee: 1200, experience: '15 years', rating: 4.7, reviewCount: 180, languages: ['English', 'Marathi'], availability: { status: 'available', slots_available: 6 } }
@@ -280,10 +258,7 @@ router.get('/seed', async (req, res) => {
         cashless_available: true,
         accreditations: ['NABH'],
         lab_tests_available: true,
-        facilities: [
-          { name: 'MRI 3T', category: 'Imaging', available_24x7: true },
-          { name: 'Radiation Therapy', category: 'Cancer', available_24x7: false }
-        ],
+        facilities: [{ name: 'MRI 3T', category: 'Imaging', available_24x7: true }],
         ratings: { average: 4.9, count: 2100 },
         contact: { phone: '8765432109', email: 'contact@manipal.com' },
         is_verified: true
@@ -306,9 +281,7 @@ router.get('/seed', async (req, res) => {
         cashless_available: false,
         accreditations: ['NABH'],
         lab_tests_available: false,
-        facilities: [
-          { name: 'Cath Lab', category: 'Cardiac', available_24x7: true }
-        ],
+        facilities: [{ name: 'Cath Lab', category: 'Cardiac', available_24x7: true }],
         ratings: { average: 4.5, count: 980 },
         contact: { phone: '7654321098', email: 'contact@narayana.com' },
         is_verified: true
@@ -316,7 +289,7 @@ router.get('/seed', async (req, res) => {
     ];
     
     await Hospital.insertMany(hospitals);
-    res.json({ success: true, message: '3 hospitals seeded with diseases, procedures, and facilities' });
+    res.json({ success: true, message: '3 hospitals seeded' });
   } catch (error) {
     res.status(500).json({ success: false, message: error.message });
   }
@@ -327,38 +300,15 @@ router.post('/whatsapp-update', async (req, res) => {
   try {
     const { phone, message } = req.body;
     const parsedData = parseWhatsAppMessage(message);
-    
     if (!parsedData) {
-      return res.status(400).json({ 
-        success: false, 
-        message: 'Invalid format. Send: BEDS [total] AVL [available] ICU [icu_beds] VENT [ventilators] ER [OPEN/CLOSED]' 
-      });
+      return res.status(400).json({ success: false, message: 'Invalid format' });
     }
-
     const hospital = await Hospital.findOne({ 'contact.phone': phone });
-    if (!hospital) {
-      return res.status(404).json({ success: false, message: 'Hospital not found with this phone number' });
-    }
-
-    hospital.beds = {
-      ...hospital.beds.toObject(),
-      total: parsedData.total || hospital.beds.total,
-      available: parsedData.available || hospital.beds.available,
-      icu_available: parsedData.icu || hospital.beds.icu_available,
-      ventilator_available: parsedData.ventilator || hospital.beds.ventilator_available,
-      emergency_open: parsedData.emergency,
-      last_updated: new Date(),
-      update_method: 'whatsapp',
-      auto_expire_at: new Date(Date.now() + 4 * 60 * 60 * 1000)
-    };
-
+    if (!hospital) return res.status(404).json({ success: false, message: 'Hospital not found' });
+    hospital.beds = { ...hospital.beds.toObject(), total: parsedData.total || hospital.beds.total, available: parsedData.available || hospital.beds.available, icu_available: parsedData.icu || hospital.beds.icu_available, ventilator_available: parsedData.ventilator || hospital.beds.ventilator_available, last_updated: new Date(), update_method: 'whatsapp', auto_expire_at: new Date(Date.now() + 4 * 60 * 60 * 1000) };
     hospital.activity_score = calculateActivityScore(hospital);
     await hospital.save();
-
-    res.json({ 
-      success: true, 
-      message: `Updated! Beds:${hospital.beds.total}, Available:${hospital.beds.available}, ICU:${hospital.beds.icu_available}` 
-    });
+    res.json({ success: true, message: 'Updated' });
   } catch (error) {
     res.status(500).json({ success: false, message: error.message });
   }
@@ -366,27 +316,13 @@ router.post('/whatsapp-update', async (req, res) => {
 
 // Download Excel template
 router.get('/template/download', authenticateToken, authorizeRoles('hospital', 'admin'), (req, res) => {
-  const template = [{
-    'Doctor Name': 'Dr. Example',
-    'Specialization': 'Cardiologist',
-    'Qualification': 'MBBS, MD (Cardiology)',
-    'Experience (Years)': '15',
-    'Consultation Fee (₹)': '1200',
-    'Languages': 'English, Hindi',
-    'Gender': 'Male',
-    'Available Days': 'Mon, Tue, Wed, Thu, Fri',
-    'Morning Slots (HH:MM-HH:MM)': '09:00-13:00',
-    'Evening Slots (HH:MM-HH:MM)': '17:00-20:00',
-    'Max Patients Per Day': '20'
-  }];
-
+  const template = [{ 'Doctor Name': 'Dr. Example', 'Specialization': 'Cardiologist', 'Qualification': 'MBBS, MD', 'Experience (Years)': '15', 'Consultation Fee (₹)': '1200', 'Languages': 'English, Hindi', 'Gender': 'Male', 'Available Days': 'Mon-Fri', 'Morning Slots': '09:00-13:00', 'Evening Slots': '17:00-20:00', 'Max Patients Per Day': '20' }];
   const wb = xlsx.utils.book_new();
   const ws = xlsx.utils.json_to_sheet(template);
   xlsx.utils.book_append_sheet(wb, ws, 'Doctors');
-  
   const buffer = xlsx.write(wb, { type: 'buffer', bookType: 'xlsx' });
   res.setHeader('Content-Type', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
-  res.setHeader('Content-Disposition', 'attachment; filename=hospital_doctors_template.xlsx');
+  res.setHeader('Content-Disposition', 'attachment; filename=doctor_template.xlsx');
   res.send(buffer);
 });
 
@@ -394,76 +330,40 @@ router.get('/template/download', authenticateToken, authorizeRoles('hospital', '
 // DYNAMIC ID ROUTES (Must be AFTER static routes)
 // ============================================
 
-// Get single hospital details
+// Get single hospital
 router.get('/:id', async (req, res) => {
   try {
-    if (['health', 'search', 'seed', 'whatsapp-update', 'template'].includes(req.params.id)) {
-      return;
-    }
-
+    if (['health', 'search', 'seed', 'whatsapp-update', 'template', 'medical-data'].includes(req.params.id)) return;
     const hospital = await Hospital.findById(req.params.id).select('-password').lean();
-    if (!hospital) {
-      return res.status(404).json({ success: false, message: 'Hospital not found' });
-    }
+    if (!hospital) return res.status(404).json({ success: false, message: 'Hospital not found' });
     res.json({ success: true, data: hospital });
   } catch (error) {
     res.status(500).json({ success: false, message: error.message });
   }
 });
 
-// Update bed status (Web portal)
+// Update bed status
 router.put('/:id/bed-status', authenticateToken, authorizeRoles('hospital', 'admin'), async (req, res) => {
   try {
-    const { beds, updateMethod } = req.body;
     const hospital = await Hospital.findById(req.params.id);
     if (!hospital) return res.status(404).json({ success: false, message: 'Hospital not found' });
-
-    hospital.beds = {
-      ...hospital.beds.toObject(),
-      ...beds,
-      last_updated: new Date(),
-      update_method: updateMethod || 'web_portal',
-      auto_expire_at: new Date(Date.now() + 4 * 60 * 60 * 1000)
-    };
-    hospital.activity_score = calculateActivityScore(hospital);
+    hospital.beds = { ...hospital.beds.toObject(), ...req.body.beds, last_updated: new Date(), update_method: req.body.updateMethod || 'web_portal', auto_expire_at: new Date(Date.now() + 4 * 60 * 60 * 1000) };
     await hospital.save();
-    res.json({ success: true, message: 'Bed status updated', data: hospital.beds });
+    res.json({ success: true, data: hospital.beds });
   } catch (error) {
     res.status(500).json({ success: false, message: error.message });
   }
 });
 
-// Upload Excel - Doctors
+// Upload doctors Excel
 router.post('/:id/upload-doctors', authenticateToken, authorizeRoles('hospital', 'admin'), upload.single('file'), async (req, res) => {
   try {
-    if (!req.file) return res.status(400).json({ success: false, message: 'Please upload a file' });
+    if (!req.file) return res.status(400).json({ success: false, message: 'No file' });
     const hospital = await Hospital.findById(req.params.id);
-    if (!hospital) return res.status(404).json({ success: false, message: 'Hospital not found' });
-
-    const workbook = xlsx.read(req.file.buffer, { type: 'buffer' });
-    const sheet = workbook.Sheets[workbook.SheetNames[0]];
-    const doctors = xlsx.utils.sheet_to_json(sheet);
-    if (doctors.length === 0) return res.status(400).json({ success: false, message: 'No doctors found' });
-
-    hospital.doctors = doctors.map(doc => ({
-      name: doc['Doctor Name'] || '',
-      specialization: doc['Specialization'] || '',
-      qualification: doc['Qualification'] || '',
-      experience: doc['Experience (Years)'] || '0',
-      consultation_fee: parseFloat(doc['Consultation Fee (₹)']) || 0,
-      languages: doc['Languages'] ? doc['Languages'].split(',').map(l => l.trim()) : [],
-      gender: doc['Gender'] || 'Male',
-      rating: 0, reviewCount: 0,
-      availability: {
-        status: 'available',
-        slots_available: parseInt(doc['Max Patients Per Day']) || 20,
-        days: doc['Available Days'] ? doc['Available Days'].split(',').map(d => d.trim()) : ['Mon','Tue','Wed','Thu','Fri','Sat'],
-        morning_slots: doc['Morning Slots (HH:MM-HH:MM)'] || '09:00-13:00',
-        evening_slots: doc['Evening Slots (HH:MM-HH:MM)'] || '17:00-20:00',
-        max_patients: parseInt(doc['Max Patients Per Day']) || 20
-      }
-    }));
-    
+    if (!hospital) return res.status(404).json({ success: false, message: 'Not found' });
+    const wb = xlsx.read(req.file.buffer, { type: 'buffer' });
+    const doctors = xlsx.utils.sheet_to_json(wb.Sheets[wb.SheetNames[0]]);
+    hospital.doctors = doctors.map(d => ({ name: d['Doctor Name'] || '', specialization: d['Specialization'] || '', qualification: d['Qualification'] || '', experience: d['Experience (Years)'] || '0', consultation_fee: parseFloat(d['Consultation Fee (₹)']) || 0, languages: d['Languages'] ? d['Languages'].split(',').map(l => l.trim()) : [], gender: d['Gender'] || 'Male', rating: 0, reviewCount: 0, availability: { status: 'available', slots_available: parseInt(d['Max Patients Per Day']) || 20, days: ['Mon','Tue','Wed','Thu','Fri','Sat'], morning_slots: d['Morning Slots'] || '09:00-13:00', evening_slots: d['Evening Slots'] || '', max_patients: parseInt(d['Max Patients Per Day']) || 20 } }));
     await hospital.save();
     res.json({ success: true, message: `${doctors.length} doctors uploaded` });
   } catch (error) {
@@ -471,30 +371,22 @@ router.post('/:id/upload-doctors', authenticateToken, authorizeRoles('hospital',
   }
 });
 
-// Upload Excel - Data
+// Upload data Excel
 router.post('/:id/upload-data', authenticateToken, authorizeRoles('hospital', 'admin'), upload.single('file'), async (req, res) => {
   try {
-    if (!req.file) return res.status(400).json({ success: false, message: 'Please upload a file' });
+    if (!req.file) return res.status(400).json({ success: false, message: 'No file' });
     const hospital = await Hospital.findById(req.params.id);
-    if (!hospital) return res.status(404).json({ success: false, message: 'Hospital not found' });
-
-    const workbook = xlsx.read(req.file.buffer, { type: 'buffer' });
-    const sheet = workbook.Sheets[workbook.SheetNames[0]];
-    const data = xlsx.utils.sheet_to_json(sheet);
-    
-    if (data.length > 0) {
-      const row = data[0];
-      if (row['Total Beds']) hospital.beds.total = parseInt(row['Total Beds']);
-      if (row['Available Beds']) hospital.beds.available = parseInt(row['Available Beds']);
-      if (row['ICU Beds']) hospital.beds.icu_available = parseInt(row['ICU Beds']);
-      if (row['OPD Fee (₹)']) hospital.pricing.consultation = parseFloat(row['OPD Fee (₹)']);
-      if (row['ICU Per Day (₹)']) hospital.pricing.icu_bed_per_day = parseFloat(row['ICU Per Day (₹)']);
-      if (row['General Ward (₹)']) hospital.pricing.general_bed_per_day = parseFloat(row['General Ward (₹)']);
-      hospital.beds.last_updated = new Date();
-      hospital.beds.update_method = 'excel_upload';
-      await hospital.save();
-    }
-    res.json({ success: true, message: 'Data updated from Excel' });
+    if (!hospital) return res.status(404).json({ success: false, message: 'Not found' });
+    const wb = xlsx.read(req.file.buffer, { type: 'buffer' });
+    const data = xlsx.utils.sheet_to_json(wb.Sheets[wb.SheetNames[0]])[0] || {};
+    if (data['Total Beds']) hospital.beds.total = parseInt(data['Total Beds']);
+    if (data['Available Beds']) hospital.beds.available = parseInt(data['Available Beds']);
+    if (data['ICU Beds']) hospital.beds.icu_available = parseInt(data['ICU Beds']);
+    if (data['OPD Fee (₹)']) hospital.pricing.consultation = parseFloat(data['OPD Fee (₹)']);
+    hospital.beds.last_updated = new Date();
+    hospital.beds.update_method = 'excel_upload';
+    await hospital.save();
+    res.json({ success: true, message: 'Updated' });
   } catch (error) {
     res.status(400).json({ success: false, message: error.message });
   }
@@ -538,21 +430,5 @@ function calculateActivityScore(hospital) {
   if (hospital.procedures_available?.length > 0) score += 5;
   return Math.max(0, Math.min(100, score));
 }
-
-// ============================================
-// MEDICAL MASTER DATA ENDPOINT
-// ============================================
-const MEDICAL_MASTER_DATA = require('../data/medicalMasterData');
-
-router.get('/medical-data', (req, res) => {
-  res.json({
-    success: true,
-    data: {
-      specialties: MEDICAL_MASTER_DATA.specialties,
-      diseases: MEDICAL_MASTER_DATA.diseases,
-      procedures: MEDICAL_MASTER_DATA.procedures
-    }
-  });
-});
 
 module.exports = router;
