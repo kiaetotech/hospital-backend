@@ -181,7 +181,8 @@ const userSchema = new mongoose.Schema({
     isAvailable: { type: Boolean, default: false },
     currentLocation: {
       type: { type: String, enum: ['Point'], default: 'Point' },
-      coordinates: { type: [Number] }             // [longitude, latitude]
+      coordinates: { type: [Number], default: [0, 0] }
+    }             // [longitude, latitude]
     },
     lastLocationUpdate: { type: Date },
     assignedVehicle: { type: String },            // vehicleId reference
@@ -292,7 +293,7 @@ const userSchema = new mongoose.Schema({
   driverAssignedVehicle: { type: String },
   driverCurrentLocation: {
     type: { type: String, enum: ['Point'], default: 'Point' },
-    coordinates: { type: [Number] }
+    coordinates: { type: [Number], default: [0, 0] }
   },
   driverLastLocationUpdate: { type: Date },
   driverIsAvailable: { type: Boolean, default: false },
