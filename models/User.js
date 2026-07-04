@@ -179,19 +179,18 @@ const userSchema = new mongoose.Schema({
     }],
     isVerified: { type: Boolean, default: false },
     isAvailable: { type: Boolean, default: false },
-    currentLocation: {
+        currentLocation: {
       type: { type: String, enum: ['Point'], default: 'Point' },
       coordinates: { type: [Number], default: [0, 0] }
-    }             // [longitude, latitude]
     },
     lastLocationUpdate: { type: Date },
-    assignedVehicle: { type: String },            // vehicleId reference
+    assignedVehicle: { type: String },
     rating: { type: Number, default: 0 },
     totalTrips: { type: Number, default: 0 },
     totalEarnings: { type: Number, default: 0 },
     emergencyTripsCompleted: { type: Number, default: 0 },
-    acceptanceRate: { type: Number, default: 100 }, // Percentage
-    averageResponseTime: { type: Number },         // Seconds
+    acceptanceRate: { type: Number, default: 100 },
+    averageResponseTime: { type: Number },
     isOnTrip: { type: Boolean, default: false },
     currentTripId: { type: String },
     joinedAt: { type: Date, default: Date.now }
