@@ -499,8 +499,8 @@ userSchema.index({ emailVerified: 1 });
 // 🚑 NEW: Ambulance indexes
 userSchema.index({ ambulanceCompanyName: 1 });
 userSchema.index({ ambulanceVerificationStatus: 1 });
-userSchema.index({ 'ambulanceDrivers.currentLocation': '2dsphere' });
-userSchema.index({ driverCurrentLocation: '2dsphere' });
+userSchema.index({ 'ambulanceDrivers.currentLocation': '2dsphere' }, { sparse: true });
+userSchema.index({ driverCurrentLocation: '2dsphere' }, { sparse: true });
 userSchema.index({ 'ambulanceDrivers.driverId': 1 });
 userSchema.index({ 'ambulanceDrivers.isAvailable': 1, 'ambulanceDrivers.isOnTrip': 1 });
 userSchema.index({ driverIsAvailable: 1, driverIsOnTrip: 1 });
