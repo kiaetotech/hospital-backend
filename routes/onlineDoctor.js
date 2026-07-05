@@ -997,4 +997,298 @@ router.get('/doctor/analytics', authenticateDoctor, async (req, res) => {
   }
 });
 
+// ============================================
+// 🆕 FEE SETTINGS ROUTES
+// ============================================
+
+// PUT /api/online-doctor/fee-settings
+// Doctor updates their own pricing
+router.put('/fee-settings', authenticateDoctor, async (req, res) => {
+  try {
+    const doctorId = req.user.id;
+    
+    const {
+      consultationFee,
+      followUpFee,
+      followUpWindowDays,
+      freeFollowUps,
+      emergencyConsultFee,
+      consultationDuration,
+      packagePrice
+    } = req.body;
+
+    // Build update object (only update provided fields)
+    const updateFields = {};
+    
+    if (consultationFee !== undefined) {
+      if (consultationFee < 0) return res.status(400).json({ success: false, message: 'Consultation fee cannot be negative' });
+      updateFields.consultationFee = consultationFee;
+    }
+    if (followUpFee !== undefined) {
+      if (followUpFee < 0) return res.status(400).json({ success: false, message: 'Follow-up fee cannot be negative' });
+      updateFields.followUpFee = followUpFee;
+    }
+    if (followUpWindowDays !== undefined) {
+      if (followUpWindowDays < 1 || followUpWindowDays > 30) return res.status(400).json({ success: false, message: 'Follow-up window must be 1-30 days' });
+      updateFields.followUpWindowDays = followUpWindowDays;
+    }
+    if (freeFollowUps !== undefined) {
+      if (freeFollowUps < 0 || freeFollowUps > 5) return res.status(400).json({ success: false, message: 'Free follow-ups must be 0-5' });
+      updateFields.freeFollowUps = freeFollowUps;
+    }
+    if (emergencyConsultFee !== undefined) {
+      if (emergencyConsultFee < 0) return res.status(400).json({ success: false, message: 'Emergency fee cannot be negative' });
+      updateFields.emergencyConsultFee = emergencyConsultFee;
+    }
+    if (consultationDuration !== undefined) {
+      if (consultationDuration < 5 || consultationDuration > 60) return res.status(400).json({ success: false, message: 'Duration must be 5-60 minutes' });
+      updateFields.consultationDuration = consultationDuration;
+    }
+    if (packagePrice !== undefined) {
+      if (packagePrice < 0) return res.status(400).json({ success: false, message: 'Package price cannot be negative' });
+      updateFields.packagePrice = packagePrice;
+    }
+
+    if (Object.keys(updateFields).length === 0) {
+      return res.status(400).json({ success: false, message: 'No fields to update' });
+    }
+
+    updateFields.updatedAt = new Date();
+
+    const doctor = await OnlineDoctor.findByIdAndUpdate(
+      doctorId,
+      { $set: updateFields },
+      { new: true, runValidators: true }
+    ).select('consultationFee followUpFee followUpWindowDays freeFollowUps emergencyConsultFee consultationDuration packagePrice commissionPercentage commissionSlab');
+
+    if (!doctor) {
+      return res.status(404).json({ success: false, message: 'Doctor not found' });
+    }
+
+    res.json({
+      success: true,
+      message: 'Fee settings updated successfully',
+      data: {
+        consultationFee: doctor.consultationFee,
+        followUpFee: doctor.followUpFee,
+        followUpWindowDays: doctor.followUpWindowDays,
+        freeFollowUps: doctor.freeFollowUps,
+        emergencyConsultFee: doctor.emergencyConsultFee,
+        consultationDuration: doctor.consultationDuration,
+        packagePrice: doctor.packagePrice,
+        commissionPercentage: doctor.commissionPercentage,
+        commissionSlab: doctor.commissionSlab
+      }
+    });
+
+  } catch (error) {
+    console.error('Error updating fee settings:', error);
+    res.status(500).json({ success: false, message: error.message });
+  }
+});
+
+// GET /api/online-doctor/fee-settings
+// Doctor views their own pricing
+router.get('/fee-settings', authenticateDoctor, async (req, res) => {
+  try {
+    const doctor = await OnlineDoctor.findById(req.user.id)
+      .select('consultationFee followUpFee followUpWindowDays freeFollowUps emergencyConsultFee consultationDuration packagePrice commissionPercentage commissionSlab');
+
+    if (!doctor) {
+      return res.status(404).json({ success: false, message: 'Doctor not found' });
+    }
+
+    res.json({
+      success: true,
+      data: {
+        consultationFee: doctor.consultationFee,
+        followUpFee: doctor.followUpFee,
+        followUpWindowDays: doctor.followUpWindowDays,
+        freeFollowUps: doctor.freeFollowUps,
+        emergencyConsultFee: doctor.emergencyConsultFee,
+        consultationDuration: doctor.consultationDuration,
+        packagePrice: doctor.packagePrice,
+        commissionPercentage: doctor.commissionPercentage,
+        commissionSlab: doctor.commissionSlab
+      }
+    });
+
+  } catch (error) {
+    console.error('Error fetching fee settings:', error);
+    res.status(500).json({ success: false, message: error.message });
+  }
+});
+
+// GET /api/online-doctor/:id/pricing
+// Public - Patient sees doctor pricing with follow-up eligibility
+router.get('/:id/pricing', async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { patientId } = req.query;
+
+    const doctor = await OnlineDoctor.findById(id)
+      .select('consultationFee followUpFee followUpWindowDays freeFollowUps emergencyConsultFee consultationDuration packagePrice consultationModes name specialization');
+
+    if (!doctor) {
+      return res.status(404).json({ success: false, message: 'Doctor not found' });
+    }
+
+    // Check follow-up eligibility if patientId provided
+    let lastConsultDate = null;
+    let freeFollowUpsUsed = 0;
+
+    if (patientId) {
+      const lastConsult = await Booking.findOne({
+        doctorId: id,
+        userId: patientId,
+        status: 'completed',
+        bookingType: 'online_consult'
+      }).sort({ createdAt: -1 });
+
+      if (lastConsult) {
+        lastConsultDate = lastConsult.createdAt;
+      }
+
+      freeFollowUpsUsed = await Booking.countDocuments({
+        doctorId: id,
+        userId: patientId,
+        consult_type: 'free_follow_up',
+        status: 'completed'
+      });
+    }
+
+    const pricing = doctor.getPricingForPatient(lastConsultDate, freeFollowUpsUsed);
+
+    // Get platform fee from commission service
+    const commissionService = require('../services/commissionService');
+    const platformFeeConsult = commissionService.calculatePlatformFee('online_consult');
+    const platformFeeFollowUp = commissionService.calculatePlatformFee('online_followup');
+    const platformFeeEmergency = commissionService.calculatePlatformFee('online_consult', { isEmergency: true });
+
+    res.json({
+      success: true,
+      data: {
+        doctorName: doctor.name,
+        specialization: doctor.specialization,
+        pricing: {
+          ...pricing,
+          platformFee: {
+            consultation: platformFeeConsult,
+            followUp: platformFeeFollowUp,
+            emergency: platformFeeEmergency
+          }
+        }
+      }
+    });
+
+  } catch (error) {
+    console.error('Error fetching doctor pricing:', error);
+    res.status(500).json({ success: false, message: error.message });
+  }
+});
+
+// ============================================
+// 🆕 AI SYMPTOM TRIAGE
+// ============================================
+
+const triageService = require('../services/triageService');
+
+// POST /api/online-doctor/triage
+// Analyze symptoms and recommend specialist
+router.post('/triage', async (req, res) => {
+  try {
+    const { symptoms } = req.body;
+
+    if (!symptoms || symptoms.trim().length < 3) {
+      return res.status(400).json({
+        success: false,
+        message: 'Please describe your symptoms in at least 3 characters'
+      });
+    }
+
+    const result = triageService.triageSymptoms(symptoms);
+
+    // If we have a recommendation, find matching doctors
+    let availableDoctors = [];
+    if (result.success && result.recommendation?.specialty) {
+      availableDoctors = await OnlineDoctor.find({
+        specialization: { $regex: result.recommendation.specialty, $options: 'i' },
+        isActive: true,
+        verificationStatus: 'verified'
+      })
+      .select('name specialization consultationFee followUpFee ratingSummary experience consultationDuration')
+      .sort({ 'ratingSummary.averageRating': -1 })
+      .limit(6)
+      .lean();
+    }
+
+    res.json({
+      success: true,
+      data: {
+        ...result,
+        availableDoctors,
+        doctorsCount: availableDoctors.length,
+        searchUrl: result.recommendation?.specialty 
+          ? `/online-doctor/search?specialty=${encodeURIComponent(result.recommendation.specialty)}`
+          : null
+      }
+    });
+
+  } catch (error) {
+    console.error('Triage error:', error);
+    res.status(500).json({ success: false, message: error.message });
+  }
+});
+
+// GET /api/online-doctor/specialties
+// Get all available specialties
+router.get('/specialties', async (req, res) => {
+  try {
+    const specialties = triageService.getAvailableSpecialties();
+    res.json({ success: true, data: specialties });
+  } catch (error) {
+    res.status(500).json({ success: false, message: error.message });
+  }
+});
+// ... all your existing routes ...
+
+// ============================================
+// 🆕 FOLLOW-UP SCHEDULER ROUTES
+// ============================================
+
+const schedulerService = require('../services/schedulerService');
+
+// POST /api/online-doctor/admin/trigger-reminders
+router.post('/admin/trigger-reminders', async (req, res) => {
+  try {
+    const result = await schedulerService.processFollowUpReminders();
+    res.json({ success: true, data: result });
+  } catch (error) {
+    res.status(500).json({ success: false, message: error.message });
+  }
+});
+
+// GET /api/online-doctor/admin/reminder-stats
+router.get('/admin/reminder-stats', async (req, res) => {
+  try {
+    const stats = await schedulerService.getReminderStats();
+    res.json({ success: true, data: stats });
+  } catch (error) {
+    res.status(500).json({ success: false, message: error.message });
+  }
+});
+
+// POST /api/online-doctor/follow-up/mark-booked/:bookingId
+router.post('/follow-up/mark-booked/:bookingId', async (req, res) => {
+  try {
+    await schedulerService.markFollowUpBooked(req.params.bookingId);
+    res.json({ success: true, message: 'Follow-up marked as booked' });
+  } catch (error) {
+    res.status(500).json({ success: false, message: error.message });
+  }
+});
+
+// ⬇️ THIS MUST BE THE LAST LINE ⬇️
+module.exports = router;
+
 module.exports = router;
