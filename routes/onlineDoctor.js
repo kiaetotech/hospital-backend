@@ -1191,7 +1191,7 @@ router.get('/:id/pricing', async (req, res) => {
 // 🆕 AI SYMPTOM TRIAGE
 // ============================================
 
-const triageService = require('../services/triageService');
+const aiService = require('../services/aiService');
 
 // POST /api/online-doctor/triage
 // Analyze symptoms and recommend specialist
@@ -1206,7 +1206,7 @@ router.post('/triage', async (req, res) => {
       });
     }
 
-    const result = triageService.triageSymptoms(symptoms);
+    const result = await aiService.triageForOnlineDoctor(symptoms);
 
     // If we have a recommendation, find matching doctors
     let availableDoctors = [];
