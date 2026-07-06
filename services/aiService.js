@@ -11,7 +11,7 @@
 // ============================================
 
 const axios = require('axios');
-const MEDICAL_MASTER_DATA = require('../data/medicalmasterdata');
+const MEDICAL_MASTER_DATA = require('../data/medicalMasterData');
 
 // ============================================
 // API CONFIGURATION
@@ -534,4 +534,4 @@ module.exports = {
   clearCache,
   getCacheStats,
   healthCheck
-};
+}; 
