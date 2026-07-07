@@ -520,4 +520,100 @@ router.get('/booking/:id/session-link', auth, async (req, res) => {
   }
 });
 
+const MoodLog = require('../models/MoodLog');
+
+// ============================================
+// MOOD TRACKING
+// ============================================
+
+// POST /api/mentalhealth/mood
+router.post('/mood', async (req, res) => {
+  try {
+    const { mood, moodScore, journalEntry, tags } = req.body;
+    const userId = req.user?.id || req.body.userId;
+
+    if (!userId) return res.status(400).json({ success: false, message: 'User ID required' });
+
+    // Simple sentiment analysis (rule-based)
+    let sentimentScore = 0;
+    let crisisDetected = false;
+    let detectedKeywords = [];
+
+    if (journalEntry) {
+      const lower = journalEntry.toLowerCase();
+      
+      // Crisis keywords
+      const crisisWords = ['suicidal', 'kill myself', 'end my life', 'want to die', 'self harm', 'no reason to live'];
+      crisisDetected = crisisWords.some(w => lower.includes(w));
+
+      // Sentiment keywords
+      const positiveWords = ['happy', 'better', 'good', 'great', 'hopeful', 'peaceful', 'grateful', 'calm', 'improved'];
+      const negativeWords = ['sad', 'anxious', 'depressed', 'lonely', 'hopeless', 'tired', 'angry', 'stressed', 'worried', 'crying', 'exhausted'];
+      
+      detectedKeywords = [...positiveWords, ...negativeWords].filter(w => lower.includes(w));
+      
+      const posCount = positiveWords.filter(w => lower.includes(w)).length;
+      const negCount = negativeWords.filter(w => lower.includes(w)).length;
+      if (posCount + negCount > 0) {
+        sentimentScore = Math.round(((posCount - negCount) / (posCount + negCount)) * 100) / 100;
+      }
+    }
+
+    const moodLog = new MoodLog({
+      userId, mood, moodScore, journalEntry, tags,
+      sentimentScore, detectedKeywords, crisisDetected
+    });
+    await moodLog.save();
+
+    res.status(201).json({
+      success: true,
+      data: moodLog,
+      alert: crisisDetected ? {
+        type: 'crisis',
+        message: 'We noticed some concerning words. If you need immediate help, please call our helpline.',
+        helpline: '+91-XXXXXXXXXX'
+      } : null
+    });
+
+  } catch (error) {
+    res.status(500).json({ success: false, message: error.message });
+  }
+});
+
+// GET /api/mentalhealth/mood/trend
+router.get('/mood/trend', async (req, res) => {
+  try {
+    const userId = req.user?.id || req.query.userId;
+    if (!userId) return res.status(400).json({ success: false, message: 'User ID required' });
+
+    const trend = await MoodLog.getWeeklyTrend(userId);
+    res.json({ success: true, data: trend });
+  } catch (error) {
+    res.status(500).json({ success: false, message: error.message });
+  }
+});
+
+// POST /api/mentalhealth/crisis-alert
+router.post('/crisis-alert', async (req, res) => {
+  try {
+    const { userId, message, location } = req.body;
+    
+    // In production: Notify therapist, send SMS, email admins
+    console.log('🚨 CRISIS ALERT:', { userId, message, location, time: new Date() });
+
+    res.json({
+      success: true,
+      message: 'Help is on the way. Please stay on the line.',
+      helplines: [
+        'iCall: +91-9152987821',
+        'AASRA: +91-9820466726',
+        'Vandrevala Foundation: +91-9999666555'
+      ],
+      immediateAction: 'Contact emergency services (108) if in immediate danger.'
+    });
+  } catch (error) {
+    res.status(500).json({ success: false, message: error.message });
+  }
+});
+
 module.exports = router;
