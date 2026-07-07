@@ -735,4 +735,142 @@ function calculateDistance(lat1, lon1, lat2, lon2) {
   return R * c;
 }
 
+// ============================================
+// 🆕 AYURVEDA PRODUCTS
+// ============================================
+
+const AyurvedaProduct = require('../models/AyurvedaProduct');
+const PanchakarmaProgress = require('../models/PanchakarmaProgress');
+
+// GET /api/ayurveda/products
+router.get('/products', async (req, res) => {
+  try {
+    const { category, prakriti, season, healthGoal, featured } = req.query;
+    const query = { isActive: true };
+    
+    if (category) query.category = category;
+    if (prakriti) query.prakritiType = { $in: [prakriti, 'All'] };
+    if (season) query.recommendedSeason = { $in: [season, 'All'] };
+    if (healthGoal) query.healthGoals = healthGoal;
+    if (featured) query.isFeatured = true;
+
+    const products = await AyurvedaProduct.find(query).sort({ createdAt: -1 });
+    res.json({ success: true, data: products });
+  } catch (error) {
+    res.status(500).json({ success: false, message: error.message });
+  }
+});
+
+// GET /api/ayurveda/products/:id
+router.get('/products/:id', async (req, res) => {
+  try {
+    const product = await AyurvedaProduct.findById(req.params.id);
+    if (!product) return res.status(404).json({ success: false, message: 'Product not found' });
+    res.json({ success: true, data: product });
+  } catch (error) {
+    res.status(500).json({ success: false, message: error.message });
+  }
+});
+
+// GET /api/ayurveda/products/prakriti/:type
+router.get('/products/prakriti/:type', async (req, res) => {
+  try {
+    const products = await AyurvedaProduct.find({
+      prakritiType: { $in: [req.params.type, 'All'] },
+      isActive: true
+    }).sort({ createdAt: -1 });
+    res.json({ success: true, data: products });
+  } catch (error) {
+    res.status(500).json({ success: false, message: error.message });
+  }
+});
+
+// ============================================
+// 🆕 PANCHAKARMA PROGRESS TRACKER
+// ============================================
+
+// GET /api/ayurveda/panchakarma-progress/:bookingId
+router.get('/panchakarma-progress/:bookingId', async (req, res) => {
+  try {
+    let progress = await PanchakarmaProgress.findOne({ bookingId: req.params.bookingId });
+    
+    if (!progress) {
+      const booking = await require('../models/Booking').findById(req.params.bookingId);
+      if (!booking) return res.status(404).json({ success: false, message: 'Booking not found' });
+      
+      progress = new PanchakarmaProgress({
+        bookingId: booking._id,
+        patientId: booking.userId,
+        packageName: booking.packageName || 'Panchakarma Treatment',
+        totalDays: booking.durationDays || 21,
+        startDate: booking.appointmentDate || new Date(),
+        status: 'not_started'
+      });
+      await progress.save();
+    }
+    
+    res.json({ success: true, data: progress });
+  } catch (error) {
+    res.status(500).json({ success: false, message: error.message });
+  }
+});
+
+// PUT /api/ayurveda/panchakarma-progress/:bookingId
+router.put('/panchakarma-progress/:bookingId', async (req, res) => {
+  try {
+    const { dailyLog, doctorNote, status } = req.body;
+    
+    const progress = await PanchakarmaProgress.findOne({ bookingId: req.params.bookingId });
+    if (!progress) return res.status(404).json({ success: false, message: 'Progress not found' });
+    
+    if (dailyLog) {
+      progress.dailyLogs.push(dailyLog);
+      progress.currentDay = dailyLog.day;
+    }
+    if (doctorNote) {
+      progress.doctorNotes.push({ note: doctorNote, date: new Date() });
+    }
+    if (status) {
+      progress.status = status;
+      if (status === 'completed') {
+        progress.completedAt = new Date();
+        progress.endDate = new Date();
+      }
+    }
+    
+    progress.updatedAt = new Date();
+    await progress.save();
+    
+    res.json({ success: true, data: progress });
+  } catch (error) {
+    res.status(500).json({ success: false, message: error.message });
+  }
+});
+
+// ============================================
+// 🆕 SEASONAL WELLNESS
+// ============================================
+
+// GET /api/ayurveda/seasonal-recommendations
+router.get('/seasonal-recommendations', async (req, res) => {
+  try {
+    const month = new Date().getMonth();
+    let season;
+    if (month >= 2 && month <= 4) season = 'Spring';
+    else if (month >= 5 && month <= 6) season = 'Summer';
+    else if (month >= 7 && month <= 8) season = 'Monsoon';
+    else if (month >= 9 && month <= 10) season = 'Autumn';
+    else season = 'Winter';
+    
+    const products = await AyurvedaProduct.find({
+      recommendedSeason: { $in: [season, 'All'] },
+      isActive: true
+    }).limit(6);
+    
+    res.json({ success: true, data: { season, products } });
+  } catch (error) {
+    res.status(500).json({ success: false, message: error.message });
+  }
+});
+
 module.exports = router;
