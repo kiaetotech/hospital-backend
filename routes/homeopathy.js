@@ -612,4 +612,96 @@ router.get('/corporate/workshops', async (req, res) => {
   }
 });
 
+// ============================================
+// 🆕 REMEDY MATCHER AI
+// ============================================
+
+const aiService = require('../services/aiService');
+
+// POST /api/homeopathy/remedy-match
+router.post('/remedy-match', async (req, res) => {
+  try {
+    const { symptoms } = req.body;
+    if (!symptoms || symptoms.trim().length < 3) {
+      return res.status(400).json({ success: false, message: 'Please describe your symptoms' });
+    }
+
+    // Use Groq AI to match symptoms to remedies
+    const prompt = `You are a homeopathic remedy finder. Based on symptoms, suggest remedies.
+
+Patient symptoms: "${symptoms}"
+
+Return ONLY valid JSON:
+{
+  "remedies": [
+    { "name": "Remedy Name", "potency": "30C or 200C", "confidence": "High/Medium", "reason": "Why this remedy matches" }
+  ],
+  "disclaimer": "IMPORTANT: This is AI-assisted suggestion only. Consult a qualified homeopathic doctor before taking any remedy. Remedies should be taken under professional supervision.",
+  "recommendedAction": "Consult a homeopathic doctor for proper case analysis"
+}
+
+Suggest 2-4 remedies maximum. Include common Indian homeopathic remedies.`;
+
+    // Try AI first
+    let result = null;
+    try {
+      if (process.env.GROQ_API_KEY) {
+        result = await aiService.callGroq(prompt);
+      }
+      if (!result && process.env.GEMINI_API_KEY) {
+        result = await aiService.callGemini(prompt);
+      }
+    } catch (err) {
+      console.log('AI failed, using rule-based');
+    }
+
+    // Fallback rule-based
+    if (!result || !result.remedies) {
+      const s = symptoms.toLowerCase();
+      const remedyMap = [
+        { keywords: ['headache', 'migraine', 'head pain'], remedies: [{ name: 'Belladonna', potency: '30C', reason: 'Throbbing headache' }, { name: 'Nux Vomica', potency: '200C', reason: 'Stress headache' }] },
+        { keywords: ['fever', 'temperature', 'chills'], remedies: [{ name: 'Aconite', potency: '30C', reason: 'Sudden fever' }, { name: 'Bryonia', potency: '200C', reason: 'Dry fever with body ache' }] },
+        { keywords: ['cough', 'cold', 'throat'], remedies: [{ name: 'Hepar Sulph', potency: '30C', reason: 'Sore throat' }, { name: 'Spongia', potency: '30C', reason: 'Dry cough' }] },
+        { keywords: ['stomach', 'acidity', 'gas'], remedies: [{ name: 'Nux Vomica', potency: '30C', reason: 'Acidity from overeating' }, { name: 'Carbo Veg', potency: '30C', reason: 'Gas and bloating' }] },
+        { keywords: ['skin', 'rash', 'itching'], remedies: [{ name: 'Apis Mellifica', potency: '30C', reason: 'Red swollen rash' }, { name: 'Sulphur', potency: '200C', reason: 'Itching worse with heat' }] },
+        { keywords: ['anxiety', 'stress', 'sleep'], remedies: [{ name: 'Ignatia', potency: '200C', reason: 'Emotional stress' }, { name: 'Coffea', potency: '30C', reason: 'Sleeplessness' }] },
+        { keywords: ['joint', 'pain', 'arthritis'], remedies: [{ name: 'Rhus Tox', potency: '30C', reason: 'Joint pain better with movement' }, { name: 'Bryonia', potency: '200C', reason: 'Joint pain worse with movement' }] },
+        { keywords: ['allergy', 'sneeze', 'dust'], remedies: [{ name: 'Allium Cepa', potency: '30C', reason: 'Runny nose' }, { name: 'Sabadilla', potency: '30C', reason: 'Sneezing fits' }] },
+      ];
+
+      let matchedRemedies = [];
+      for (const map of remedyMap) {
+        if (map.keywords.some(k => s.includes(k))) {
+          matchedRemedies.push(...map.remedies);
+          if (matchedRemedies.length >= 4) break;
+        }
+      }
+
+      result = {
+        remedies: matchedRemedies.length > 0 ? matchedRemedies : [{ name: 'Nux Vomica', potency: '30C', reason: 'General remedy - consult doctor' }, { name: 'Arnica', potency: '30C', reason: 'General wellness' }],
+        disclaimer: 'AI-assisted suggestion. Consult a qualified homeopathic doctor before taking any remedy.',
+        recommendedAction: 'Book a consultation with a homeopathic doctor for proper case analysis'
+      };
+    }
+
+    // Find related doctors
+    const doctors = await HomeopathyDoctor.find({ isActive: true, verificationStatus: 'approved' })
+      .select('name specialization consultationFee rating address.city')
+      .limit(4).lean();
+
+    res.json({
+      success: true,
+      data: {
+        symptoms,
+        ...result,
+        availableDoctors: doctors,
+        doctorsCount: doctors.length
+      }
+    });
+
+  } catch (error) {
+    res.status(500).json({ success: false, message: error.message });
+  }
+});
+
 module.exports = router;
