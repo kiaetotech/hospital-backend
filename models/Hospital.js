@@ -349,6 +349,55 @@ const hospitalSchema = new mongoose.Schema({
     default: 'manual'
   },
 
+  // ============ 🆕 CORPORATE HEALTH ============
+  servesCorporate: { 
+    type: Boolean, 
+    default: false,
+    index: true
+  },
+  
+  corporatePackages: [{
+    packageName: { type: String, required: true },
+    packageType: {
+      type: String,
+      enum: ['health_checkup', 'opd_subscription', 'wellness_camp', 'diagnostic_package', 'custom'],
+      default: 'health_checkup'
+    },
+    description: String,
+    servicesIncluded: [String],
+    pricePerEmployee: { type: Number, required: true },
+    discountedPricePerEmployee: Number,
+    minEmployees: { type: Number, default: 10 },
+    maxEmployees: Number,
+    validityDays: { type: Number, default: 365 },
+    locations: [String],
+    availableCities: [String],
+    dedicatedPOC: {
+      name: String,
+      phone: String,
+      email: String
+    },
+    slaTerms: String,
+    isActive: { type: Boolean, default: true },
+    createdAt: { type: Date, default: Date.now },
+    updatedAt: { type: Date, default: Date.now }
+  }],
+  
+  corporateEnquiries: [{
+    companyName: String,
+    contactPerson: String,
+    email: String,
+    phone: String,
+    employeeCount: Number,
+    requirements: String,
+    status: {
+      type: String,
+      enum: ['new', 'contacted', 'negotiating', 'converted', 'closed'],
+      default: 'new'
+    },
+    createdAt: { type: Date, default: Date.now }
+  }],
+
   // ============ TIMESTAMPS ============
   created_at: { type: Date, default: Date.now },
   updated_at: { type: Date, default: Date.now }
@@ -374,6 +423,11 @@ hospitalSchema.index({ schemes_accepted: 1, cashless_available: 1 });
 hospitalSchema.index({ activity_score: -1 });
 hospitalSchema.index({ diseases_treated: 1 });
 hospitalSchema.index({ procedures_available: 1 });
+
+// 🆕 Corporate indexes
+hospitalSchema.index({ servesCorporate: 1, 'address.city': 1 });
+hospitalSchema.index({ 'corporatePackages.packageType': 1 });
+hospitalSchema.index({ 'corporatePackages.isActive': 1 });
 
 // ============ MIDDLEWARE ============
 
@@ -423,6 +477,37 @@ hospitalSchema.methods.getBedStatusBadge = function() {
   if (hours < 4) return { text: 'Updated Recently', color: 'yellow', icon: '🟡' };
   if (hours < 12) return { text: 'Updated Today', color: 'orange', icon: '🟠' };
   return { text: 'May not be current', color: 'red', icon: '🔴' };
+};
+
+// 🆕 Corporate methods
+hospitalSchema.methods.toggleCorporate = function(enable = true) {
+  this.servesCorporate = enable;
+  if (!enable) {
+    this.corporatePackages.forEach(pkg => { pkg.isActive = false; });
+  }
+  return this.save();
+};
+
+hospitalSchema.methods.addCorporatePackage = function(packageData) {
+  this.corporatePackages.push(packageData);
+  if (!this.servesCorporate) {
+    this.servesCorporate = true;
+  }
+  return this.save();
+};
+
+hospitalSchema.methods.getActiveCorporatePackages = function() {
+  return this.corporatePackages.filter(pkg => pkg.isActive);
+};
+
+// ============ STATICS ============
+
+hospitalSchema.statics.findCorporateHospitals = function(city = null) {
+  const query = { servesCorporate: true, is_active: true, is_verified: true };
+  if (city) {
+    query['address.city'] = { $regex: new RegExp(city, 'i') };
+  }
+  return this.find(query).select('name address corporatePackages ratings contact');
 };
 
 // ============ HELPER ============

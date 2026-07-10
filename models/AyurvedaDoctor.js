@@ -2,16 +2,16 @@ const mongoose = require('mongoose');
 
 const ayurvedaDoctorSchema = new mongoose.Schema({
   // ============================================
-  // YOUR EXISTING FIELDS (ALL PRESERVED)
+  // BASIC INFO
   // ============================================
-  
-  // Basic Info
   name: { type: String, required: true },
   email: { type: String, unique: true, sparse: true },
   phone: { type: String, required: true, unique: true },
   password: { type: String },
   
-  // Professional Details
+  // ============================================
+  // PROFESSIONAL DETAILS
+  // ============================================
   specialization: { 
     type: String, 
     enum: [
@@ -27,7 +27,9 @@ const ayurvedaDoctorSchema = new mongoose.Schema({
   about: { type: String, maxlength: 1000 },
   languages: [{ type: String }],
   
-  // Consultation
+  // ============================================
+  // CONSULTATION
+  // ============================================
   consultationFee: { type: Number, required: true },
   consultationTypes: {
     online: { type: Boolean, default: true },
@@ -35,7 +37,9 @@ const ayurvedaDoctorSchema = new mongoose.Schema({
     homeVisit: { type: Boolean, default: false }
   },
   
-  // Location
+  // ============================================
+  // LOCATION
+  // ============================================
   address: {
     street: String,
     area: String,
@@ -48,7 +52,9 @@ const ayurvedaDoctorSchema = new mongoose.Schema({
     }
   },
   
-  // Wellness Center / Clinic Info
+  // ============================================
+  // WELLNESS CENTER / CLINIC INFO
+  // ============================================
   wellnessCenter: {
     name: { type: String, required: true },
     type: { type: String, enum: ['Own Clinic', 'Hospital Attached', 'Wellness Center', 'Franchise'], default: 'Own Clinic' },
@@ -60,7 +66,9 @@ const ayurvedaDoctorSchema = new mongoose.Schema({
     panchakarmaRooms: Number
   },
   
-  // KYC & Verification Documents
+  // ============================================
+  // KYC & VERIFICATION DOCUMENTS
+  // ============================================
   documents: {
     ayushCertificate: { type: String, required: true },
     degreeCertificate: { type: String },
@@ -70,11 +78,15 @@ const ayurvedaDoctorSchema = new mongoose.Schema({
     panCard: { type: String }
   },
   
-  // AYUSH Registration
+  // ============================================
+  // AYUSH REGISTRATION
+  // ============================================
   ayushRegNo: { type: String, required: true, unique: true },
   ayushRegYear: Number,
   
-  // Verification & Approval Status
+  // ============================================
+  // VERIFICATION & APPROVAL STATUS
+  // ============================================
   verificationStatus: {
     type: String,
     enum: ['pending', 'documents_verified', 'approved', 'rejected', 'suspended'],
@@ -85,7 +97,9 @@ const ayurvedaDoctorSchema = new mongoose.Schema({
   rejectionReason: String,
   isActive: { type: Boolean, default: false },
   
-  // Ratings & Reviews
+  // ============================================
+  // RATINGS & REVIEWS
+  // ============================================
   rating: { type: Number, default: 0 },
   totalReviews: { type: Number, default: 0 },
   reviews: [{
@@ -100,7 +114,9 @@ const ayurvedaDoctorSchema = new mongoose.Schema({
     adminApproved: { type: Boolean, default: false }
   }],
   
-  // Availability Slots
+  // ============================================
+  // AVAILABILITY SLOTS
+  // ============================================
   availability: [{
     day: { 
       type: String, 
@@ -114,7 +130,9 @@ const ayurvedaDoctorSchema = new mongoose.Schema({
     }]
   }],
   
-  // Commission & Subscription
+  // ============================================
+  // COMMISSION & SUBSCRIPTION
+  // ============================================
   subscription: {
     plan: { type: String, enum: ['free', 'basic', 'premium', 'enterprise'], default: 'free' },
     startDate: Date,
@@ -126,7 +144,9 @@ const ayurvedaDoctorSchema = new mongoose.Schema({
     }
   },
   
-  // Statistics
+  // ============================================
+  // STATISTICS
+  // ============================================
   stats: {
     totalConsultations: { type: Number, default: 0 },
     totalEarnings: { type: Number, default: 0 },
@@ -134,7 +154,9 @@ const ayurvedaDoctorSchema = new mongoose.Schema({
     repeatPatients: { type: Number, default: 0 }
   },
   
-  // Bank Details for Payouts
+  // ============================================
+  // BANK DETAILS
+  // ============================================
   bankDetails: {
     accountHolder: String,
     accountNumber: String,
@@ -143,7 +165,9 @@ const ayurvedaDoctorSchema = new mongoose.Schema({
     upiId: String
   },
   
-  // Discounts offered by doctor
+  // ============================================
+  // DISCOUNTS
+  // ============================================
   discounts: [{
     code: String,
     percentage: Number,
@@ -154,26 +178,18 @@ const ayurvedaDoctorSchema = new mongoose.Schema({
     usageLimit: Number,
     usedCount: { type: Number, default: 0 }
   }],
-  
-  // ============================================
-  // 🆕 CORPORATE WELLNESS FIELDS (ADDED)
-  // ============================================
 
-  // Whether doctor offers corporate wellness programs
+  // ============================================
+  // ✅ CORPORATE WELLNESS (ORIGINAL - KEPT)
+  // ============================================
   offersCorporateWellness: {
     type: Boolean,
-    default: false,
-    description: 'Whether this doctor offers corporate wellness programs'
+    default: false
   },
-
-  // Minimum employees for corporate wellness
   minEmployees: {
     type: Number,
-    default: 10,
-    description: 'Minimum employees required for corporate wellness program'
+    default: 10
   },
-
-  // Corporate wellness packages
   corporateWellnessPackages: [{
     name: { type: String, required: true },
     description: { type: String },
@@ -194,8 +210,6 @@ const ayurvedaDoctorSchema = new mongoose.Schema({
     isActive: { type: Boolean, default: true },
     createdAt: { type: Date, default: Date.now }
   }],
-
-  // Corporate pricing structure
   corporatePricing: {
     basePricePerEmployee: { type: Number },
     discountPerEmployee: { type: Number, default: 0 },
@@ -208,17 +222,12 @@ const ayurvedaDoctorSchema = new mongoose.Schema({
       }]
     }
   },
-
-  // Corporate discount percentage
   corporateDiscount: {
     type: Number,
     default: 15,
     min: 0,
-    max: 50,
-    description: 'Discount percentage for corporate wellness bookings'
+    max: 50
   },
-
-  // Services specifically for corporate clients
   corporateServices: [{
     name: { type: String },
     description: { type: String },
@@ -226,8 +235,6 @@ const ayurvedaDoctorSchema = new mongoose.Schema({
     duration: { type: String },
     category: { type: String }
   }],
-
-  // Corporate workshops
   corporateWorkshops: [{
     name: { type: String },
     description: { type: String },
@@ -237,8 +244,6 @@ const ayurvedaDoctorSchema = new mongoose.Schema({
     topics: [{ type: String }],
     isActive: { type: Boolean, default: true }
   }],
-
-  // Corporate-specific settings
   corporateSettings: {
     allowGroupSessions: { type: Boolean, default: true },
     dedicatedWellnessCoach: { type: Boolean, default: false },
@@ -248,36 +253,62 @@ const ayurvedaDoctorSchema = new mongoose.Schema({
     reportDeliveryTime: { type: String, default: '48 hours' },
     corporateVisitAvailable: { type: Boolean, default: false }
   },
-
-  // Corporate analytics
   corporateAnalytics: {
     totalCorporateBookings: { type: Number, default: 0 },
     totalCorporateRevenue: { type: Number, default: 0 },
-    corporateClients: [{ type: String }] // Company names
+    corporateClients: [{ type: String }]
   },
 
+  // ============================================
+  // 🆕 STANDARDIZED CORPORATE FIELDS (ADDED)
+  // ============================================
+  servesCorporate: { 
+    type: Boolean, 
+    default: false,
+    index: true
+  },
+  
+  corporateEnquiries: [{
+    companyName: String,
+    contactPerson: String,
+    email: String,
+    phone: String,
+    employeeCount: Number,
+    requirements: String,
+    interestedIn: [String],
+    status: {
+      type: String,
+      enum: ['new', 'contacted', 'negotiating', 'converted', 'closed'],
+      default: 'new'
+    },
+    createdAt: { type: Date, default: Date.now }
+  }],
+
+  // ============================================
+  // TIMESTAMPS
+  // ============================================
   createdAt: { type: Date, default: Date.now },
   updatedAt: { type: Date, default: Date.now }
 });
 
 // ============================================
-// INDEXES (EXISTING + NEW)
+// INDEXES
 // ============================================
 
-// Existing indexes
 ayurvedaDoctorSchema.index({ 'address.city': 1 });
 ayurvedaDoctorSchema.index({ specialization: 1 });
 ayurvedaDoctorSchema.index({ rating: -1 });
 ayurvedaDoctorSchema.index({ verificationStatus: 1 });
 ayurvedaDoctorSchema.index({ name: 'text', specialization: 'text', 'address.city': 'text' });
-
-// 🆕 NEW INDEXES FOR CORPORATE
 ayurvedaDoctorSchema.index({ offersCorporateWellness: 1 });
 ayurvedaDoctorSchema.index({ minEmployees: 1 });
 ayurvedaDoctorSchema.index({ 'corporateWellnessPackages.isActive': 1 });
 
+// 🆕 New indexes
+ayurvedaDoctorSchema.index({ servesCorporate: 1, 'address.city': 1 });
+
 // ============================================
-// VIRTUAL FIELDS (NEW)
+// VIRTUALS
 // ============================================
 
 ayurvedaDoctorSchema.virtual('hasCorporateWellness').get(function() {
@@ -299,25 +330,30 @@ ayurvedaDoctorSchema.virtual('isCorporateReady').get(function() {
 });
 
 // ============================================
-// METHODS (NEW)
+// MIDDLEWARE
 // ============================================
 
-/**
- * Calculate corporate wellness package price
- */
-ayurvedaDoctorSchema.methods.calculateCorporatePrice = function(
-  employeeCount,
-  packageId,
-  options = {}
-) {
-  const packageItem = this.corporateWellnessPackages.find(p => p._id.toString() === packageId);
-  if (!packageItem) {
-    throw new Error('Corporate wellness package not found');
+// Sync servesCorporate with offersCorporateWellness
+ayurvedaDoctorSchema.pre('save', function(next) {
+  if (this.isModified('offersCorporateWellness')) {
+    this.servesCorporate = this.offersCorporateWellness;
   }
+  if (this.isModified('servesCorporate') && !this.isModified('offersCorporateWellness')) {
+    this.offersCorporateWellness = this.servesCorporate;
+  }
+  next();
+});
+
+// ============================================
+// METHODS
+// ============================================
+
+ayurvedaDoctorSchema.methods.calculateCorporatePrice = function(employeeCount, packageId, options = {}) {
+  const packageItem = this.corporateWellnessPackages.find(p => p._id.toString() === packageId);
+  if (!packageItem) throw new Error('Corporate wellness package not found');
 
   let pricePerEmployee = packageItem.pricePerEmployee || this.corporatePricing?.basePricePerEmployee || 1000;
 
-  // Apply bulk discount
   if (this.corporatePricing?.bulkDiscount?.enabled) {
     const tiers = this.corporatePricing.bulkDiscount.tiers || [];
     let applicableDiscount = 0;
@@ -332,7 +368,6 @@ ayurvedaDoctorSchema.methods.calculateCorporatePrice = function(
     }
   }
 
-  // Apply global corporate discount
   if (this.corporateDiscount) {
     pricePerEmployee = pricePerEmployee * (1 - this.corporateDiscount / 100);
   }
@@ -350,28 +385,16 @@ ayurvedaDoctorSchema.methods.calculateCorporatePrice = function(
   };
 };
 
-/**
- * Get all active corporate wellness packages
- */
 ayurvedaDoctorSchema.methods.getActiveCorporatePackages = function() {
   return this.corporateWellnessPackages?.filter(p => p.isActive !== false) || [];
 };
 
-/**
- * Get active corporate workshops
- */
 ayurvedaDoctorSchema.methods.getActiveCorporateWorkshops = function() {
   return this.corporateWorkshops?.filter(w => w.isActive !== false) || [];
 };
 
-/**
- * Get corporate summary
- */
 ayurvedaDoctorSchema.methods.getCorporateSummary = function() {
-  if (!this.offersCorporateWellness) {
-    return null;
-  }
-
+  if (!this.offersCorporateWellness) return null;
   return {
     doctorId: this._id,
     name: this.name,
@@ -386,13 +409,21 @@ ayurvedaDoctorSchema.methods.getCorporateSummary = function() {
   };
 };
 
+// 🆕 Toggle corporate (syncs both flags)
+ayurvedaDoctorSchema.methods.toggleCorporate = function(enable = true) {
+  this.servesCorporate = enable;
+  this.offersCorporateWellness = enable;
+  if (!enable) {
+    this.corporateWellnessPackages.forEach(pkg => { pkg.isActive = false; });
+    this.corporateWorkshops.forEach(w => { w.isActive = false; });
+  }
+  return this.save();
+};
+
 // ============================================
-// STATIC METHODS (NEW)
+// STATIC METHODS
 // ============================================
 
-/**
- * Find all doctors offering corporate wellness
- */
 ayurvedaDoctorSchema.statics.findCorporateDoctors = function(filters = {}) {
   const query = {
     offersCorporateWellness: true,
@@ -418,9 +449,6 @@ ayurvedaDoctorSchema.statics.findCorporateDoctors = function(filters = {}) {
     .select('name rating address city specialization corporateWellnessPackages corporateDiscount');
 };
 
-/**
- * Get corporate doctor stats
- */
 ayurvedaDoctorSchema.statics.getCorporateStats = async function() {
   const total = await this.countDocuments({ offersCorporateWellness: true });
   const active = await this.countDocuments({

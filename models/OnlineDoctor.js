@@ -29,7 +29,7 @@ const onlineDoctorSchema = new mongoose.Schema({
   registrationYear: Number,
   
   // ============================================
-  // 🆕 FEE SETTINGS (Doctor Controlled)
+  // FEE SETTINGS (Doctor Controlled)
   // ============================================
   consultationFee: { 
     type: Number, 
@@ -67,7 +67,7 @@ const onlineDoctorSchema = new mongoose.Schema({
   },
   packagePrice: {
     type: Number,
-    default: 0,  // 0 = no package offered
+    default: 0,
     min: 0
   },
   
@@ -96,7 +96,6 @@ const onlineDoctorSchema = new mongoose.Schema({
     }]
   }],
   
-  // Blocked dates (vacation, holidays)
   blockedDates: [{
     date: Date,
     reason: String
@@ -198,6 +197,57 @@ const onlineDoctorSchema = new mongoose.Schema({
   // ============================================
   otp: String,
   otpExpires: Date,
+
+  // ============================================
+  // 🆕 CORPORATE HEALTH
+  // ============================================
+  servesCorporate: { 
+    type: Boolean, 
+    default: false,
+    index: true
+  },
+  
+  corporatePackages: [{
+    packageName: { type: String, required: true },
+    packageType: {
+      type: String,
+      enum: ['opd_subscription', 'teleconsult_package', 'wellness_program', 'specialist_panel', 'custom'],
+      default: 'teleconsult_package'
+    },
+    description: String,
+    servicesIncluded: [String],
+    pricePerEmployee: { type: Number, required: true },
+    discountedPricePerEmployee: Number,
+    minEmployees: { type: Number, default: 10 },
+    maxEmployees: Number,
+    validityDays: { type: Number, default: 365 },
+    consultationLimitPerEmployee: { type: Number, default: 12 },
+    availableCities: [String],
+    dedicatedPOC: {
+      name: String,
+      phone: String,
+      email: String
+    },
+    slaTerms: String,
+    isActive: { type: Boolean, default: true },
+    createdAt: { type: Date, default: Date.now },
+    updatedAt: { type: Date, default: Date.now }
+  }],
+  
+  corporateEnquiries: [{
+    companyName: String,
+    contactPerson: String,
+    email: String,
+    phone: String,
+    employeeCount: Number,
+    requirements: String,
+    status: {
+      type: String,
+      enum: ['new', 'contacted', 'negotiating', 'converted', 'closed'],
+      default: 'new'
+    },
+    createdAt: { type: Date, default: Date.now }
+  }],
   
   // ============================================
   // TIMESTAMPS
@@ -218,6 +268,10 @@ onlineDoctorSchema.index({ 'ratingSummary.averageRating': -1 });
 onlineDoctorSchema.index({ consultationFee: 1 });
 onlineDoctorSchema.index({ followUpFee: 1 });
 onlineDoctorSchema.index({ name: 'text', specialization: 'text' });
+
+// 🆕 Corporate indexes
+onlineDoctorSchema.index({ servesCorporate: 1, 'corporatePackages.packageType': 1 });
+onlineDoctorSchema.index({ 'corporatePackages.isActive': 1 });
 
 // ============================================
 // VIRTUALS
@@ -245,7 +299,6 @@ onlineDoctorSchema.virtual('packageSavings').get(function() {
 // METHODS
 // ============================================
 
-// Check if doctor is available on a specific day
 onlineDoctorSchema.methods.isAvailableOn = function(dayName) {
   const daySchedule = this.availability?.find(a => a.day === dayName);
   if (!daySchedule || !daySchedule.isAvailable) return false;
@@ -253,26 +306,22 @@ onlineDoctorSchema.methods.isAvailableOn = function(dayName) {
   return true;
 };
 
-// Get available slots for a day
 onlineDoctorSchema.methods.getAvailableSlots = function(dayName) {
   const daySchedule = this.availability?.find(a => a.day === dayName);
   if (!daySchedule) return [];
   return daySchedule.slots.filter(s => s.currentBookings < s.maxBookings);
 };
 
-// Check if patient is eligible for follow-up rate
 onlineDoctorSchema.methods.isFollowUpEligible = function(lastConsultDate) {
   if (!lastConsultDate) return false;
   const daysSinceConsult = Math.floor((Date.now() - new Date(lastConsultDate).getTime()) / (1000 * 60 * 60 * 24));
   return daysSinceConsult <= this.followUpWindowDays;
 };
 
-// Check if patient has free follow-ups remaining
 onlineDoctorSchema.methods.hasFreeFollowUps = function(patientFreeFollowUpsUsed = 0) {
   return patientFreeFollowUpsUsed < this.freeFollowUps;
 };
 
-// Get pricing for patient
 onlineDoctorSchema.methods.getPricingForPatient = function(lastConsultDate = null, freeFollowUpsUsed = 0) {
   const pricing = {
     consultation: {
@@ -291,7 +340,6 @@ onlineDoctorSchema.methods.getPricingForPatient = function(lastConsultDate = nul
     package: null
   };
 
-  // Check follow-up eligibility
   if (this.isFollowUpEligible(lastConsultDate)) {
     if (this.hasFreeFollowUps(freeFollowUpsUsed)) {
       pricing.followUp = {
@@ -314,7 +362,6 @@ onlineDoctorSchema.methods.getPricingForPatient = function(lastConsultDate = nul
     }
   }
 
-  // Package pricing
   if (this.packagePrice > 0) {
     pricing.package = {
       type: 'package_consult',
@@ -328,7 +375,6 @@ onlineDoctorSchema.methods.getPricingForPatient = function(lastConsultDate = nul
   return pricing;
 };
 
-// Update commission slab based on performance
 onlineDoctorSchema.methods.updateCommissionSlab = function() {
   const consults = this.stats?.completedConsultations || 0;
   const rating = this.ratingSummary?.averageRating || 0;
@@ -353,7 +399,6 @@ onlineDoctorSchema.methods.updateCommissionSlab = function() {
   return this.commissionPercentage;
 };
 
-// Get public profile (safe data)
 onlineDoctorSchema.methods.getPublicProfile = function() {
   return {
     id: this._id,
@@ -379,6 +424,33 @@ onlineDoctorSchema.methods.getPublicProfile = function() {
     availability: this.availability,
     hospitalAffiliation: this.hospitalAffiliation
   };
+};
+
+// 🆕 Corporate methods
+onlineDoctorSchema.methods.toggleCorporate = function(enable = true) {
+  this.servesCorporate = enable;
+  if (!enable) {
+    this.corporatePackages.forEach(pkg => { pkg.isActive = false; });
+  }
+  return this.save();
+};
+
+onlineDoctorSchema.methods.addCorporatePackage = function(packageData) {
+  this.corporatePackages.push(packageData);
+  if (!this.servesCorporate) {
+    this.servesCorporate = true;
+  }
+  return this.save();
+};
+
+onlineDoctorSchema.methods.getActiveCorporatePackages = function() {
+  return this.corporatePackages.filter(pkg => pkg.isActive);
+};
+
+// 🆕 Statics
+onlineDoctorSchema.statics.findCorporateDoctors = function(city = null) {
+  const query = { servesCorporate: true, isActive: true, verificationStatus: 'verified' };
+  return this.find(query).select('name specialization consultationFee corporatePackages ratingSummary profilePhoto');
 };
 
 module.exports = mongoose.model('OnlineDoctor', onlineDoctorSchema);

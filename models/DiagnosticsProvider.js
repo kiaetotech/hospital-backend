@@ -2,9 +2,8 @@ const mongoose = require('mongoose');
 
 const diagnosticsProviderSchema = new mongoose.Schema({
   // ============================================
-  // YOUR EXISTING FIELDS (ALL PRESERVED)
+  // BASIC INFO
   // ============================================
-  
   provider_id: { type: Number, unique: true },
   provider_name: { type: String, required: true },
   provider_type: { type: String, enum: ['Lab', 'Hospital', 'Both'], default: 'Lab' },
@@ -18,6 +17,10 @@ const diagnosticsProviderSchema = new mongoose.Schema({
   },
   phone: String,
   email: String,
+  
+  // ============================================
+  // RATINGS & ACCREDITATION
+  // ============================================
   rating: { type: Number, default: 0 },
   total_reviews: { type: Number, default: 0 },
   is_nabl_accredited: { type: Boolean, default: false },
@@ -25,30 +28,25 @@ const diagnosticsProviderSchema = new mongoose.Schema({
   is_home_collection_available: { type: Boolean, default: false },
   logo_url: String,
   popular_tests: [String],
+  
+  // ============================================
+  // STATUS
+  // ============================================
   is_active: { type: Boolean, default: true },
   partner_status: { type: String, enum: ['Pending', 'Approved', 'Suspended'], default: 'Pending' },
   tags: [String],
-  createdAt: { type: Date, default: Date.now },
 
   // ============================================
-  // 🆕 CORPORATE CHECKUP FIELDS (ADDED)
+  // ✅ CORPORATE CHECKUP (ORIGINAL - KEPT)
   // ============================================
-
-  // Whether lab offers corporate health checkup packages
   hasCorporatePackages: {
     type: Boolean,
-    default: false,
-    description: 'Whether this lab offers corporate health checkup packages'
+    default: false
   },
-
-  // Minimum employees required for corporate checkup
   minEmployees: {
     type: Number,
-    default: 10,
-    description: 'Minimum employees required for corporate checkup booking'
+    default: 10
   },
-
-  // Corporate-specific health checkup packages
   corporatePackages: [{
     name: { type: String, required: true },
     description: { type: String },
@@ -67,8 +65,6 @@ const diagnosticsProviderSchema = new mongoose.Schema({
     isActive: { type: Boolean, default: true },
     createdAt: { type: Date, default: Date.now }
   }],
-
-  // Corporate pricing structure
   corporatePricing: {
     basePricePerEmployee: { type: Number },
     discountPerEmployee: { type: Number, default: 0 },
@@ -81,32 +77,22 @@ const diagnosticsProviderSchema = new mongoose.Schema({
       }]
     }
   },
-
-  // Corporate discount percentage (applies to all corporate bookings)
   corporateDiscount: {
     type: Number,
     default: 15,
     min: 0,
-    max: 50,
-    description: 'Discount percentage for corporate bookings'
+    max: 50
   },
-
-  // Whether home collection is available for corporate
   homeCollectionCorporate: {
     type: Boolean,
-    default: false,
-    description: 'Whether home collection is available for corporate clients'
+    default: false
   },
-
-  // Services specifically for corporate clients
   corporateServices: [{
     name: { type: String },
     description: { type: String },
     price: { type: Number },
     duration: { type: String }
   }],
-
-  // Corporate-specific settings
   corporateSettings: {
     allowCustomPackages: { type: Boolean, default: false },
     reportDeliveryTime: { type: String, default: '24-48 hours' },
@@ -115,37 +101,63 @@ const diagnosticsProviderSchema = new mongoose.Schema({
     coordinatorPhone: { type: String },
     coordinatorEmail: { type: String }
   },
-
-  // Corporate documents
   corporateDocuments: [{
     name: { type: String },
     url: { type: String },
     type: { type: String, enum: ['brochure', 'corporate_policy', 'terms'] },
     uploadedAt: { type: Date, default: Date.now }
   }],
-
-  // Corporate analytics
   corporateAnalytics: {
     totalCorporateBookings: { type: Number, default: 0 },
     totalCorporateRevenue: { type: Number, default: 0 },
-    corporateClients: [{ type: String }] // Company names
-  }
+    corporateClients: [{ type: String }]
+  },
+
+  // ============================================
+  // 🆕 STANDARDIZED CORPORATE FIELDS (ADDED)
+  // ============================================
+  servesCorporate: { 
+    type: Boolean, 
+    default: false,
+    index: true
+  },
+  
+  corporateEnquiries: [{
+    companyName: String,
+    contactPerson: String,
+    email: String,
+    phone: String,
+    employeeCount: Number,
+    requirements: String,
+    interestedIn: [String],
+    status: {
+      type: String,
+      enum: ['new', 'contacted', 'negotiating', 'converted', 'closed'],
+      default: 'new'
+    },
+    createdAt: { type: Date, default: Date.now }
+  }],
+
+  // ============================================
+  // TIMESTAMPS
+  // ============================================
+  createdAt: { type: Date, default: Date.now }
 });
 
 // ============================================
-// INDEXES (EXISTING + NEW)
+// INDEXES
 // ============================================
 
-// Existing indexes
 diagnosticsProviderSchema.index({ location: '2dsphere' });
-
-// 🆕 NEW INDEXES FOR CORPORATE
 diagnosticsProviderSchema.index({ hasCorporatePackages: 1 });
 diagnosticsProviderSchema.index({ minEmployees: 1 });
 diagnosticsProviderSchema.index({ 'corporatePackages.isActive': 1 });
 
+// 🆕 New indexes
+diagnosticsProviderSchema.index({ servesCorporate: 1, city: 1 });
+
 // ============================================
-// VIRTUAL FIELDS (NEW)
+// VIRTUALS
 // ============================================
 
 diagnosticsProviderSchema.virtual('hasCorporateCheckups').get(function() {
@@ -165,25 +177,30 @@ diagnosticsProviderSchema.virtual('isCorporateReady').get(function() {
 });
 
 // ============================================
-// METHODS (NEW)
+// MIDDLEWARE
 // ============================================
 
-/**
- * Calculate corporate package price based on employee count
- */
-diagnosticsProviderSchema.methods.calculateCorporatePrice = function(
-  employeeCount,
-  packageId,
-  options = {}
-) {
-  const packageItem = this.corporatePackages.find(p => p._id.toString() === packageId);
-  if (!packageItem) {
-    throw new Error('Corporate package not found');
+// Sync servesCorporate with hasCorporatePackages
+diagnosticsProviderSchema.pre('save', function(next) {
+  if (this.isModified('hasCorporatePackages')) {
+    this.servesCorporate = this.hasCorporatePackages;
   }
+  if (this.isModified('servesCorporate') && !this.isModified('hasCorporatePackages')) {
+    this.hasCorporatePackages = this.servesCorporate;
+  }
+  next();
+});
+
+// ============================================
+// METHODS
+// ============================================
+
+diagnosticsProviderSchema.methods.calculateCorporatePrice = function(employeeCount, packageId, options = {}) {
+  const packageItem = this.corporatePackages.find(p => p._id.toString() === packageId);
+  if (!packageItem) throw new Error('Corporate package not found');
 
   let pricePerEmployee = packageItem.pricePerEmployee || this.corporatePricing?.basePricePerEmployee || 500;
 
-  // Apply bulk discount
   if (this.corporatePricing?.bulkDiscount?.enabled) {
     const tiers = this.corporatePricing.bulkDiscount.tiers || [];
     let applicableDiscount = 0;
@@ -198,7 +215,6 @@ diagnosticsProviderSchema.methods.calculateCorporatePrice = function(
     }
   }
 
-  // Apply global corporate discount
   if (this.corporateDiscount) {
     pricePerEmployee = pricePerEmployee * (1 - this.corporateDiscount / 100);
   }
@@ -215,28 +231,16 @@ diagnosticsProviderSchema.methods.calculateCorporatePrice = function(
   };
 };
 
-/**
- * Get all active corporate packages
- */
 diagnosticsProviderSchema.methods.getActiveCorporatePackages = function() {
   return this.corporatePackages?.filter(p => p.isActive !== false) || [];
 };
 
-/**
- * Get corporate package by ID
- */
 diagnosticsProviderSchema.methods.getCorporatePackageById = function(packageId) {
   return this.corporatePackages?.find(p => p._id.toString() === packageId) || null;
 };
 
-/**
- * Get corporate summary
- */
 diagnosticsProviderSchema.methods.getCorporateSummary = function() {
-  if (!this.hasCorporatePackages) {
-    return null;
-  }
-
+  if (!this.hasCorporatePackages) return null;
   return {
     providerId: this._id,
     providerName: this.provider_name,
@@ -251,13 +255,20 @@ diagnosticsProviderSchema.methods.getCorporateSummary = function() {
   };
 };
 
+// 🆕 Toggle corporate (syncs both flags)
+diagnosticsProviderSchema.methods.toggleCorporate = function(enable = true) {
+  this.servesCorporate = enable;
+  this.hasCorporatePackages = enable;
+  if (!enable) {
+    this.corporatePackages.forEach(pkg => { pkg.isActive = false; });
+  }
+  return this.save();
+};
+
 // ============================================
-// STATIC METHODS (NEW)
+// STATIC METHODS
 // ============================================
 
-/**
- * Find all providers offering corporate checkups
- */
 diagnosticsProviderSchema.statics.findCorporateProviders = function(filters = {}) {
   const query = {
     hasCorporatePackages: true,
@@ -286,9 +297,6 @@ diagnosticsProviderSchema.statics.findCorporateProviders = function(filters = {}
     .select('provider_name city rating corporatePackages corporateDiscount homeCollectionCorporate');
 };
 
-/**
- * Get corporate provider stats
- */
 diagnosticsProviderSchema.statics.getCorporateStats = async function() {
   const total = await this.countDocuments({ hasCorporatePackages: true });
   const active = await this.countDocuments({

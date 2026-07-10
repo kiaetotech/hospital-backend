@@ -2,14 +2,16 @@ const mongoose = require('mongoose');
 
 const homeopathyDoctorSchema = new mongoose.Schema({
   // ============================================
-  // YOUR EXISTING FIELDS (ALL PRESERVED)
+  // BASIC INFO
   // ============================================
-  
   name: { type: String, required: true },
   phone: { type: String, required: true, unique: true },
   email: { type: String },
   password: { type: String },
   
+  // ============================================
+  // PROFESSIONAL DETAILS
+  // ============================================
   specialization: { 
     type: String, 
     enum: [
@@ -34,6 +36,9 @@ const homeopathyDoctorSchema = new mongoose.Schema({
   languages: [String],
   consultationFee: { type: Number, required: true },
   
+  // ============================================
+  // LOCATION
+  // ============================================
   address: {
     street: String, 
     area: String,
@@ -45,11 +50,17 @@ const homeopathyDoctorSchema = new mongoose.Schema({
   
   clinicName: { type: String },
   
+  // ============================================
+  // CONSULTATION TYPES
+  // ============================================
   consultationTypes: { 
     online: { type: Boolean, default: true }, 
     clinic: { type: Boolean, default: true } 
   },
   
+  // ============================================
+  // RATINGS & REVIEWS
+  // ============================================
   rating: { type: Number, default: 0 },
   totalReviews: { type: Number, default: 0 },
   reviews: [{ 
@@ -60,6 +71,9 @@ const homeopathyDoctorSchema = new mongoose.Schema({
     createdAt: { type: Date, default: Date.now } 
   }],
   
+  // ============================================
+  // VERIFICATION
+  // ============================================
   verificationStatus: { 
     type: String, 
     enum: ['pending', 'approved', 'rejected'], 
@@ -70,6 +84,9 @@ const homeopathyDoctorSchema = new mongoose.Schema({
   verifiedAt: Date, 
   rejectionReason: String,
   
+  // ============================================
+  // DOCUMENTS
+  // ============================================
   documents: { 
     degreeCertificate: String, 
     registrationCertificate: String, 
@@ -77,16 +94,25 @@ const homeopathyDoctorSchema = new mongoose.Schema({
     photo: String 
   },
   
+  // ============================================
+  // AVAILABILITY
+  // ============================================
   availability: [{ 
     day: String, 
     slots: [{ startTime: String, endTime: String }] 
   }],
   
+  // ============================================
+  // STATISTICS
+  // ============================================
   stats: { 
     totalConsultations: { type: Number, default: 0 }, 
     totalEarnings: { type: Number, default: 0 } 
   },
   
+  // ============================================
+  // BANK DETAILS
+  // ============================================
   bankDetails: { 
     accountHolder: String, 
     accountNumber: String, 
@@ -96,24 +122,16 @@ const homeopathyDoctorSchema = new mongoose.Schema({
   },
 
   // ============================================
-  // 🆕 CORPORATE WELLNESS FIELDS (ADDED)
+  // ✅ CORPORATE WELLNESS (ORIGINAL - KEPT)
   // ============================================
-
-  // Whether doctor offers corporate wellness programs
   offersCorporateWellness: {
     type: Boolean,
-    default: false,
-    description: 'Whether this doctor offers corporate wellness programs'
+    default: false
   },
-
-  // Minimum employees for corporate wellness
   minEmployees: {
     type: Number,
-    default: 10,
-    description: 'Minimum employees required for corporate wellness program'
+    default: 10
   },
-
-  // Corporate wellness packages
   corporateWellnessPackages: [{
     name: { type: String, required: true },
     description: { type: String },
@@ -134,8 +152,6 @@ const homeopathyDoctorSchema = new mongoose.Schema({
     isActive: { type: Boolean, default: true },
     createdAt: { type: Date, default: Date.now }
   }],
-
-  // Corporate pricing structure
   corporatePricing: {
     basePricePerEmployee: { type: Number },
     discountPerEmployee: { type: Number, default: 0 },
@@ -148,17 +164,12 @@ const homeopathyDoctorSchema = new mongoose.Schema({
       }]
     }
   },
-
-  // Corporate discount percentage
   corporateDiscount: {
     type: Number,
     default: 15,
     min: 0,
-    max: 50,
-    description: 'Discount percentage for corporate wellness bookings'
+    max: 50
   },
-
-  // Services specifically for corporate clients
   corporateServices: [{
     name: { type: String },
     description: { type: String },
@@ -166,8 +177,6 @@ const homeopathyDoctorSchema = new mongoose.Schema({
     duration: { type: String },
     category: { type: String }
   }],
-
-  // Corporate workshops
   corporateWorkshops: [{
     name: { type: String },
     description: { type: String },
@@ -177,8 +186,6 @@ const homeopathyDoctorSchema = new mongoose.Schema({
     topics: [{ type: String }],
     isActive: { type: Boolean, default: true }
   }],
-
-  // Corporate-specific settings
   corporateSettings: {
     allowGroupSessions: { type: Boolean, default: true },
     dedicatedWellnessCoach: { type: Boolean, default: false },
@@ -188,33 +195,56 @@ const homeopathyDoctorSchema = new mongoose.Schema({
     reportDeliveryTime: { type: String, default: '48 hours' },
     corporateVisitAvailable: { type: Boolean, default: false }
   },
-
-  // Corporate analytics
   corporateAnalytics: {
     totalCorporateBookings: { type: Number, default: 0 },
     totalCorporateRevenue: { type: Number, default: 0 },
-    corporateClients: [{ type: String }] // Company names
+    corporateClients: [{ type: String }]
   },
+
+  // ============================================
+  // 🆕 STANDARDIZED CORPORATE FIELDS (ADDED)
+  // ============================================
+  servesCorporate: { 
+    type: Boolean, 
+    default: false,
+    index: true
+  },
+  
+  corporateEnquiries: [{
+    companyName: String,
+    contactPerson: String,
+    email: String,
+    phone: String,
+    employeeCount: Number,
+    requirements: String,
+    interestedIn: [String],
+    status: {
+      type: String,
+      enum: ['new', 'contacted', 'negotiating', 'converted', 'closed'],
+      default: 'new'
+    },
+    createdAt: { type: Date, default: Date.now }
+  }],
 
   createdAt: { type: Date, default: Date.now }
 });
 
 // ============================================
-// INDEXES (EXISTING + NEW)
+// INDEXES
 // ============================================
 
-// Existing indexes (implicit via unique fields)
 homeopathyDoctorSchema.index({ phone: 1 });
 homeopathyDoctorSchema.index({ registrationNumber: 1 });
-
-// 🆕 NEW INDEXES FOR CORPORATE
 homeopathyDoctorSchema.index({ offersCorporateWellness: 1 });
 homeopathyDoctorSchema.index({ minEmployees: 1 });
 homeopathyDoctorSchema.index({ specialization: 1 });
 homeopathyDoctorSchema.index({ 'corporateWellnessPackages.isActive': 1 });
 
+// 🆕 New indexes
+homeopathyDoctorSchema.index({ servesCorporate: 1, 'address.city': 1 });
+
 // ============================================
-// VIRTUAL FIELDS (NEW)
+// VIRTUALS
 // ============================================
 
 homeopathyDoctorSchema.virtual('hasCorporateWellness').get(function() {
@@ -236,25 +266,30 @@ homeopathyDoctorSchema.virtual('isCorporateReady').get(function() {
 });
 
 // ============================================
-// METHODS (NEW)
+// MIDDLEWARE
 // ============================================
 
-/**
- * Calculate corporate wellness package price
- */
-homeopathyDoctorSchema.methods.calculateCorporatePrice = function(
-  employeeCount,
-  packageId,
-  options = {}
-) {
-  const packageItem = this.corporateWellnessPackages.find(p => p._id.toString() === packageId);
-  if (!packageItem) {
-    throw new Error('Corporate wellness package not found');
+// Sync servesCorporate with offersCorporateWellness
+homeopathyDoctorSchema.pre('save', function(next) {
+  if (this.isModified('offersCorporateWellness')) {
+    this.servesCorporate = this.offersCorporateWellness;
   }
+  if (this.isModified('servesCorporate') && !this.isModified('offersCorporateWellness')) {
+    this.offersCorporateWellness = this.servesCorporate;
+  }
+  next();
+});
+
+// ============================================
+// METHODS
+// ============================================
+
+homeopathyDoctorSchema.methods.calculateCorporatePrice = function(employeeCount, packageId, options = {}) {
+  const packageItem = this.corporateWellnessPackages.find(p => p._id.toString() === packageId);
+  if (!packageItem) throw new Error('Corporate wellness package not found');
 
   let pricePerEmployee = packageItem.pricePerEmployee || this.corporatePricing?.basePricePerEmployee || 1000;
 
-  // Apply bulk discount
   if (this.corporatePricing?.bulkDiscount?.enabled) {
     const tiers = this.corporatePricing.bulkDiscount.tiers || [];
     let applicableDiscount = 0;
@@ -269,7 +304,6 @@ homeopathyDoctorSchema.methods.calculateCorporatePrice = function(
     }
   }
 
-  // Apply global corporate discount
   if (this.corporateDiscount) {
     pricePerEmployee = pricePerEmployee * (1 - this.corporateDiscount / 100);
   }
@@ -287,28 +321,16 @@ homeopathyDoctorSchema.methods.calculateCorporatePrice = function(
   };
 };
 
-/**
- * Get all active corporate wellness packages
- */
 homeopathyDoctorSchema.methods.getActiveCorporatePackages = function() {
   return this.corporateWellnessPackages?.filter(p => p.isActive !== false) || [];
 };
 
-/**
- * Get active corporate workshops
- */
 homeopathyDoctorSchema.methods.getActiveCorporateWorkshops = function() {
   return this.corporateWorkshops?.filter(w => w.isActive !== false) || [];
 };
 
-/**
- * Get corporate summary
- */
 homeopathyDoctorSchema.methods.getCorporateSummary = function() {
-  if (!this.offersCorporateWellness) {
-    return null;
-  }
-
+  if (!this.offersCorporateWellness) return null;
   return {
     doctorId: this._id,
     name: this.name,
@@ -323,13 +345,21 @@ homeopathyDoctorSchema.methods.getCorporateSummary = function() {
   };
 };
 
+// 🆕 Toggle corporate (syncs both flags)
+homeopathyDoctorSchema.methods.toggleCorporate = function(enable = true) {
+  this.servesCorporate = enable;
+  this.offersCorporateWellness = enable;
+  if (!enable) {
+    this.corporateWellnessPackages.forEach(pkg => { pkg.isActive = false; });
+    this.corporateWorkshops.forEach(w => { w.isActive = false; });
+  }
+  return this.save();
+};
+
 // ============================================
-// STATIC METHODS (NEW)
+// STATIC METHODS
 // ============================================
 
-/**
- * Find all doctors offering corporate wellness
- */
 homeopathyDoctorSchema.statics.findCorporateDoctors = function(filters = {}) {
   const query = {
     offersCorporateWellness: true,
@@ -355,9 +385,6 @@ homeopathyDoctorSchema.statics.findCorporateDoctors = function(filters = {}) {
     .select('name rating address city specialization corporateWellnessPackages corporateDiscount');
 };
 
-/**
- * Get corporate doctor stats
- */
 homeopathyDoctorSchema.statics.getCorporateStats = async function() {
   const total = await this.countDocuments({ offersCorporateWellness: true });
   const active = await this.countDocuments({

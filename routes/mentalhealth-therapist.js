@@ -385,4 +385,189 @@ router.put('/admin/therapists/:id/reset-password', authenticateToken, async (req
   }
 });
 
+// ============================================
+// 🆕 CORPORATE HEALTH ROUTES
+// ============================================
+
+// Toggle corporate serving status
+router.put('/corporate/toggle', authenticateToken, async (req, res) => {
+  try {
+    const therapist = await MentalHealthTherapist.findById(req.user.id);
+    if (!therapist) {
+      return res.status(404).json({ success: false, message: 'Therapist not found' });
+    }
+
+    const enable = req.body.enable !== false;
+    await therapist.toggleCorporate(enable);
+
+    res.json({
+      success: true,
+      message: `Corporate ${enable ? 'enabled' : 'disabled'} successfully`,
+      data: { servesCorporate: therapist.servesCorporate }
+    });
+  } catch (error) {
+    res.status(500).json({ success: false, message: error.message });
+  }
+});
+
+// Get corporate packages
+router.get('/corporate/packages', authenticateToken, async (req, res) => {
+  try {
+    const therapist = await MentalHealthTherapist.findById(req.user.id).select('servesCorporate corporatePackages');
+    if (!therapist) {
+      return res.status(404).json({ success: false, message: 'Therapist not found' });
+    }
+
+    res.json({
+      success: true,
+      data: {
+        servesCorporate: therapist.servesCorporate,
+        packages: therapist.corporatePackages || []
+      }
+    });
+  } catch (error) {
+    res.status(500).json({ success: false, message: error.message });
+  }
+});
+
+// Create corporate package
+router.post('/corporate/packages', authenticateToken, async (req, res) => {
+  try {
+    const therapist = await MentalHealthTherapist.findById(req.user.id);
+    if (!therapist) {
+      return res.status(404).json({ success: false, message: 'Therapist not found' });
+    }
+
+    const { packageName, packageType, description, servicesIncluded, pricePerEmployee, discountedPricePerEmployee, minEmployees, maxEmployees, validityDays, sessionsPerEmployee, sessionDurationMinutes, availableCities, dedicatedPOC, anonymityGuaranteed, slaTerms } = req.body;
+
+    if (!packageName || !pricePerEmployee) {
+      return res.status(400).json({ success: false, message: 'Package name and price per employee are required' });
+    }
+
+    const packageData = {
+      packageName,
+      packageType: packageType || 'employee_assistance_program',
+      description: description || '',
+      servicesIncluded: servicesIncluded || [],
+      pricePerEmployee,
+      discountedPricePerEmployee,
+      minEmployees: minEmployees || 10,
+      maxEmployees,
+      validityDays: validityDays || 365,
+      sessionsPerEmployee: sessionsPerEmployee || 4,
+      sessionDurationMinutes: sessionDurationMinutes || 50,
+      availableCities: availableCities || [],
+      dedicatedPOC: dedicatedPOC || {},
+      anonymityGuaranteed: anonymityGuaranteed !== undefined ? anonymityGuaranteed : true,
+      slaTerms: slaTerms || ''
+    };
+
+    await therapist.addCorporatePackage(packageData);
+
+    res.json({
+      success: true,
+      message: 'Corporate package added successfully',
+      data: therapist.corporatePackages[therapist.corporatePackages.length - 1]
+    });
+  } catch (error) {
+    res.status(500).json({ success: false, message: error.message });
+  }
+});
+
+// Update corporate package
+router.put('/corporate/packages/:packageId', authenticateToken, async (req, res) => {
+  try {
+    const therapist = await MentalHealthTherapist.findById(req.user.id);
+    if (!therapist) {
+      return res.status(404).json({ success: false, message: 'Therapist not found' });
+    }
+
+    const pkg = therapist.corporatePackages.id(req.params.packageId);
+    if (!pkg) {
+      return res.status(404).json({ success: false, message: 'Package not found' });
+    }
+
+    const updatableFields = [
+      'packageName', 'packageType', 'description', 'servicesIncluded',
+      'pricePerEmployee', 'discountedPricePerEmployee', 'minEmployees',
+      'maxEmployees', 'validityDays', 'sessionsPerEmployee',
+      'sessionDurationMinutes', 'availableCities', 'dedicatedPOC',
+      'anonymityGuaranteed', 'slaTerms', 'isActive'
+    ];
+
+    updatableFields.forEach(field => {
+      if (req.body[field] !== undefined) {
+        pkg[field] = req.body[field];
+      }
+    });
+
+    pkg.updatedAt = new Date();
+    await therapist.save();
+
+    res.json({ success: true, message: 'Corporate package updated', data: pkg });
+  } catch (error) {
+    res.status(500).json({ success: false, message: error.message });
+  }
+});
+
+// Delete corporate package
+router.delete('/corporate/packages/:packageId', authenticateToken, async (req, res) => {
+  try {
+    const therapist = await MentalHealthTherapist.findById(req.user.id);
+    if (!therapist) {
+      return res.status(404).json({ success: false, message: 'Therapist not found' });
+    }
+
+    const pkg = therapist.corporatePackages.id(req.params.packageId);
+    if (!pkg) {
+      return res.status(404).json({ success: false, message: 'Package not found' });
+    }
+
+    pkg.remove();
+    await therapist.save();
+
+    res.json({ success: true, message: 'Corporate package deleted' });
+  } catch (error) {
+    res.status(500).json({ success: false, message: error.message });
+  }
+});
+
+// Get corporate enquiries
+router.get('/corporate/enquiries', authenticateToken, async (req, res) => {
+  try {
+    const therapist = await MentalHealthTherapist.findById(req.user.id).select('corporateEnquiries');
+    if (!therapist) {
+      return res.status(404).json({ success: false, message: 'Therapist not found' });
+    }
+
+    res.json({ success: true, data: therapist.corporateEnquiries || [] });
+  } catch (error) {
+    res.status(500).json({ success: false, message: error.message });
+  }
+});
+
+// Update enquiry status
+router.put('/corporate/enquiries/:enquiryId', authenticateToken, async (req, res) => {
+  try {
+    const therapist = await MentalHealthTherapist.findById(req.user.id);
+    if (!therapist) {
+      return res.status(404).json({ success: false, message: 'Therapist not found' });
+    }
+
+    const enquiry = therapist.corporateEnquiries.id(req.params.enquiryId);
+    if (!enquiry) {
+      return res.status(404).json({ success: false, message: 'Enquiry not found' });
+    }
+
+    if (req.body.status) {
+      enquiry.status = req.body.status;
+    }
+
+    await therapist.save();
+    res.json({ success: true, message: 'Enquiry updated', data: enquiry });
+  } catch (error) {
+    res.status(500).json({ success: false, message: error.message });
+  }
+});
+
 module.exports = router;

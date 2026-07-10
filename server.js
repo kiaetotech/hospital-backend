@@ -264,6 +264,7 @@ const otpRoutes = require('./routes/otp');
 // Corporate Module
 const corporateRoutes = require('./routes/corporate');
 const corporateBillingRoutes = require('./routes/corporate-billing');
+const corporateHubRoutes = require('./routes/corporateHub');
 
 // Mental Health Module
 const mentalHealthRoutes = require('./routes/mentalhealth');
@@ -357,6 +358,7 @@ app.use('/api/otp', otpRoutes);
 // 🏢 Corporate
 app.use('/api/corporate', corporateRoutes);
 app.use('/api/corporate/billing', corporateBillingRoutes);
+app.use('/api/corporate-hub', corporateHubRoutes);
 
 // 🧠 Mental Health
 app.use('/api/mentalhealth', mentalHealthRoutes);

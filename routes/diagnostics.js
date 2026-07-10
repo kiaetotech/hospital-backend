@@ -681,4 +681,82 @@ router.get('/corporate/reports', authenticateHR, async (req, res) => {
   }
 });
 
+// ============================================
+// 🆕 STANDARDIZED CORPORATE ROUTES (servesCorporate flag)
+// ============================================
+
+// Toggle corporate serving status
+router.put('/corporate/toggle', async (req, res) => {
+  try {
+    const { providerId } = req.body;
+    if (!providerId) {
+      return res.status(400).json({ success: false, message: 'Provider ID required' });
+    }
+
+    const provider = await DiagnosticsProvider.findById(providerId);
+    if (!provider) {
+      return res.status(404).json({ success: false, message: 'Provider not found' });
+    }
+
+    const enable = req.body.enable !== false;
+    await provider.toggleCorporate(enable);
+
+    res.json({
+      success: true,
+      message: `Corporate ${enable ? 'enabled' : 'disabled'} successfully`,
+      data: { servesCorporate: provider.servesCorporate, hasCorporatePackages: provider.hasCorporatePackages }
+    });
+  } catch (error) {
+    res.status(500).json({ success: false, message: error.message });
+  }
+});
+
+// Get corporate enquiries
+router.get('/corporate/enquiries', async (req, res) => {
+  try {
+    const { providerId } = req.query;
+    if (!providerId) {
+      return res.status(400).json({ success: false, message: 'Provider ID required' });
+    }
+
+    const provider = await DiagnosticsProvider.findById(providerId).select('corporateEnquiries');
+    if (!provider) {
+      return res.status(404).json({ success: false, message: 'Provider not found' });
+    }
+
+    res.json({ success: true, data: provider.corporateEnquiries || [] });
+  } catch (error) {
+    res.status(500).json({ success: false, message: error.message });
+  }
+});
+
+// Update enquiry status
+router.put('/corporate/enquiries/:enquiryId', async (req, res) => {
+  try {
+    const { providerId } = req.body;
+    if (!providerId) {
+      return res.status(400).json({ success: false, message: 'Provider ID required' });
+    }
+
+    const provider = await DiagnosticsProvider.findById(providerId);
+    if (!provider) {
+      return res.status(404).json({ success: false, message: 'Provider not found' });
+    }
+
+    const enquiry = provider.corporateEnquiries.id(req.params.enquiryId);
+    if (!enquiry) {
+      return res.status(404).json({ success: false, message: 'Enquiry not found' });
+    }
+
+    if (req.body.status) {
+      enquiry.status = req.body.status;
+    }
+
+    await provider.save();
+    res.json({ success: true, message: 'Enquiry updated', data: enquiry });
+  } catch (error) {
+    res.status(500).json({ success: false, message: error.message });
+  }
+});
+
 module.exports = router;

@@ -1288,6 +1288,188 @@ router.post('/follow-up/mark-booked/:bookingId', async (req, res) => {
   }
 });
 
+// ============================================
+// 🆕 CORPORATE HEALTH ROUTES
+// ============================================
+
+// Toggle corporate serving status
+router.put('/doctor/corporate/toggle', authenticateDoctor, async (req, res) => {
+  try {
+    const doctor = await OnlineDoctor.findById(req.user.id);
+    if (!doctor) {
+      return res.status(404).json({ success: false, message: 'Doctor not found' });
+    }
+
+    const enable = req.body.enable !== false;
+    await doctor.toggleCorporate(enable);
+
+    res.json({
+      success: true,
+      message: `Corporate ${enable ? 'enabled' : 'disabled'} successfully`,
+      data: { servesCorporate: doctor.servesCorporate }
+    });
+  } catch (error) {
+    res.status(500).json({ success: false, message: error.message });
+  }
+});
+
+// Get corporate packages
+router.get('/doctor/corporate/packages', authenticateDoctor, async (req, res) => {
+  try {
+    const doctor = await OnlineDoctor.findById(req.user.id).select('servesCorporate corporatePackages');
+    if (!doctor) {
+      return res.status(404).json({ success: false, message: 'Doctor not found' });
+    }
+
+    res.json({
+      success: true,
+      data: {
+        servesCorporate: doctor.servesCorporate,
+        packages: doctor.corporatePackages || []
+      }
+    });
+  } catch (error) {
+    res.status(500).json({ success: false, message: error.message });
+  }
+});
+
+// Create corporate package
+router.post('/doctor/corporate/packages', authenticateDoctor, async (req, res) => {
+  try {
+    const doctor = await OnlineDoctor.findById(req.user.id);
+    if (!doctor) {
+      return res.status(404).json({ success: false, message: 'Doctor not found' });
+    }
+
+    const { packageName, packageType, description, servicesIncluded, pricePerEmployee, discountedPricePerEmployee, minEmployees, maxEmployees, validityDays, consultationLimitPerEmployee, availableCities, dedicatedPOC, slaTerms } = req.body;
+
+    if (!packageName || !pricePerEmployee) {
+      return res.status(400).json({ success: false, message: 'Package name and price per employee are required' });
+    }
+
+    const packageData = {
+      packageName,
+      packageType: packageType || 'teleconsult_package',
+      description: description || '',
+      servicesIncluded: servicesIncluded || [],
+      pricePerEmployee,
+      discountedPricePerEmployee,
+      minEmployees: minEmployees || 10,
+      maxEmployees,
+      validityDays: validityDays || 365,
+      consultationLimitPerEmployee: consultationLimitPerEmployee || 12,
+      availableCities: availableCities || [],
+      dedicatedPOC: dedicatedPOC || {},
+      slaTerms: slaTerms || ''
+    };
+
+    await doctor.addCorporatePackage(packageData);
+
+    res.json({
+      success: true,
+      message: 'Corporate package added successfully',
+      data: doctor.corporatePackages[doctor.corporatePackages.length - 1]
+    });
+  } catch (error) {
+    res.status(500).json({ success: false, message: error.message });
+  }
+});
+
+// Update corporate package
+router.put('/doctor/corporate/packages/:packageId', authenticateDoctor, async (req, res) => {
+  try {
+    const doctor = await OnlineDoctor.findById(req.user.id);
+    if (!doctor) {
+      return res.status(404).json({ success: false, message: 'Doctor not found' });
+    }
+
+    const pkg = doctor.corporatePackages.id(req.params.packageId);
+    if (!pkg) {
+      return res.status(404).json({ success: false, message: 'Package not found' });
+    }
+
+    const updatableFields = [
+      'packageName', 'packageType', 'description', 'servicesIncluded',
+      'pricePerEmployee', 'discountedPricePerEmployee', 'minEmployees',
+      'maxEmployees', 'validityDays', 'consultationLimitPerEmployee',
+      'availableCities', 'dedicatedPOC', 'slaTerms', 'isActive'
+    ];
+
+    updatableFields.forEach(field => {
+      if (req.body[field] !== undefined) {
+        pkg[field] = req.body[field];
+      }
+    });
+
+    pkg.updatedAt = new Date();
+    await doctor.save();
+
+    res.json({ success: true, message: 'Corporate package updated', data: pkg });
+  } catch (error) {
+    res.status(500).json({ success: false, message: error.message });
+  }
+});
+
+// Delete corporate package
+router.delete('/doctor/corporate/packages/:packageId', authenticateDoctor, async (req, res) => {
+  try {
+    const doctor = await OnlineDoctor.findById(req.user.id);
+    if (!doctor) {
+      return res.status(404).json({ success: false, message: 'Doctor not found' });
+    }
+
+    const pkg = doctor.corporatePackages.id(req.params.packageId);
+    if (!pkg) {
+      return res.status(404).json({ success: false, message: 'Package not found' });
+    }
+
+    pkg.remove();
+    await doctor.save();
+
+    res.json({ success: true, message: 'Corporate package deleted' });
+  } catch (error) {
+    res.status(500).json({ success: false, message: error.message });
+  }
+});
+
+// Get corporate enquiries
+router.get('/doctor/corporate/enquiries', authenticateDoctor, async (req, res) => {
+  try {
+    const doctor = await OnlineDoctor.findById(req.user.id).select('corporateEnquiries');
+    if (!doctor) {
+      return res.status(404).json({ success: false, message: 'Doctor not found' });
+    }
+
+    res.json({ success: true, data: doctor.corporateEnquiries || [] });
+  } catch (error) {
+    res.status(500).json({ success: false, message: error.message });
+  }
+});
+
+// Update enquiry status
+router.put('/doctor/corporate/enquiries/:enquiryId', authenticateDoctor, async (req, res) => {
+  try {
+    const doctor = await OnlineDoctor.findById(req.user.id);
+    if (!doctor) {
+      return res.status(404).json({ success: false, message: 'Doctor not found' });
+    }
+
+    const enquiry = doctor.corporateEnquiries.id(req.params.enquiryId);
+    if (!enquiry) {
+      return res.status(404).json({ success: false, message: 'Enquiry not found' });
+    }
+
+    if (req.body.status) {
+      enquiry.status = req.body.status;
+    }
+
+    await doctor.save();
+    res.json({ success: true, message: 'Enquiry updated', data: enquiry });
+  } catch (error) {
+    res.status(500).json({ success: false, message: error.message });
+  }
+});
+
 // ⬇️ THIS MUST BE THE LAST LINE ⬇️
 module.exports = router;
 
