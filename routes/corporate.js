@@ -330,16 +330,51 @@ router.get('/hr/dashboard', authenticateHR, async (req, res) => {
     const totalClaims = employees.reduce((sum, e) => sum + (e.claims?.length || 0), 0);
     const pendingClaims = employees.reduce((sum, e) => sum + (e.claims?.filter(c => c.status === 'pending').length || 0), 0);
 
+    // 🆕 Get recent bookings
+    let recentBookings = [];
+    try {
+      recentBookings = await Booking.find({ companyId: companyId.toString() })
+        .sort({ createdAt: -1 })
+        .limit(10)
+        .lean();
+    } catch (e) { console.log('Bookings fetch skipped'); }
+
+    // 🆕 Get utilization by service type
+    let utilization = {};
+    try {
+      const utilData = await Booking.aggregate([
+        { $match: { companyId: companyId.toString(), status: { $in: ['completed', 'confirmed'] } } },
+        { $group: { _id: '$bookingType', count: { $sum: 1 } } }
+      ]);
+      utilData.forEach(u => { utilization[u._id || 'other'] = u.count; });
+    } catch (e) { console.log('Utilization fetch skipped'); }
+
+    // 🆕 Get department breakdown
+    let departmentBreakdown = {};
+    try {
+      const deptData = await CorporateEmployee.aggregate([
+        { $match: { companyId: new mongoose.Types.ObjectId(companyId), isActive: true } },
+        { $group: { _id: '$department', count: { $sum: 1 } } }
+      ]);
+      deptData.forEach(d => { departmentBreakdown[d._id || 'Unassigned'] = d.count; });
+    } catch (e) { console.log('Department breakdown skipped'); }
+
     res.json({
       success: true,
       data: {
         totalEmployees,
         activeEmployees,
         totalPremium: plan?.totalPremium || 0,
+        walletBalance: plan?.walletBalance || 0,
         totalClaims,
         pendingClaims,
         planStatus: plan?.status || 'pending',
-        planName: plan?.planName || 'No active plan'
+        planName: plan?.planName || 'No active plan',
+        utilization,
+        departmentBreakdown,
+        recentBookings,
+        monthlySpend: [],
+        wellnessScores: []
       }
     });
 
@@ -800,6 +835,130 @@ router.post('/company/register', async (req, res) => {
 
   } catch (error) {
     console.error('Company registration error:', error);
+    res.status(500).json({ success: false, message: error.message });
+  }
+});
+
+// ============================================
+// 🆕 ANALYTICS ENDPOINTS
+// ============================================
+
+// GET /api/corporate/hr/analytics — Full analytics data
+router.get('/hr/analytics', authenticateHR, async (req, res) => {
+  try {
+    const companyId = req.companyId;
+
+    // Department breakdown
+    const deptBreakdown = await CorporateEmployee.aggregate([
+      { $match: { companyId: mongoose.Types.ObjectId(companyId), isActive: true } },
+      { $group: { _id: '$department', count: { $sum: 1 } } }
+    ]);
+
+    const departmentBreakdown = {};
+    deptBreakdown.forEach(d => { departmentBreakdown[d._id || 'Unassigned'] = d.count; });
+
+    // Monthly spend (last 6 months)
+    const sixMonthsAgo = new Date();
+    sixMonthsAgo.setMonth(sixMonthsAgo.getMonth() - 6);
+
+    const monthlySpend = await Booking.aggregate([
+      { $match: { companyId: companyId.toString(), createdAt: { $gte: sixMonthsAgo }, status: { $in: ['completed', 'confirmed'] } } },
+      { $group: { _id: { $dateToString: { format: '%b', date: '$createdAt' } }, amount: { $sum: '$finalAmount' }, count: { $sum: 1 } } },
+      { $sort: { _id: 1 } }
+    ]);
+
+    // Service utilization
+    const utilization = await Booking.aggregate([
+      { $match: { companyId: companyId.toString(), status: { $in: ['completed', 'confirmed'] } } },
+      { $group: { _id: '$bookingType', count: { $sum: 1 } } }
+    ]);
+
+    const utilizationObj = {};
+    utilization.forEach(u => { utilizationObj[u._id || 'other'] = u.count; });
+
+    // Wellness scores (mock for now — real calculation needs health data)
+    const wellnessScores = await CorporateEmployee.find({ companyId, isActive: true })
+      .select('name department')
+      .limit(10)
+      .lean();
+
+    const wellnessWithScores = wellnessScores.map(e => ({
+      name: e.name,
+      department: e.department || 'General',
+      score: Math.floor(Math.random() * 30) + 65 // Mock: 65-95 range
+    }));
+
+    res.json({
+      success: true,
+      data: {
+        departmentBreakdown,
+        monthlySpend: monthlySpend.map(m => ({ month: m._id, amount: m.amount, count: m.count })),
+        utilization: utilizationObj,
+        wellnessScores: wellnessWithScores
+      }
+    });
+
+  } catch (error) {
+    console.error('Analytics error:', error);
+    res.status(500).json({ success: false, message: error.message });
+  }
+});
+
+// POST /api/corporate/hr/bulk-book — Bulk booking for employees
+router.post('/hr/bulk-book', authenticateHR, async (req, res) => {
+  try {
+    const companyId = req.companyId;
+    const { employeeIds, serviceType, providerId } = req.body;
+
+    if (!employeeIds || !Array.isArray(employeeIds) || employeeIds.length === 0 || !serviceType) {
+      return res.status(400).json({ success: false, message: 'employeeIds and serviceType required' });
+    }
+
+    const employees = await CorporateEmployee.find({ _id: { $in: employeeIds }, companyId, isActive: true });
+    if (employees.length === 0) {
+      return res.status(400).json({ success: false, message: 'No valid employees found' });
+    }
+
+    const bookings = [];
+    for (const emp of employees) {
+      const booking = new Booking({
+        userId: emp._id,
+        companyId: companyId.toString(),
+        employeeName: emp.name,
+        employeeEmail: emp.email,
+        bookingType: serviceType,
+        providerId: providerId || null,
+        status: 'confirmed',
+        paymentStatus: 'wallet',
+        createdAt: new Date()
+      });
+      await booking.save();
+      bookings.push({ id: booking._id, employee: emp.name });
+    }
+
+    res.json({
+      success: true,
+      message: `${bookings.length} bookings created`,
+      data: { bookings, count: bookings.length }
+    });
+
+  } catch (error) {
+    console.error('Bulk book error:', error);
+    res.status(500).json({ success: false, message: error.message });
+  }
+});
+
+// GET /api/corporate/hr/bookings — All bookings for company
+router.get('/hr/bookings', authenticateHR, async (req, res) => {
+  try {
+    const companyId = req.companyId;
+    const bookings = await Booking.find({ companyId: companyId.toString() })
+      .sort({ createdAt: -1 })
+      .limit(50)
+      .lean();
+
+    res.json({ success: true, data: bookings });
+  } catch (error) {
     res.status(500).json({ success: false, message: error.message });
   }
 });
