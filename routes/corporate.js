@@ -732,4 +732,76 @@ router.delete('/admin/:id', auth, async (req, res) => {
   }
 });
 
+// ============================================
+// 🆕 COMPANY REGISTRATION (MARKETPLACE MODEL)
+// ============================================
+router.post('/company/register', async (req, res) => {
+  try {
+    const {
+      companyName, companyGST, companyPAN, employeeCount, city, state,
+      selectedServices, budgetPerEmployee,
+      hrName, hrEmail, hrPhone, hrPassword
+    } = req.body;
+
+    if (!companyName || !employeeCount || !hrName || !hrEmail || !hrPhone || !hrPassword) {
+      return res.status(400).json({ success: false, message: 'Missing required fields' });
+    }
+
+    if (!selectedServices || selectedServices.length === 0) {
+      return res.status(400).json({ success: false, message: 'Select at least one service' });
+    }
+
+    const existingHR = await CorporateHR.findOne({ email: hrEmail });
+    if (existingHR) {
+      return res.status(400).json({ success: false, message: 'HR email already registered' });
+    }
+
+    const plan = new CorporatePlan({
+      companyName, companyGST, companyPAN, employeeCount: parseInt(employeeCount),
+      planName: `${companyName} Corporate Plan`,
+      planType: 'group_wellness',
+      coverageAmount: (parseInt(budgetPerEmployee) || 0) * parseInt(employeeCount),
+      premiumPerEmployee: parseInt(budgetPerEmployee) || 0,
+      totalPremium: (parseInt(budgetPerEmployee) || 0) * parseInt(employeeCount),
+      features: selectedServices,
+      startDate: new Date(),
+      endDate: new Date(Date.now() + 365 * 24 * 60 * 60 * 1000),
+      hrContact: { name: hrName, email: hrEmail, phone: hrPhone },
+      status: 'pending',
+      isVerified: false,
+      createdBy: null
+    });
+
+    await plan.save();
+
+    const hashedPassword = await bcrypt.hash(hrPassword, 10);
+    const hr = new CorporateHR({
+      companyId: plan._id,
+      name: hrName,
+      email: hrEmail,
+      password: hashedPassword,
+      phone: hrPhone,
+      role: 'hr_admin',
+      isActive: true
+    });
+    await hr.save();
+
+    const token = jwt.sign(
+      { id: hr._id, role: 'corporate_hr', companyId: plan._id },
+      process.env.JWT_SECRET,
+      { expiresIn: '7d' }
+    );
+
+    res.json({
+      success: true,
+      message: 'Company registered successfully',
+      data: { companyId: plan._id, hrId: hr._id, token, companyName, status: 'pending' }
+    });
+
+  } catch (error) {
+    console.error('Company registration error:', error);
+    res.status(500).json({ success: false, message: error.message });
+  }
+});
+
 module.exports = router;
