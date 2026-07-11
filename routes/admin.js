@@ -37,7 +37,6 @@ router.post('/login', async (req, res) => {
       message: 'Admin login successful',
       admin: { email: ADMIN_EMAIL, role: 'admin', name: 'Admin' }
     });
-
   } catch (error) {
     console.error('Admin login error:', error);
     res.status(500).json({ success: false, message: error.message });
