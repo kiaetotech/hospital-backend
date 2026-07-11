@@ -8,6 +8,17 @@ const User = require('../models/User');
 const router = express.Router();
 
 // ============================================
+// 🆕 CORS PREFLIGHT FOR LOGIN
+// ============================================
+router.options('/login', (req, res) => {
+  res.header('Access-Control-Allow-Origin', 'https://hospital-frontend-kiaeto.vercel.app');
+  res.header('Access-Control-Allow-Methods', 'POST, OPTIONS');
+  res.header('Access-Control-Allow-Headers', 'Content-Type, Authorization');
+  res.header('Access-Control-Allow-Credentials', 'true');
+  res.sendStatus(200);
+});
+
+// ============================================
 // ✅ ADMIN LOGIN - Email/Password
 // ============================================
 router.post('/login', async (req, res) => {
@@ -110,7 +121,7 @@ router.get('/stats', async (req, res) => {
 });
 
 // ============================================
-// 🆕 HOSPITAL MANAGEMENT (NEW)
+// HOSPITAL MANAGEMENT
 // ============================================
 
 // Get all hospitals (with filters)
@@ -192,7 +203,7 @@ router.get('/hospitals/:id', async (req, res) => {
   }
 });
 
-// 🆕 Verify/Approve hospital
+// Verify/Approve hospital
 router.put('/hospitals/:id/verify', async (req, res) => {
   try {
     const { adminNote, subscriptionPlan } = req.body;
@@ -213,13 +224,6 @@ router.put('/hospitals/:id/verify', async (req, res) => {
       return res.status(404).json({ success: false, message: 'Hospital not found' });
     }
 
-    try {
-      const { sendHospitalApprovalEmail } = require('../utils/notifications');
-      await sendHospitalApprovalEmail(hospital, 'approved', adminNote);
-    } catch (emailError) {
-      console.error('Approval email error:', emailError.message);
-    }
-
     res.json({
       success: true,
       message: 'Hospital approved successfully',
@@ -230,7 +234,7 @@ router.put('/hospitals/:id/verify', async (req, res) => {
   }
 });
 
-// 🆕 Reject hospital
+// Reject hospital
 router.put('/hospitals/:id/reject', async (req, res) => {
   try {
     const { rejectionReason } = req.body;
@@ -250,13 +254,6 @@ router.put('/hospitals/:id/reject', async (req, res) => {
       return res.status(404).json({ success: false, message: 'Hospital not found' });
     }
 
-    try {
-      const { sendHospitalApprovalEmail } = require('../utils/notifications');
-      await sendHospitalApprovalEmail(hospital, 'rejected', rejectionReason);
-    } catch (emailError) {
-      console.error('Rejection email error:', emailError.message);
-    }
-
     res.json({
       success: true,
       message: 'Hospital rejected',
@@ -267,7 +264,7 @@ router.put('/hospitals/:id/reject', async (req, res) => {
   }
 });
 
-// 🆕 Update hospital subscription
+// Update hospital subscription
 router.put('/hospitals/:id/subscription', async (req, res) => {
   try {
     const { subscriptionPlan } = req.body;
@@ -289,7 +286,7 @@ router.put('/hospitals/:id/subscription', async (req, res) => {
   }
 });
 
-// 🆕 Toggle hospital active status
+// Toggle hospital active status
 router.put('/hospitals/:id/toggle-status', async (req, res) => {
   try {
     const hospital = await Hospital.findById(req.params.id);
@@ -309,10 +306,6 @@ router.put('/hospitals/:id/toggle-status', async (req, res) => {
     res.status(500).json({ success: false, message: error.message });
   }
 });
-
-// ============================================
-// 🆕 HOSPITAL STATS & ANALYTICS (NEW)
-// ============================================
 
 // Hospital stats overview
 router.get('/hospitals-stats', async (req, res) => {
@@ -352,10 +345,9 @@ router.get('/hospitals-stats', async (req, res) => {
 });
 
 // ============================================
-// 🆕 BOOKING MANAGEMENT (NEW)
+// BOOKING MANAGEMENT
 // ============================================
 
-// Get all bookings (admin view)
 router.get('/bookings', async (req, res) => {
   try {
     const { status, type, search, page = 1, limit = 20 } = req.query;
@@ -375,11 +367,7 @@ router.get('/bookings', async (req, res) => {
     const skip = (parseInt(page) - 1) * parseInt(limit);
     
     const [bookings, total] = await Promise.all([
-      Booking.find(query)
-        .sort({ createdAt: -1 })
-        .skip(skip)
-        .limit(parseInt(limit))
-        .lean(),
+      Booking.find(query).sort({ createdAt: -1 }).skip(skip).limit(parseInt(limit)).lean(),
       Booking.countDocuments(query)
     ]);
 
@@ -394,10 +382,9 @@ router.get('/bookings', async (req, res) => {
 });
 
 // ============================================
-// 🆕 REVENUE & COMMISSION (NEW)
+// REVENUE & COMMISSION
 // ============================================
 
-// Revenue overview
 router.get('/revenue', async (req, res) => {
   try {
     const { startDate, endDate } = req.query;
@@ -411,36 +398,18 @@ router.get('/revenue', async (req, res) => {
 
     const revenueData = await Transaction.aggregate([
       { $match: matchQuery },
-      {
-        $group: {
-          _id: '$bookingType',
-          totalRevenue: { $sum: '$netAmount' },
-          totalCommission: { $sum: '$platformCommission' },
-          totalBookings: { $sum: 1 },
-          avgAmount: { $avg: '$netAmount' }
-        }
-      },
+      { $group: { _id: '$bookingType', totalRevenue: { $sum: '$netAmount' }, totalCommission: { $sum: '$platformCommission' }, totalBookings: { $sum: 1 }, avgAmount: { $avg: '$netAmount' } } },
       { $sort: { totalRevenue: -1 } }
     ]);
 
     const summary = await Transaction.aggregate([
       { $match: matchQuery },
-      {
-        $group: {
-          _id: null,
-          totalRevenue: { $sum: '$netAmount' },
-          totalCommission: { $sum: '$platformCommission' },
-          totalBookings: { $sum: 1 }
-        }
-      }
+      { $group: { _id: null, totalRevenue: { $sum: '$netAmount' }, totalCommission: { $sum: '$platformCommission' }, totalBookings: { $sum: 1 } } }
     ]);
 
     res.json({
       success: true,
-      data: {
-        summary: summary[0] || { totalRevenue: 0, totalCommission: 0, totalBookings: 0 },
-        breakdown: revenueData
-      }
+      data: { summary: summary[0] || { totalRevenue: 0, totalCommission: 0, totalBookings: 0 }, breakdown: revenueData }
     });
   } catch (error) {
     res.status(500).json({ success: false, message: error.message });
@@ -455,20 +424,8 @@ router.get('/revenue/daily', async (req, res) => {
     startDate.setDate(startDate.getDate() - days);
 
     const dailyRevenue = await Transaction.aggregate([
-      {
-        $match: {
-          status: { $in: ['completed', 'captured'] },
-          createdAt: { $gte: startDate }
-        }
-      },
-      {
-        $group: {
-          _id: { $dateToString: { format: '%Y-%m-%d', date: '$createdAt' } },
-          revenue: { $sum: '$netAmount' },
-          commission: { $sum: '$platformCommission' },
-          bookings: { $sum: 1 }
-        }
-      },
+      { $match: { status: { $in: ['completed', 'captured'] }, createdAt: { $gte: startDate } } },
+      { $group: { _id: { $dateToString: { format: '%Y-%m-%d', date: '$createdAt' } }, revenue: { $sum: '$netAmount' }, commission: { $sum: '$platformCommission' }, bookings: { $sum: 1 } } },
       { $sort: { _id: 1 } }
     ]);
 
@@ -479,7 +436,7 @@ router.get('/revenue/daily', async (req, res) => {
 });
 
 // ============================================
-// 🆕 DASHBOARD OVERVIEW (NEW)
+// DASHBOARD OVERVIEW
 // ============================================
 
 router.get('/dashboard', async (req, res) => {
@@ -521,7 +478,7 @@ router.get('/dashboard', async (req, res) => {
 });
 
 // ============================================
-// 🆕 PATIENT/USER MANAGEMENT (NEW)
+// PATIENT/USER MANAGEMENT
 // ============================================
 
 router.get('/users', async (req, res) => {
