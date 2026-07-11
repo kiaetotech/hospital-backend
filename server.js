@@ -688,7 +688,7 @@ mongoose.connect(DB_URI)
 // ============================================
 // SERVER START (Using http server for Socket.IO)
 // ============================================
-const PORT = process.env.PORT || 5000;
+const PORT = process.env.PORT || 8080;
 server.listen(PORT, () => {
   console.log('═'.repeat(55));
   console.log('🚀 HealthCare Hub Server Started');

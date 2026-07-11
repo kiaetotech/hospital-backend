@@ -8,47 +8,39 @@ const User = require('../models/User');
 const router = express.Router();
 
 // ============================================
-// ✅ ADMIN LOGIN - Generates JWT Token
+// ✅ ADMIN LOGIN - Email/Password
 // ============================================
 router.post('/login', async (req, res) => {
   try {
-    const { adminKey } = req.body;
+    const { email, password } = req.body;
 
-    const validAdminKey = process.env.ADMIN_KEY || 'admin_secret_key_2024';
-    
-    if (adminKey !== validAdminKey) {
-      return res.status(401).json({ 
-        success: false, 
-        message: 'Invalid admin key' 
-      });
+    if (!email || !password) {
+      return res.status(400).json({ success: false, message: 'Email and password required' });
+    }
+
+    const ADMIN_EMAIL = process.env.ADMIN_EMAIL || 'admin@healthcarehub.com';
+    const ADMIN_PASSWORD = process.env.ADMIN_PASSWORD || 'Admin@123';
+
+    if (email !== ADMIN_EMAIL || password !== ADMIN_PASSWORD) {
+      return res.status(401).json({ success: false, message: 'Invalid credentials' });
     }
 
     const token = jwt.sign(
-      { 
-        role: 'admin', 
-        isAdmin: true,
-        type: 'admin'
-      },
+      { id: 'admin', email: ADMIN_EMAIL, role: 'admin', isAdmin: true },
       process.env.JWT_SECRET || 'hospital_platform_secret_key_2024',
       { expiresIn: '7d' }
     );
 
     res.json({
       success: true,
-      token: token,
+      token,
       message: 'Admin login successful',
-      admin: {
-        role: 'admin',
-        name: 'Admin'
-      }
+      admin: { email: ADMIN_EMAIL, role: 'admin', name: 'Admin' }
     });
 
   } catch (error) {
     console.error('Admin login error:', error);
-    res.status(500).json({ 
-      success: false, 
-      message: error.message 
-    });
+    res.status(500).json({ success: false, message: error.message });
   }
 });
 
@@ -177,7 +169,6 @@ router.get('/hospitals/:id', async (req, res) => {
       return res.status(404).json({ success: false, message: 'Hospital not found' });
     }
 
-    // Get stats
     const [bookingCount, revenueData] = await Promise.all([
       Booking.countDocuments({ hospitalId: hospital._id }),
       Transaction.aggregate([
@@ -223,7 +214,6 @@ router.put('/hospitals/:id/verify', async (req, res) => {
       return res.status(404).json({ success: false, message: 'Hospital not found' });
     }
 
-    // Send approval email
     try {
       const { sendHospitalApprovalEmail } = require('../utils/notifications');
       await sendHospitalApprovalEmail(hospital, 'approved', adminNote);
@@ -261,7 +251,6 @@ router.put('/hospitals/:id/reject', async (req, res) => {
       return res.status(404).json({ success: false, message: 'Hospital not found' });
     }
 
-    // Send rejection email
     try {
       const { sendHospitalApprovalEmail } = require('../utils/notifications');
       await sendHospitalApprovalEmail(hospital, 'rejected', rejectionReason);
