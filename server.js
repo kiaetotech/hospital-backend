@@ -13,6 +13,40 @@ const app = express();
 const server = http.createServer(app);
 
 // ============================================
+// CORS CONFIGURATION (FIXED)
+// ============================================
+const allowedOrigins = [
+  'https://hospital-frontend-kiaeto.vercel.app',
+  'https://hospital-frontend-zeta-rosy.vercel.app',
+  'http://localhost:3000'
+];
+
+app.use(cors({
+  origin: function (origin, callback) {
+    // Allow requests with no origin (mobile apps, curl, etc.)
+    if (!origin) return callback(null, true);
+    if (allowedOrigins.indexOf(origin) !== -1) {
+      callback(null, true);
+    } else {
+      callback(new Error('Not allowed by CORS'));
+    }
+  },
+  methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS', 'PATCH'],
+  allowedHeaders: ['Content-Type', 'Authorization', 'X-Requested-With'],
+  credentials: true,
+  maxAge: 86400 // 24 hours
+}));
+
+// Handle preflight requests
+app.options('*', cors());
+
+app.use(express.json({ limit: '10mb' }));
+app.use(express.urlencoded({ extended: true, limit: '10mb' }));
+
+// Trust proxy for Railway
+app.set('trust proxy', 1);
+
+// ============================================
 // REDIS CONNECTION (For Location Cache & Rate Limiting)
 // ============================================
 
@@ -54,7 +88,7 @@ global.redisClient = redis;
 
 const io = new Server(server, {
   cors: {
-    origin: process.env.FRONTEND_URL || 'https://hospital-frontend-kiaeto.vercel.app',
+    origin: allowedOrigins,
     methods: ['GET', 'POST'],
     credentials: true
   },
@@ -72,13 +106,8 @@ initializeSocket(io);
 global.io = io;
 
 // ============================================
-// SECURITY MIDDLEWARE
+// REQUEST LOGGING
 // ============================================
-app.use(cors());
-app.use(express.json({ limit: '10mb' }));
-app.use(express.urlencoded({ extended: true, limit: '10mb' }));
-
-// Request logging
 if (process.env.NODE_ENV !== 'production') {
   app.use(morgan('dev'));
 }
@@ -680,7 +709,7 @@ app.use((err, req, res, next) => {
 // ============================================
 // MONGODB CONNECTION
 // ============================================
-const DB_URI = process.env.DB_URI || 'mongodb://localhost:27017/hospital_db';
+const DB_URI = process.env.DB_URI || process.env.MONGODB_URI || 'mongodb://localhost:27017/hospital_db';
 mongoose.connect(DB_URI)
   .then(() => console.log('✅ MongoDB connected'))
   .catch(err => console.error('❌ MongoDB error:', err));
