@@ -99,17 +99,15 @@ router.post('/send', async (req, res) => {
     }
 
     // For security, don't return OTP in response
-    res.json({
+        res.json({
       success: true,
-      message: `OTP sent successfully via ${phone ? 'SMS' : 'Email'}`,
+      message: deliveryStatus === 'sent' ? `OTP sent successfully` : `OTP generated — use this code`,
       data: {
         referenceId: otpDoc._id,
         sentVia: phone ? 'sms' : 'email',
         expiresIn: expiresIn,
         deliveryStatus: deliveryStatus,
-        // Don't include OTP in response for security
-        // Only include for development/testing
-        // otp: otpDoc.otp // Remove in production
+        otp: deliveryStatus !== 'sent' ? otpDoc.otp : undefined
       }
     });
 
