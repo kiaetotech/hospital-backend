@@ -310,6 +310,7 @@ const hospitalStatusRoutes = require('./routes/hospitalStatus');
 
 // 🔍 Global Search Module
 const globalSearchRoutes = require('./routes/globalSearch');
+const employeePortalRoutes = require('./routes/employeePortal');
 
 // ============================================
 // ROUTE MOUNTING - ALL PRESERVED + NEW
@@ -404,6 +405,7 @@ app.use('/api/online-doctor', searchLimiter, onlineDoctorRoutes);
 
 // 🔍 Global Search (Cross-tag)
 app.use('/api/search', searchLimiter, globalSearchRoutes);
+app.use('/api/employee', employeePortalRoutes);
 
 // ============================================
 // WEBSOCKET HEALTH ENDPOINT
@@ -783,6 +785,7 @@ server.listen(PORT, () => {
   console.log('📱  OTP                   → /api/otp/*');
   console.log('🔧  Admin                 → /api/admin/*');
   console.log('🔍  Global Search         → /api/search/*');
+  console.log('👨‍💼 Employee Portal       → /api/employee/*');
   console.log('─'.repeat(55));
   console.log('🆕 New Feature: Hospital Green Light System');
   console.log('   🟢 Accepting  🟡 Limited  🔴 Full  ❓ Unknown');
