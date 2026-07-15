@@ -308,6 +308,9 @@ const onlineDoctorRoutes = require('./routes/onlineDoctor');
 // 🆕 Hospital Status Module
 const hospitalStatusRoutes = require('./routes/hospitalStatus');
 
+// 🔍 Global Search Module
+const globalSearchRoutes = require('./routes/globalSearch');
+
 // ============================================
 // ROUTE MOUNTING - ALL PRESERVED + NEW
 // ============================================
@@ -398,6 +401,9 @@ app.use('/api/mentalhealth/earnings', mentalHealthEarningsRoutes);
 
 // 📱 Online Doctor
 app.use('/api/online-doctor', searchLimiter, onlineDoctorRoutes);
+
+// 🔍 Global Search (Cross-tag)
+app.use('/api/search', searchLimiter, globalSearchRoutes);
 
 // ============================================
 // WEBSOCKET HEALTH ENDPOINT
@@ -667,6 +673,33 @@ app.get('/api/system/health', async (req, res) => {
   res.json(healthData);
 });
 
+// Global Search Health Check
+app.get('/api/search/health', (req, res) => {
+  res.json({
+    success: true,
+    module: 'Global Search',
+    status: 'active',
+    version: '1.0',
+    features: {
+      crossTag: 'Searches across all 11 tags simultaneously',
+      models: ['Hospitals', 'Doctors', 'OnlineDoctors', 'Ayurveda', 'Homeopathy', 
+               'MentalHealth', 'Caregivers', 'LabTests', 'Diagnostics', 'Ambulance', 
+               'Insurance', 'Pharmacy', 'WellnessCenters', 'Naturopathy'],
+      endpoints: {
+        search: 'GET /api/search?q=keyword&limit=20',
+        quick: 'GET /api/search/quick?q=keyword'
+      },
+      features: {
+        fullText: 'MongoDB text indexes',
+        regex: 'Fallback regex search',
+        grouping: 'Results grouped by service tag',
+        debounce: '300ms frontend debounce',
+        public: 'No authentication required'
+      }
+    }
+  });
+});
+
 // ============================================
 // 404 HANDLER
 // ============================================
@@ -749,6 +782,7 @@ server.listen(PORT, () => {
   console.log('⭐  Reviews               → /api/reviews/*');
   console.log('📱  OTP                   → /api/otp/*');
   console.log('🔧  Admin                 → /api/admin/*');
+  console.log('🔍  Global Search         → /api/search/*');
   console.log('─'.repeat(55));
   console.log('🆕 New Feature: Hospital Green Light System');
   console.log('   🟢 Accepting  🟡 Limited  🔴 Full  ❓ Unknown');
