@@ -24,7 +24,6 @@ router.get('/', async (req, res) => {
     }
 
     const searchRegex = new RegExp(q.trim(), 'i');
-    const searchText = q.trim();
 
     const searchPromises = [
       // 🏥 Hospitals
@@ -33,8 +32,7 @@ router.get('/', async (req, res) => {
           { name: searchRegex },
           { city: searchRegex },
           { specialization: searchRegex },
-          { services: searchRegex },
-          { $text: { $search: searchText } }
+          { services: searchRegex }
         ],
         isVerified: true
       })
@@ -47,7 +45,7 @@ router.get('/', async (req, res) => {
         tag: 'Hospitals',
         tagIcon: '🏥',
         link: `/hospitals/${r._id}`,
-        subtitle: `${r.city} • ${r.beds?.available || 0} beds available`
+        subtitle: `${r.city || ''} • ${r.beds?.available || 0} beds available`
       }))),
 
       // 👨‍⚕️ Hospital Doctors
@@ -55,8 +53,7 @@ router.get('/', async (req, res) => {
         $or: [
           { name: searchRegex },
           { specialization: searchRegex },
-          { city: searchRegex },
-          { $text: { $search: searchText } }
+          { city: searchRegex }
         ],
         isVerified: true
       })
@@ -69,7 +66,7 @@ router.get('/', async (req, res) => {
         tag: 'Doctors',
         tagIcon: '👨‍⚕️',
         link: `/hospitals/doctor/${r._id}`,
-        subtitle: `${r.specialization} • ${r.hospitalName || r.city}`
+        subtitle: `${r.specialization || ''} • ${r.hospitalName || r.city || ''}`
       }))),
 
       // 📱 Online Doctors
@@ -77,8 +74,7 @@ router.get('/', async (req, res) => {
         $or: [
           { name: searchRegex },
           { specialization: searchRegex },
-          { city: searchRegex },
-          { $text: { $search: searchText } }
+          { city: searchRegex }
         ],
         isVerified: true
       })
@@ -91,7 +87,7 @@ router.get('/', async (req, res) => {
         tag: 'Online Doctors',
         tagIcon: '📱',
         link: `/online-doctor/${r._id}`,
-        subtitle: `${r.specialization} • ₹${r.consultationFee} consultation`
+        subtitle: `${r.specialization || ''} • ₹${r.consultationFee || 0} consultation`
       }))),
 
       // 🧘 Ayurveda Doctors
@@ -99,8 +95,7 @@ router.get('/', async (req, res) => {
         $or: [
           { name: searchRegex },
           { specialization: searchRegex },
-          { city: searchRegex },
-          { $text: { $search: searchText } }
+          { city: searchRegex }
         ],
         isVerified: true
       })
@@ -113,7 +108,7 @@ router.get('/', async (req, res) => {
         tag: 'Ayurveda',
         tagIcon: '🧘',
         link: `/ayurveda/doctor/${r._id}`,
-        subtitle: `${r.specialization} • ${r.city}`
+        subtitle: `${r.specialization || ''} • ${r.city || ''}`
       }))),
 
       // 🏠 Wellness Centers
@@ -121,8 +116,7 @@ router.get('/', async (req, res) => {
         $or: [
           { name: searchRegex },
           { city: searchRegex },
-          { services: searchRegex },
-          { $text: { $search: searchText } }
+          { services: searchRegex }
         ],
         isVerified: true
       })
@@ -135,7 +129,7 @@ router.get('/', async (req, res) => {
         tag: 'Wellness Centers',
         tagIcon: '🧘',
         link: `/ayurveda/center/${r._id}`,
-        subtitle: `${r.city} • ${r.services?.slice(0, 3).join(', ')}`
+        subtitle: `${r.city || ''} • ${(r.services || []).slice(0, 3).join(', ')}`
       }))),
 
       // 🌿 Homeopathy Doctors
@@ -143,8 +137,7 @@ router.get('/', async (req, res) => {
         $or: [
           { name: searchRegex },
           { specialization: searchRegex },
-          { city: searchRegex },
-          { $text: { $search: searchText } }
+          { city: searchRegex }
         ],
         isVerified: true
       })
@@ -157,7 +150,7 @@ router.get('/', async (req, res) => {
         tag: 'Homeopathy',
         tagIcon: '🌿',
         link: `/homeopathy/doctor/${r._id}`,
-        subtitle: `${r.specialization} • ${r.city}`
+        subtitle: `${r.specialization || ''} • ${r.city || ''}`
       }))),
 
       // 🧠 Mental Health Therapists
@@ -165,8 +158,7 @@ router.get('/', async (req, res) => {
         $or: [
           { name: searchRegex },
           { specialization: searchRegex },
-          { city: searchRegex },
-          { $text: { $search: searchText } }
+          { city: searchRegex }
         ],
         isVerified: true
       })
@@ -179,7 +171,7 @@ router.get('/', async (req, res) => {
         tag: 'Mental Health',
         tagIcon: '🧠',
         link: `/mentalhealth/therapist/${r._id}`,
-        subtitle: `${r.specialization} • ₹${r.sessionFee}/session`
+        subtitle: `${r.specialization || ''} • ₹${r.sessionFee || 0}/session`
       }))),
 
       // 🏠 Caregivers
@@ -187,8 +179,7 @@ router.get('/', async (req, res) => {
         $or: [
           { name: searchRegex },
           { serviceType: searchRegex },
-          { city: searchRegex },
-          { $text: { $search: searchText } }
+          { city: searchRegex }
         ],
         isVerified: true
       })
@@ -201,7 +192,7 @@ router.get('/', async (req, res) => {
         tag: 'Home Care',
         tagIcon: '🏠',
         link: `/caregivers/${r._id}`,
-        subtitle: `${r.serviceType} • ₹${r.hourlyRate}/hr`
+        subtitle: `${r.serviceType || ''} • ₹${r.hourlyRate || 0}/hr`
       }))),
 
       // 🔬 Lab Tests
@@ -209,8 +200,7 @@ router.get('/', async (req, res) => {
         $or: [
           { testName: searchRegex },
           { category: searchRegex },
-          { description: searchRegex },
-          { $text: { $search: searchText } }
+          { description: searchRegex }
         ],
         isActive: true
       })
@@ -223,7 +213,7 @@ router.get('/', async (req, res) => {
         tag: 'Lab Tests',
         tagIcon: '🔬',
         link: `/diagnostics/test/${r._id}`,
-        subtitle: `${r.category} • Starting ₹${r.minPrice || 'N/A'}`
+        subtitle: `${r.category || ''} • Starting ₹${r.minPrice || 'N/A'}`
       }))),
 
       // 🔬 Diagnostics Providers
@@ -231,8 +221,7 @@ router.get('/', async (req, res) => {
         $or: [
           { name: searchRegex },
           { city: searchRegex },
-          { services: searchRegex },
-          { $text: { $search: searchText } }
+          { services: searchRegex }
         ],
         isVerified: true
       })
@@ -245,7 +234,7 @@ router.get('/', async (req, res) => {
         tag: 'Labs',
         tagIcon: '🔬',
         link: `/diagnostics/provider/${r._id}`,
-        subtitle: `${r.city} • ${r.services?.slice(0, 3).join(', ')}`
+        subtitle: `${r.city || ''} • ${(r.services || []).slice(0, 3).join(', ')}`
       }))),
 
       // 🚑 Ambulance
@@ -253,8 +242,7 @@ router.get('/', async (req, res) => {
         $or: [
           { providerName: searchRegex },
           { city: searchRegex },
-          { vehicleType: searchRegex },
-          { $text: { $search: searchText } }
+          { vehicleType: searchRegex }
         ],
         isActive: true
       })
@@ -267,7 +255,7 @@ router.get('/', async (req, res) => {
         tag: 'Ambulance',
         tagIcon: '🚑',
         link: `/ambulance`,
-        subtitle: `${r.vehicleType} • ${r.city} • ₹${r.basePrice}`
+        subtitle: `${r.vehicleType || ''} • ${r.city || ''} • ₹${r.basePrice || 0}`
       }))),
 
       // 🛡️ Insurance
@@ -276,8 +264,7 @@ router.get('/', async (req, res) => {
           { planName: searchRegex },
           { provider: searchRegex },
           { type: searchRegex },
-          { description: searchRegex },
-          { $text: { $search: searchText } }
+          { description: searchRegex }
         ],
         isActive: true
       })
@@ -290,16 +277,14 @@ router.get('/', async (req, res) => {
         tag: 'Insurance',
         tagIcon: '🛡️',
         link: `/insurance/${r._id}`,
-        subtitle: `${r.type} • Premium ₹${r.premium} • Cover ₹${r.sumInsured}`
+        subtitle: `${r.type || ''} • Premium ₹${r.premium || 0} • Cover ₹${r.sumInsured || 0}`
       }))),
 
       // 🏪 Pharmacy
       Pharmacy.find({
         $or: [
           { name: searchRegex },
-          { city: searchRegex },
-          { medicines: searchRegex },
-          { $text: { $search: searchText } }
+          { city: searchRegex }
         ],
         isVerified: true
       })
@@ -312,7 +297,7 @@ router.get('/', async (req, res) => {
         tag: 'Pharmacy',
         tagIcon: '💊',
         link: `/homeopathy/pharmacy/${r._id}`,
-        subtitle: `${r.city} • ${r.medicines?.length || 0} medicines`
+        subtitle: `${r.city || ''} • ${(r.medicines || []).length} medicines`
       }))),
 
       // 🌿 Naturopathy Centers
@@ -320,8 +305,7 @@ router.get('/', async (req, res) => {
         $or: [
           { name: searchRegex },
           { city: searchRegex },
-          { treatments: searchRegex },
-          { $text: { $search: searchText } }
+          { treatments: searchRegex }
         ],
         isVerified: true
       })
@@ -334,7 +318,7 @@ router.get('/', async (req, res) => {
         tag: 'Naturopathy',
         tagIcon: '🌿',
         link: `/homeopathy/naturopathy/${r._id}`,
-        subtitle: `${r.city} • ${r.treatments?.slice(0, 3).join(', ')}`
+        subtitle: `${r.city || ''} • ${(r.treatments || []).slice(0, 3).join(', ')}`
       })))
     ];
 
