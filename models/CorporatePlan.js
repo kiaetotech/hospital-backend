@@ -14,6 +14,7 @@ const CorporatePlanSchema = new mongoose.Schema({
   coverageAmount: { type: Number, required: true },
   premiumPerEmployee: { type: Number, required: true },
   totalPremium: { type: Number, required: true },
+  walletBalance: { type: Number, default: 0 },
   
   // Features
   features: [{ type: String }],

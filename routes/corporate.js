@@ -963,4 +963,105 @@ router.get('/hr/bookings', authenticateHR, async (req, res) => {
   }
 });
 
+// ============================================
+// 🆕 WALLET MANAGEMENT
+// ============================================
+
+// Get wallet balance
+router.get('/hr/wallet', authenticateHR, async (req, res) => {
+  try {
+    const plan = await CorporatePlan.findById(req.companyId).select('walletBalance');
+    if (!plan) return res.status(404).json({ success: false, message: 'Plan not found' });
+    
+    res.json({ success: true, data: { balance: plan.walletBalance || 0 } });
+  } catch (error) {
+    res.status(500).json({ success: false, message: error.message });
+  }
+});
+
+// Top-up wallet (simulated payment)
+router.post('/hr/wallet/topup', authenticateHR, async (req, res) => {
+  try {
+    const { amount } = req.body;
+    if (!amount || amount <= 0) return res.status(400).json({ success: false, message: 'Valid amount required' });
+    
+    const plan = await CorporatePlan.findById(req.companyId);
+    if (!plan) return res.status(404).json({ success: false, message: 'Plan not found' });
+    
+    plan.walletBalance = (plan.walletBalance || 0) + Number(amount);
+    await plan.save();
+    
+    res.json({ success: true, message: `₹${amount} added`, data: { balance: plan.walletBalance } });
+  } catch (error) {
+    res.status(500).json({ success: false, message: error.message });
+  }
+});
+
+// ============================================
+// 🆕 EMPLOYEE BOOKING WITH WALLET DEDUCTION
+// ============================================
+
+// Employee books service — wallet auto-deducted
+router.post('/employee/book', async (req, res) => {
+  try {
+    const { employeeId, serviceType, providerId, amount, serviceName } = req.body;
+    
+    if (!employeeId || !serviceType || !amount) {
+      return res.status(400).json({ success: false, message: 'employeeId, serviceType, amount required' });
+    }
+    
+    // Find employee
+    const employee = await CorporateEmployee.findById(employeeId);
+    if (!employee || !employee.isActive) {
+      return res.status(400).json({ success: false, message: 'Employee not found or inactive' });
+    }
+    
+    // Find company plan
+    const plan = await CorporatePlan.findById(employee.companyId);
+    if (!plan || plan.status !== 'active') {
+      return res.status(400).json({ success: false, message: 'Company plan not active' });
+    }
+    
+    // Check wallet balance
+    if ((plan.walletBalance || 0) < amount) {
+      return res.status(400).json({ success: false, message: 'Insufficient wallet balance. Contact HR.' });
+    }
+    
+    // Deduct from wallet
+    plan.walletBalance -= amount;
+    await plan.save();
+    
+    // Create booking
+    const booking = new Booking({
+      userId: employee._id,
+      companyId: plan._id.toString(),
+      employeeName: employee.name,
+      employeeEmail: employee.email,
+      bookingType: serviceType,
+      providerId: providerId || null,
+      serviceName: serviceName || serviceType,
+      finalAmount: amount,
+      paymentStatus: 'wallet',
+      status: 'confirmed',
+      createdAt: new Date()
+    });
+    await booking.save();
+    
+    res.json({
+      success: true,
+      message: 'Booking confirmed. Wallet deducted.',
+      data: {
+        bookingId: booking._id,
+        amount,
+        remainingBalance: plan.walletBalance,
+        employeeName: employee.name
+      }
+    });
+    
+  } catch (error) {
+    console.error('Employee booking error:', error);
+    res.status(500).json({ success: false, message: error.message });
+  }
+});
+
 module.exports = router;
