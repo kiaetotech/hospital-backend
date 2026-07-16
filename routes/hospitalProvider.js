@@ -326,43 +326,22 @@ router.put('/doctors/:doctorId/availability', authenticateHospital, async (req, 
 // ============================================
 
 // Update bed status
-router.put('/bed-status', authenticateHospital, async (req, res) => {
+// Update beds by provider ID
+router.put('/:providerId/beds', authenticateHospital, async (req, res) => {
   try {
-    const hospital = await Hospital.findById(req.user._id);
+    const hospital = await Hospital.findById(req.params.providerId);
+    if (!hospital) return res.status(404).json({ success: false, message: 'Hospital not found' });
     
     hospital.beds = {
-      total: req.body.beds?.total ?? hospital.beds?.total ?? 0,
-      available: req.body.beds?.available ?? hospital.beds?.available ?? 0,
-      icu_available: req.body.beds?.icu_available ?? hospital.beds?.icu_available ?? 0,
-      icu_total: req.body.beds?.icu_total ?? hospital.beds?.icu_total ?? 0,
-      ventilator_available: req.body.beds?.ventilator_available ?? hospital.beds?.ventilator_available ?? 0,
-      ventilator_total: req.body.beds?.ventilator_total ?? hospital.beds?.ventilator_total ?? 0,
-      emergency_beds: req.body.beds?.emergency_beds ?? hospital.beds?.emergency_beds ?? 0,
-      isolation_beds: req.body.beds?.isolation_beds ?? hospital.beds?.isolation_beds ?? 0,
+      ...hospital.beds,
+      ...req.body.beds,
       last_updated: new Date(),
-      update_method: req.body.updateMethod || 'web_portal',
-      auto_expire_at: new Date(Date.now() + 4 * 60 * 60 * 1000)
+      update_method: req.body.updateMethod || 'web_portal'
     };
-    
     await hospital.save();
-    
-    // Update activity score
-    hospital.activity_score = calculateActivityScore(hospital);
-    await hospital.save();
-    
-    res.json({ success: true, data: hospital.beds });
+    res.json({ success: true, data: hospital.beds, message: 'Beds updated' });
   } catch (error) {
     res.status(400).json({ success: false, message: error.message });
-  }
-});
-
-// Get bed status
-router.get('/bed-status', authenticateHospital, async (req, res) => {
-  try {
-    const hospital = await Hospital.findById(req.user._id).select('beds');
-    res.json({ success: true, data: hospital?.beds || {} });
-  } catch (error) {
-    res.status(500).json({ success: false, message: error.message });
   }
 });
 
