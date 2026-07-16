@@ -41,7 +41,7 @@ const reviewSchema = new mongoose.Schema({
 
 const hospitalSchema = new mongoose.Schema({
   // ============ BASIC INFO ============
-  name: { type: String, required: true, index: true },
+  password: { type: String, select: false },
   subscription_plan: { 
     type: String, 
     enum: ['free', 'silver', 'gold', 'platinum'],
