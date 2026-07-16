@@ -1743,4 +1743,35 @@ router.delete('/delete', authenticateHospital, async (req, res) => {
   }
 });
 
+// Get stats by provider ID
+router.get('/:providerId/stats', authenticateHospital, async (req, res) => {
+  try {
+    const hospital = await Hospital.findById(req.params.providerId).select('doctors beds ratings');
+    res.json({
+      success: true,
+      data: {
+        totalDoctors: hospital?.doctors?.length || 0,
+        totalBeds: hospital?.beds?.total || 0,
+        availableBeds: hospital?.beds?.available || 0,
+        rating: hospital?.ratings?.average || 0
+      }
+    });
+  } catch (error) {
+    res.status(500).json({ success: false, message: error.message });
+  }
+});
+
+// Get bookings by provider ID
+router.get('/:providerId/bookings', authenticateHospital, async (req, res) => {
+  try {
+    const bookings = await Booking.find({ hospitalId: req.params.providerId })
+      .sort({ createdAt: -1 }).limit(parseInt(req.query.limit) || 5).lean();
+    res.json({ success: true, data: bookings });
+  } catch (error) {
+    res.status(500).json({ success: false, message: error.message });
+  }
+});
+
+module.exports = router;
+
 module.exports = router;
