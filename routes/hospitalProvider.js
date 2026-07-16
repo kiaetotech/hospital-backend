@@ -332,12 +332,33 @@ router.put('/:providerId/beds', authenticateHospital, async (req, res) => {
     const hospital = await Hospital.findById(req.params.providerId);
     if (!hospital) return res.status(404).json({ success: false, message: 'Hospital not found' });
     
+    const b = req.body.beds || {};
+    
     hospital.beds = {
-      ...hospital.beds,
-      ...req.body.beds,
+      total: b.total ?? hospital.beds?.total ?? 0,
+      available: b.available ?? hospital.beds?.available ?? 0,
+      general_ward: b.general_ward ?? hospital.beds?.general_ward,
+      twin_sharing: b.twin_sharing ?? hospital.beds?.twin_sharing,
+      single_room: b.single_room ?? hospital.beds?.single_room,
+      deluxe: b.deluxe ?? hospital.beds?.deluxe,
+      super_deluxe: b.super_deluxe ?? hospital.beds?.super_deluxe,
+      suite: b.suite ?? hospital.beds?.suite,
+      maternity: b.maternity ?? hospital.beds?.maternity,
+      post_op: b.post_op ?? hospital.beds?.post_op,
+      icu_available: b.icu_available ?? hospital.beds?.icu_available ?? 0,
+      icu_total: b.icu_total ?? hospital.beds?.icu_total ?? 0,
+      ventilator_available: b.ventilator_available ?? hospital.beds?.ventilator_available ?? 0,
+      ventilator_total: b.ventilator_total ?? hospital.beds?.ventilator_total ?? 0,
+      nicu_beds: b.nicu_beds ?? hospital.beds?.nicu_beds,
+      picu_beds: b.picu_beds ?? hospital.beds?.picu_beds,
+      hdu_beds: b.hdu_beds ?? hospital.beds?.hdu_beds,
+      emergency_beds: b.emergency_beds ?? hospital.beds?.emergency_beds ?? 0,
+      isolation_beds: b.isolation_beds ?? hospital.beds?.isolation_beds ?? 0,
+      day_care_beds: b.day_care_beds ?? hospital.beds?.day_care_beds,
       last_updated: new Date(),
       update_method: req.body.updateMethod || 'web_portal'
     };
+    
     await hospital.save();
     res.json({ success: true, data: hospital.beds, message: 'Beds updated' });
   } catch (error) {
