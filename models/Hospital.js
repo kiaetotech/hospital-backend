@@ -41,6 +41,7 @@ const reviewSchema = new mongoose.Schema({
 
 const hospitalSchema = new mongoose.Schema({
   // ============ BASIC INFO ============
+  name: { type: String, required: true, index: true },
   password: { type: String, select: false },
   subscription_plan: { 
     type: String, 
@@ -104,7 +105,6 @@ const hospitalSchema = new mongoose.Schema({
     ventilator_available: { type: Number, default: 0 },
     emergency_beds: { type: Number, default: 0 },
     isolation_beds: { type: Number, default: 0 },
-    
     categories: {
       general_ward: { total: Number, available: Number, price_per_day: Number },
       semi_private: { total: Number, available: Number, price_per_day: Number },
@@ -112,7 +112,6 @@ const hospitalSchema = new mongoose.Schema({
       deluxe: { total: Number, available: Number, price_per_day: Number },
       suite: { total: Number, available: Number, price_per_day: Number }
     },
-    
     last_updated: { type: Date, default: Date.now },
     update_method: {
       type: String,
@@ -128,17 +127,14 @@ const hospitalSchema = new mongoose.Schema({
     consultation_discounted: Number,
     follow_up: Number,
     emergency_consultation: Number,
-    
     icu_bed_per_day: { type: Number, default: 0 },
     general_bed_per_day: { type: Number, default: 0 },
     semi_private_per_day: Number,
     private_per_day: Number,
     deluxe_per_day: Number,
     suite_per_day: Number,
-    
     online_booking_discount: { type: Number, default: 10 },
     first_time_discount: Number,
-    
     health_packages: [{
       name: String,
       original_price: Number,
@@ -146,7 +142,6 @@ const hospitalSchema = new mongoose.Schema({
       includes: [String],
       valid_till: Date
     }],
-    
     offers: [{
       title: String,
       description: String,
@@ -162,13 +157,8 @@ const hospitalSchema = new mongoose.Schema({
   // ============ SCHEMES & INSURANCE ============
   schemes_accepted: [{
     type: String,
-    enum: [
-      'ayushman', 'cghs', 'esi', 'echs', 
-      'state_scheme', 'senior_citizen', 'disability',
-      'pmjay', 'rsby'
-    ]
+    enum: ['ayushman', 'cghs', 'esi', 'echs', 'state_scheme', 'senior_citizen', 'disability', 'pmjay', 'rsby']
   }],
-  
   scheme_details: [{
     scheme_name: String,
     scheme_type: String,
@@ -178,13 +168,10 @@ const hospitalSchema = new mongoose.Schema({
     contact_phone: String,
     last_updated: Date
   }],
-  
   insurance_accepted: [{ type: String, index: true }],
-  
   cashless_available: { type: Boolean, default: false },
   tpa_desk_available: { type: Boolean, default: false },
   reimbursement_accepted: { type: Boolean, default: true },
-  
   tpa_partners: [String],
   
   // ============ FACILITIES ============
@@ -194,36 +181,19 @@ const hospitalSchema = new mongoose.Schema({
   pharmacy_24x7: { type: Boolean, default: false },
   ambulance_available: { type: Boolean, default: false },
   ambulance_count: { type: Number, default: 0 },
-  
   technology: [{
     type: String,
-    enum: [
-      'MRI 3T', 'MRI 1.5T', 'CT 128 Slice', 'CT 64 Slice',
-      'PET-CT', 'SPECT-CT', 'Cath Lab', 'Robotic Surgery',
-      'Gamma Knife', 'CyberKnife', 'Lithotripsy',
-      'Digital X-Ray', 'Mammography', 'DEXA Scan',
-      'Ultrasound 4D', 'Echocardiography', 'EEG', 'EMG'
-    ]
+    enum: ['MRI 3T', 'MRI 1.5T', 'CT 128 Slice', 'CT 64 Slice', 'PET-CT', 'SPECT-CT', 'Cath Lab', 'Robotic Surgery', 'Gamma Knife', 'CyberKnife', 'Lithotripsy', 'Digital X-Ray', 'Mammography', 'DEXA Scan', 'Ultrasound 4D', 'Echocardiography', 'EEG', 'EMG']
   }],
-  
   operation_theaters: {
     total: Number,
     modular: Number,
     robotic: Boolean
   },
-  
   amenities: [{
     type: String,
-    enum: [
-      'WiFi', 'AC Rooms', 'TV', 'Cafeteria', 'Parking',
-      'Wheelchair Access', 'Prayer Room', 'ATM', 'Pharmacy',
-      'Attendant Stay', 'Dietary Services', 'Laundry',
-      'International Patient Services', 'Language Translator',
-      'Airport Pickup', 'Currency Exchange'
-    ]
+    enum: ['WiFi', 'AC Rooms', 'TV', 'Cafeteria', 'Parking', 'Wheelchair Access', 'Prayer Room', 'ATM', 'Pharmacy', 'Attendant Stay', 'Dietary Services', 'Laundry', 'International Patient Services', 'Language Translator', 'Airport Pickup', 'Currency Exchange']
   }],
-  
-  // ============ FACILITIES LIST (Custom) ============
   facilities: [{
     name: String,
     category: String,
@@ -244,9 +214,7 @@ const hospitalSchema = new mongoose.Schema({
     },
     avg_wait_time: { type: Number, default: 0 }
   },
-  
   reviews: [reviewSchema],
-  
   featured_review: {
     text: String,
     author: String,
@@ -275,7 +243,6 @@ const hospitalSchema = new mongoose.Schema({
   // ============ ACTIVITY & RANKING ============
   activity_score: { type: Number, default: 0 },
   last_activity: { type: Date, default: Date.now },
-  
   update_frequency: {
     today: { type: Number, default: 0 },
     this_week: { type: Number, default: 0 },
@@ -296,7 +263,6 @@ const hospitalSchema = new mongoose.Schema({
     type: String,
     enum: ['Cash', 'Credit Card', 'Debit Card', 'UPI', 'Net Banking', 'EMI']
   }],
-  
   emi_available: { type: Boolean, default: false },
   emi_partners: [String],
   
@@ -325,11 +291,7 @@ const hospitalSchema = new mongoose.Schema({
   },
   
   // ============ USER LINKING ============
-  userId: {
-    type: mongoose.Schema.Types.ObjectId,
-    ref: 'User',
-    index: true
-  },
+  userId: { type: mongoose.Schema.Types.ObjectId, ref: 'User', index: true },
   
   // ============ STATUS ============
   is_active: { type: Boolean, default: true },
@@ -349,20 +311,11 @@ const hospitalSchema = new mongoose.Schema({
     default: 'manual'
   },
 
-  // ============ 🆕 CORPORATE HEALTH ============
-  servesCorporate: { 
-    type: Boolean, 
-    default: false,
-    index: true
-  },
-  
+  // ============ CORPORATE HEALTH ============
+  servesCorporate: { type: Boolean, default: false, index: true },
   corporatePackages: [{
     packageName: { type: String, required: true },
-    packageType: {
-      type: String,
-      enum: ['health_checkup', 'opd_subscription', 'wellness_camp', 'diagnostic_package', 'custom'],
-      default: 'health_checkup'
-    },
+    packageType: { type: String, enum: ['health_checkup', 'opd_subscription', 'wellness_camp', 'diagnostic_package', 'custom'], default: 'health_checkup' },
     description: String,
     servicesIncluded: [String],
     pricePerEmployee: { type: Number, required: true },
@@ -372,17 +325,12 @@ const hospitalSchema = new mongoose.Schema({
     validityDays: { type: Number, default: 365 },
     locations: [String],
     availableCities: [String],
-    dedicatedPOC: {
-      name: String,
-      phone: String,
-      email: String
-    },
+    dedicatedPOC: { name: String, phone: String, email: String },
     slaTerms: String,
     isActive: { type: Boolean, default: true },
     createdAt: { type: Date, default: Date.now },
     updatedAt: { type: Date, default: Date.now }
   }],
-  
   corporateEnquiries: [{
     companyName: String,
     contactPerson: String,
@@ -390,11 +338,7 @@ const hospitalSchema = new mongoose.Schema({
     phone: String,
     employeeCount: Number,
     requirements: String,
-    status: {
-      type: String,
-      enum: ['new', 'contacted', 'negotiating', 'converted', 'closed'],
-      default: 'new'
-    },
+    status: { type: String, enum: ['new', 'contacted', 'negotiating', 'converted', 'closed'], default: 'new' },
     createdAt: { type: Date, default: Date.now }
   }],
 
@@ -408,39 +352,24 @@ const hospitalSchema = new mongoose.Schema({
 });
 
 // ============ INDEXES ============
-
-hospitalSchema.index({ 
-  name: 'text', 
-  specialties: 'text', 
-  diseases_treated: 'text',
-  'doctors.name': 'text',
-  'doctors.specialization': 'text'
-});
-
+hospitalSchema.index({ name: 'text', specialties: 'text', diseases_treated: 'text', 'doctors.name': 'text', 'doctors.specialization': 'text' });
 hospitalSchema.index({ 'location.coordinates': '2dsphere' });
 hospitalSchema.index({ 'address.city': 1, 'ratings.average': -1 });
 hospitalSchema.index({ schemes_accepted: 1, cashless_available: 1 });
 hospitalSchema.index({ activity_score: -1 });
 hospitalSchema.index({ diseases_treated: 1 });
 hospitalSchema.index({ procedures_available: 1 });
-
-// 🆕 Corporate indexes
 hospitalSchema.index({ servesCorporate: 1, 'address.city': 1 });
 hospitalSchema.index({ 'corporatePackages.packageType': 1 });
 hospitalSchema.index({ 'corporatePackages.isActive': 1 });
 
 // ============ MIDDLEWARE ============
-
 hospitalSchema.pre('save', function(next) {
-  if (this.beds && this.beds.update_method && 
-      ['whatsapp', 'web_portal', 'manual'].includes(this.beds.update_method)) {
-    const fourHours = 4 * 60 * 60 * 1000;
-    this.beds.auto_expire_at = new Date(Date.now() + fourHours);
+  if (this.beds && this.beds.update_method && ['whatsapp', 'web_portal', 'manual'].includes(this.beds.update_method)) {
+    this.beds.auto_expire_at = new Date(Date.now() + 4 * 60 * 60 * 1000);
   }
-  
   this.activity_score = calculateActivityScore(this);
   this.last_activity = new Date();
-  
   next();
 });
 
@@ -448,51 +377,35 @@ hospitalSchema.pre('save', function(next) {
   if (this.isModified('reviews')) {
     const totalRating = this.reviews.reduce((sum, r) => sum + r.rating, 0);
     this.ratings.count = this.reviews.length;
-    this.ratings.average = this.reviews.length > 0 ? 
-      (totalRating / this.reviews.length).toFixed(1) : 0;
+    this.ratings.average = this.reviews.length > 0 ? (totalRating / this.reviews.length).toFixed(1) : 0;
   }
   next();
 });
 
 // ============ METHODS ============
-
 hospitalSchema.methods.getAvailableDoctors = function(specialization = null) {
-  let doctors = this.doctors.filter(d => 
-    d.availability.status !== 'leave' && d.accepting_new_patients
-  );
-  
-  if (specialization) {
-    doctors = doctors.filter(d => 
-      d.specialization.toLowerCase().includes(specialization.toLowerCase())
-    );
-  }
-  
+  let doctors = this.doctors.filter(d => d.availability.status !== 'leave' && d.accepting_new_patients);
+  if (specialization) doctors = doctors.filter(d => d.specialization.toLowerCase().includes(specialization.toLowerCase()));
   return doctors;
 };
 
 hospitalSchema.methods.getBedStatusBadge = function() {
   const hours = (Date.now() - new Date(this.beds.last_updated).getTime()) / (1000 * 60 * 60);
-  
   if (hours < 1) return { text: 'Live Updated', color: 'green', icon: '🟢' };
   if (hours < 4) return { text: 'Updated Recently', color: 'yellow', icon: '🟡' };
   if (hours < 12) return { text: 'Updated Today', color: 'orange', icon: '🟠' };
   return { text: 'May not be current', color: 'red', icon: '🔴' };
 };
 
-// 🆕 Corporate methods
 hospitalSchema.methods.toggleCorporate = function(enable = true) {
   this.servesCorporate = enable;
-  if (!enable) {
-    this.corporatePackages.forEach(pkg => { pkg.isActive = false; });
-  }
+  if (!enable) this.corporatePackages.forEach(pkg => { pkg.isActive = false; });
   return this.save();
 };
 
 hospitalSchema.methods.addCorporatePackage = function(packageData) {
   this.corporatePackages.push(packageData);
-  if (!this.servesCorporate) {
-    this.servesCorporate = true;
-  }
+  if (!this.servesCorporate) this.servesCorporate = true;
   return this.save();
 };
 
@@ -501,32 +414,23 @@ hospitalSchema.methods.getActiveCorporatePackages = function() {
 };
 
 // ============ STATICS ============
-
 hospitalSchema.statics.findCorporateHospitals = function(city = null) {
   const query = { servesCorporate: true, is_active: true, is_verified: true };
-  if (city) {
-    query['address.city'] = { $regex: new RegExp(city, 'i') };
-  }
+  if (city) query['address.city'] = { $regex: new RegExp(city, 'i') };
   return this.find(query).select('name address corporatePackages ratings contact');
 };
 
 // ============ HELPER ============
-
 function calculateActivityScore(hospital) {
   const now = new Date();
   const lastBedUpdate = hospital.beds?.last_updated;
-  
   if (!lastBedUpdate) return 0;
-  
   const hoursSinceUpdate = (now - new Date(lastBedUpdate)) / (1000 * 60 * 60);
-  
   let score = 100;
-  
   if (hoursSinceUpdate > 24) score -= 60;
   else if (hoursSinceUpdate > 12) score -= 40;
   else if (hoursSinceUpdate > 4) score -= 20;
   else if (hoursSinceUpdate > 2) score -= 10;
-  
   if (hospital.doctors?.length > 0) score += 10;
   if (hospital.schemes_accepted?.length > 0) score += 5;
   if (hospital.insurance_accepted?.length > 0) score += 5;
@@ -534,7 +438,6 @@ function calculateActivityScore(hospital) {
   if (hospital.technology?.length > 0) score += 5;
   if (hospital.diseases_treated?.length > 0) score += 5;
   if (hospital.procedures_available?.length > 0) score += 5;
-  
   return Math.max(0, Math.min(100, score));
 }
 

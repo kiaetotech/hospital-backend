@@ -108,7 +108,7 @@ router.post('/login', async (req, res) => {
         { 'contact.email': email || '' },
         { 'contact.phone': phone || '' }
       ]
-    });
+    }).select('+password');
     
     if (!hospital) {
       return res.status(404).json({ success: false, message: 'Hospital not found. Please check your credentials.' });
