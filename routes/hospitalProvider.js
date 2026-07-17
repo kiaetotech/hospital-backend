@@ -238,6 +238,16 @@ router.get('/doctors', authenticateHospital, async (req, res) => {
   }
 });
 
+// Get doctors by provider ID (fallback)
+router.get('/:providerId/doctors', authenticateHospital, async (req, res) => {
+  try {
+    const hospital = await Hospital.findById(req.params.providerId).select('doctors');
+    res.json({ success: true, data: hospital?.doctors || [] });
+  } catch (error) {
+    res.status(500).json({ success: false, message: error.message });
+  }
+});
+
 // Add doctor
 router.post('/doctors', authenticateHospital, async (req, res) => {
   try {
