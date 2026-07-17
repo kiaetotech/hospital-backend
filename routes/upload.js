@@ -101,4 +101,18 @@ router.get('/prices', async (req, res) => {
   }
 });
 
+// General file upload for hospitals (images, documents)
+router.post('/file', global.authenticateToken, upload.single('file'), async (req, res) => {
+  try {
+    const { uploadFile } = require('../services/cloudinaryService');
+    const result = await uploadFile(req.file.buffer, {
+      folder: 'hospital_uploads',
+      public_id: `${req.user._id}_${Date.now()}`
+    });
+    res.json({ success: true, url: result.secure_url });
+  } catch (error) {
+    res.status(500).json({ success: false, message: error.message });
+  }
+});
+
 module.exports = router;
