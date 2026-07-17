@@ -89,9 +89,10 @@ const hospitalSchema = new mongoose.Schema({
   
   // ============ ACCREDITATIONS ============
   accreditations: [{
-    type: String,
-    enum: ['NABH', 'JCI', 'NABL', 'ISO', 'NIC'],
-    default: []
+    type: { type: String, enum: ['NABH', 'JCI', 'NABL', 'ISO', 'NIC', 'ISO 9001', 'ISO 15189'] },
+    certificate_number: String,
+    issuing_body: String,
+    valid_until: String
   }],
   
   // ============ BED MANAGEMENT ============
