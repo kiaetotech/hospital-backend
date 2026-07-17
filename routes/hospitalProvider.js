@@ -188,7 +188,7 @@ router.put('/profile', authenticateHospital, async (req, res) => {
     delete req.body.password;
     const hospital = await Hospital.findByIdAndUpdate(
       req.user._id, 
-      { ...req.body, updated_at: new Date() }, 
+      { $set: { ...req.body, updated_at: new Date() } }, 
       { new: true }
     ).select('-password');
     

@@ -89,7 +89,7 @@ const hospitalSchema = new mongoose.Schema({
   
   // ============ ACCREDITATIONS ============
   accreditations: [{
-    accreditation_type: { type: String, enum: ['NABH', 'JCI', 'NABL', 'ISO', 'ISO 9001', 'ISO 15189', 'NIC'] },
+    type: { type: String, enum: ['NABH', 'JCI', 'NABL', 'ISO', 'ISO 9001', 'ISO 15189', 'NIC'] },
     certificate_number: String,
     issuing_body: String,
     valid_until: String
@@ -142,7 +142,7 @@ const hospitalSchema = new mongoose.Schema({
     opd_online: { type: Number, default: 0 },
     ipd_general_ward: { type: Number, default: 0 },
     ipd_semi_private: { type: Number, default: 0 },
-    ipd_private: { type: Number, default: 0 },
+    ipd_private_room: { type: Number, default: 0 },
     ipd_deluxe: { type: Number, default: 0 },
     ipd_super_deluxe: { type: Number, default: 0 },
     ipd_suite: { type: Number, default: 0 },
@@ -294,14 +294,16 @@ const hospitalSchema = new mongoose.Schema({
   emi_available: { type: Boolean, default: false },
   emi_partners: [String],
   
+  // ============ GALLERY & DOCUMENTS ============
+  gallery: [String],
+  documents: [{
+    type: String,
+    name: String,
+    url: String
+  }],
+
   // ============ AMBULANCE FLEET ============
   ambulance_fleet: [{
-    gallery: [String],
-    documents: [{
-       type: String,
-       name: String,
-       url: String
-     }],
     vehicle_number: String,
     type: { type: String, enum: ['basic', 'cardiac', 'ventilator', 'neonatal', 'wheelchair'] },
     driver_name: String,
