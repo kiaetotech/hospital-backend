@@ -477,4 +477,4 @@ function calculateActivityScore(hospital) {
   return Math.max(0, Math.min(100, score));
 }
 
-module.exports = mongoose.model('Hospital', hospitalSchema);
+module.exports = mongoose.model('Hospital', hospitalSchema);// force model redeploy 
