@@ -89,7 +89,7 @@ const hospitalSchema = new mongoose.Schema({
   
   // ============ ACCREDITATIONS ============
   accreditations: [{
-    type: { type: String, enum: ['NABH', 'JCI', 'NABL', 'ISO', 'NIC', 'ISO 9001', 'ISO 15189'] },
+    accreditation_type: { type: String, enum: ['NABH', 'JCI', 'NABL', 'ISO', 'ISO 9001', 'ISO 15189', 'NIC'] },
     certificate_number: String,
     issuing_body: String,
     valid_until: String
@@ -134,6 +134,25 @@ const hospitalSchema = new mongoose.Schema({
     private_per_day: Number,
     deluxe_per_day: Number,
     suite_per_day: Number,
+    opd_general: { type: Number, default: 0 },
+    opd_specialist: { type: Number, default: 0 },
+    opd_super_specialist: { type: Number, default: 0 },
+    opd_emergency: { type: Number, default: 0 },
+    opd_follow_up: { type: Number, default: 0 },
+    opd_online: { type: Number, default: 0 },
+    ipd_general_ward: { type: Number, default: 0 },
+    ipd_semi_private: { type: Number, default: 0 },
+    ipd_private: { type: Number, default: 0 },
+    ipd_deluxe: { type: Number, default: 0 },
+    ipd_super_deluxe: { type: Number, default: 0 },
+    ipd_suite: { type: Number, default: 0 },
+    ipd_icu: { type: Number, default: 0 },
+    ipd_icu_ventilator: { type: Number, default: 0 },
+    ipd_nicu: { type: Number, default: 0 },
+    ipd_picu: { type: Number, default: 0 },
+    ipd_hdu: { type: Number, default: 0 },
+    ipd_isolation: { type: Number, default: 0 },
+    ipd_day_care: { type: Number, default: 0 },
     online_booking_discount: { type: Number, default: 10 },
     first_time_discount: Number,
     health_packages: [{
@@ -234,6 +253,14 @@ const hospitalSchema = new mongoose.Schema({
   
   // ============ OPERATIONAL ============
   working_hours: { type: String, default: '24x7' },
+  online_services: {
+    enabled: { type: Boolean, default: false },
+    consultation_fee: Number,
+    follow_up_fee: Number,
+    emergency_fee: Number,
+    video_consult: { type: Boolean, default: true },
+    chat_consult: { type: Boolean, default: false }
+  },
   opd_timings: {
     morning: { start: String, end: String },
     evening: { start: String, end: String }
@@ -269,6 +296,12 @@ const hospitalSchema = new mongoose.Schema({
   
   // ============ AMBULANCE FLEET ============
   ambulance_fleet: [{
+    gallery: [String],
+    documents: [{
+       type: String,
+       name: String,
+       url: String
+     }],
     vehicle_number: String,
     type: { type: String, enum: ['basic', 'cardiac', 'ventilator', 'neonatal', 'wheelchair'] },
     driver_name: String,
