@@ -746,8 +746,13 @@ app.use((err, req, res, next) => {
 // ============================================
 const DB_URI = process.env.DB_URI || process.env.MONGODB_URI || 'mongodb://localhost:27017/hospital_db';
 mongoose.connect(DB_URI)
-  .then(() => console.log('✅ MongoDB connected'))
-  .catch(err => console.error('❌ MongoDB error:', err));
+  .then(() => {
+    console.log('✅ MongoDB connected');
+    // Force reload all models
+    Object.keys(mongoose.models).forEach(modelName => {
+      delete mongoose.models[modelName];
+    });
+  })
 
 // ============================================
 // SERVER START (Using http server for Socket.IO)
