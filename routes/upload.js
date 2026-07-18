@@ -3,11 +3,15 @@ const multer = require('multer');
 const XLSX = require('xlsx');
 const Test = require('../models/Test');
 const ProviderPrice = require('../models/ProviderPrice');
+const Hospital = require('../models/Hospital');
+const DiagnosticsProvider = require('../models/DiagnosticsProvider');
 const router = express.Router();
 
 const upload = multer({ storage: multer.memoryStorage() });
 
-// Upload master tests list (Admin)
+// ============================================
+// UPLOAD MASTER TESTS LIST (Admin)
+// ============================================
 router.post('/tests', upload.single('file'), async (req, res) => {
   try {
     const workbook = XLSX.read(req.file.buffer, { type: 'buffer' });
@@ -35,7 +39,10 @@ router.post('/tests', upload.single('file'), async (req, res) => {
   }
 });
 
-// Upload prices (Agency - requires login)
+// ============================================
+// UPLOAD PRICES (Provider - requires login)
+// Saves prices + upload history for Hospital/Diagnostics
+// ============================================
 router.post('/prices', global.authenticateToken, upload.single('file'), async (req, res) => {
   try {
     const workbook = XLSX.read(req.file.buffer, { type: 'buffer' });
@@ -45,7 +52,6 @@ router.post('/prices', global.authenticateToken, upload.single('file'), async (r
     
     let count = 0;
     for (const row of data) {
-      // Ensure test exists
       await Test.findOneAndUpdate(
         { testName: row.testName },
         { 
@@ -56,12 +62,11 @@ router.post('/prices', global.authenticateToken, upload.single('file'), async (r
         { upsert: true }
       );
       
-      // Save provider price with ID and NAME from logged-in user
       await ProviderPrice.findOneAndUpdate(
         { providerId: req.user.id, testName: row.testName },
         {
           providerId: req.user.id,
-          providerName: req.user.providerName,  // ← FIXED: uses logged-in user's name
+          providerName: req.user.providerName || req.user.name || 'Provider',
           testName: row.testName,
           price: row.price,
           discountedPrice: row.discountedPrice || row.price,
@@ -75,13 +80,41 @@ router.post('/prices', global.authenticateToken, upload.single('file'), async (r
       count++;
     }
     
-    res.json({ success: true, count, message: `${count} prices uploaded for ${req.user.providerName}` });
+    // Save upload history
+    const providerId = req.user._id || req.user.id;
+    const role = req.user.role;
+    
+    if (role === 'hospital') {
+      await Hospital.findByIdAndUpdate(providerId, {
+        $push: {
+          upload_history: {
+            filename: req.file.originalname,
+            type: 'lab_prices',
+            status: 'completed'
+          }
+        }
+      });
+    } else if (role === 'diagnostics') {
+      await DiagnosticsProvider.findByIdAndUpdate(providerId, {
+        $push: {
+          upload_history: {
+            filename: req.file.originalname,
+            type: 'lab_prices',
+            status: 'completed'
+          }
+        }
+      });
+    }
+    
+    res.json({ success: true, count, message: `${count} prices uploaded` });
   } catch (error) {
     res.status(500).json({ error: error.message });
   }
 });
 
-// Get logged-in agency's own prices
+// ============================================
+// GET LOGGED-IN PROVIDER'S OWN PRICES
+// ============================================
 router.get('/my-prices', global.authenticateToken, async (req, res) => {
   try {
     const prices = await ProviderPrice.find({ providerId: req.user.id, isActive: true });
@@ -91,7 +124,9 @@ router.get('/my-prices', global.authenticateToken, async (req, res) => {
   }
 });
 
-// Get all prices (Admin)
+// ============================================
+// GET ALL PRICES (Admin)
+// ============================================
 router.get('/prices', async (req, res) => {
   try {
     const prices = await ProviderPrice.find({ isActive: true });
@@ -101,14 +136,36 @@ router.get('/prices', async (req, res) => {
   }
 });
 
-// General file upload for hospitals (images, documents)
+// ============================================
+// GENERAL FILE UPLOAD (Images, Documents)
+// Used by: Hospitals, Diagnostics, Ambulance, Caregivers, All Providers
+// ============================================
 router.post('/file', global.authenticateToken, upload.single('file'), async (req, res) => {
   try {
     const { uploadFile } = require('../services/cloudinaryService');
     const result = await uploadFile(req.file.buffer, {
       folder: 'hospital_uploads',
-      public_id: `${req.user._id}_${Date.now()}`
+      public_id: `${req.user._id || req.user.id}_${Date.now()}`
     });
+    
+    // Save upload history based on provider type
+    const providerId = req.user._id || req.user.id;
+    const role = req.user.role;
+    
+    const historyEntry = {
+      filename: req.file.originalname,
+      type: req.body.type || 'document',
+      status: 'completed'
+    };
+    
+    if (role === 'hospital') {
+      await Hospital.findByIdAndUpdate(providerId, { $push: { upload_history: historyEntry } });
+    } else if (role === 'diagnostics') {
+      try {
+        await DiagnosticsProvider.findByIdAndUpdate(providerId, { $push: { upload_history: historyEntry } });
+      } catch(e) {}
+    }
+    
     res.json({ success: true, url: result.secure_url });
   } catch (error) {
     res.status(500).json({ success: false, message: error.message });
