@@ -297,9 +297,9 @@ const hospitalSchema = new mongoose.Schema({
   // ============ GALLERY & DOCUMENTS ============
   gallery: [String],
   documents: [{
-    type: String,
-    name: String,
-    url: String
+    doc_type: { type: String },
+    name: { type: String },
+    url: { type: String }
   }],
 
   // ============ AMBULANCE FLEET ============
