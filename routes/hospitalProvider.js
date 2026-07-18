@@ -625,19 +625,18 @@ router.post('/upload-doctors', authenticateHospital, upload.single('file'), asyn
       }
     }));
     
+    hospital.upload_history.push({
+      filename: req.file.originalname,
+      type: 'doctors',
+      status: 'completed'
+    });
+    
     await hospital.save();
     res.json({ success: true, message: `${doctors.length} doctors uploaded successfully` });
   } catch (error) {
     res.status(400).json({ success: false, message: error.message });
   }
 });
-
-hospital.upload_history.push({
-    filename: req.file.originalname,
-    type: 'doctors',
-    status: 'completed'
-});
-await hospital.save();
 
 // Upload data via Excel (beds, pricing)
 router.post('/upload-data', authenticateHospital, upload.single('file'), async (req, res) => {
@@ -1616,11 +1615,10 @@ router.post('/submit-verification', authenticateHospital, async (req, res) => {
 // 🆕 CITY TEMPLATE SYSTEM
 // ============================================
 
-const cityTemplateService = require('../services/cityTemplateService');
-
 // Get available cities with templates
 router.get('/template/cities', async (req, res) => {
   try {
+    const cityTemplateService = require('../services/cityTemplateService');
     const cities = cityTemplateService.getAvailableCities();
     res.json({ success: true, data: cities });
   } catch (error) {
@@ -1631,6 +1629,7 @@ router.get('/template/cities', async (req, res) => {
 // Get template for a city (what data will be pre-filled)
 router.get('/template/city/:city', async (req, res) => {
   try {
+    const cityTemplateService = require('../services/cityTemplateService');
     const { sections } = req.query;
     const sectionList = sections ? sections.split(',') : [];
     const template = cityTemplateService.getPartialTemplate(req.params.city, sectionList);
@@ -1643,6 +1642,7 @@ router.get('/template/city/:city', async (req, res) => {
 // Preview template before applying
 router.get('/template/city/:city/preview', async (req, res) => {
   try {
+    const cityTemplateService = require('../services/cityTemplateService');
     const template = cityTemplateService.getCityTemplate(req.params.city);
     res.json({
       success: true,
@@ -1672,6 +1672,7 @@ router.get('/template/city/:city/preview', async (req, res) => {
 // Apply city template to hospital
 router.post('/template/city/:city/apply', authenticateHospital, async (req, res) => {
   try {
+    const cityTemplateService = require('../services/cityTemplateService');
     const { sections } = req.body;
     const result = await cityTemplateService.applyTemplate(
       req.user._id,
@@ -1683,7 +1684,6 @@ router.post('/template/city/:city/apply', authenticateHospital, async (req, res)
     res.status(400).json({ success: false, message: error.message });
   }
 });
-
 // ============================================
 // LAB TESTS, PACKAGES, AMBULANCE ENDPOINTS
 // ============================================
