@@ -367,6 +367,12 @@ const hospitalSchema = new mongoose.Schema({
     createdAt: { type: Date, default: Date.now },
     updatedAt: { type: Date, default: Date.now }
   }],
+  upload_history: [{
+    filename: String,
+    uploaded_at: { type: Date, default: Date.now },
+    type: String,
+    status: { type: String, default: 'completed' }
+  }],
   corporateEnquiries: [{
     companyName: String,
     contactPerson: String,

@@ -632,6 +632,13 @@ router.post('/upload-doctors', authenticateHospital, upload.single('file'), asyn
   }
 });
 
+hospital.upload_history.push({
+    filename: req.file.originalname,
+    type: 'doctors',
+    status: 'completed'
+});
+await hospital.save();
+
 // Upload data via Excel (beds, pricing)
 router.post('/upload-data', authenticateHospital, upload.single('file'), async (req, res) => {
   try {
