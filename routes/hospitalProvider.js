@@ -665,7 +665,11 @@ router.post('/upload-data', authenticateHospital, upload.single('file'), async (
     hospital.beds.last_updated = new Date();
     hospital.beds.update_method = 'excel_upload';
     hospital.beds.auto_expire_at = new Date(Date.now() + 24 * 60 * 60 * 1000);
-    
+    hospital.upload_history.push({
+    filename: req.file.originalname,
+    type: 'bulk_data',
+    status: 'completed'
+});
     await hospital.save();
     res.json({ success: true, message: 'Data updated from Excel successfully' });
   } catch (error) {
