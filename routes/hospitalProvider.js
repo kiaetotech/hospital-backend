@@ -186,11 +186,19 @@ router.get('/profile', authenticateHospital, async (req, res) => {
 router.put('/profile', authenticateHospital, async (req, res) => {
   try {
     delete req.body.password;
-    const hospital = await Hospital.findByIdAndUpdate(
-      req.user._id, 
-      { $set: { ...req.body, updated_at: new Date() } }, 
-      { new: true }
-    ).select('-password');
+    const hospital = await Hospital.findById(req.user._id);
+
+if (req.body.pricing) {
+  hospital.pricing = { ...hospital.pricing.toObject(), ...req.body.pricing };
+  delete req.body.pricing;
+}
+
+Object.assign(hospital, req.body);
+hospital.updated_at = new Date();
+await hospital.save();
+
+const updated = await Hospital.findById(req.user._id).select('-password');
+res.json({ success: true, data: updated });
     
     res.json({ success: true, data: hospital });
   } catch (error) {
