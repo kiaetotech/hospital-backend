@@ -702,7 +702,19 @@ router.post(
       // ------------------------------------------------
       // Find Hospital
       // ------------------------------------------------
-      const hospital = await Hospital.findById(req.user._id);
+      let hospital = null;
+      
+      if (req.user._id && req.user._id !== 'provider') {
+        hospital = await Hospital.findById(req.user._id);
+      }
+      
+      if (!hospital && req.user.phone) {
+        hospital = await Hospital.findOne({ 'contact.phone': req.user.phone });
+      }
+      
+      if (!hospital && req.user.id) {
+        hospital = await Hospital.findById(req.user.id);
+      }
 
       if (!hospital) {
         return res.status(404).json({
