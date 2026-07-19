@@ -317,9 +317,9 @@ const employeePortalRoutes = require('./routes/employeePortal');
 // ============================================
 
 // 🏥 Hospital Routes
-app.use('/api/hospitals', searchLimiter, hospitalRoutes);
 app.use('/api/hospitals/provider', hospitalProviderRoutes);
-app.use('/api/hospital-status', hospitalStatusRoutes);  // 🆕
+app.use('/api/hospitals', searchLimiter, hospitalRoutes);
+app.use('/api/hospital-status', hospitalStatusRoutes);
 
 // 🔐 Auth
 app.use('/api/auth', authRoutes);
