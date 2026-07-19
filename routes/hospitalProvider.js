@@ -639,43 +639,174 @@ router.post('/upload-doctors', authenticateHospital, upload.single('file'), asyn
 });
 
 // Upload data via Excel (beds, pricing)
-router.post('/upload-data', authenticateHospital, upload.single('file'), async (req, res) => {
-  try {
-    if (!req.file) {
-      return res.status(400).json({ success: false, message: 'Please upload a file' });
-    }
+// ============================================
+// SAFE EXCEL UPLOAD (Beds & Pricing)
+// ============================================
+router.post(
+  '/upload-data',
+  authenticateHospital,
+  upload.single('file'),
+  async (req, res) => {
+    try {
+      console.log("========== EXCEL UPLOAD START ==========");
 
-    const workbook = xlsx.read(req.file.buffer, { type: 'buffer' });
-    const sheet = workbook.Sheets[workbook.SheetNames[0]];
-    const data = xlsx.utils.sheet_to_json(sheet)[0];
-    
-    const hospital = await Hospital.findById(req.user._id);
-    
-    if (data['Total Beds']) hospital.beds.total = parseInt(data['Total Beds']);
-    if (data['Available Beds']) hospital.beds.available = parseInt(data['Available Beds']);
-    if (data['ICU Beds']) hospital.beds.icu_available = parseInt(data['ICU Beds']);
-    if (data['Ventilators']) hospital.beds.ventilator_total = parseInt(data['Ventilators']);
-    if (data['OPD Fee (₹)']) hospital.pricing.consultation = parseFloat(data['OPD Fee (₹)']);
-    if (data['ICU Per Day (₹)']) hospital.pricing.icu_bed_per_day = parseFloat(data['ICU Per Day (₹)']);
-    if (data['General Ward (₹)']) hospital.pricing.general_bed_per_day = parseFloat(data['General Ward (₹)']);
-    if (data['Semi-Private (₹)']) hospital.pricing.semi_private_per_day = parseFloat(data['Semi-Private (₹)']);
-    if (data['Private Room (₹)']) hospital.pricing.private_per_day = parseFloat(data['Private Room (₹)']);
-    if (data['Online Discount (%)']) hospital.pricing.online_booking_discount = parseFloat(data['Online Discount (%)']);
-    
-    hospital.beds.last_updated = new Date();
-    hospital.beds.update_method = 'excel_upload';
-    hospital.beds.auto_expire_at = new Date(Date.now() + 24 * 60 * 60 * 1000);
-    hospital.upload_history.push({
-    filename: req.file.originalname,
-    type: 'bulk_data',
-    status: 'completed'
-});
-    await hospital.save();
-    res.json({ success: true, message: 'Data updated from Excel successfully' });
-  } catch (error) {
-    res.status(400).json({ success: false, message: error.message });
+      // ------------------------------------------------
+      // Validate uploaded file
+      // ------------------------------------------------
+      if (!req.file) {
+        return res.status(400).json({
+          success: false,
+          message: "Please upload an Excel file."
+        });
+      }
+
+      console.log("Uploaded File:", req.file.originalname);
+
+      // ------------------------------------------------
+      // Read workbook
+      // ------------------------------------------------
+      const workbook = xlsx.read(req.file.buffer, {
+        type: "buffer"
+      });
+
+      if (!workbook.SheetNames.length) {
+        return res.status(400).json({
+          success: false,
+          message: "Excel file contains no sheets."
+        });
+      }
+
+      const sheet = workbook.Sheets[workbook.SheetNames[0]];
+
+      if (!sheet) {
+        return res.status(400).json({
+          success: false,
+          message: "Unable to read worksheet."
+        });
+      }
+
+      const rows = xlsx.utils.sheet_to_json(sheet);
+
+      if (!rows.length) {
+        return res.status(400).json({
+          success: false,
+          message: "Excel file is empty."
+        });
+      }
+
+      const data = rows[0];
+
+      console.log("Excel Data:");
+      console.log(data);
+
+      // ------------------------------------------------
+      // Find Hospital
+      // ------------------------------------------------
+      const hospital = await Hospital.findById(req.user._id);
+
+      if (!hospital) {
+        return res.status(404).json({
+          success: false,
+          message: "Hospital not found."
+        });
+      }
+
+      // ------------------------------------------------
+      // Initialize missing objects
+      // ------------------------------------------------
+      if (!hospital.beds) hospital.beds = {};
+      if (!hospital.pricing) hospital.pricing = {};
+      if (!hospital.upload_history) hospital.upload_history = [];
+
+      // ------------------------------------------------
+      // Beds
+      // ------------------------------------------------
+      if (data["Total Beds"] !== undefined)
+        hospital.beds.total = Number(data["Total Beds"]) || 0;
+
+      if (data["Available Beds"] !== undefined)
+        hospital.beds.available = Number(data["Available Beds"]) || 0;
+
+      if (data["ICU Beds"] !== undefined)
+        hospital.beds.icu_available = Number(data["ICU Beds"]) || 0;
+
+      if (data["Ventilators"] !== undefined)
+        hospital.beds.ventilator_total = Number(data["Ventilators"]) || 0;
+
+      // ------------------------------------------------
+      // Pricing
+      // ------------------------------------------------
+      if (data["OPD Fee (₹)"] !== undefined)
+        hospital.pricing.consultation = Number(data["OPD Fee (₹)"]) || 0;
+
+      if (data["ICU Per Day (₹)"] !== undefined)
+        hospital.pricing.icu_bed_per_day =
+          Number(data["ICU Per Day (₹)"]) || 0;
+
+      if (data["General Ward (₹)"] !== undefined)
+        hospital.pricing.general_bed_per_day =
+          Number(data["General Ward (₹)"]) || 0;
+
+      if (data["Semi-Private (₹)"] !== undefined)
+        hospital.pricing.semi_private_per_day =
+          Number(data["Semi-Private (₹)"]) || 0;
+
+      if (data["Private Room (₹)"] !== undefined)
+        hospital.pricing.private_per_day =
+          Number(data["Private Room (₹)"]) || 0;
+
+      if (data["Online Discount (%)"] !== undefined)
+        hospital.pricing.online_booking_discount =
+          Number(data["Online Discount (%)"]) || 0;
+
+      // ------------------------------------------------
+      // Metadata
+      // ------------------------------------------------
+      hospital.beds.last_updated = new Date();
+      hospital.beds.update_method = "excel_upload";
+      hospital.beds.auto_expire_at = new Date(
+        Date.now() + 24 * 60 * 60 * 1000
+      );
+
+      hospital.upload_history.push({
+        filename: req.file.originalname,
+        uploaded_at: new Date(),
+        type: "bulk_data",
+        status: "completed"
+      });
+
+      hospital.updated_at = new Date();
+
+      await hospital.save();
+
+      console.log("Upload completed successfully.");
+
+      return res.json({
+        success: true,
+        message: "Hospital data uploaded successfully.",
+        uploaded: {
+          beds: hospital.beds,
+          pricing: hospital.pricing
+        }
+      });
+
+    } catch (error) {
+
+      console.error("========== EXCEL UPLOAD ERROR ==========");
+      console.error(error);
+      console.error(error.stack);
+
+      return res.status(500).json({
+        success: false,
+        message: error.message,
+        error:
+          process.env.NODE_ENV !== "production"
+            ? error.stack
+            : undefined
+      });
+    }
   }
-});
+);
 
 // Download doctor template
 router.get('/template/download', authenticateHospital, (req, res) => {
