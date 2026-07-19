@@ -594,136 +594,63 @@ router.post(
   async (req, res) => {
     try {
       console.log("========== EXCEL UPLOAD START ==========");
+      console.log('DEBUG req.user._id:', req.user._id);
+      console.log('DEBUG req.user:', JSON.stringify(req.user));
 
-      // ------------------------------------------------
-      // Validate uploaded file
-      // ------------------------------------------------
       if (!req.file) {
-        return res.status(400).json({
-          success: false,
-          message: "Please upload an Excel file."
-        });
+        return res.status(400).json({ success: false, message: "Please upload an Excel file." });
       }
 
       console.log("Uploaded File:", req.file.originalname);
 
-      // ------------------------------------------------
-      // Read workbook
-      // ------------------------------------------------
-      const workbook = xlsx.read(req.file.buffer, {
-        type: "buffer"
-      });
+      const workbook = xlsx.read(req.file.buffer, { type: "buffer" });
 
       if (!workbook.SheetNames.length) {
-        return res.status(400).json({
-          success: false,
-          message: "Excel file contains no sheets."
-        });
+        return res.status(400).json({ success: false, message: "Excel file contains no sheets." });
       }
 
       const sheet = workbook.Sheets[workbook.SheetNames[0]];
-
       if (!sheet) {
-        return res.status(400).json({
-          success: false,
-          message: "Unable to read worksheet."
-        });
+        return res.status(400).json({ success: false, message: "Unable to read worksheet." });
       }
 
       const rows = xlsx.utils.sheet_to_json(sheet);
-
       if (!rows.length) {
-        return res.status(400).json({
-          success: false,
-          message: "Excel file is empty."
-        });
+        return res.status(400).json({ success: false, message: "Excel file is empty." });
       }
 
       const data = rows[0];
+      console.log("Excel Data:", data);
 
-      console.log("Excel Data:");
-      console.log(data);
-
-      // ------------------------------------------------
-      // Find Hospital
-      // ------------------------------------------------
-      let hospital = null;
-      
-      if (req.user._id && req.user._id !== 'provider') {
-        hospital = await Hospital.findById(req.user._id);
+      // Find Hospital - use multiple fallback methods
+      let hospitalId = req.user._id;
+      if (!hospitalId || hospitalId === 'provider') {
+        hospitalId = req.user.id || req.user.hospitalId;
       }
       
-      if (!hospital && req.user.phone) {
-        hospital = await Hospital.findOne({ 'contact.phone': req.user.phone });
-      }
-      
-      if (!hospital && req.user.id) {
-        hospital = await Hospital.findById(req.user.id);
-      }
-
+      const hospital = await Hospital.findById(hospitalId);
       if (!hospital) {
-        return res.status(404).json({
-          success: false,
-          message: "Hospital not found."
-        });
+        return res.status(404).json({ success: false, message: "Hospital not found. ID: " + hospitalId });
       }
 
-      // ------------------------------------------------
-      // Initialize missing objects
-      // ------------------------------------------------
       if (!hospital.beds) hospital.beds = {};
       if (!hospital.pricing) hospital.pricing = {};
       if (!hospital.upload_history) hospital.upload_history = [];
 
-      // ------------------------------------------------
-      // Beds
-      // ------------------------------------------------
-      if (data["Total Beds"] !== undefined)
-        hospital.beds.total = Number(data["Total Beds"]) || 0;
+      if (data["Total Beds"] !== undefined) hospital.beds.total = Number(data["Total Beds"]) || 0;
+      if (data["Available Beds"] !== undefined) hospital.beds.available = Number(data["Available Beds"]) || 0;
+      if (data["ICU Beds"] !== undefined) hospital.beds.icu_available = Number(data["ICU Beds"]) || 0;
+      if (data["Ventilators"] !== undefined) hospital.beds.ventilator_total = Number(data["Ventilators"]) || 0;
+      if (data["OPD Fee (₹)"] !== undefined) hospital.pricing.consultation = Number(data["OPD Fee (₹)"]) || 0;
+      if (data["ICU Per Day (₹)"] !== undefined) hospital.pricing.icu_bed_per_day = Number(data["ICU Per Day (₹)"]) || 0;
+      if (data["General Ward (₹)"] !== undefined) hospital.pricing.general_bed_per_day = Number(data["General Ward (₹)"]) || 0;
+      if (data["Semi-Private (₹)"] !== undefined) hospital.pricing.semi_private_per_day = Number(data["Semi-Private (₹)"]) || 0;
+      if (data["Private Room (₹)"] !== undefined) hospital.pricing.private_per_day = Number(data["Private Room (₹)"]) || 0;
+      if (data["Online Discount (%)"] !== undefined) hospital.pricing.online_booking_discount = Number(data["Online Discount (%)"]) || 0;
 
-      if (data["Available Beds"] !== undefined)
-        hospital.beds.available = Number(data["Available Beds"]) || 0;
-
-      if (data["ICU Beds"] !== undefined)
-        hospital.beds.icu_available = Number(data["ICU Beds"]) || 0;
-
-      if (data["Ventilators"] !== undefined)
-        hospital.beds.ventilator_total = Number(data["Ventilators"]) || 0;
-
-      // ------------------------------------------------
-      // Pricing
-      // ------------------------------------------------
-      if (data["OPD Fee (₹)"] !== undefined)
-        hospital.pricing.consultation = Number(data["OPD Fee (₹)"]) || 0;
-
-      if (data["ICU Per Day (₹)"] !== undefined)
-        hospital.pricing.icu_bed_per_day =
-          Number(data["ICU Per Day (₹)"]) || 0;
-
-      if (data["General Ward (₹)"] !== undefined)
-        hospital.pricing.general_bed_per_day =
-          Number(data["General Ward (₹)"]) || 0;
-
-      if (data["Semi-Private (₹)"] !== undefined)
-        hospital.pricing.semi_private_per_day =
-          Number(data["Semi-Private (₹)"]) || 0;
-
-      if (data["Private Room (₹)"] !== undefined)
-        hospital.pricing.private_per_day =
-          Number(data["Private Room (₹)"]) || 0;
-
-      if (data["Online Discount (%)"] !== undefined)
-        hospital.pricing.online_booking_discount =
-          Number(data["Online Discount (%)"]) || 0;
-
-      // ------------------------------------------------
-      // Metadata
-      // ------------------------------------------------
       hospital.beds.last_updated = new Date();
       hospital.beds.update_method = "excel_upload";
-      hospital.beds.auto_expire_at = new Date(
-        Date.now() + 24 * 60 * 60 * 1000
-      );
+      hospital.beds.auto_expire_at = new Date(Date.now() + 24 * 60 * 60 * 1000);
 
       hospital.upload_history.push({
         filename: req.file.originalname,
@@ -733,34 +660,19 @@ router.post(
       });
 
       hospital.updated_at = new Date();
-
       await hospital.save();
 
       console.log("Upload completed successfully.");
-
       return res.json({
         success: true,
         message: "Hospital data uploaded successfully.",
-        uploaded: {
-          beds: hospital.beds,
-          pricing: hospital.pricing
-        }
+        uploaded: { beds: hospital.beds, pricing: hospital.pricing }
       });
 
     } catch (error) {
-
       console.error("========== EXCEL UPLOAD ERROR ==========");
       console.error(error);
-      console.error(error.stack);
-
-      return res.status(500).json({
-        success: false,
-        message: error.message,
-        error:
-          process.env.NODE_ENV !== "production"
-            ? error.stack
-            : undefined
-      });
+      return res.status(500).json({ success: false, message: error.message });
     }
   }
 );
