@@ -721,9 +721,13 @@ app.get('/api/seed-tests', async (req, res) => {
     
     const docs = rows.map((row, index) => ({
       test_id: index + 1,
-      test_name: row['test_name'] || row['Test Name'] || '',
-      major_category: row['main_category'] || row['Category'] || '',
+      test_code: row['test_code'] || '',
+      test_name: row['test_name'] || '',
+      major_category: row['main_category'] || '',
+      major_category_name: row['main_category'] || '',
       sub_category: row['sub_category'] || '',
+      sub_sub_category: row['sub_sub_category'] || '',
+      common_or_unique: row['common_unique'] || 'Common',
       search_keywords: row['search_keywords'] || '',
       is_active: true,
       home_collection_possible: true,
@@ -731,7 +735,11 @@ app.get('/api/seed-tests', async (req, res) => {
     }));
 
     await collection.insertMany(docs);
-    res.json({ success: true, count: docs.length });
+    
+    // Create text index for search
+    await collection.createIndex({ test_name: 'text', search_keywords: 'text', major_category: 'text', sub_category: 'text' });
+    
+    res.json({ success: true, count: docs.length, message: 'Seeded with test_code and all fields' });
   } catch(e) {
     res.status(500).json({ success: false, message: e.message });
   }
