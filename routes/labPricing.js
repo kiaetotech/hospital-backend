@@ -205,7 +205,10 @@ router.get('/template', (req, res, next) => {
   next();
 }, authenticateHospital, async (req, res) => {
   try {
-    const tests = await TestMaster.find({ is_active: true }).select('test_name major_category sub_category').lean();
+    const tests = await TestMaster.find({ is_active: true })
+      .select('test_name major_category sub_category')
+      .sort({ major_category: 1, sub_category: 1, test_name: 1 })
+      .lean();
     
     const template = tests.map(t => ({
       'Test Name': t.test_name,
