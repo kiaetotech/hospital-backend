@@ -246,6 +246,7 @@ if (redis) {
 // ============================================
 const hospitalRoutes = require('./routes/hospitals');
 const hospitalProviderRoutes = require('./routes/hospitalProvider');
+const labPricingRoutes = require('./routes/labPricing');
 const authRoutes = require('./routes/auth');
 const caregiverRoutes = require('./routes/caregivers');
 const diagnosticsRoutes = require('./routes/diagnostics'); 
@@ -318,6 +319,7 @@ const employeePortalRoutes = require('./routes/employeePortal');
 
 // 🏥 Hospital Routes
 app.use('/api/hospitals/provider', hospitalProviderRoutes);
+app.use('/api/lab-pricing', labPricingRoutes);
 app.use('/api/hospitals', searchLimiter, hospitalRoutes);
 app.use('/api/hospital-status', hospitalStatusRoutes);
 
