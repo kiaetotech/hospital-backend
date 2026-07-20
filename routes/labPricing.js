@@ -3,6 +3,9 @@ const router = express.Router();
 const TestMaster = require('../models/TestMaster');
 const TestPricing = require('../models/TestPricing');
 const { authenticateHospital } = require('../middleware/auth');
+const multer = require('multer');
+const xlsx = require('xlsx');
+const upload = multer({ storage: multer.memoryStorage() });
 
 // Search tests
 router.get('/search', authenticateHospital, async (req, res) => {
@@ -125,6 +128,97 @@ router.get('/categories', async (req, res) => {
   try {
     const categories = await TestMaster.distinct('major_category', { is_active: true });
     res.json({ success: true, data: categories });
+  } catch (error) {
+    res.status(500).json({ success: false, message: error.message });
+  }
+});
+
+// Upload lab prices via Excel
+router.post('/upload', authenticateHospital, upload.single('file'), async (req, res) => {
+  try {
+    if (!req.file) {
+      return res.status(400).json({ success: false, message: 'Please upload an Excel file' });
+    }
+
+    const workbook = xlsx.read(req.file.buffer, { type: 'buffer' });
+    const sheet = workbook.Sheets[workbook.SheetNames[0]];
+    const rows = xlsx.utils.sheet_to_json(sheet);
+
+    if (!rows.length) {
+      return res.status(400).json({ success: false, message: 'Excel file is empty' });
+    }
+
+    let matched = 0;
+    let unmatched = 0;
+    const prices = [];
+
+    for (const row of rows) {
+      const testName = row['test_name'] || row['Test Name'] || row['Test'] || '';
+      if (!testName) continue;
+
+      const test = await TestMaster.findOne({ 
+        test_name: { $regex: new RegExp('^' + testName.replace(/[.*+?^${}()|[\]\\]/g, '\\$&') + '$', 'i') }
+      });
+
+      if (test) {
+        prices.push({
+          provider_id: req.user._id,
+          test_id: test._id,
+          mrp: parseFloat(row['MRP'] || row['mrp'] || row['Price'] || 0) || 0,
+          discounted_price: parseFloat(row['Discounted Price'] || row['discounted_price'] || row['Price'] || 0) || 0,
+          home_collection_available: row['Home Collection'] === 'Yes' || row['home_collection'] === true,
+          updated_at: new Date()
+        });
+        matched++;
+      } else {
+        unmatched++;
+      }
+    }
+
+    if (prices.length > 0) {
+      const operations = prices.map(p => ({
+        updateOne: {
+          filter: { provider_id: p.provider_id, test_id: p.test_id },
+          update: { $set: p },
+          upsert: true
+        }
+      }));
+      await TestPricing.bulkWrite(operations);
+    }
+
+    res.json({
+      success: true,
+      message: `${matched} tests priced, ${unmatched} not matched`,
+      matched,
+      unmatched
+    });
+  } catch (error) {
+    res.status(500).json({ success: false, message: error.message });
+  }
+});
+
+// Download lab price template
+router.get('/template', authenticateHospital, async (req, res) => {
+  try {
+    const tests = await TestMaster.find({ is_active: true }).select('test_name major_category sub_category').lean();
+    
+    const template = tests.map(t => ({
+      'Test Name': t.test_name,
+      'Category': t.major_category,
+      'Sub Category': t.sub_category || '',
+      'MRP': '',
+      'Discounted Price': '',
+      'Home Collection (Yes/No)': ''
+    }));
+
+    const wb = xlsx.utils.book_new();
+    const ws = xlsx.utils.json_to_sheet(template);
+    xlsx.utils.book_append_sheet(wb, ws, 'Lab Prices');
+    
+    const buffer = xlsx.write(wb, { type: 'buffer', bookType: 'xlsx' });
+    res.setHeader('Content-Type', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
+    res.setHeader('Content-Disposition', 'attachment; filename=lab_price_template.xlsx');
+    res.send(buffer);
   } catch (error) {
     res.status(500).json({ success: false, message: error.message });
   }
