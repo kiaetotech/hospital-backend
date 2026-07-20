@@ -208,16 +208,20 @@ router.get('/template', (req, res, next) => {
 }, authenticateHospital, async (req, res) => {
   try {
     const tests = await TestMaster.find({ is_active: true })
-      .select('test_name major_category sub_category')
+      .select('test_name test_code major_category sub_category sub_sub_category common_or_unique search_keywords')
       .sort({ major_category: 1, sub_category: 1, test_name: 1 })
       .lean();
     
     const template = tests.map(t => ({
+      'Test Code': t.test_code || '',
       'Test Name': t.test_name,
       'Category': t.major_category,
       'Sub Category': t.sub_category || '',
-      'MRP': '',
-      'Discounted Price': '',
+      'Sub Sub Category': t.sub_sub_category || '',
+      'Common/Unique': t.common_or_unique || '',
+      'Search Keywords': t.search_keywords || '',
+      'MRP (₹)': '',
+      'Discounted Price (₹)': '',
       'Home Collection (Yes/No)': ''
     }));
 
