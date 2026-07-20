@@ -570,11 +570,12 @@ router.post('/upload-doctors', authenticateHospital, upload.single('file'), asyn
       }
     }));
     
-    hospital.upload_history.push({
-      filename: req.file.originalname,
-      type: 'doctors',
-      status: 'completed'
-    });
+    hospital.upload_history.push(JSON.stringify({
+    filename: req.file.originalname,
+    uploaded_at: new Date(),
+    type: "bulk_data",
+    status: "completed"
+}));
     
     await hospital.save();
     res.json({ success: true, message: `${doctors.length} doctors uploaded successfully` });
