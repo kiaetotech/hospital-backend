@@ -14,13 +14,15 @@ router.get('/search', authenticateHospital, async (req, res) => {
     const query = { is_active: true };
     
     if (q) {
-      query.$or = [
-        { test_name: { $regex: q, $options: 'i' } },
-        { search_keywords: { $regex: q, $options: 'i' } },
-        { major_category: { $regex: q, $options: 'i' } },
-        { sub_category: { $regex: q, $options: 'i' } }
-      ];
-    }
+  query.$or = [
+    { test_name: { $regex: q, $options: 'i' } },
+    { search_keywords: { $regex: q, $options: 'i' } },
+    { major_category: { $regex: q, $options: 'i' } },
+    { sub_category: { $regex: q, $options: 'i' } },
+    { sub_sub_category: { $regex: q, $options: 'i' } },
+    { test_code: { $regex: q, $options: 'i' } }
+  ];
+}
     if (category && category !== 'All') {
       query.major_category = category;
     }
