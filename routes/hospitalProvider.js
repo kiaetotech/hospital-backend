@@ -679,7 +679,19 @@ router.post(
 );
 
 // Download doctor template
-router.get('/template/download', authenticateHospital, (req, res) => {
+router.get('/template/download', (req, res) => {
+  // Accept token from query or header
+  const token = req.query.token || (req.headers.authorization || '').replace('Bearer ', '');
+  if (!token) {
+    return res.status(401).json({ success: false, message: 'Access denied. No token provided.' });
+  }
+  try {
+    const jwt = require('jsonwebtoken');
+    jwt.verify(token, process.env.JWT_SECRET || 'hospital_platform_secret_key_2024');
+  } catch(e) {
+    return res.status(401).json({ success: false, message: 'Invalid token.' });
+  }
+
   const template = [{
     'Doctor Name': 'Dr. Example',
     'Specialization': 'Cardiologist',
