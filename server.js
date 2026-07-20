@@ -704,6 +704,39 @@ app.get('/api/search/health', (req, res) => {
   });
 });
 
+// Seed test data (one-time use)
+app.get('/api/seed-tests', async (req, res) => {
+  try {
+    const xlsx = require('xlsx');
+    const path = require('path');
+    const db = mongoose.connection.db;
+    const collection = db.collection('testmasters');
+    
+    const filePath = path.join(__dirname, 'data', 'diagnostic_tests_master.xlsx');
+    const workbook = xlsx.readFile(filePath);
+    const sheet = workbook.Sheets[workbook.SheetNames[0]];
+    const rows = xlsx.utils.sheet_to_json(sheet);
+
+    await collection.deleteMany({});
+    
+    const docs = rows.map((row, index) => ({
+      test_id: index + 1,
+      test_name: row['test_name'] || row['Test Name'] || '',
+      major_category: row['main_category'] || row['Category'] || '',
+      sub_category: row['sub_category'] || '',
+      search_keywords: row['search_keywords'] || '',
+      is_active: true,
+      home_collection_possible: true,
+      turnaround_time_default_hours: 24
+    }));
+
+    await collection.insertMany(docs);
+    res.json({ success: true, count: docs.length });
+  } catch(e) {
+    res.status(500).json({ success: false, message: e.message });
+  }
+});
+
 // ============================================
 // 404 HANDLER
 // ============================================
