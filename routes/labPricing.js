@@ -198,7 +198,12 @@ router.post('/upload', authenticateHospital, upload.single('file'), async (req, 
 });
 
 // Download lab price template
-router.get('/template', authenticateHospital, async (req, res) => {
+router.get('/template', (req, res, next) => {
+  if (!req.headers.authorization && req.query.token) {
+    req.headers.authorization = `Bearer ${req.query.token}`;
+  }
+  next();
+}, authenticateHospital, async (req, res) => {
   try {
     const tests = await TestMaster.find({ is_active: true }).select('test_name major_category sub_category').lean();
     
