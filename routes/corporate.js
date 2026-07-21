@@ -7,6 +7,7 @@ const CorporatePlan = require('../models/CorporatePlan');
 const CorporateEmployee = require('../models/CorporateEmployee');
 const CorporateHR = require('../models/CorporateHR');
 const User = require('../models/User');
+const Booking = require('../models/Booking');
 const { authenticate: auth } = require('../middleware/auth');
 
 // ============================================
