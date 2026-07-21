@@ -171,8 +171,8 @@ router.post('/register', auth, async (req, res) => {
       endDate: endDate ? new Date(endDate) : new Date(new Date(startDate).setFullYear(new Date(startDate).getFullYear() + 1)),
       renewalDate: endDate ? new Date(endDate) : new Date(new Date(startDate).setFullYear(new Date(startDate).getFullYear() + 1)),
       hrContact: hrContact || {},
-      status: 'pending',
-      isVerified: false,
+      status: 'active',
+      isVerified: true,
       createdBy: req.user.id
     });
 
@@ -434,10 +434,7 @@ router.post('/hr/employees', authenticateHR, async (req, res) => {
       return res.status(404).json({ success: false, message: 'Plan not found' });
     }
 
-    if (plan.status !== 'active') {
-      return res.status(400).json({ success: false, message: 'Plan is not active. Please contact admin.' });
-    }
-
+    
     const addedEmployees = [];
     for (const emp of employees) {
       if (!emp.name || !emp.email || !emp.phone) {
@@ -803,7 +800,7 @@ router.post('/company/register', async (req, res) => {
       endDate: new Date(Date.now() + 365 * 24 * 60 * 60 * 1000),
       hrContact: { name: hrName, email: hrEmail, phone: hrPhone },
       status: 'pending',
-      isVerified: false,
+      isVerified: true,
       createdBy: null
     });
 
