@@ -1,13 +1,10 @@
-require('../models/TestMaster');
-require('../models/TestPricing');
 const express = require('express');
 const router = express.Router();
 const multer = require('multer');
 const xlsx = require('xlsx');
-const mongoose = require('mongoose');
-const TestMaster = mongoose.model('TestMaster');
-const TestPricing = mongoose.model('TestPricing');
-const Hospital = mongoose.model('Hospital');
+const TestMaster = require('../models/TestMaster');
+const TestPricing = require('../models/TestPricing');
+const Hospital = require('../models/Hospital');
 const { authenticateHospital } = require('../middleware/auth');
 
 const upload = multer({ storage: multer.memoryStorage() });
