@@ -18,7 +18,6 @@ router.get('/template', (req, res, next) => {
   next();
 }, authenticateHospital, async (req, res) => {
   try {
-    // Get all priced tests for this hospital
     const pricedTests = await TestPricing.find({ provider_id: req.user._id }).lean();
     const testIds = pricedTests.map(p => p.test_id);
     const tests = await TestMaster.find({ _id: { $in: testIds } }).select('test_name test_code major_category').lean();
@@ -32,33 +31,20 @@ router.get('/template', (req, res, next) => {
       });
     }
 
-    // Build template with 10 package columns
-    const template = pricedTests.map(p => {
-      const row = {
-        'Test Code': testMap[p.test_id?.toString()]?.test_code || '',
-        'Test Name': testMap[p.test_id?.toString()]?.test_name || '',
-        'Category': testMap[p.test_id?.toString()]?.major_category || '',
-        'Your Price (₹)': p.discounted_price || 0,
-        'Pkg 1': '',
-        'Pkg 2': '',
-        'Pkg 3': '',
-        'Pkg 4': '',
-        'Pkg 5': '',
-        'Pkg 6': '',
-        'Pkg 7': '',
-        'Pkg 8': '',
-        'Pkg 9': '',
-        'Pkg 10': ''
-      };
-      return row;
-    });
+    const template = pricedTests.map(p => ({
+      'Test Code': testMap[p.test_id?.toString()]?.test_code || '',
+      'Test Name': testMap[p.test_id?.toString()]?.test_name || '',
+      'Category': testMap[p.test_id?.toString()]?.major_category || '',
+      'Your Price (₹)': p.discounted_price || 0,
+      'Pkg 1': '', 'Pkg 2': '', 'Pkg 3': '', 'Pkg 4': '', 'Pkg 5': '',
+      'Pkg 6': '', 'Pkg 7': '', 'Pkg 8': '', 'Pkg 9': '', 'Pkg 10': ''
+    }));
 
-    // Add empty rows for spacing
     template.push({});
     template.push({});
     
-    // Add package pricing section
     const pkgHeaders = ['Pkg 1', 'Pkg 2', 'Pkg 3', 'Pkg 4', 'Pkg 5', 'Pkg 6', 'Pkg 7', 'Pkg 8', 'Pkg 9', 'Pkg 10'];
+    
     const pricingRow = { 'Test Code': 'PACKAGE PRICING', 'Test Name': '', 'Category': '' };
     pkgHeaders.forEach(p => { pricingRow[p] = ''; });
     template.push(pricingRow);
@@ -110,40 +96,40 @@ router.post('/upload', authenticateHospital, upload.single('file'), async (req, 
     // Find pricing section
     let pricingStartIndex = rows.findIndex(r => r['Test Code'] === 'PACKAGE PRICING');
     const testRows = pricingStartIndex > -1 ? rows.slice(0, pricingStartIndex) : rows;
-    console.log('First test row:', JSON.stringify(testRows[0]));
-    console.log('Package columns found:', JSON.stringify(pkgColumns));
     const pricingRows = pricingStartIndex > -1 ? rows.slice(pricingStartIndex) : [];
+
+    // Detect package columns dynamically (all columns after first 4)
+    const firstRow = rows[0];
+    const allColumns = Object.keys(firstRow);
+    const pkgColumns = allColumns.slice(4);
+    
+    console.log('Package columns found:', JSON.stringify(pkgColumns));
+    console.log('First test row:', JSON.stringify(testRows[0]));
 
     // Get package prices from pricing section
     const packagePrices = {};
     if (pricingRows.length > 0) {
       const priceRow = pricingRows.find(r => r['Test Code'] === 'Package Price (₹)');
       if (priceRow) {
-        Object.keys(priceRow).forEach(key => {
-          if (key.startsWith('Pkg') && priceRow[key]) {
-            packagePrices[key] = parseFloat(priceRow[key]) || 0;
+        pkgColumns.forEach(col => {
+          if (priceRow[col]) {
+            packagePrices[col] = parseFloat(priceRow[col]) || 0;
           }
         });
       }
     }
-
-    // Find package columns (Pkg 1 to Pkg 10) that have data
-    // Detect package columns dynamically (all columns after first 4)
-const firstRow = rows[0];
-const allColumns = Object.keys(firstRow);
-const pkgColumns = allColumns.slice(4); // Skip Test Code, Test Name, Category, Your Price
     
     // Group tests by package
     const packages = {};
     pkgColumns.forEach(pkgCol => {
-      const tests = testRows.filter(r => r[pkgCol] === '✓' || r[pkgCol] === 'Yes' || r[pkgCol] === 'yes' || r[pkgCol] === 'YES');
+      const tests = testRows.filter(r => r[pkgCol] === '✓' || r[pkgCol] === 'Yes' || r[pkgCol] === 'yes' || r[pkgCol] === 'YES' || r[pkgCol] === 'X' || r[pkgCol] === 'x');
       if (tests.length > 0) {
         packages[pkgCol] = tests;
       }
     });
 
     if (Object.keys(packages).length === 0) {
-      return res.status(400).json({ success: false, message: 'No packages found. Mark tests with ✓ in package columns.' });
+      return res.status(400).json({ success: false, message: 'No packages found. Mark tests with ✓ or Yes in package columns.' });
     }
 
     const hospital = await Hospital.findById(req.user._id);
@@ -156,16 +142,12 @@ const pkgColumns = allColumns.slice(4); // Skip Test Code, Test Name, Category, 
     for (const [pkgCol, pkgTests] of Object.entries(packages)) {
       const packagePrice = packagePrices[pkgCol] || 0;
       
-      // Find test IDs
       const testIds = [];
       for (const t of pkgTests) {
-        const test = await TestMaster.findOne({ 
-          test_name: t['Test Name'] || t['test_name'] || '' 
-        });
+        const test = await TestMaster.findOne({ test_name: t['Test Name'] || t['test_name'] || '' });
         if (test) testIds.push(test._id);
       }
 
-      // Calculate individual total
       let individualTotal = 0;
       for (const t of pkgTests) {
         individualTotal += parseFloat(t['Your Price (₹)'] || t['discounted_price'] || 0);
@@ -220,4 +202,4 @@ router.delete('/:packageId', authenticateHospital, async (req, res) => {
   }
 });
 
-module.exports = router;// force  
+module.exports = router;
