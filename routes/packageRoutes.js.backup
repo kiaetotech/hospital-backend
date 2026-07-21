@@ -213,4 +213,3 @@ router.delete('/:packageId', authenticateHospital, async (req, res) => {
 });
 
 module.exports = router;// force  
-// reload 
