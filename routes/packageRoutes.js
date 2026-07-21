@@ -110,6 +110,8 @@ router.post('/upload', authenticateHospital, upload.single('file'), async (req, 
     // Find pricing section
     let pricingStartIndex = rows.findIndex(r => r['Test Code'] === 'PACKAGE PRICING');
     const testRows = pricingStartIndex > -1 ? rows.slice(0, pricingStartIndex) : rows;
+    console.log('First test row:', JSON.stringify(testRows[0]));
+    console.log('Package columns found:', JSON.stringify(pkgColumns));
     const pricingRows = pricingStartIndex > -1 ? rows.slice(pricingStartIndex) : [];
 
     // Get package prices from pricing section
