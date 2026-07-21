@@ -116,9 +116,7 @@ router.post('/bulk-price', authenticateHospital, async (req, res) => {
 // Get hospital's priced tests
 router.get('/my-prices', authenticateHospital, async (req, res) => {
   try {
-    const prices = await TestPricing.find({ provider_id: req.user._id })
-      .populate('test_id', 'test_name major_category sub_category')
-      .lean();
+    const prices = await TestPricing.find({ provider_id: req.user._id }).lean();
     res.json({ success: true, data: prices });
   } catch (error) {
     res.status(500).json({ success: false, message: error.message });
