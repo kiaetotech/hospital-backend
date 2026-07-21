@@ -1,3 +1,5 @@
+require('../models/TestMaster');
+require('../models/TestPricing');
 const express = require('express');
 const router = express.Router();
 const multer = require('multer');
