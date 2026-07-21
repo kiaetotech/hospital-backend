@@ -170,8 +170,8 @@ router.post('/upload', authenticateHospital, upload.single('file'), async (req, 
       const test = await TestMaster.findOne({ test_name: testName });
 
       if (test) {
-        const mrp = parseFloat(row['MRP (₹)'] || row['MRP'] || 0) || 0;
-        const discounted = parseFloat(row['Discounted Price (₹)'] || row['discounted_price'] || mrp) || 0;
+        const mrp = parseFloat(row['MRP (₹)'] || row['MRP'] || row['mrp'] || 0) || 0;
+        const discounted = parseFloat(row['Discounted Price (₹)'] || row['Discounted Price'] || row['discounted_price'] || mrp) || 0;
         
         prices.push({
           provider_id: req.user._id,
