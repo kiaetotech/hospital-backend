@@ -19,9 +19,11 @@ router.get('/template', (req, res, next) => {
 }, authenticateHospital, async (req, res) => {
   try {
     // Get all priced tests for this hospital
-    const pricedTests = await TestPricing.find({ provider_id: req.user._id })
-      .populate('test_id', 'test_name test_code major_category')
-      .lean();
+    const pricedTests = await TestPricing.find({ provider_id: req.user._id }).lean();
+    const testIds = pricedTests.map(p => p.test_id);
+    const tests = await TestMaster.find({ _id: { $in: testIds } }).select('test_name test_code major_category').lean();
+    const testMap = {};
+    tests.forEach(t => { testMap[t._id.toString()] = t; });
 
     if (!pricedTests.length) {
       return res.status(400).json({ 
@@ -33,9 +35,9 @@ router.get('/template', (req, res, next) => {
     // Build template with 10 package columns
     const template = pricedTests.map(p => {
       const row = {
-        'Test Code': p.test_id?.test_code || '',
-        'Test Name': p.test_id?.test_name || '',
-        'Category': p.test_id?.major_category || '',
+        'Test Code': testMap[p.test_id?.toString()]?.test_code || '',
+        'Test Name': testMap[p.test_id?.toString()]?.test_name || '',
+        'Category': testMap[p.test_id?.toString()]?.major_category || '',
         'Your Price (₹)': p.discounted_price || 0,
         'Pkg 1': '',
         'Pkg 2': '',
