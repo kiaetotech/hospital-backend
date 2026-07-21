@@ -120,15 +120,16 @@ router.post('/upload', authenticateHospital, upload.single('file'), async (req, 
     }
     
     // Group tests by package
-    const packages = {};
-    pkgColumns.forEach(pkgCol => {
-      const tests = testRows.filter(r => {
-  const val = (r[pkgCol] || '').toString().trim();
-  return val === '✓' || val === 'Yes' || val === 'yes' || val === 'YES' || val === 'X' || val === 'x';
+const packages = {};
+pkgColumns.forEach(pkgCol => {
+  const tests = testRows.filter(r => {
+    const val = (r[pkgCol] || '').toString().trim();
+    return val === '✓' || val === 'Yes' || val === 'yes' || val === 'YES' || val === 'X' || val === 'x';
+  });
+  if (tests.length > 0) {
+    packages[pkgCol] = tests;
+  }
 });
-if (tests.length > 0) {
-  packages[pkgCol] = tests;
-}
 
     if (Object.keys(packages).length === 0) {
       return res.status(400).json({ success: false, message: 'No packages found. Mark tests with ✓ or Yes in package columns.' });
