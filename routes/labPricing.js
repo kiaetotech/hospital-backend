@@ -136,6 +136,7 @@ router.get('/categories', async (req, res) => {
 });
 
 // Upload lab prices via Excel
+// Upload lab prices via Excel
 router.post('/upload', authenticateHospital, upload.single('file'), async (req, res) => {
   try {
     if (!req.file) {
@@ -150,25 +151,36 @@ router.post('/upload', authenticateHospital, upload.single('file'), async (req, 
       return res.status(400).json({ success: false, message: 'Excel file is empty' });
     }
 
+    // Only process rows that have a price
+    const pricedRows = rows.filter(row => {
+      const price = row['MRP (₹)'] || row['MRP'] || row['Discounted Price (₹)'] || row['discounted_price'];
+      return price && price !== '';
+    });
+
+    if (!pricedRows.length) {
+      return res.status(400).json({ success: false, message: 'No prices found. Fill MRP or Discounted Price columns.' });
+    }
+
     let matched = 0;
     let unmatched = 0;
     const prices = [];
 
-    for (const row of rows) {
-      const testName = row['test_name'] || row['Test Name'] || row['Test'] || '';
+    for (const row of pricedRows) {
+      const testName = row['Test Name'] || row['test_name'] || '';
       if (!testName) continue;
 
-      const test = await TestMaster.findOne({ 
-        test_name: { $regex: new RegExp('^' + testName.replace(/[.*+?^${}()|[\]\\]/g, '\\$&') + '$', 'i') }
-      });
+      const test = await TestMaster.findOne({ test_name: testName });
 
       if (test) {
+        const mrp = parseFloat(row['MRP (₹)'] || row['MRP'] || 0) || 0;
+        const discounted = parseFloat(row['Discounted Price (₹)'] || row['discounted_price'] || mrp) || 0;
+        
         prices.push({
           provider_id: req.user._id,
           test_id: test._id,
-          mrp: parseFloat(row['MRP'] || row['mrp'] || row['Price'] || 0) || 0,
-          discounted_price: parseFloat(row['Discounted Price'] || row['discounted_price'] || row['Price'] || 0) || 0,
-          home_collection_available: row['Home Collection'] === 'Yes' || row['home_collection'] === true,
+          mrp: mrp,
+          discounted_price: discounted || mrp,
+          home_collection_available: String(row['Home Collection (Yes/No)'] || row['home_collection'] || '').toLowerCase() === 'yes',
           updated_at: new Date()
         });
         matched++;
@@ -177,24 +189,30 @@ router.post('/upload', authenticateHospital, upload.single('file'), async (req, 
       }
     }
 
+    // Bulk write in batches of 100
     if (prices.length > 0) {
-      const operations = prices.map(p => ({
-        updateOne: {
-          filter: { provider_id: p.provider_id, test_id: p.test_id },
-          update: { $set: p },
-          upsert: true
-        }
-      }));
-      await TestPricing.bulkWrite(operations);
+      for (let i = 0; i < prices.length; i += 100) {
+        const batch = prices.slice(i, i + 100);
+        const operations = batch.map(p => ({
+          updateOne: {
+            filter: { provider_id: p.provider_id, test_id: p.test_id },
+            update: { $set: p },
+            upsert: true
+          }
+        }));
+        await TestPricing.bulkWrite(operations);
+      }
     }
 
     res.json({
       success: true,
       message: `${matched} tests priced, ${unmatched} not matched`,
       matched,
-      unmatched
+      unmatched,
+      totalProcessed: pricedRows.length
     });
   } catch (error) {
+    console.error('Lab upload error:', error);
     res.status(500).json({ success: false, message: error.message });
   }
 });
