@@ -10,7 +10,12 @@ const { authenticateHospital } = require('../middleware/auth');
 const upload = multer({ storage: multer.memoryStorage() });
 
 // Download package template
-router.get('/template', authenticateHospital, async (req, res) => {
+router.get('/template', (req, res, next) => {
+  if (!req.headers.authorization && req.query.token) {
+    req.headers.authorization = `Bearer ${req.query.token}`;
+  }
+  next();
+}, authenticateHospital, async (req, res) => {
   try {
     const template = [{
       'Package Name': 'Full Body Checkup',
