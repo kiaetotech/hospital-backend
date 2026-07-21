@@ -126,7 +126,10 @@ router.post('/upload', authenticateHospital, upload.single('file'), async (req, 
     }
 
     // Find package columns (Pkg 1 to Pkg 10) that have data
-    const pkgColumns = ['Pkg 1', 'Pkg 2', 'Pkg 3', 'Pkg 4', 'Pkg 5', 'Pkg 6', 'Pkg 7', 'Pkg 8', 'Pkg 9', 'Pkg 10'];
+    // Detect package columns dynamically (all columns after first 4)
+const firstRow = rows[0];
+const allColumns = Object.keys(firstRow);
+const pkgColumns = allColumns.slice(4); // Skip Test Code, Test Name, Category, Your Price
     
     // Group tests by package
     const packages = {};
