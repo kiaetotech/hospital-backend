@@ -1,8 +1,9 @@
+const mongoose = require('mongoose');
 const express = require('express');
 const router = express.Router();
 const multer = require('multer');
 const xlsx = require('xlsx');
-const TestMaster = require('../models/TestMaster');
+const TestMaster = mongoose.model('TestMaster');
 const TestPricing = require('../models/TestPricing');
 const Hospital = require('../models/Hospital');
 const { authenticateHospital } = require('../middleware/auth');
