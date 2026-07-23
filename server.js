@@ -244,7 +244,8 @@ if (redis) {
 // ============================================
 // EXISTING ROUTES (ALL PRESERVED)
 // ============================================
-require('./models');  // Central model registry
+require('./models/TestMaster');
+require('./models/TestPricing');
 const hospitalRoutes = require('./routes/hospitals');
 const hospitalProviderRoutes = require('./routes/hospitalProvider');
 const labPricingRoutes = require('./routes/labPricing');
