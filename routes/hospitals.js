@@ -205,98 +205,6 @@ router.get('/search', async (req, res) => {
   }
 });
 
-// Seed hospitals (for testing)
-router.get('/seed', async (req, res) => {
-  try {
-    const count = await Hospital.countDocuments();
-    if (count > 0) {
-      return res.json({ success: true, message: `Already has ${count} hospitals` });
-    }
-    
-    const hospitals = [
-      {
-        name: 'Apollo Hospital Mumbai',
-        address: { city: 'Mumbai', state: 'Maharashtra' },
-        location: { coordinates: [72.8344, 19.1079], lat: 19.1079, lng: 72.8344 },
-        specialties: ['Cardiology', 'Neurology', 'Orthopedics'],
-        diseases_treated: ['heart_attack', 'coronary_artery_disease', 'stroke', 'arthritis', 'kidney_stones', 'diabetes_type2'],
-        procedures_available: ['angioplasty', 'cabg', 'angiography', 'knee_replacement', 'dialysis'],
-        has24x7ER: true,
-        beds: { total: 350, available: 45, icu_available: 12 },
-        pricing: { consultation: 1200, icu_bed_per_day: 8000, general_bed_per_day: 3000, semi_private_per_day: 4500, private_per_day: 6000 },
-        doctors: [
-          { name: 'Dr. Rajesh Mehta', specialization: 'Cardiologist', qualification: 'MBBS, MD, DM', consultation_fee: 1300, experience: '20 years', rating: 4.8, reviewCount: 210, languages: ['English', 'Hindi'], availability: { status: 'available', slots_available: 4 } },
-          { name: 'Dr. Priya Sharma', specialization: 'Neurologist', qualification: 'MBBS, MD, DNB', consultation_fee: 1200, experience: '15 years', rating: 4.7, reviewCount: 180, languages: ['English', 'Marathi'], availability: { status: 'available', slots_available: 6 } }
-        ],
-        insurance_accepted: ['Star Health', 'ICICI Lombard', 'HDFC Ergo'],
-        schemes_accepted: ['ayushman', 'cghs'],
-        cashless_available: true,
-        accreditations: ['NABH', 'JCI'],
-        lab_tests_available: true,
-        facilities: [
-          { name: 'MRI 3T', category: 'Imaging', available_24x7: false },
-          { name: 'CT 128 Slice', category: 'Imaging', available_24x7: true },
-          { name: 'Cath Lab', category: 'Cardiac', available_24x7: true }
-        ],
-        ratings: { average: 4.8, count: 1240 },
-        contact: { phone: '9876543210', email: 'contact@apollo.com' },
-        is_verified: true
-      },
-      {
-        name: 'Manipal Hospital Bangalore',
-        address: { city: 'Bangalore', state: 'Karnataka' },
-        location: { coordinates: [77.6451, 12.9592], lat: 12.9592, lng: 77.6451 },
-        specialties: ['Neurology', 'Oncology'],
-        diseases_treated: ['stroke', 'brain_tumor', 'breast_cancer', 'lung_cancer'],
-        procedures_available: ['chemotherapy', 'radiation', 'biopsy'],
-        has24x7ER: true,
-        beds: { total: 420, available: 56, icu_available: 15 },
-        pricing: { consultation: 1000, icu_bed_per_day: 7500, general_bed_per_day: 2500 },
-        doctors: [
-          { name: 'Dr. Sunita Reddy', specialization: 'Neurologist', qualification: 'MBBS, MD, DM', consultation_fee: 1000, experience: '18 years', rating: 4.9, reviewCount: 310, languages: ['English', 'Kannada', 'Hindi'], availability: { status: 'available', slots_available: 5 } }
-        ],
-        insurance_accepted: ['Star Health', 'ICICI Lombard', 'Bajaj Allianz'],
-        schemes_accepted: ['ayushman', 'state_scheme'],
-        cashless_available: true,
-        accreditations: ['NABH'],
-        lab_tests_available: true,
-        facilities: [{ name: 'MRI 3T', category: 'Imaging', available_24x7: true }],
-        ratings: { average: 4.9, count: 2100 },
-        contact: { phone: '8765432109', email: 'contact@manipal.com' },
-        is_verified: true
-      },
-      {
-        name: 'Narayana Health Kolkata',
-        address: { city: 'Kolkata', state: 'West Bengal' },
-        location: { coordinates: [88.3639, 22.5726], lat: 22.5726, lng: 88.3639 },
-        specialties: ['Cardiology', 'Oncology'],
-        diseases_treated: ['heart_attack', 'coronary_artery_disease', 'blood_cancer'],
-        procedures_available: ['angioplasty', 'angiography', 'chemotherapy'],
-        has24x7ER: true,
-        beds: { total: 450, available: 42, icu_available: 8 },
-        pricing: { consultation: 900, icu_bed_per_day: 6800, general_bed_per_day: 2200 },
-        doctors: [
-          { name: 'Dr. S. Chatterjee', specialization: 'Cardiologist', qualification: 'MBBS, MD', consultation_fee: 900, experience: '12 years', rating: 4.6, reviewCount: 160, languages: ['English', 'Bengali', 'Hindi'], availability: { status: 'available', slots_available: 3 } }
-        ],
-        insurance_accepted: ['Star Health', 'HDFC Ergo'],
-        schemes_accepted: ['state_scheme'],
-        cashless_available: false,
-        accreditations: ['NABH'],
-        lab_tests_available: false,
-        facilities: [{ name: 'Cath Lab', category: 'Cardiac', available_24x7: true }],
-        ratings: { average: 4.5, count: 980 },
-        contact: { phone: '7654321098', email: 'contact@narayana.com' },
-        is_verified: true
-      }
-    ];
-    
-    await Hospital.insertMany(hospitals);
-    res.json({ success: true, message: '3 hospitals seeded' });
-  } catch (error) {
-    res.status(500).json({ success: false, message: error.message });
-  }
-});
-
 // WhatsApp bed update webhook (Public)
 router.post('/whatsapp-update', async (req, res) => {
   try {
@@ -329,7 +237,7 @@ router.get('/template/download', authenticateToken, authorizeRoles('hospital', '
 });
 
 // ============================================
-// 🆕 CORPORATE ROUTES (Must be before /:id)
+// CORPORATE ROUTES (Must be before /:id)
 // ============================================
 
 // Toggle corporate serving status
@@ -449,7 +357,6 @@ router.put('/corporate/packages/:packageId', authenticateToken, authorizeRoles('
       return res.status(404).json({ success: false, message: 'Package not found' });
     }
 
-    // Update fields
     const updatableFields = [
       'packageName', 'packageType', 'description', 'servicesIncluded',
       'pricePerEmployee', 'discountedPricePerEmployee', 'minEmployees',
@@ -573,7 +480,7 @@ router.put('/corporate/enquiries/:enquiryId', authenticateToken, authorizeRoles(
 // Get single hospital
 router.get('/:id', async (req, res) => {
   try {
-    if (['health', 'search', 'seed', 'whatsapp-update', 'template', 'medical-data', 'corporate'].includes(req.params.id)) return;
+    if (['health', 'search', 'whatsapp-update', 'template', 'medical-data', 'corporate'].includes(req.params.id)) return;
     const hospital = await Hospital.findById(req.params.id).select('-password').lean();
     if (!hospital) return res.status(404).json({ success: false, message: 'Hospital not found' });
     res.json({ success: true, data: hospital });
