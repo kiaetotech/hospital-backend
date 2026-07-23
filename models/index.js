@@ -1,0 +1,2 @@
+require('./TestMaster'); 
+require('./TestPricing'); 
