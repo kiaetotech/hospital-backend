@@ -99,17 +99,8 @@ router.get('/search', async (req, res) => {
 
     const parsedLat = parseFloat(lat);
 const parsedLng = parseFloat(lng);
-if (!isNaN(parsedLat) && !isNaN(parsedLng) && parsedLat !== 0 && parsedLng !== 0) {
-  // Use $nearSphere which handles missing coordinates gracefully
-  query.location = {
-    $nearSphere: {
-      $geometry: { 
-        type: 'Point', 
-        coordinates: [parsedLng, parsedLat] 
-      },
-      $maxDistance: (parseFloat(radius) || 50) * 1000
-    }
-  };
+// Geo search disabled - location stored as {lat, lng} not GeoJSON [lng, lat]
+// Distance calculated on frontend
   // Fallback: also match hospitals without location (they still appear)
   query.$or = query.$or || [];
   // We need to preserve existing $or while adding location fallback
@@ -176,7 +167,7 @@ if (!isNaN(parsedLat) && !isNaN(parsedLng) && parsedLat !== 0 && parsedLng !== 0
 
     let sortQuery = {};
     switch(sort) {
-      case 'distance':
+      case 'distance': sortQuery = { 'ratings.average': -1 }; break;
         sortQuery = (!isNaN(parsedLat) && !isNaN(parsedLng)) ? {} : { 'ratings.average': -1 };
         break;
       case 'fee': sortQuery = { 'pricing.consultation': 1 }; break;
