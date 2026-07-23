@@ -1869,4 +1869,45 @@ router.put('/id/:providerId/beds', authenticateHospital, async (req, res) => {
   }
 });
 
+// Get available services for corporate plan
+router.get('/corporate/services', authenticateHospital, async (req, res) => {
+  try {
+    const hospitalId = req.user._id;
+    const TestPricing = require('../models/TestPricing');
+    const TestMaster = require('../models/TestMaster');
+    
+    const labTests = await TestPricing.find({ provider_id: hospitalId })
+      .populate('test_id', 'test_name test_code major_category')
+      .lean();
+    
+    const labServices = labTests.map(t => ({
+      _id: t.test_id?._id,
+      code: t.test_id?.test_code || '',
+      name: t.test_id?.test_name || '',
+      category: t.test_id?.major_category || 'Lab Test',
+      type: 'lab',
+      price: t.discounted_price || t.mrp || 0
+    }));
+
+    const hospital = await Hospital.findById(hospitalId).select('pricing');
+    const opdServices = [];
+    if (hospital?.pricing?.opd_general) opdServices.push({ code: 'OPD-GEN', name: 'General OPD', category: 'OPD', type: 'opd', price: hospital.pricing.opd_general });
+    if (hospital?.pricing?.opd_specialist) opdServices.push({ code: 'OPD-SPC', name: 'Specialist OPD', category: 'OPD', type: 'opd', price: hospital.pricing.opd_specialist });
+
+    const additionalServices = [
+      { code: 'DEN-001', name: 'Dental Checkup', category: 'Dental', type: 'dental', price: 0 },
+      { code: 'EYE-001', name: 'Eye Test', category: 'Eye Care', type: 'eye', price: 0 },
+      { code: 'AYU-001', name: 'Ayurveda Consultation', category: 'Ayurveda', type: 'ayurveda', price: 0 },
+      { code: 'MEN-001', name: 'Counseling Session', category: 'Mental Wellness', type: 'mental', price: 0 },
+      { code: 'PHY-001', name: 'Physiotherapy', category: 'Physiotherapy', type: 'physio', price: 0 },
+      { code: 'VAC-001', name: 'Vaccination', category: 'Vaccination', type: 'vaccine', price: 0 },
+      { code: 'CAM-001', name: 'On-site Health Camp', category: 'Health Camp', type: 'camp', price: 0 },
+    ];
+
+    res.json({ success: true, data: { lab: labServices, opd: opdServices, additional: additionalServices } });
+  } catch (error) {
+    res.status(500).json({ success: false, message: error.message });
+  }
+});
+
 module.exports = router;
