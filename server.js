@@ -310,7 +310,6 @@ const mentalHealthEarningsRoutes = require('./routes/mentalhealth-earnings');
 const onlineDoctorRoutes = require('./routes/onlineDoctor');
 
 // 🆕 Hospital Status Module
-require('./models');  // Central model registry
 const hospitalStatusRoutes = require('./routes/hospitalStatus');
 
 
@@ -904,4 +903,5 @@ process.on('SIGINT', () => {
 // fresh start  
 // force corporate  
 // trigger deploy  
+  
   
