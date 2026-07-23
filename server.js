@@ -310,9 +310,10 @@ const mentalHealthEarningsRoutes = require('./routes/mentalhealth-earnings');
 const onlineDoctorRoutes = require('./routes/onlineDoctor');
 
 // 🆕 Hospital Status Module
-const hospitalStatusRoutes = require('./routes/hospitalStatus');
 require('./models/TestMaster');
 require('./models/TestPricing');
+const hospitalStatusRoutes = require('./routes/hospitalStatus');
+
 
 // 🔍 Global Search Module
 const globalSearchRoutes = require('./routes/globalSearch');
