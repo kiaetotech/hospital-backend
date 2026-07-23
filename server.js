@@ -245,12 +245,10 @@ if (redis) {
 // EXISTING ROUTES (ALL PRESERVED)
 // ============================================
 require('./models/TestMaster');
+require('./models/TestPricing');
 const hospitalRoutes = require('./routes/hospitals');
 const hospitalProviderRoutes = require('./routes/hospitalProvider');
 const labPricingRoutes = require('./routes/labPricing');
-// Pre-load models that package routes need
-require('./models/TestMaster');
-require('./models/TestPricing');
 const packageRoutes = require('./routes/packageRoutes');
 const authRoutes = require('./routes/auth');
 const caregiverRoutes = require('./routes/caregivers');
