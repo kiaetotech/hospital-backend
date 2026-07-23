@@ -244,8 +244,7 @@ if (redis) {
 // ============================================
 // EXISTING ROUTES (ALL PRESERVED)
 // ============================================
-require('./models/TestMaster');
-require('./models/TestPricing');
+require('./models');  // Central model registry
 const hospitalRoutes = require('./routes/hospitals');
 const hospitalProviderRoutes = require('./routes/hospitalProvider');
 const labPricingRoutes = require('./routes/labPricing');
@@ -310,10 +309,7 @@ const mentalHealthEarningsRoutes = require('./routes/mentalhealth-earnings');
 const onlineDoctorRoutes = require('./routes/onlineDoctor');
 
 // 🆕 Hospital Status Module
-require('./models/TestMaster');
-require('./models/TestPricing');
-require('./models/TestMaster');
-require('./models/TestPricing');
+require('./models');  // Central model registry
 const hospitalStatusRoutes = require('./routes/hospitalStatus');
 
 
