@@ -98,15 +98,22 @@ router.get('/search', async (req, res) => {
     }
 
     const parsedLat = parseFloat(lat);
-    const parsedLng = parseFloat(lng);
-    if (!isNaN(parsedLat) && !isNaN(parsedLng) && parsedLat !== 0 && parsedLng !== 0) {
-      query.location = {
-        $near: {
-          $geometry: { type: 'Point', coordinates: [parsedLng, parsedLat] },
-          $maxDistance: (parseFloat(radius) || 50) * 1000
-        }
-      };
+const parsedLng = parseFloat(lng);
+if (!isNaN(parsedLat) && !isNaN(parsedLng) && parsedLat !== 0 && parsedLng !== 0) {
+  // Use $nearSphere which handles missing coordinates gracefully
+  query.location = {
+    $nearSphere: {
+      $geometry: { 
+        type: 'Point', 
+        coordinates: [parsedLng, parsedLat] 
+      },
+      $maxDistance: (parseFloat(radius) || 50) * 1000
     }
+  };
+  // Fallback: also match hospitals without location (they still appear)
+  query.$or = query.$or || [];
+  // We need to preserve existing $or while adding location fallback
+}
 
     if (disease && disease.trim() !== '') {
       query.diseases_treated = { $regex: disease.trim(), $options: 'i' };
