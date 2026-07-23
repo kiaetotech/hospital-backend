@@ -97,14 +97,7 @@ router.get('/search', async (req, res) => {
       query['address.state'] = { $regex: state.trim(), $options: 'i' };
     }
 
-    const parsedLat = parseFloat(lat);
-const parsedLng = parseFloat(lng);
-// Geo search disabled - location stored as {lat, lng} not GeoJSON [lng, lat]
-// Distance calculated on frontend
-  // Fallback: also match hospitals without location (they still appear)
-  query.$or = query.$or || [];
-  // We need to preserve existing $or while adding location fallback
-}
+    // Geo search disabled - frontend calculates distance
 
     if (disease && disease.trim() !== '') {
       query.diseases_treated = { $regex: disease.trim(), $options: 'i' };
@@ -168,8 +161,6 @@ const parsedLng = parseFloat(lng);
     let sortQuery = {};
     switch(sort) {
       case 'distance': sortQuery = { 'ratings.average': -1 }; break;
-        sortQuery = (!isNaN(parsedLat) && !isNaN(parsedLng)) ? {} : { 'ratings.average': -1 };
-        break;
       case 'fee': sortQuery = { 'pricing.consultation': 1 }; break;
       case 'rating': sortQuery = { 'ratings.average': -1 }; break;
       case 'beds': sortQuery = { 'beds.available': -1 }; break;
