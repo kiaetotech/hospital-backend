@@ -312,6 +312,8 @@ const onlineDoctorRoutes = require('./routes/onlineDoctor');
 // 🆕 Hospital Status Module
 require('./models/TestMaster');
 require('./models/TestPricing');
+require('./models/TestMaster');
+require('./models/TestPricing');
 const hospitalStatusRoutes = require('./routes/hospitalStatus');
 
 
