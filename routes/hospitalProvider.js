@@ -5,8 +5,8 @@ const xlsx = require('xlsx');
 const bcrypt = require('bcryptjs');
 const jwt = require('jsonwebtoken');
 const Hospital = require('../models/Hospital');
-const TestPricing = require('mongoose').model('TestPricing');
-const TestMaster = require('mongoose').model('TestMaster');
+require('../models/TestMaster');
+require('../models/TestPricing');
 const Booking = require('../models/Booking');
 const Transaction = require('../models/Transaction');
 const Prescription = require('../models/Prescription');
@@ -1875,9 +1875,7 @@ router.put('/id/:providerId/beds', authenticateHospital, async (req, res) => {
 router.get('/corporate/services', authenticateHospital, async (req, res) => {
   try {
     const hospitalId = req.user._id;
-    const TestPricing = require('../models/TestPricing');
-    const TestMaster = require('../models/TestMaster');
-    
+        
     const labTests = await TestPricing.find({ provider_id: hospitalId })
       .populate('test_id', 'test_name test_code major_category')
       .lean();
