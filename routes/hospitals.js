@@ -78,16 +78,17 @@ router.get('/search', async (req, res) => {
     const query = {};
 
     if (q && q.trim() !== '') {
-      const searchRegex = { $regex: q.trim(), $options: 'i' };
-      query.$or = [
-        { name: searchRegex },
-        { diseases_treated: searchRegex },
-        { specialties: searchRegex },
-        { procedures_available: searchRegex },
-        { 'doctors.name': searchRegex },
-        { 'doctors.specialization': searchRegex }
-      ];
-    }
+  const searchRegex = { $regex: q.trim(), $options: 'i' };
+  // First try to match by doctor specialization (most relevant)
+  query.$or = [
+    { 'doctors.specialization': searchRegex },
+    { 'doctors.name': searchRegex },
+    { name: searchRegex },
+    { diseases_treated: searchRegex },
+    { specialties: searchRegex },
+    { procedures_available: searchRegex }
+  ];
+}
 
     if (city && city.trim() !== '') {
       query['address.city'] = { $regex: city.trim(), $options: 'i' };
