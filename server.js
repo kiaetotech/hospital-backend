@@ -113,10 +113,23 @@ const io = new Server(server, {
   allowEIO3: true
 });
 
-// Initialize WebSocket handlers
-const { initializeSocket, getConnectionStats } = require('./socket/ambulanceSocket');
-initializeSocket(io);
+// Initialize WebSocket handlers (with fallback)
+let initializeSocket = () => {};
+let getConnectionStats = () => ({});
 
+try {
+  const socketModule = require('./socket/ambulanceSocket');
+  initializeSocket = socketModule.initializeSocket || (() => {});
+  getConnectionStats = socketModule.getConnectionStats || (() => ({}));
+  console.log('✅ Ambulance socket loaded successfully');
+} catch (e) {
+  console.warn('⚠️ Ambulance socket not available:', e.message);
+}
+
+// Initialize socket only if the function exists
+if (typeof initializeSocket === 'function') {
+  initializeSocket(io);
+}
 // Make io available globally (for use in routes/services)
 global.io = io;
 
