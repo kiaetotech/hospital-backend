@@ -4,9 +4,7 @@
   "description": "Backend for hospital booking platform",
   "main": "server.js",
   "scripts": {
-    "start": "node server.js",
-    "dev": "node server.js",
-    "postinstall": "echo Build complete"
+    "start": "npx ts-node server.js"
   },
   "dependencies": {
     "@sendgrid/mail": "^8.1.6",
