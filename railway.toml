@@ -3,7 +3,6 @@ builder = "NIXPACKS"
 
 [deploy]
 startCommand = "node server.js"
-healthcheckPath = "/health"
 
 [[deploy.include]]
 path = "routes"
