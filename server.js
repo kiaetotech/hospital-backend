@@ -231,11 +231,8 @@ try {
   console.log('✅ Ambulance dispatch service loaded');
 } catch (e) {
   console.warn('⚠️ Ambulance dispatch service not available:', e.message);
-  // Create fallback methods
   dispatchService = {
-    checkStuckBookings: async () => ({ checked: 0 }),
-    sendScheduledRequests: async () => {},
-    expireStaleStatuses: async () => {}
+    checkStuckBookings: async () => ({ checked: 0 })
   };
 }
 
@@ -253,11 +250,25 @@ setInterval(async () => {
   }
 }, 2 * 60 * 1000);
 
+// Load hospital status service with fallback
+let hospitalStatusService = {};
+try {
+  hospitalStatusService = require('./services/hospitalStatusService');
+  console.log('✅ Hospital status service loaded');
+} catch (e) {
+  console.warn('⚠️ Hospital status service not available:', e.message);
+  hospitalStatusService = {
+    sendScheduledRequests: async () => {},
+    expireStaleStatuses: async () => {}
+  };
+}
+
 // Hospital status: Send scheduled WhatsApp requests every hour
-const hospitalStatusService = require('./services/hospitalStatusService');
 setInterval(async () => {
   try {
-    await hospitalStatusService.sendScheduledRequests();
+    if (hospitalStatusService.sendScheduledRequests) {
+      await hospitalStatusService.sendScheduledRequests();
+    }
   } catch (error) {
     console.error('Hospital status request error:', error.message);
   }
@@ -266,7 +277,9 @@ setInterval(async () => {
 // Hospital status: Expire stale statuses every 30 minutes
 setInterval(async () => {
   try {
-    await hospitalStatusService.expireStaleStatuses();
+    if (hospitalStatusService.expireStaleStatuses) {
+      await hospitalStatusService.expireStaleStatuses();
+    }
   } catch (error) {
     console.error('Status expiry error:', error.message);
   }
