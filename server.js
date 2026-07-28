@@ -224,13 +224,29 @@ global.authenticateLender = authenticateLender;
 // CRON JOBS
 // ============================================
 
+// Load ambulance dispatch service with fallback
+let dispatchService = {};
+try {
+  dispatchService = require('./services/ambulanceDispatchService');
+  console.log('✅ Ambulance dispatch service loaded');
+} catch (e) {
+  console.warn('⚠️ Ambulance dispatch service not available:', e.message);
+  // Create fallback methods
+  dispatchService = {
+    checkStuckBookings: async () => ({ checked: 0 }),
+    sendScheduledRequests: async () => {},
+    expireStaleStatuses: async () => {}
+  };
+}
+
 // Check for stuck ambulance bookings every 2 minutes
-const dispatchService = require('./services/ambulanceDispatchService');
 setInterval(async () => {
   try {
-    const result = await dispatchService.checkStuckBookings();
-    if (result.checked > 0) {
-      console.log(`🔍 Stuck booking check: ${result.checked} checked`);
+    if (dispatchService.checkStuckBookings) {
+      const result = await dispatchService.checkStuckBookings();
+      if (result.checked > 0) {
+        console.log(`🔍 Stuck booking check: ${result.checked} checked`);
+      }
     }
   } catch (error) {
     console.error('Stuck booking check error:', error.message);
