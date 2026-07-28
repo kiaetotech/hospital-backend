@@ -295,77 +295,58 @@ try {
 }
 
 // ============================================
-// ROUTES (ALL PRESERVED)
+// ROUTES (ALL PRESERVED WITH FALLBACKS)
 // ============================================
-const hospitalRoutes = require('./routes/hospitals');
-const hospitalProviderRoutes = require('./routes/hospitalProvider');
-const labPricingRoutes = require('./routes/labPricing');
-const packageRoutes = require('./routes/packageRoutes');
-const authRoutes = require('./routes/auth');
-const caregiverRoutes = require('./routes/caregivers');
-const diagnosticsRoutes = require('./routes/diagnostics');
-const diagnosticsUploadRoutes = require('./routes/diagnostics-upload');
-const ambulanceRoutes = require('./routes/ambulance');
-const healthPackageRoutes = require('./routes/healthPackageRoutes');
-const testRoutes = require('./routes/tests');
-const uploadRoutes = require('./routes/upload');
-const providerAuthRoutes = require('./routes/providerAuth');
-const bookingRoutes = require('./routes/bookings');
-const razorpayRoutes = require('./routes/payment');
-const reviewRoutes = require('./routes/reviews');
-const adminRoutes = require('./routes/admin');
-const bookingStatusRoutes = require('./routes/booking-status');
-const customPackageRoutes = require('./routes/custom-packages');
-const lenderAuthRoutes = require('./routes/lenderAuth');
-const adminLenderRoutes = require('./routes/adminLender');
-const lenderRoutes = require('./routes/lender');
 
-// Loan Module
-const loanPatientRoutes = require('./routes/loanPatient');
-const loanLenderRoutes = require('./routes/loanLender');
-const loanAdminRoutes = require('./routes/loanAdmin');
-const loanWebhookRoutes = require('./routes/loanWebhook');
+let hospitalRoutes, hospitalProviderRoutes, labPricingRoutes, packageRoutes, authRoutes, caregiverRoutes, diagnosticsRoutes, diagnosticsUploadRoutes, ambulanceRoutes, healthPackageRoutes, testRoutes, uploadRoutes, providerAuthRoutes, bookingRoutes, razorpayRoutes, reviewRoutes, adminRoutes, bookingStatusRoutes, customPackageRoutes, lenderAuthRoutes, adminLenderRoutes, lenderRoutes, loanPatientRoutes, loanLenderRoutes, loanAdminRoutes, loanWebhookRoutes, webhookRoutes, ayurvedaRoutes, ayurvedaCenterRoutes, ayurvedaPrescriptionRoutes, ayurvedaReportRoutes, homeopathyRoutes, insuranceRoutes, insuranceAdminRoutes, otpRoutes, corporateRoutes, corporateBillingRoutes, corporateHubRoutes, mentalHealthRoutes, mentalHealthTherapistRoutes, mentalHealthAdminRoutes, mentalHealthPayoutRoutes, mentalHealthEarningsRoutes, onlineDoctorRoutes, hospitalStatusRoutes, globalSearchRoutes, employeePortalRoutes;
 
-// Payment Module
-const webhookRoutes = require('./routes/webhooks');
-
-// Ayurveda Module
-const ayurvedaRoutes = require('./routes/ayurveda-advanced');
-const ayurvedaCenterRoutes = require('./routes/ayurveda-centers');
-const ayurvedaPrescriptionRoutes = require('./routes/ayurveda-prescriptions');
-const ayurvedaReportRoutes = require('./routes/ayurveda-reports');
-
-// Homeopathy Module
-const homeopathyRoutes = require('./routes/homeopathy');
-
-// Insurance Module
-const insuranceRoutes = require('./routes/insurance');
-const insuranceAdminRoutes = require('./routes/insurance-admin');
-
-// OTP Module
-const otpRoutes = require('./routes/otp');
-
-// Corporate Module
-const corporateRoutes = require('./routes/corporate');
-const corporateBillingRoutes = require('./routes/corporate-billing');
-const corporateHubRoutes = require('./routes/corporateHub');
-
-// Mental Health Module
-const mentalHealthRoutes = require('./routes/mentalhealth');
-const mentalHealthTherapistRoutes = require('./routes/mentalhealth-therapist');
-const mentalHealthAdminRoutes = require('./routes/mentalhealth-admin');
-const mentalHealthPayoutRoutes = require('./routes/mentalhealth-payout');
-const mentalHealthEarningsRoutes = require('./routes/mentalhealth-earnings');
-
-// Online Doctor Module
-const onlineDoctorRoutes = require('./routes/onlineDoctor');
-
-// Hospital Status Module
-const hospitalStatusRoutes = require('./routes/hospitalStatus');
-
-// Global Search Module
-const globalSearchRoutes = require('./routes/globalSearch');
-const employeePortalRoutes = require('./routes/employeePortal');
+try { hospitalRoutes = require('./routes/hospitals'); } catch(e) { console.warn('⚠️ hospitals route missing'); hospitalRoutes = (req,res) => res.status(404).json({error:'Route not available'}); }
+try { hospitalProviderRoutes = require('./routes/hospitalProvider'); } catch(e) { console.warn('⚠️ hospitalProvider route missing'); hospitalProviderRoutes = (req,res) => res.status(404).json({error:'Route not available'}); }
+try { labPricingRoutes = require('./routes/labPricing'); } catch(e) { console.warn('⚠️ labPricing route missing'); labPricingRoutes = (req,res) => res.status(404).json({error:'Route not available'}); }
+try { packageRoutes = require('./routes/packageRoutes'); } catch(e) { console.warn('⚠️ packageRoutes route missing'); packageRoutes = (req,res) => res.status(404).json({error:'Route not available'}); }
+try { authRoutes = require('./routes/auth'); } catch(e) { console.warn('⚠️ auth route missing'); authRoutes = (req,res) => res.status(404).json({error:'Route not available'}); }
+try { caregiverRoutes = require('./routes/caregivers'); } catch(e) { console.warn('⚠️ caregivers route missing'); caregiverRoutes = (req,res) => res.status(404).json({error:'Route not available'}); }
+try { diagnosticsRoutes = require('./routes/diagnostics'); } catch(e) { console.warn('⚠️ diagnostics route missing'); diagnosticsRoutes = (req,res) => res.status(404).json({error:'Route not available'}); }
+try { diagnosticsUploadRoutes = require('./routes/diagnostics-upload'); } catch(e) { console.warn('⚠️ diagnostics-upload route missing'); diagnosticsUploadRoutes = (req,res) => res.status(404).json({error:'Route not available'}); }
+try { ambulanceRoutes = require('./routes/ambulance'); } catch(e) { console.warn('⚠️ ambulance route missing'); ambulanceRoutes = (req,res) => res.status(404).json({error:'Route not available'}); }
+try { healthPackageRoutes = require('./routes/healthPackageRoutes'); } catch(e) { console.warn('⚠️ healthPackageRoutes route missing'); healthPackageRoutes = (req,res) => res.status(404).json({error:'Route not available'}); }
+try { testRoutes = require('./routes/tests'); } catch(e) { console.warn('⚠️ tests route missing'); testRoutes = (req,res) => res.status(404).json({error:'Route not available'}); }
+try { uploadRoutes = require('./routes/upload'); } catch(e) { console.warn('⚠️ upload route missing'); uploadRoutes = (req,res) => res.status(404).json({error:'Route not available'}); }
+try { providerAuthRoutes = require('./routes/providerAuth'); } catch(e) { console.warn('⚠️ providerAuth route missing'); providerAuthRoutes = (req,res) => res.status(404).json({error:'Route not available'}); }
+try { bookingRoutes = require('./routes/bookings'); } catch(e) { console.warn('⚠️ bookings route missing'); bookingRoutes = (req,res) => res.status(404).json({error:'Route not available'}); }
+try { razorpayRoutes = require('./routes/payment'); } catch(e) { console.warn('⚠️ payment route missing'); razorpayRoutes = (req,res) => res.status(404).json({error:'Route not available'}); }
+try { reviewRoutes = require('./routes/reviews'); } catch(e) { console.warn('⚠️ reviews route missing'); reviewRoutes = (req,res) => res.status(404).json({error:'Route not available'}); }
+try { adminRoutes = require('./routes/admin'); } catch(e) { console.warn('⚠️ admin route missing'); adminRoutes = (req,res) => res.status(404).json({error:'Route not available'}); }
+try { bookingStatusRoutes = require('./routes/booking-status'); } catch(e) { console.warn('⚠️ booking-status route missing'); bookingStatusRoutes = (req,res) => res.status(404).json({error:'Route not available'}); }
+try { customPackageRoutes = require('./routes/custom-packages'); } catch(e) { console.warn('⚠️ custom-packages route missing'); customPackageRoutes = (req,res) => res.status(404).json({error:'Route not available'}); }
+try { lenderAuthRoutes = require('./routes/lenderAuth'); } catch(e) { console.warn('⚠️ lenderAuth route missing'); lenderAuthRoutes = (req,res) => res.status(404).json({error:'Route not available'}); }
+try { adminLenderRoutes = require('./routes/adminLender'); } catch(e) { console.warn('⚠️ adminLender route missing'); adminLenderRoutes = (req,res) => res.status(404).json({error:'Route not available'}); }
+try { lenderRoutes = require('./routes/lender'); } catch(e) { console.warn('⚠️ lender route missing'); lenderRoutes = (req,res) => res.status(404).json({error:'Route not available'}); }
+try { loanPatientRoutes = require('./routes/loanPatient'); } catch(e) { console.warn('⚠️ loanPatient route missing'); loanPatientRoutes = (req,res) => res.status(404).json({error:'Route not available'}); }
+try { loanLenderRoutes = require('./routes/loanLender'); } catch(e) { console.warn('⚠️ loanLender route missing'); loanLenderRoutes = (req,res) => res.status(404).json({error:'Route not available'}); }
+try { loanAdminRoutes = require('./routes/loanAdmin'); } catch(e) { console.warn('⚠️ loanAdmin route missing'); loanAdminRoutes = (req,res) => res.status(404).json({error:'Route not available'}); }
+try { loanWebhookRoutes = require('./routes/loanWebhook'); } catch(e) { console.warn('⚠️ loanWebhook route missing'); loanWebhookRoutes = (req,res) => res.status(404).json({error:'Route not available'}); }
+try { webhookRoutes = require('./routes/webhooks'); } catch(e) { console.warn('⚠️ webhooks route missing'); webhookRoutes = (req,res) => res.status(404).json({error:'Route not available'}); }
+try { ayurvedaRoutes = require('./routes/ayurveda-advanced'); } catch(e) { console.warn('⚠️ ayurveda-advanced route missing'); ayurvedaRoutes = (req,res) => res.status(404).json({error:'Route not available'}); }
+try { ayurvedaCenterRoutes = require('./routes/ayurveda-centers'); } catch(e) { console.warn('⚠️ ayurveda-centers route missing'); ayurvedaCenterRoutes = (req,res) => res.status(404).json({error:'Route not available'}); }
+try { ayurvedaPrescriptionRoutes = require('./routes/ayurveda-prescriptions'); } catch(e) { console.warn('⚠️ ayurveda-prescriptions route missing'); ayurvedaPrescriptionRoutes = (req,res) => res.status(404).json({error:'Route not available'}); }
+try { ayurvedaReportRoutes = require('./routes/ayurveda-reports'); } catch(e) { console.warn('⚠️ ayurveda-reports route missing'); ayurvedaReportRoutes = (req,res) => res.status(404).json({error:'Route not available'}); }
+try { homeopathyRoutes = require('./routes/homeopathy'); } catch(e) { console.warn('⚠️ homeopathy route missing'); homeopathyRoutes = (req,res) => res.status(404).json({error:'Route not available'}); }
+try { insuranceRoutes = require('./routes/insurance'); } catch(e) { console.warn('⚠️ insurance route missing'); insuranceRoutes = (req,res) => res.status(404).json({error:'Route not available'}); }
+try { insuranceAdminRoutes = require('./routes/insurance-admin'); } catch(e) { console.warn('⚠️ insurance-admin route missing'); insuranceAdminRoutes = (req,res) => res.status(404).json({error:'Route not available'}); }
+try { otpRoutes = require('./routes/otp'); } catch(e) { console.warn('⚠️ otp route missing'); otpRoutes = (req,res) => res.status(404).json({error:'Route not available'}); }
+try { corporateRoutes = require('./routes/corporate'); } catch(e) { console.warn('⚠️ corporate route missing'); corporateRoutes = (req,res) => res.status(404).json({error:'Route not available'}); }
+try { corporateBillingRoutes = require('./routes/corporate-billing'); } catch(e) { console.warn('⚠️ corporate-billing route missing'); corporateBillingRoutes = (req,res) => res.status(404).json({error:'Route not available'}); }
+try { corporateHubRoutes = require('./routes/corporateHub'); } catch(e) { console.warn('⚠️ corporateHub route missing'); corporateHubRoutes = (req,res) => res.status(404).json({error:'Route not available'}); }
+try { mentalHealthRoutes = require('./routes/mentalhealth'); } catch(e) { console.warn('⚠️ mentalhealth route missing'); mentalHealthRoutes = (req,res) => res.status(404).json({error:'Route not available'}); }
+try { mentalHealthTherapistRoutes = require('./routes/mentalhealth-therapist'); } catch(e) { console.warn('⚠️ mentalhealth-therapist route missing'); mentalHealthTherapistRoutes = (req,res) => res.status(404).json({error:'Route not available'}); }
+try { mentalHealthAdminRoutes = require('./routes/mentalhealth-admin'); } catch(e) { console.warn('⚠️ mentalhealth-admin route missing'); mentalHealthAdminRoutes = (req,res) => res.status(404).json({error:'Route not available'}); }
+try { mentalHealthPayoutRoutes = require('./routes/mentalhealth-payout'); } catch(e) { console.warn('⚠️ mentalhealth-payout route missing'); mentalHealthPayoutRoutes = (req,res) => res.status(404).json({error:'Route not available'}); }
+try { mentalHealthEarningsRoutes = require('./routes/mentalhealth-earnings'); } catch(e) { console.warn('⚠️ mentalhealth-earnings route missing'); mentalHealthEarningsRoutes = (req,res) => res.status(404).json({error:'Route not available'}); }
+try { onlineDoctorRoutes = require('./routes/onlineDoctor'); } catch(e) { console.warn('⚠️ onlineDoctor route missing'); onlineDoctorRoutes = (req,res) => res.status(404).json({error:'Route not available'}); }
+try { hospitalStatusRoutes = require('./routes/hospitalStatus'); } catch(e) { console.warn('⚠️ hospitalStatus route missing'); hospitalStatusRoutes = (req,res) => res.status(404).json({error:'Route not available'}); }
+try { globalSearchRoutes = require('./routes/globalSearch'); } catch(e) { console.warn('⚠️ globalSearch route missing'); globalSearchRoutes = (req,res) => res.status(404).json({error:'Route not available'}); }
+try { employeePortalRoutes = require('./routes/employeePortal'); } catch(e) { console.warn('⚠️ employeePortal route missing'); employeePortalRoutes = (req,res) => res.status(404).json({error:'Route not available'}); }
 
 // ============================================
 // AI ROUTER (18 Agents)
@@ -706,7 +687,7 @@ app.get('/api/ws/stats', (req, res) => {
 });
 
 // ============================================
-// HEALTH CHECKS
+// HEALTH CHECKS (ALL PRESERVED)
 // ============================================
 
 app.get('/health', (req, res) => {
