@@ -1,5 +1,20 @@
-require('dotenv').config();
-require('dotenv').config({ path: '.env.local', override: true });
+// ============================================
+// ENVIRONMENT CONFIGURATION (FIXED)
+// ============================================
+const dotenv = require('dotenv');
+const path = require('path');
+
+// Load .env from the correct path
+const envPath = path.join(__dirname, '.env');
+dotenv.config({ path: envPath });
+
+console.log('✅ .env loaded from:', envPath);
+console.log('GROQ_API_KEY:', process.env.GROQ_API_KEY ? '✅ Set' : '❌ Missing');
+console.log('GEMINI_API_KEY:', process.env.GEMINI_API_KEY ? '✅ Set' : '❌ Missing');
+
+// ============================================
+// EXPRESS SETUP
+// ============================================
 const express = require('express');
 const mongoose = require('mongoose');
 const cors = require('cors');
@@ -318,6 +333,238 @@ const globalSearchRoutes = require('./routes/globalSearch');
 const employeePortalRoutes = require('./routes/employeePortal');
 
 // ============================================
+// AI ROUTER (18 Agents)
+// ============================================
+
+// Import AI services (ALL with { } - CORRECT)
+const { AIRouter } = require('./ai-core/router/AIRouter.ts');
+const { ProviderManager } = require('./ai-core/providers/ProviderManager.ts');
+const { CapabilityRegistry } = require('./ai-core/router/CapabilityRegistry.ts');
+const { Orchestrator } = require('./ai-core/router/Orchestrator.ts');
+const { HealthManager } = require('./ai-core/monitoring/HealthManager.ts');
+const { BudgetManager } = require('./ai-core/monitoring/BudgetManager.ts');
+
+// Initialize AI services
+const budgetManager = new BudgetManager();
+const providerManager = new ProviderManager(budgetManager);
+const healthManager = new HealthManager();
+const capabilityRegistry = new CapabilityRegistry();
+const orchestrator = new Orchestrator(capabilityRegistry, providerManager);
+const router = new AIRouter(capabilityRegistry, orchestrator, providerManager, healthManager);
+
+// Import ALL Agents (ALL with { } - CORRECT)
+// Import ALL Agents (FIXED - with .default or .ClassName)
+const HospitalAgent = require('./ai-core/agents/business/HospitalAgent.ts').HospitalAgent;
+const DoctorAgent = require('./ai-core/agents/business/DoctorAgent.ts').DoctorAgent;
+const DiagnosticsAgent = require('./ai-core/agents/business/DiagnosticsAgent.ts').DiagnosticsAgent;
+const AmbulanceAgent = require('./ai-core/agents/business/AmbulanceAgent.ts').AmbulanceAgent;
+const InsuranceAgent = require('./ai-core/agents/business/InsuranceAgent.ts').InsuranceAgent;
+const CaregiverAgent = require('./ai-core/agents/business/CaregiverAgent.ts').CaregiverAgent;
+const WellnessAgent = require('./ai-core/agents/business/WellnessAgent.ts').WellnessAgent;
+const FinanceAgent = require('./ai-core/agents/operations/FinanceAgent.ts').FinanceAgent;
+const CRMAgent = require('./ai-core/agents/operations/CRMAgent.ts').CRMAgent;
+const MarketingAgent = require('./ai-core/agents/operations/MarketingAgent.ts').MarketingAgent;
+const SupportAgent = require('./ai-core/agents/operations/SupportAgent.ts').SupportAgent;
+const AnalyticsAgent = require('./ai-core/agents/operations/AnalyticsAgent.ts').AnalyticsAgent;
+const CorporateHealthAgent = require('./ai-core/agents/operations/CorporateHealthAgent.ts').CorporateHealthAgent;
+const SearchIntelligenceAgent = require('./ai-core/agents/intelligence/SearchIntelligenceAgent.ts').SearchIntelligenceAgent;
+const RecommendationAgent = require('./ai-core/agents/intelligence/RecommendationAgent.ts').RecommendationAgent;
+const WorkflowAgent = require('./ai-core/agents/intelligence/WorkflowAgent.ts').WorkflowAgent;
+const MemoryAgent = require('./ai-core/agents/intelligence/MemoryAgent.ts').MemoryAgent;
+const NotificationAgent = require('./ai-core/agents/intelligence/NotificationAgent.ts').NotificationAgent;
+const CEOAgent = require('./ai-core/agents/executive/CEOAgent.ts').CEOAgent;
+const StrategyAgent = require('./ai-core/agents/executive/StrategyAgent.ts').StrategyAgent;
+
+// Register all 18 agents with the registry
+const hospitalAgent = new HospitalAgent(providerManager);
+capabilityRegistry.register(hospitalAgent.getRegistration());
+
+const doctorAgent = new DoctorAgent(providerManager);
+capabilityRegistry.register(doctorAgent.getRegistration());
+
+const diagnosticsAgent = new DiagnosticsAgent(providerManager);
+capabilityRegistry.register(diagnosticsAgent.getRegistration());
+
+const ambulanceAgent = new AmbulanceAgent(providerManager);
+capabilityRegistry.register(ambulanceAgent.getRegistration());
+
+const insuranceAgent = new InsuranceAgent(providerManager);
+capabilityRegistry.register(insuranceAgent.getRegistration());
+
+const caregiverAgent = new CaregiverAgent(providerManager);
+capabilityRegistry.register(caregiverAgent.getRegistration());
+
+const wellnessAgent = new WellnessAgent(providerManager);
+capabilityRegistry.register(wellnessAgent.getRegistration());
+
+const financeAgent = new FinanceAgent(providerManager);
+capabilityRegistry.register(financeAgent.getRegistration());
+
+const crmAgent = new CRMAgent(providerManager);
+capabilityRegistry.register(crmAgent.getRegistration());
+
+const marketingAgent = new MarketingAgent(providerManager);
+capabilityRegistry.register(marketingAgent.getRegistration());
+
+const supportAgent = new SupportAgent(providerManager);
+capabilityRegistry.register(supportAgent.getRegistration());
+
+const analyticsAgent = new AnalyticsAgent(providerManager);
+capabilityRegistry.register(analyticsAgent.getRegistration());
+
+const corporateAgent = new CorporateHealthAgent(providerManager);
+capabilityRegistry.register(corporateAgent.getRegistration());
+
+const searchAgent = new SearchIntelligenceAgent(providerManager);
+capabilityRegistry.register(searchAgent.getRegistration());
+
+const recommendationAgent = new RecommendationAgent(providerManager);
+capabilityRegistry.register(recommendationAgent.getRegistration());
+
+const workflowAgent = new WorkflowAgent(providerManager);
+capabilityRegistry.register(workflowAgent.getRegistration());
+
+const memoryAgent = new MemoryAgent(providerManager);
+capabilityRegistry.register(memoryAgent.getRegistration());
+
+const notificationAgent = new NotificationAgent(providerManager);
+capabilityRegistry.register(notificationAgent.getRegistration());
+
+const ceoAgent = new CEOAgent(providerManager, capabilityRegistry);
+capabilityRegistry.register(ceoAgent.getRegistration());
+
+const strategyAgent = new StrategyAgent(providerManager);
+capabilityRegistry.register(strategyAgent.getRegistration());
+
+console.log('🤖 AI Router initialized with 18 agents');
+
+// ============================================
+// AI ROUTES
+// ============================================
+
+// Route all AI requests through the router
+app.post('/api/ai/route', async (req, res) => {
+  try {
+    const { task, payload, critical = false } = req.body;
+    
+    if (!task) {
+      return res.status(400).json({ 
+        success: false, 
+        error: 'Task is required' 
+      });
+    }
+    
+    const request = {
+      id: `req-${Date.now()}`,
+      task,
+      payload: payload || {},
+      critical,
+      timeout: 30000,
+      maxRetries: 3
+    };
+    
+    const response = await router.route(request);
+    
+    res.json({
+      success: response.success,
+      data: response.data,
+      error: response.error,
+      sourceAgent: response.sourceAgent,
+      processingTime: response.processingTime,
+      providerUsed: response.providerUsed
+    });
+    
+  } catch (error) {
+    console.error('AI Route Error:', error);
+    res.status(500).json({
+      success: false,
+      error: error.message || 'AI processing failed'
+    });
+  }
+});
+
+// Get all registered agents
+app.get('/api/ai/agents', (req, res) => {
+  const agents = capabilityRegistry.getAllAgents().map(agent => ({
+    id: agent.id,
+    name: agent.name,
+    role: agent.role,
+    status: agent.status,
+    capabilities: agent.capabilities.map(c => c.name),
+    currentTask: agent.currentTask,
+    lastActive: agent.lastActive
+  }));
+  
+  res.json({
+    success: true,
+    count: agents.length,
+    agents
+  });
+});
+
+// Get agent by ID
+app.get('/api/ai/agents/:agentId', (req, res) => {
+  const { agentId } = req.params;
+  const agent = capabilityRegistry.getRegistration(agentId);
+  
+  if (!agent) {
+    return res.status(404).json({
+      success: false,
+      error: 'Agent not found'
+    });
+  }
+  
+  res.json({
+    success: true,
+    agent
+  });
+});
+
+// Get AI system health
+app.get('/api/ai/health', (req, res) => {
+  const health = healthManager.getHealthReport();
+  const budget = budgetManager.getCurrentSpend();
+  const agents = capabilityRegistry.getAllAgents().map(a => ({
+    id: a.id,
+    name: a.name,
+    status: a.status
+  }));
+  
+  res.json({
+    success: true,
+    health,
+    budget,
+    agents: {
+      total: agents.length,
+      online: agents.filter(a => a.status === 'online').length,
+      busy: agents.filter(a => a.status === 'busy').length,
+      idle: agents.filter(a => a.status === 'idle').length,
+      offline: agents.filter(a => a.status === 'offline').length
+    }
+  });
+});
+
+// Get AI system cost
+app.get('/api/ai/cost', (req, res) => {
+  const budget = budgetManager.getCurrentSpend();
+  const usagePercent = budgetManager.getUsagePercentage();
+  
+  res.json({
+    success: true,
+    budget,
+    usagePercent,
+    isExhausted: usagePercent >= 100
+  });
+});
+
+console.log('🤖 AI Routes loaded:');
+console.log('   📡 POST /api/ai/route        - Process AI request');
+console.log('   📋 GET  /api/ai/agents       - List all agents');
+console.log('   📋 GET  /api/ai/agents/:id   - Get agent details');
+console.log('   🩺 GET  /api/ai/health       - AI system health');
+console.log('   💰 GET  /api/ai/cost         - AI cost tracking');
+
+// ============================================
 // ROUTE MOUNTING - ALL PRESERVED + NEW
 // ============================================
 
@@ -413,6 +660,34 @@ app.use('/api/online-doctor', searchLimiter, onlineDoctorRoutes);
 // 🔍 Global Search (Cross-tag)
 app.use('/api/search', searchLimiter, globalSearchRoutes);
 app.use('/api/employee', employeePortalRoutes);
+
+// ============================================
+// TEST ROUTES (Add this block)
+// ============================================
+
+// Simple test to confirm server is working
+app.get('/test', (req, res) => {
+  res.json({
+    success: true,
+    message: 'Server is working!',
+    timestamp: new Date().toISOString(),
+    uptime: process.uptime()
+  });
+});
+
+// Health check endpoint
+app.get('/api/health', (req, res) => {
+  res.json({
+    success: true,
+    status: 'ok',
+    timestamp: new Date().toISOString(),
+    uptime: process.uptime(),
+    services: {
+      mongodb: 'connected',
+      redis: 'connected'
+    }
+  });
+});
 
 // ============================================
 // WEBSOCKET HEALTH ENDPOINT

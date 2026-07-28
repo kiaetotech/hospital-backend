@@ -1,0 +1,211 @@
+# D:\hospital backend\docker-compose.yml
+
+version: '3.8'
+
+services:
+  # ========================================
+  # AI CORE SERVICE
+  # ========================================
+  ai-core:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: hospitalhub-ai-core
+    ports:
+      - "8080:8080"      # API
+      - "8081:8081"      # WebSocket for monitoring
+    environment:
+      - NODE_ENV=development
+      - PORT=8080
+      - WS_PORT=8081
+      - REDIS_URL=redis://redis:6379
+      - MONGODB_URL=mongodb://mongodb:27017/hospitalhub
+      - GROQ_API_KEY=${GROQ_API_KEY}
+      - OPENROUTER_API_KEY=${OPENROUTER_API_KEY}
+      - GEMINI_API_KEY=${GEMINI_API_KEY}
+      - OLLAMA_URL=${OLLAMA_URL:-http://ollama:11434}
+    depends_on:
+      - redis
+      - mongodb
+      - ollama
+    volumes:
+      - ./src:/app/src
+      - ./ai-core:/app/ai-core
+      - ./shared:/app/shared
+      - /app/node_modules
+      - logs:/app/logs
+    networks:
+      - hospitalhub-network
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8080/api/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 5
+
+  # ========================================
+  # REDIS (Queue & Cache)
+  # ========================================
+  redis:
+    image: redis:7-alpine
+    container_name: hospitalhub-redis
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis-data:/data
+    command: redis-server --appendonly yes
+    networks:
+      - hospitalhub-network
+    restart: unless-stopped
+
+  # ========================================
+  # MONGODB (Primary Database)
+  # ========================================
+  mongodb:
+    image: mongo:6
+    container_name: hospitalhub-mongodb
+    ports:
+      - "27017:27017"
+    environment:
+      - MONGO_INITDB_DATABASE=hospitalhub
+      - MONGO_INITDB_ROOT_USERNAME=admin
+      - MONGO_INITDB_ROOT_PASSWORD=hospitalhub123
+    volumes:
+      - mongodb-data:/data/db
+      - mongodb-config:/data/configdb
+    networks:
+      - hospitalhub-network
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "mongosh", "--eval", "db.runCommand('ping')"]
+      interval: 30s
+      timeout: 10s
+      retries: 5
+
+  # ========================================
+  # OLLAMA (Local LLM - Free)
+  # ========================================
+  ollama:
+    image: ollama/ollama:latest
+    container_name: hospitalhub-ollama
+    ports:
+      - "11434:11434"
+    volumes:
+      - ollama-data:/root/.ollama
+    environment:
+      - OLLAMA_HOST=0.0.0.0
+    networks:
+      - hospitalhub-network
+    restart: unless-stopped
+
+  # ========================================
+  # GRAFANA (Monitoring Dashboard - Engineering)
+  # ========================================
+  grafana:
+    image: grafana/grafana:latest
+    container_name: hospitalhub-grafana
+    ports:
+      - "3001:3000"
+    environment:
+      - GF_SECURITY_ADMIN_USER=admin
+      - GF_SECURITY_ADMIN_PASSWORD=hospitalhub
+      - GF_INSTALL_PLUGINS=grafana-piechart-panel
+    volumes:
+      - grafana-data:/var/lib/grafana
+      - ./grafana/provisioning:/etc/grafana/provisioning
+    depends_on:
+      - prometheus
+    networks:
+      - hospitalhub-network
+    restart: unless-stopped
+
+  # ========================================
+  # PROMETHEUS (Metrics Collection)
+  # ========================================
+  prometheus:
+    image: prom/prometheus:latest
+    container_name: hospitalhub-prometheus
+    ports:
+      - "9090:9090"
+    volumes:
+      - prometheus-data:/prometheus
+      - ./prometheus.yml:/etc/prometheus/prometheus.yml
+    command:
+      - '--config.file=/etc/prometheus/prometheus.yml'
+      - '--storage.tsdb.path=/prometheus'
+      - '--web.console.libraries=/usr/share/prometheus/console_libraries'
+      - '--web.console.templates=/usr/share/prometheus/consoles'
+    networks:
+      - hospitalhub-network
+    restart: unless-stopped
+
+  # ========================================
+  # JAEGER (Distributed Tracing)
+  # ========================================
+  jaeger:
+    image: jaegertracing/all-in-one:latest
+    container_name: hospitalhub-jaeger
+    ports:
+      - "16686:16686"   # UI
+      - "4318:4318"     # OTLP HTTP
+      - "4317:4317"     # OTLP gRPC
+    environment:
+      - COLLECTOR_OTLP_ENABLED=true
+      - COLLECTOR_ZIPKIN_HOST_PORT=9411
+    networks:
+      - hospitalhub-network
+    restart: unless-stopped
+
+  # ========================================
+  # OPIK (AI Observability - LLM Traces)
+  # ========================================
+  opik:
+    image: cometml/opik:latest
+    container_name: hospitalhub-opik
+    ports:
+      - "5173:5173"     # UI
+      - "5000:5000"     # API
+    environment:
+      - OPIK_DATABASE_URL=mongodb://mongodb:27017/opik
+      - OPIK_REDIS_URL=redis://redis:6379
+    depends_on:
+      - mongodb
+      - redis
+    networks:
+      - hospitalhub-network
+    restart: unless-stopped
+
+  # ========================================
+  # REDIS INSIGHT (Redis GUI)
+  # ========================================
+  redis-insight:
+    image: redis/redisinsight:latest
+    container_name: hospitalhub-redis-insight
+    ports:
+      - "5540:5540"
+    volumes:
+      - redis-insight-data:/db
+    networks:
+      - hospitalhub-network
+    restart: unless-stopped
+
+# ========================================
+# VOLUMES
+# ========================================
+volumes:
+  redis-data:
+  mongodb-data:
+  mongodb-config:
+  ollama-data:
+  grafana-data:
+  prometheus-data:
+  redis-insight-data:
+  logs:
+
+# ========================================
+# NETWORKS
+# ========================================
+networks:
+  hospitalhub-network:
+    driver: bridge
+    name: hospitalhub-network

@@ -1,0 +1,85 @@
+# D:\hospital backend\prometheus.yml
+
+# ========================================
+# PROMETHEUS CONFIGURATION
+# For HospitalHub AI Platform
+# ========================================
+
+global:
+  scrape_interval: 15s
+  evaluation_interval: 15s
+  external_labels:
+    monitor: 'hospitalhub'
+
+# ========================================
+# ALERTING RULES
+# ========================================
+rule_files:
+  - "alerts/*.yml"
+
+# ========================================
+# SCRAPE CONFIGURATIONS
+# ========================================
+scrape_configs:
+
+  # ----------------------------------------
+  # Prometheus Self-Metrics
+  # ----------------------------------------
+  - job_name: 'prometheus'
+    static_configs:
+      - targets: ['localhost:9090']
+
+  # ----------------------------------------
+  # AI Core Service Metrics
+  # ----------------------------------------
+  - job_name: 'ai-core'
+    metrics_path: '/metrics'
+    static_configs:
+      - targets: ['ai-core:8080']
+    relabel_configs:
+      - source_labels: [__address__]
+        target_label: instance
+        replacement: 'ai-core'
+
+  # ----------------------------------------
+  # Redis Metrics
+  # ----------------------------------------
+  - job_name: 'redis'
+    static_configs:
+      - targets: ['redis:6379']
+
+  # ----------------------------------------
+  # MongoDB Metrics
+  # ----------------------------------------
+  - job_name: 'mongodb'
+    static_configs:
+      - targets: ['mongodb:27017']
+
+  # ----------------------------------------
+  # Node.js Metrics (if using Node exporter)
+  # ----------------------------------------
+  - job_name: 'node'
+    static_configs:
+      - targets: ['node-exporter:9100']
+
+  # ----------------------------------------
+  # Docker Container Metrics
+  # ----------------------------------------
+  - job_name: 'docker'
+    static_configs:
+      - targets: ['docker-exporter:9323']
+
+# ========================================
+# ALERTING CONFIGURATION
+# ========================================
+alerting:
+  alertmanagers:
+    - static_configs:
+        - targets:
+          - 'alertmanager:9093'
+
+# ========================================
+# REMOTE WRITE (Optional - for long-term storage)
+# ========================================
+# remote_write:
+#   - url: "http://remote-storage:9201/write"
