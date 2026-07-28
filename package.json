@@ -4,8 +4,10 @@
   "description": "Backend for hospital booking platform",
   "main": "server.js",
   "scripts": {
-    "start": "node server.js",
-    "postinstall": "echo Build complete"
+    "build": "tsc",
+    "start": "node dist/server.js",
+    "dev": "node server.js",
+    "postinstall": "npm run build || echo 'Build skipped'"
   },
   "dependencies": {
     "@sendgrid/mail": "^8.1.6",

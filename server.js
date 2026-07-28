@@ -353,12 +353,12 @@ try { employeePortalRoutes = require('./routes/employeePortal'); } catch(e) { co
 // ============================================
 
 // Import AI services
-const { AIRouter } = require('./ai-core/router/AIRouter.ts');
-const { ProviderManager } = require('./ai-core/providers/ProviderManager.ts');
-const { CapabilityRegistry } = require('./ai-core/router/CapabilityRegistry.ts');
-const { Orchestrator } = require('./ai-core/router/Orchestrator.ts');
-const { HealthManager } = require('./ai-core/monitoring/HealthManager.ts');
-const { BudgetManager } = require('./ai-core/monitoring/BudgetManager.ts');
+const { AIRouter } = require('./dist/ai-core/router/AIRouter.js');
+const { ProviderManager } = require('./dist/ai-core/providers/ProviderManager.js');
+const { CapabilityRegistry } = require('./dist/ai-core/router/CapabilityRegistry.js');
+const { Orchestrator } = require('./dist/ai-core/router/Orchestrator.js');
+const { HealthManager } = require('./dist/ai-core/monitoring/HealthManager.js');
+const { BudgetManager } = require('./dist/ai-core/monitoring/BudgetManager.js');
 
 // Initialize AI services
 const budgetManager = new BudgetManager();
