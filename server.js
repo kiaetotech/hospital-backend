@@ -1,10 +1,9 @@
 // ============================================
-// ENVIRONMENT CONFIGURATION (FIXED)
+// ENVIRONMENT CONFIGURATION
 // ============================================
 const dotenv = require('dotenv');
 const path = require('path');
 
-// Load .env from the correct path
 const envPath = path.join(__dirname, '.env');
 dotenv.config({ path: envPath });
 
@@ -12,9 +11,6 @@ console.log('✅ .env loaded from:', envPath);
 console.log('GROQ_API_KEY:', process.env.GROQ_API_KEY ? '✅ Set' : '❌ Missing');
 console.log('GEMINI_API_KEY:', process.env.GEMINI_API_KEY ? '✅ Set' : '❌ Missing');
 
-// ============================================
-// EXPRESS SETUP
-// ============================================
 const express = require('express');
 const mongoose = require('mongoose');
 const cors = require('cors');
@@ -28,7 +24,7 @@ const app = express();
 const server = http.createServer(app);
 
 // ============================================
-// CORS CONFIGURATION (FIXED)
+// CORS CONFIGURATION
 // ============================================
 const allowedOrigins = [
   'https://hospital-frontend-kiaeto.vercel.app',
@@ -38,7 +34,6 @@ const allowedOrigins = [
 
 app.use(cors({
   origin: function (origin, callback) {
-    // Allow requests with no origin (mobile apps, curl, etc.)
     if (!origin) return callback(null, true);
     if (allowedOrigins.indexOf(origin) !== -1) {
       callback(null, true);
@@ -49,22 +44,18 @@ app.use(cors({
   methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS', 'PATCH'],
   allowedHeaders: ['Content-Type', 'Authorization', 'X-Requested-With'],
   credentials: true,
-  maxAge: 86400 // 24 hours
+  maxAge: 86400
 }));
 
-// Handle preflight requests
 app.options('*', cors());
 
 app.use(express.json({ limit: '10mb' }));
 app.use(express.urlencoded({ extended: true, limit: '10mb' }));
-
-// Trust proxy for Railway
 app.set('trust proxy', 1);
 
 // ============================================
-// REDIS CONNECTION (For Location Cache & Rate Limiting)
+// REDIS CONNECTION
 // ============================================
-
 let redis = null;
 try {
   redis = new Redis({
@@ -100,7 +91,6 @@ global.redisClient = redis;
 // ============================================
 // SOCKET.IO SETUP
 // ============================================
-
 const io = new Server(server, {
   cors: {
     origin: allowedOrigins,
@@ -126,11 +116,10 @@ try {
   console.warn('⚠️ Ambulance socket not available:', e.message);
 }
 
-// Initialize socket only if the function exists
 if (typeof initializeSocket === 'function') {
   initializeSocket(io);
 }
-// Make io available globally (for use in routes/services)
+
 global.io = io;
 
 // ============================================
@@ -140,7 +129,6 @@ if (process.env.NODE_ENV !== 'production') {
   app.use(morgan('dev'));
 }
 
-// Rate limiting for search endpoints
 const searchLimiter = rateLimit({
   windowMs: 1 * 60 * 1000,
   max: 60,
@@ -174,9 +162,8 @@ global.authenticateToken = authenticateToken;
 global.JWT_SECRET = JWT_SECRET;
 
 // ============================================
-// AUTH MIDDLEWARES (All Tags)
+// AUTH MIDDLEWARES
 // ============================================
-
 const authenticatePatient = (req, res, next) => {
   const authHeader = req.headers['authorization'];
   const token = authHeader && authHeader.split(' ')[1];
@@ -221,7 +208,7 @@ global.authenticatePatient = authenticatePatient;
 global.authenticateLender = authenticateLender;
 
 // ============================================
-// CRON JOBS
+// CRON JOBS WITH FALLBACKS
 // ============================================
 
 // Load ambulance dispatch service with fallback
@@ -236,7 +223,6 @@ try {
   };
 }
 
-// Check for stuck ambulance bookings every 2 minutes
 setInterval(async () => {
   try {
     if (dispatchService.checkStuckBookings) {
@@ -263,7 +249,6 @@ try {
   };
 }
 
-// Hospital status: Send scheduled WhatsApp requests every hour
 setInterval(async () => {
   try {
     if (hospitalStatusService.sendScheduledRequests) {
@@ -274,7 +259,6 @@ setInterval(async () => {
   }
 }, 60 * 60 * 1000);
 
-// Hospital status: Expire stale statuses every 30 minutes
 setInterval(async () => {
   try {
     if (hospitalStatusService.expireStaleStatuses) {
@@ -285,31 +269,41 @@ setInterval(async () => {
   }
 }, 30 * 60 * 1000);
 
-// Clean up stale Redis data every 15 minutes
 if (redis) {
   setInterval(async () => {
     try {
       const locationCache = require('./services/locationCacheService');
       const stats = await locationCache.getServiceStats();
       console.log('📍 Location stats:', JSON.stringify(stats));
-    } catch (error) {
-      // Silently fail - not critical
-    }
+    } catch (error) {}
   }, 15 * 60 * 1000);
 }
 
 // ============================================
-// EXISTING ROUTES (ALL PRESERVED)
+// MODELS WITH FALLBACK
 // ============================================
-require('./models/TestMaster');
-require('./models/TestPricing');
+try {
+  require('./models/TestMaster');
+} catch (e) {
+  console.warn('⚠️ TestMaster model not available:', e.message);
+}
+
+try {
+  require('./models/TestPricing');
+} catch (e) {
+  console.warn('⚠️ TestPricing model not available:', e.message);
+}
+
+// ============================================
+// ROUTES (ALL PRESERVED)
+// ============================================
 const hospitalRoutes = require('./routes/hospitals');
 const hospitalProviderRoutes = require('./routes/hospitalProvider');
 const labPricingRoutes = require('./routes/labPricing');
 const packageRoutes = require('./routes/packageRoutes');
 const authRoutes = require('./routes/auth');
 const caregiverRoutes = require('./routes/caregivers');
-const diagnosticsRoutes = require('./routes/diagnostics'); 
+const diagnosticsRoutes = require('./routes/diagnostics');
 const diagnosticsUploadRoutes = require('./routes/diagnostics-upload');
 const ambulanceRoutes = require('./routes/ambulance');
 const healthPackageRoutes = require('./routes/healthPackageRoutes');
@@ -366,11 +360,10 @@ const mentalHealthEarningsRoutes = require('./routes/mentalhealth-earnings');
 // Online Doctor Module
 const onlineDoctorRoutes = require('./routes/onlineDoctor');
 
-// 🆕 Hospital Status Module
+// Hospital Status Module
 const hospitalStatusRoutes = require('./routes/hospitalStatus');
 
-
-// 🔍 Global Search Module
+// Global Search Module
 const globalSearchRoutes = require('./routes/globalSearch');
 const employeePortalRoutes = require('./routes/employeePortal');
 
@@ -378,7 +371,7 @@ const employeePortalRoutes = require('./routes/employeePortal');
 // AI ROUTER (18 Agents)
 // ============================================
 
-// Import AI services (ALL with { } - CORRECT)
+// Import AI services
 const { AIRouter } = require('./ai-core/router/AIRouter.ts');
 const { ProviderManager } = require('./ai-core/providers/ProviderManager.ts');
 const { CapabilityRegistry } = require('./ai-core/router/CapabilityRegistry.ts');
@@ -394,8 +387,7 @@ const capabilityRegistry = new CapabilityRegistry();
 const orchestrator = new Orchestrator(capabilityRegistry, providerManager);
 const router = new AIRouter(capabilityRegistry, orchestrator, providerManager, healthManager);
 
-// Import ALL Agents (ALL with { } - CORRECT)
-// Import ALL Agents (FIXED - with .default or .ClassName)
+// Import ALL Agents
 const HospitalAgent = require('./ai-core/agents/business/HospitalAgent.ts').HospitalAgent;
 const DoctorAgent = require('./ai-core/agents/business/DoctorAgent.ts').DoctorAgent;
 const DiagnosticsAgent = require('./ai-core/agents/business/DiagnosticsAgent.ts').DiagnosticsAgent;
@@ -484,7 +476,6 @@ console.log('🤖 AI Router initialized with 18 agents');
 // AI ROUTES
 // ============================================
 
-// Route all AI requests through the router
 app.post('/api/ai/route', async (req, res) => {
   try {
     const { task, payload, critical = false } = req.body;
@@ -525,7 +516,6 @@ app.post('/api/ai/route', async (req, res) => {
   }
 });
 
-// Get all registered agents
 app.get('/api/ai/agents', (req, res) => {
   const agents = capabilityRegistry.getAllAgents().map(agent => ({
     id: agent.id,
@@ -544,10 +534,9 @@ app.get('/api/ai/agents', (req, res) => {
   });
 });
 
-// Get agent by ID
 app.get('/api/ai/agents/:agentId', (req, res) => {
   const { agentId } = req.params;
-  const agent = capabilityRegistry.getRegistration(agentId);
+  const agent = capabilityRegistry.getAgent(agentId);
   
   if (!agent) {
     return res.status(404).json({
@@ -562,7 +551,6 @@ app.get('/api/ai/agents/:agentId', (req, res) => {
   });
 });
 
-// Get AI system health
 app.get('/api/ai/health', (req, res) => {
   const health = healthManager.getHealthReport();
   const budget = budgetManager.getCurrentSpend();
@@ -586,7 +574,6 @@ app.get('/api/ai/health', (req, res) => {
   });
 });
 
-// Get AI system cost
 app.get('/api/ai/cost', (req, res) => {
   const budget = budgetManager.getCurrentSpend();
   const usagePercent = budgetManager.getUsagePercentage();
@@ -607,107 +594,62 @@ console.log('   🩺 GET  /api/ai/health       - AI system health');
 console.log('   💰 GET  /api/ai/cost         - AI cost tracking');
 
 // ============================================
-// ROUTE MOUNTING - ALL PRESERVED + NEW
+// ROUTE MOUNTING
 // ============================================
-
-// 🏥 Hospital Routes
 app.use('/api/hospitals/provider', hospitalProviderRoutes);
 app.use('/api/lab-pricing', labPricingRoutes);
 app.use('/api/packages', packageRoutes);
 app.use('/api/hospitals', searchLimiter, hospitalRoutes);
 app.use('/api/hospital-status', hospitalStatusRoutes);
-
-// 🔐 Auth
 app.use('/api/auth', authRoutes);
 app.use('/api/provider-auth', providerAuthRoutes);
-
-// 🏠 Caregivers
 app.use('/api/caregivers', caregiverRoutes);
-
-// 🔬 Diagnostics
-app.use('/api/diagnostics', diagnosticsRoutes); 
+app.use('/api/diagnostics', diagnosticsRoutes);
 app.use('/api/diagnostics/upload', diagnosticsUploadRoutes);
-
-// 🚑 Ambulance
 app.use('/api/ambulance', ambulanceRoutes);
-
-// 📦 Health Packages
 app.use('/api/health-packages', healthPackageRoutes);
 app.use('/api/provider', healthPackageRoutes);
-
-// 🧪 Tests
 app.use('/api/tests', testRoutes);
-
-// 📤 Upload
 app.use('/api/upload', uploadRoutes);
-
-// 📋 Bookings
 app.use('/api/bookings', bookingRoutes);
 app.use('/api/booking-status', bookingStatusRoutes);
 app.use('/api/custom-packages', customPackageRoutes);
-
-// 💳 Payment
 app.use('/api/payment', razorpayRoutes);
 app.use('/api/webhooks', webhookRoutes);
-
-// ⭐ Reviews
 app.use('/api/reviews', reviewRoutes);
-
-// 🔧 Admin
 app.use('/api/admin', adminRoutes);
-
-// 💰 Lender
 app.use('/api/lender/auth', lenderAuthRoutes);
 app.use('/api/lender', lenderRoutes);
 app.use('/api/admin/lenders', adminLenderRoutes);
-
-// 💵 Loan Module
 app.use('/api/loan/patient', loanPatientRoutes);
 app.use('/api/loan/lender', loanLenderRoutes);
 app.use('/api/loan/admin', loanAdminRoutes);
 app.use('/api/loan/webhook', loanWebhookRoutes);
-
-// 🧘 Ayurveda
 app.use('/api/ayurveda', ayurvedaRoutes);
 app.use('/api/ayurveda-centers', ayurvedaCenterRoutes);
 app.use('/api/ayurveda/prescriptions', ayurvedaPrescriptionRoutes);
 app.use('/api/ayurveda/reports', ayurvedaReportRoutes);
 app.use('/api/ayurveda/payments', razorpayRoutes);
-
-// 🌿 Homeopathy
 app.use('/api/homeopathy', homeopathyRoutes);
-
-// 🛡️ Insurance
 app.use('/api/insurance', insuranceRoutes);
 app.use('/api/insurance-admin', insuranceAdminRoutes);
-
-// 📱 OTP
 app.use('/api/otp', otpRoutes);
-
-// 🏢 Corporate
 app.use('/api/corporate', corporateRoutes);
 app.use('/api/corporate/billing', corporateBillingRoutes);
 app.use('/api/corporate-hub', corporateHubRoutes);
-
-// 🧠 Mental Health
 app.use('/api/mentalhealth', mentalHealthRoutes);
 app.use('/api/mentalhealth/therapist', mentalHealthTherapistRoutes);
 app.use('/api/mentalhealth/admin', mentalHealthAdminRoutes);
 app.use('/api/mentalhealth/payout', mentalHealthPayoutRoutes);
 app.use('/api/mentalhealth/earnings', mentalHealthEarningsRoutes);
-
-// 📱 Online Doctor
 app.use('/api/online-doctor', searchLimiter, onlineDoctorRoutes);
-
-// 🔍 Global Search (Cross-tag)
 app.use('/api/search', searchLimiter, globalSearchRoutes);
 app.use('/api/employee', employeePortalRoutes);
 
 // ============================================
-// TEST ROUTES (Add this block)
+// TEST ROUTES
 // ============================================
 
-// Simple test to confirm server is working
 app.get('/test', (req, res) => {
   res.json({
     success: true,
@@ -717,7 +659,6 @@ app.get('/test', (req, res) => {
   });
 });
 
-// Health check endpoint
 app.get('/api/health', (req, res) => {
   res.json({
     success: true,
@@ -747,29 +688,27 @@ app.get('/api/ws/health', (req, res) => {
   });
 });
 
-// WebSocket stats for admin
 app.get('/api/ws/stats', (req, res) => {
   const stats = getConnectionStats();
   res.json({
     success: true,
     data: {
-      onlineDrivers: stats.drivers,
-      onlineCaregivers: stats.caregivers,
-      onlinePhlebotomists: stats.phlebotomists,
-      trackingPatients: stats.patients,
-      connectedHospitals: stats.hospitals,
-      activeAdmins: stats.admins,
-      totalConnections: stats.drivers + stats.caregivers + stats.phlebotomists + stats.patients + stats.hospitals + stats.admins,
-      timestamp: stats.timestamp
+      onlineDrivers: stats.drivers || 0,
+      onlineCaregivers: stats.caregivers || 0,
+      onlinePhlebotomists: stats.phlebotomists || 0,
+      trackingPatients: stats.patients || 0,
+      connectedHospitals: stats.hospitals || 0,
+      activeAdmins: stats.admins || 0,
+      totalConnections: (stats.drivers || 0) + (stats.caregivers || 0) + (stats.phlebotomists || 0) + (stats.patients || 0) + (stats.hospitals || 0) + (stats.admins || 0),
+      timestamp: stats.timestamp || new Date().toISOString()
     }
   });
 });
 
 // ============================================
-// HEALTH CHECKS (ALL PRESERVED + NEW)
+// HEALTH CHECKS
 // ============================================
 
-// Root health check
 app.get('/health', (req, res) => {
   res.json({ 
     status: 'ok', 
@@ -786,7 +725,6 @@ app.get('/api/test', (req, res) => {
   res.json({ success: true, message: 'API is working' });
 });
 
-// Hospital Module Health Check
 app.get('/api/hospitals/health', (req, res) => {
   res.json({
     success: true,
@@ -829,7 +767,6 @@ app.get('/api/hospitals/health', (req, res) => {
   });
 });
 
-// 🆕 Hospital Status Health Check
 app.get('/api/hospital-status/health', (req, res) => {
   res.json({
     success: true,
@@ -846,7 +783,6 @@ app.get('/api/hospital-status/health', (req, res) => {
   });
 });
 
-// Ambulance Health Check
 app.get('/api/ambulance/health', (req, res) => {
   res.json({
     success: true,
@@ -891,7 +827,6 @@ app.get('/api/ambulance/health', (req, res) => {
   });
 });
 
-// Insurance Health Check
 app.get('/api/insurance/health', (req, res) => {
   res.json({
     success: true,
@@ -907,7 +842,6 @@ app.get('/api/insurance/health', (req, res) => {
   });
 });
 
-// OTP Health Check
 app.get('/api/otp/health', (req, res) => {
   res.json({
     success: true,
@@ -922,7 +856,6 @@ app.get('/api/otp/health', (req, res) => {
   });
 });
 
-// Mental Health Health Check
 app.get('/api/mentalhealth/health', (req, res) => {
   res.json({
     success: true,
@@ -938,7 +871,6 @@ app.get('/api/mentalhealth/health', (req, res) => {
   });
 });
 
-// Online Doctor Health Check
 app.get('/api/online-doctor/health', (req, res) => {
   res.json({
     success: true,
@@ -955,7 +887,6 @@ app.get('/api/online-doctor/health', (req, res) => {
   });
 });
 
-// Comprehensive System Health
 app.get('/api/system/health', async (req, res) => {
   const healthData = {
     success: true,
@@ -999,7 +930,6 @@ app.get('/api/system/health', async (req, res) => {
   res.json(healthData);
 });
 
-// Global Search Health Check
 app.get('/api/search/health', (req, res) => {
   res.json({
     success: true,
@@ -1026,7 +956,6 @@ app.get('/api/search/health', (req, res) => {
   });
 });
 
-// Seed test data (one-time use)
 app.get('/api/seed-tests', async (req, res) => {
   try {
     const xlsx = require('xlsx');
@@ -1057,8 +986,6 @@ app.get('/api/seed-tests', async (req, res) => {
     }));
 
     await collection.insertMany(docs);
-    
-    // Create text index for search
     await collection.createIndex({ test_name: 'text', search_keywords: 'text', major_category: 'text', sub_category: 'text' });
     
     res.json({ success: true, count: docs.length, message: 'Seeded with test_code and all fields' });
@@ -1113,16 +1040,18 @@ const DB_URI = process.env.DB_URI || process.env.MONGODB_URI || 'mongodb://local
 mongoose.connect(DB_URI)
   .then(() => {
     console.log('✅ MongoDB connected');
-    // Force reload all models
     Object.keys(mongoose.models).forEach(modelName => {
       delete mongoose.models[modelName];
     });
   })
+  .catch(err => {
+    console.error('❌ MongoDB connection error:', err.message);
+  });
 
 // ============================================
-// SERVER START (Using http server for Socket.IO)
+// SERVER START
 // ============================================
-const PORT = process.env.PORT || 8080;
+const PORT = process.env.PORT || 5001;
 server.listen(PORT, () => {
   console.log('═'.repeat(55));
   console.log('🚀 HealthCare Hub Server Started');
@@ -1202,23 +1131,4 @@ process.on('SIGINT', () => {
     console.log('Server closed');
     process.exit(0);
   });
-}); 
- 
-// nuclear rebuild 
-// trigger 
-// force  
-// force redeploy v2  
-// force redeploy v2  
- 
-// force  
-// force v2  
-// force packages  
-// redeploy v2  
-// redeploy v2  
-// trigger  
-// force pkg  
-// fresh start  
-// force corporate  
-// trigger deploy  
-  
-  
+});
