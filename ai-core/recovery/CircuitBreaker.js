@@ -1,45 +1,27 @@
-// D:\hospital backend\ai-core\recovery\CircuitBreaker.ts
+// D:\hospital backend\ai-core\recovery\CircuitBreaker.js
 
-export 
-
-export enum CircuitBreakerState {
-  CLOSED = 'CLOSED',        // Normal operation - requests flow through
-  OPEN = 'OPEN',            // Circuit is open - requests fail fast
-  HALF_OPEN = 'HALF_OPEN'   // Testing if service is recovered
-}
-
-export 
-
-export class CircuitBreaker {
-  private state= CircuitBreakerState.CLOSED;
-  private failureCount= 0;
-  private successCount= 0;
-  private lastFailure| null = null;
-  private lastSuccess| null = null;
-  private openSince| null = null;
-  private totalFailures= 0;
-  private totalSuccesses= 0;
-
-  private config;
-  private resetTimer.Timeout | null = null;
-
+class CircuitBreaker {
   constructor(config) {
+    this.state = 'CLOSED';
+    this.failureCount = 0;
+    this.successCount = 0;
+    this.lastFailure = null;
+    this.lastSuccess = null;
+    this.openSince = null;
+    this.totalFailures = 0;
+    this.totalSuccesses = 0;
     this.config = {
-      failureThreshold.failureThreshold || 5,
-      timeout.timeout || 60000,
-      resetTimeout.resetTimeout || 30000,
-      successThreshold.successThreshold || 3
+      failureThreshold: config?.failureThreshold || 5,
+      timeout: config?.timeout || 60000,
+      resetTimeout: config?.resetTimeout || 30000,
+      successThreshold: config?.successThreshold || 3
     };
+    this.resetTimer = null;
   }
 
-  /**
-   * Check if circuit allows request to pass through
-   */
-  isOpen(){
-    if (this.state === CircuitBreakerState.OPEN) {
-      // Check if timeout has elapsed
+  isOpen() {
+    if (this.state === 'OPEN') {
       if (this.openSince && (Date.now() - this.openSince.getTime() > this.config.timeout)) {
-        // Transition to half-open
         this.transitionToHalfOpen();
         return false;
       }
@@ -48,137 +30,96 @@ export class CircuitBreaker {
     return false;
   }
 
-  /**
-   * Record a successful request
-   */
-  recordSuccess(){
+  recordSuccess() {
     this.totalSuccesses++;
     this.lastSuccess = new Date();
 
-    if (this.state === CircuitBreakerState.HALF_OPEN) {
+    if (this.state === 'HALF_OPEN') {
       this.successCount++;
-      if (this.successCount >= (this.config.successThreshold || 3)) {
+      if (this.successCount >= this.config.successThreshold) {
         this.transitionToClosed();
       }
-    } else if (this.state === CircuitBreakerState.CLOSED) {
-      // Reset failure count on success
+    } else if (this.state === 'CLOSED') {
       this.failureCount = 0;
     }
   }
 
-  /**
-   * Record a failed request
-   */
-  recordFailure(){
+  recordFailure() {
     this.totalFailures++;
     this.lastFailure = new Date();
 
-    if (this.state === CircuitBreakerState.CLOSED) {
+    if (this.state === 'CLOSED') {
       this.failureCount++;
       if (this.failureCount >= this.config.failureThreshold) {
         this.transitionToOpen();
       }
-    } else if (this.state === CircuitBreakerState.HALF_OPEN) {
-      // Failure in half-open state → go back to open
+    } else if (this.state === 'HALF_OPEN') {
       this.transitionToOpen();
     }
   }
 
-  /**
-   * Transition to OPEN state
-   */
-  private transitionToOpen(){
-    this.state = CircuitBreakerState.OPEN;
+  transitionToOpen() {
+    this.state = 'OPEN';
     this.openSince = new Date();
     this.failureCount = 0;
     this.successCount = 0;
-
-    // Clear any existing timer
     this.clearResetTimer();
-
-    // Schedule reset attempt
     this.resetTimer = setTimeout(() => {
       this.transitionToHalfOpen();
     }, this.config.resetTimeout);
-
     console.log(`🔌 Circuit BREAKER OPEN at ${this.openSince.toISOString()}`);
   }
 
-  /**
-   * Transition to HALF_OPEN state
-   */
-  private transitionToHalfOpen(){
-    this.state = CircuitBreakerState.HALF_OPEN;
+  transitionToHalfOpen() {
+    this.state = 'HALF_OPEN';
     this.successCount = 0;
     this.failureCount = 0;
     this.openSince = null;
-
     this.clearResetTimer();
-
     console.log(`🔌 Circuit HALF_OPEN at ${new Date().toISOString()}`);
   }
 
-  /**
-   * Transition to CLOSED state
-   */
-  private transitionToClosed(){
-    this.state = CircuitBreakerState.CLOSED;
+  transitionToClosed() {
+    this.state = 'CLOSED';
     this.failureCount = 0;
     this.successCount = 0;
     this.openSince = null;
-
     this.clearResetTimer();
-
     console.log(`🔌 Circuit CLOSED at ${new Date().toISOString()}`);
   }
 
-  /**
-   * Clear reset timer
-   */
-  private clearResetTimer(){
+  clearResetTimer() {
     if (this.resetTimer) {
       clearTimeout(this.resetTimer);
       this.resetTimer = null;
     }
   }
 
-  /**
-   * Get current circuit status
-   */
-  getStatus(){
+  getStatus() {
     return {
-      state.state,
-      failureCount.failureCount,
-      successCount.successCount,
-      lastFailure.lastFailure,
-      lastSuccess.lastSuccess,
-      openSince.openSince,
-      totalFailures.totalFailures,
-      totalSuccesses.totalSuccesses
+      state: this.state,
+      failureCount: this.failureCount,
+      successCount: this.successCount,
+      lastFailure: this.lastFailure,
+      lastSuccess: this.lastSuccess,
+      openSince: this.openSince,
+      totalFailures: this.totalFailures,
+      totalSuccesses: this.totalSuccesses
     };
   }
 
-  /**
-   * Force circuit to closed state
-   */
-  forceClosed(){
+  forceClosed() {
     this.transitionToClosed();
     console.log('🔌 Circuit FORCED CLOSED');
   }
 
-  /**
-   * Force circuit to open state
-   */
-  forceOpen(){
+  forceOpen() {
     this.transitionToOpen();
     console.log('🔌 Circuit FORCED OPEN');
   }
 
-  /**
-   * Reset circuit completely
-   */
-  reset(){
-    this.state = CircuitBreakerState.CLOSED;
+  reset() {
+    this.state = 'CLOSED';
     this.failureCount = 0;
     this.successCount = 0;
     this.lastFailure = null;
@@ -190,53 +131,34 @@ export class CircuitBreaker {
     console.log('🔌 Circuit RESET');
   }
 
-  /**
-   * Get failure rate
-   */
-  getFailureRate(){
+  getFailureRate() {
     const total = this.totalFailures + this.totalSuccesses;
     if (total === 0) return 0;
     return (this.totalFailures / total) * 100;
   }
 
-  /**
-   * Get circuit health
-   */
-  getHealth(): {
-    status: 'healthy' | 'degraded' | 'unhealthy';
-    failureRate;
-    state;
-  } {
+  getHealth() {
     const failureRate = this.getFailureRate();
-    let status: 'healthy' | 'degraded' | 'unhealthy';
-
-    if (this.state === CircuitBreakerState.OPEN) {
+    let status = 'healthy';
+    if (this.state === 'OPEN') {
       status = 'unhealthy';
     } else if (failureRate > 20) {
       status = 'degraded';
-    } else {
-      status = 'healthy';
     }
-
     return {
       status,
       failureRate,
-      state.state
+      state: this.state
     };
   }
 }
 
-/**
- * Circuit Breaker Factory
- */
-export class CircuitBreakerFactory {
-  private static instances<string, CircuitBreaker> = new Map();
+class CircuitBreakerFactory {
+  static instances = new Map();
 
-  static getInstance(
-    name,
-    config?){
+  static getInstance(name, config) {
     if (!this.instances.has(name)) {
-      const defaultConfig= {
+      const defaultConfig = {
         failureThreshold: 5,
         timeout: 60000,
         resetTimeout: 30000,
@@ -244,14 +166,14 @@ export class CircuitBreakerFactory {
       };
       this.instances.set(name, new CircuitBreaker(config || defaultConfig));
     }
-    return this.instances.get(name)!;
+    return this.instances.get(name);
   }
 
-  static getAllInstances()<string, CircuitBreaker> {
+  static getAllInstances() {
     return this.instances;
   }
 
-  static resetAll(){
+  static resetAll() {
     for (const [name, breaker] of this.instances) {
       breaker.reset();
       console.log(`🔄 Circuit ${name} reset`);
@@ -259,5 +181,4 @@ export class CircuitBreakerFactory {
   }
 }
 
-
-
+module.exports = { CircuitBreaker, CircuitBreakerFactory };
