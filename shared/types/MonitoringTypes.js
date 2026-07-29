@@ -1,67 +1,78 @@
-// D:\hospital backend\shared\types\MonitoringTypes.ts
+// D:\hospital backend\shared\types\MonitoringTypes.js
 
-export interface AgentHealth {
-  agentId: string;
-  status: 'healthy' | 'degraded' | 'unhealthy';
-  uptime: number; // seconds
-  responseTime: number; // ms
-  errorRate: number; // percentage
-  lastCheck: Date;
-  details: Record<string, any>;
-}
+/**
+ * @typedef {Object} AgentHealth
+ * @property {string} agentId
+ * @property {'healthy'|'degraded'|'unhealthy'} status
+ * @property {number} uptime - seconds
+ * @property {number} responseTime - ms
+ * @property {number} errorRate - percentage
+ * @property {Date} lastCheck
+ * @property {Object<string, any>} details
+ */
 
-export interface AgentCost {
-  agentId: string;
-  provider: string;
-  tokensUsed: number;
-  costInr: number;
-  dailyCostInr: number;
-  weeklyCostInr: number;
-  monthlyCostInr: number;
-  budgetRemaining: number;
-  budgetPercentage: number;
-}
+/**
+ * @typedef {Object} AgentCost
+ * @property {string} agentId
+ * @property {string} provider
+ * @property {number} tokensUsed
+ * @property {number} costInr
+ * @property {number} dailyCostInr
+ * @property {number} weeklyCostInr
+ * @property {number} monthlyCostInr
+ * @property {number} budgetRemaining
+ * @property {number} budgetPercentage
+ */
 
-export interface AgentQueue {
-  queueName: string;
-  depth: number;
-  processingPerMinute: number;
-  delayed: number;
-  failed: number;
-  deadLetter: number;
-}
+/**
+ * @typedef {Object} AgentQueue
+ * @property {string} queueName
+ * @property {number} depth
+ * @property {number} processingPerMinute
+ * @property {number} delayed
+ * @property {number} failed
+ * @property {number} deadLetter
+ */
 
-export interface AgentMemory {
-  totalEntries: number;
-  sizeMB: number;
-  indexedTerms: number;
-  type: 'patient' | 'session' | 'conversation' | 'preference';
-}
+/**
+ * @typedef {Object} AgentMemory
+ * @property {number} totalEntries
+ * @property {number} sizeMB
+ * @property {number} indexedTerms
+ * @property {'patient'|'session'|'conversation'|'preference'} type
+ */
 
-export interface MonitoringSnapshot {
-  timestamp: Date;
-  agents: {
-    [key: string]: {
-      status: string;
-      health: AgentHealth;
-      cost: AgentCost;
-      queues: AgentQueue[];
-      memory: AgentMemory[];
-    };
-  };
-  systemHealth: {
-    mongodb: 'healthy' | 'degraded' | 'unhealthy';
-    redis: 'healthy' | 'degraded' | 'unhealthy';
-    providers: Record<string, 'healthy' | 'degraded' | 'unhealthy'>;
-  };
-  totalCostToday: number;
-  totalRequestsToday: number;
-  activeAgentsCount: number;
-}
+/**
+ * @typedef {Object} MonitoringSnapshot
+ * @property {Date} timestamp
+ * @property {Object<string, {status: string, health: AgentHealth, cost: AgentCost, queues: AgentQueue[], memory: AgentMemory[]}>} agents
+ * @property {Object} systemHealth
+ * @property {number} totalCostToday
+ * @property {number} totalRequestsToday
+ * @property {number} activeAgentsCount
+ */
 
-export interface HealthCheckResult {
-  service: string;
-  status: 'healthy' | 'degraded' | 'unhealthy';
-  responseTime: number;
-  details: Record<string, any>;
-}
+/**
+ * @typedef {Object} HealthCheckResult
+ * @property {string} service
+ * @property {'healthy'|'degraded'|'unhealthy'} status
+ * @property {number} responseTime
+ * @property {Object<string, any>} details
+ */
+
+// Export empty objects as placeholders (the JSDoc comments above define the types)
+const AgentHealth = {};
+const AgentCost = {};
+const AgentQueue = {};
+const AgentMemory = {};
+const MonitoringSnapshot = {};
+const HealthCheckResult = {};
+
+module.exports = {
+  AgentHealth,
+  AgentCost,
+  AgentQueue,
+  AgentMemory,
+  MonitoringSnapshot,
+  HealthCheckResult
+};
