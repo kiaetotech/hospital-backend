@@ -1,3 +1,5 @@
+// D:\hospital backend\ai-core\providers\ProviderManager.js
+
 const { ProviderType } = require('../../shared/types/AgentTypes.js');
 const { BudgetManager } = require('../monitoring/BudgetManager.js');
 const { CircuitBreaker } = require('../recovery/CircuitBreaker.js');
@@ -89,6 +91,7 @@ class ProviderManager {
       };
     }
 
+    // Fallback
     return this.generate(prompt, critical);
   }
 
