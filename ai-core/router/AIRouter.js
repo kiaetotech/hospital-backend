@@ -11,7 +11,6 @@ import { Orchestrator } from './Orchestrator';
 import { ProviderManager } from '../providers/ProviderManager';
 import { HealthManager } from '../monitoring/HealthManager';
 
-interface RouteDecision {
   useAI: boolean;
   directAgentId?: string;
   requiresOrchestration?: boolean;
