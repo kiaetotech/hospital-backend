@@ -5,7 +5,7 @@ const dotenv = require('dotenv');
 const path = require('path');
 
 const envPath = path.join(__dirname, '.env');
-dotenv.config({ path});
+dotenv.config({ path: envPath });
 
 console.log('✅ .env loaded from:', envPath);
 console.log('GROQ_API_KEY:', process.env.GROQ_API_KEY ? '✅ Set' : '❌ Missing');
@@ -33,7 +33,7 @@ const allowedOrigins = [
 ];
 
 app.use(cors({
-  origin(origin, callback) {
+  origin: function(origin, callback) {
     if (!origin) return callback(null, true);
     if (allowedOrigins.indexOf(origin) !== -1) {
       callback(null, true);
@@ -43,14 +43,14 @@ app.use(cors({
   },
   methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS', 'PATCH'],
   allowedHeaders: ['Content-Type', 'Authorization', 'X-Requested-With'],
-  credentials,
+  credentials: true,
   maxAge: 86400
 }));
 
 app.options('*', cors());
 
 app.use(express.json({ limit: '10mb' }));
-app.use(express.urlencoded({ extended, limit: '10mb' }));
+app.use(express.urlencoded({ extended: true, limit: '10mb' }));
 app.set('trust proxy', 1);
 
 // ============================================
@@ -93,13 +93,15 @@ global.redisClient = redis;
 // ============================================
 const io = new Server(server, {
   cors: {
-    origin,
+    origin: allowedOrigins,
     methods: ['GET', 'POST'],
-    credentials},
+    credentials: true
+  },
   pingTimeout: 60000,
   pingInterval: 25000,
   transports: ['websocket', 'polling'],
-  allowEIO3});
+  allowEIO3: true
+});
 
 // Initialize WebSocket handlers (with fallback)
 let initializeSocket = () => {};
@@ -130,7 +132,7 @@ if (process.env.NODE_ENV !== 'production') {
 const searchLimiter = rateLimit({
   windowMs: 1 * 60 * 1000,
   max: 60,
-  message: { success, message: 'Too many requests, please try again later.' }
+  message: { success: false, message: 'Too many requests, please try again later.' }
 });
 
 // ============================================
@@ -217,7 +219,7 @@ try {
 } catch (e) {
   console.warn('⚠️ Ambulance dispatch service not available:', e.message);
   dispatchService = {
-    checkStuckBookings() => ({ checked: 0 })
+    checkStuckBookings: async () => ({ checked: 0 })
   };
 }
 
@@ -242,8 +244,8 @@ try {
 } catch (e) {
   console.warn('⚠️ Hospital status service not available:', e.message);
   hospitalStatusService = {
-    sendScheduledRequests() => {},
-    expireStaleStatuses() => {}
+    sendScheduledRequests: async () => {},
+    expireStaleStatuses: async () => {}
   };
 }
 
@@ -461,7 +463,7 @@ app.post('/api/ai/route', async (req, res) => {
     
     if (!task) {
       return res.status(400).json({ 
-        success, 
+        success: false, 
         error: 'Task is required' 
       });
     }
@@ -469,7 +471,7 @@ app.post('/api/ai/route', async (req, res) => {
     const request = {
       id: `req-${Date.now()}`,
       task,
-      payload|| {},
+      payload: payload || {},
       critical,
       timeout: 30000,
       maxRetries: 3
@@ -478,19 +480,19 @@ app.post('/api/ai/route', async (req, res) => {
     const response = await router.route(request);
     
     res.json({
-      success.success,
-      data.data,
-      error.error,
-      sourceAgent.sourceAgent,
-      processingTime.processingTime,
-      providerUsed.providerUsed
+      success: response.success,
+      data: response.data,
+      error: response.error,
+      sourceAgent: response.sourceAgent,
+      processingTime: response.processingTime,
+      providerUsed: response.providerUsed
     });
     
   } catch (error) {
     console.error('AI Route Error:', error);
     res.status(500).json({
-      success,
-      error.message || 'AI processing failed'
+      success: false,
+      error: error.message || 'AI processing failed'
     });
   }
 });
@@ -498,36 +500,36 @@ app.post('/api/ai/route', async (req, res) => {
 // Get all registered agents
 app.get('/api/ai/agents', (req, res) => {
   const agents = capabilityRegistry.getAllAgents().map(agent => ({
-    id.id,
-    name.name,
-    role.role,
-    status.status,
-    capabilities.capabilities.map(c => c.name),
-    currentTask.currentTask,
-    lastActive.lastActive
+    id: agent.id,
+    name: agent.name,
+    role: agent.role,
+    status: agent.status,
+    capabilities: agent.capabilities.map(c => c.name),
+    currentTask: agent.currentTask,
+    lastActive: agent.lastActive
   }));
   
   res.json({
-    success,
-    count.length,
+    success: true,
+    count: agents.length,
     agents
   });
 });
 
 // Get agent by ID
-app.get('/api/ai/agents/', (req, res) => {
+app.get('/api/ai/agents/:agentId', (req, res) => {
   const { agentId } = req.params;
   const agent = capabilityRegistry.getAgent(agentId);
   
   if (!agent) {
     return res.status(404).json({
-      success,
+      success: false,
       error: 'Agent not found'
     });
   }
   
   res.json({
-    success,
+    success: true,
     agent
   });
 });
@@ -537,21 +539,21 @@ app.get('/api/ai/health', (req, res) => {
   const health = healthManager.getHealthReport();
   const budget = budgetManager.getCurrentSpend();
   const agents = capabilityRegistry.getAllAgents().map(a => ({
-    id.id,
-    name.name,
-    status.status
+    id: a.id,
+    name: a.name,
+    status: a.status
   }));
   
   res.json({
-    success,
+    success: true,
     health,
     budget,
     agents: {
-      total.length,
-      online.filter(a => a.status === 'online').length,
-      busy.filter(a => a.status === 'busy').length,
-      idle.filter(a => a.status === 'idle').length,
-      offline.filter(a => a.status === 'offline').length
+      total: agents.length,
+      online: agents.filter(a => a.status === 'online').length,
+      busy: agents.filter(a => a.status === 'busy').length,
+      idle: agents.filter(a => a.status === 'idle').length,
+      offline: agents.filter(a => a.status === 'offline').length
     }
   });
 });
@@ -562,17 +564,17 @@ app.get('/api/ai/cost', (req, res) => {
   const usagePercent = budgetManager.getUsagePercentage();
   
   res.json({
-    success,
+    success: true,
     budget,
     usagePercent,
-    isExhausted>= 100
+    isExhausted: usagePercent >= 100
   });
 });
 
 console.log('🤖 AI Routes loaded:');
 console.log('   📡 POST /api/ai/route        - Process AI request');
 console.log('   📋 GET  /api/ai/agents       - List all agents');
-console.log('   📋 GET  /api/ai/agents/- Get agent details');
+console.log('   📋 GET  /api/ai/agents/:id   - Get agent details');
 console.log('   🩺 GET  /api/ai/health       - AI system health');
 console.log('   💰 GET  /api/ai/cost         - AI cost tracking');
 
@@ -635,19 +637,19 @@ app.use('/api/employee', employeePortalRoutes);
 
 app.get('/test', (req, res) => {
   res.json({
-    success,
+    success: true,
     message: 'Server is working!',
-    timestampDate().toISOString(),
-    uptime.uptime()
+    timestamp: new Date().toISOString(),
+    uptime: process.uptime()
   });
 });
 
 app.get('/api/health', (req, res) => {
   res.json({
-    success,
+    success: true,
     status: 'ok',
-    timestampDate().toISOString(),
-    uptime.uptime(),
+    timestamp: new Date().toISOString(),
+    uptime: process.uptime(),
     services: {
       mongodb: 'connected',
       redis: 'connected'
@@ -662,11 +664,11 @@ app.get('/api/health', (req, res) => {
 app.get('/api/ws/health', (req, res) => {
   const stats = getConnectionStats();
   res.json({
-    success,
+    success: true,
     websocket: {
       status: 'active',
-      connections,
-      uptime.uptime()
+      connections: stats,
+      uptime: process.uptime()
     }
   });
 });
@@ -674,16 +676,16 @@ app.get('/api/ws/health', (req, res) => {
 app.get('/api/ws/stats', (req, res) => {
   const stats = getConnectionStats();
   res.json({
-    success,
+    success: true,
     data: {
-      onlineDrivers.drivers || 0,
-      onlineCaregivers.caregivers || 0,
-      onlinePhlebotomists.phlebotomists || 0,
-      trackingPatients.patients || 0,
-      connectedHospitals.hospitals || 0,
-      activeAdmins.admins || 0,
+      onlineDrivers: stats.drivers || 0,
+      onlineCaregivers: stats.caregivers || 0,
+      onlinePhlebotomists: stats.phlebotomists || 0,
+      trackingPatients: stats.patients || 0,
+      connectedHospitals: stats.hospitals || 0,
+      activeAdmins: stats.admins || 0,
       totalConnections: (stats.drivers || 0) + (stats.caregivers || 0) + (stats.phlebotomists || 0) + (stats.patients || 0) + (stats.hospitals || 0) + (stats.admins || 0),
-      timestamp.timestamp || new Date().toISOString()
+      timestamp: stats.timestamp || new Date().toISOString()
     }
   });
 });
@@ -696,28 +698,28 @@ app.get('/health', (req, res) => {
   res.json({ 
     status: 'ok', 
     message: 'Server is running',
-    timestampDate().toISOString(),
-    uptime.uptime(),
-    redis? 'connected' : 'unavailable',
+    timestamp: new Date().toISOString(),
+    uptime: process.uptime(),
+    redis: redis ? 'connected' : 'unavailable',
     websocket: 'active',
-    environment.env.NODE_ENV || 'development'
+    environment: process.env.NODE_ENV || 'development'
   });
 });
 
 app.get('/api/test', (req, res) => {
-  res.json({ success, message: 'API is working' });
+  res.json({ success: true, message: 'API is working' });
 });
 
 app.get('/api/hospitals/health', (req, res) => {
   res.json({
-    success,
+    success: true,
     module: 'Hospitals',
     status: 'active',
     version: '2.0',
     features: {
       public: {
         search: '/api/hospitals/search',
-        details: '/api/hospitals/',
+        details: '/api/hospitals/:id',
         whatsappUpdate: '/api/hospitals/whatsapp-update'
       },
       provider: {
@@ -752,7 +754,7 @@ app.get('/api/hospitals/health', (req, res) => {
 
 app.get('/api/hospital-status/health', (req, res) => {
   res.json({
-    success,
+    success: true,
     module: 'Hospital Status (Green Light System)',
     status: 'active',
     version: '1.0',
@@ -768,22 +770,22 @@ app.get('/api/hospital-status/health', (req, res) => {
 
 app.get('/api/ambulance/health', (req, res) => {
   res.json({
-    success,
+    success: true,
     module: 'Ambulance Blitz Response',
     status: 'active',
     version: '3.0',
     features: {
       emergency: {
         dispatch: 'POST /api/ambulance/emergency-dispatch',
-        accept: 'POST /api/ambulance/accept-emergency/',
-        tracking: 'GET /api/ambulance/active-emergency/',
-        cancel: 'POST /api/ambulance/cancel-emergency/'
+        accept: 'POST /api/ambulance/accept-emergency/:id',
+        tracking: 'GET /api/ambulance/active-emergency/:id',
+        cancel: 'POST /api/ambulance/cancel-emergency/:id'
       },
       trip: {
-        start: 'POST /api/ambulance/trip-start/',
-        onboard: 'POST /api/ambulance/patient-onboard/',
-        arrive: 'POST /api/ambulance/arrived-hospital/',
-        complete: 'POST /api/ambulance/trip-complete/'
+        start: 'POST /api/ambulance/trip-start/:id',
+        onboard: 'POST /api/ambulance/patient-onboard/:id',
+        arrive: 'POST /api/ambulance/arrived-hospital/:id',
+        complete: 'POST /api/ambulance/trip-complete/:id'
       },
       location: {
         update: 'POST /api/ambulance/update-location',
@@ -812,7 +814,7 @@ app.get('/api/ambulance/health', (req, res) => {
 
 app.get('/api/insurance/health', (req, res) => {
   res.json({
-    success,
+    success: true,
     module: 'Insurance',
     status: 'active',
     endpoints: {
@@ -827,7 +829,7 @@ app.get('/api/insurance/health', (req, res) => {
 
 app.get('/api/otp/health', (req, res) => {
   res.json({
-    success,
+    success: true,
     module: 'OTP',
     status: 'active',
     endpoints: {
@@ -841,7 +843,7 @@ app.get('/api/otp/health', (req, res) => {
 
 app.get('/api/mentalhealth/health', (req, res) => {
   res.json({
-    success,
+    success: true,
     module: 'Mental Health',
     status: 'active',
     endpoints: {
@@ -856,12 +858,12 @@ app.get('/api/mentalhealth/health', (req, res) => {
 
 app.get('/api/online-doctor/health', (req, res) => {
   res.json({
-    success,
+    success: true,
     module: 'Online Doctor',
     status: 'active',
     endpoints: {
       search: '/api/online-doctor/search',
-      doctor: '/api/online-doctor/doctor/',
+      doctor: '/api/online-doctor/doctor/:id',
       book: '/api/online-doctor/book',
       register: '/api/online-doctor/doctor/register',
       login: '/api/online-doctor/doctor/login',
@@ -872,24 +874,24 @@ app.get('/api/online-doctor/health', (req, res) => {
 
 app.get('/api/system/health', async (req, res) => {
   const healthData = {
-    success,
+    success: true,
     server: {
       status: 'running',
-      uptime.uptime(),
-      environment.env.NODE_ENV || 'development',
-      port,
-      memory.memoryUsage()
+      uptime: process.uptime(),
+      environment: process.env.NODE_ENV || 'development',
+      port: PORT,
+      memory: process.memoryUsage()
     },
     database: {
-      status.connection.readyState === 1 ? 'connected' : 'disconnected',
-      host.connection.host || 'N/A'
+      status: mongoose.connection.readyState === 1 ? 'connected' : 'disconnected',
+      host: mongoose.connection.host || 'N/A'
     },
     redis: {
-      status? 'connected' : 'unavailable'
+      status: redis ? 'connected' : 'unavailable'
     },
     websocket: {
       status: 'active',
-      connections()
+      connections: getConnectionStats()
     },
     modules: {
       hospitals: 'active',
@@ -907,7 +909,7 @@ app.get('/api/system/health', async (req, res) => {
       payments: 'active',
       otp: 'active'
     },
-    timestampDate().toISOString()
+    timestamp: new Date().toISOString()
   };
 
   res.json(healthData);
@@ -915,7 +917,7 @@ app.get('/api/system/health', async (req, res) => {
 
 app.get('/api/search/health', (req, res) => {
   res.json({
-    success,
+    success: true,
     module: 'Global Search',
     status: 'active',
     version: '1.0',
@@ -954,26 +956,26 @@ app.get('/api/seed-tests', async (req, res) => {
     await collection.deleteMany({});
     
     const docs = rows.map((row, index) => ({
-      test_id+ 1,
-      test_code['test_code'] || '',
-      test_name['test_name'] || '',
-      major_category['main_category'] || '',
-      major_category_name['main_category'] || '',
-      sub_category['sub_category'] || '',
-      sub_sub_category['sub_sub_category'] || '',
-      common_or_unique['common_unique'] || 'Common',
-      search_keywords['search_keywords'] || '',
-      is_active,
-      home_collection_possible,
+      test_id: index + 1,
+      test_code: row['test_code'] || '',
+      test_name: row['test_name'] || '',
+      major_category: row['main_category'] || '',
+      major_category_name: row['main_category'] || '',
+      sub_category: row['sub_category'] || '',
+      sub_sub_category: row['sub_sub_category'] || '',
+      common_or_unique: row['common_unique'] || 'Common',
+      search_keywords: row['search_keywords'] || '',
+      is_active: true,
+      home_collection_possible: true,
       turnaround_time_default_hours: 24
     }));
 
     await collection.insertMany(docs);
     await collection.createIndex({ test_name: 'text', search_keywords: 'text', major_category: 'text', sub_category: 'text' });
     
-    res.json({ success, count.length, message: 'Seeded with test_code and all fields' });
+    res.json({ success: true, count: docs.length, message: 'Seeded with test_code and all fields' });
   } catch(e) {
-    res.status(500).json({ success, message.message });
+    res.status(500).json({ success: false, message: e.message });
   }
 });
 
@@ -982,7 +984,7 @@ app.get('/api/seed-tests', async (req, res) => {
 // ============================================
 app.use((req, res) => {
   res.status(404).json({ 
-    success, 
+    success: false, 
     message: `Route ${req.originalUrl} not found` 
   });
 });
@@ -995,24 +997,24 @@ app.use((err, req, res, next) => {
   
   if (err.name === 'ValidationError') {
     const messages = Object.values(err.errors).map(e => e.message);
-    return res.status(400).json({ success, message.join(', ') });
+    return res.status(400).json({ success: false, message: messages.join(', ') });
   }
   
   if (err.code === 11000) {
-    return res.status(400).json({ success, message: 'Duplicate entry found' });
+    return res.status(400).json({ success: false, message: 'Duplicate entry found' });
   }
   
   if (err.name === 'JsonWebTokenError') {
-    return res.status(401).json({ success, message: 'Invalid token' });
+    return res.status(401).json({ success: false, message: 'Invalid token' });
   }
   
   if (err.name === 'TokenExpiredError') {
-    return res.status(401).json({ success, message: 'Token expired' });
+    return res.status(401).json({ success: false, message: 'Token expired' });
   }
   
   res.status(err.status || 500).json({ 
-    success, 
-    message.message || 'Internal server error' 
+    success: false, 
+    message: err.message || 'Internal server error' 
   });
 });
 
@@ -1069,7 +1071,7 @@ server.listen(PORT, () => {
   console.log('🔍  Global Search         → /api/search/*');
   console.log('👨‍💼 Employee Portal       → /api/employee/*');
   console.log('─'.repeat(55));
-  console.log('🆕 New FeatureGreen Light System');
+  console.log('🆕 New Feature: Hospital Green Light System');
   console.log('   🟢 Accepting  🟡 Limited  🔴 Full  ❓ Unknown');
   console.log('   📱 WhatsApp tap update (1 second, free)');
   console.log('   ⏰ Auto-request at 8AM, 2PM, 8PM');
@@ -1115,4 +1117,3 @@ process.on('SIGINT', () => {
     process.exit(0);
   });
 });
-
