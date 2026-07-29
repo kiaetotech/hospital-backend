@@ -1,11 +1,4 @@
 {
-  "name": "hospital-backend",
-  "version": "1.0.0",
-  "description": "Backend for hospital booking platform",
-  "main": "server.js",
-  "scripts": {
-    "start": "node server.js"
-  },
   "dependencies": {
     "@sendgrid/mail": "^8.1.6",
     "axios": "^1.18.0",
@@ -22,7 +15,6 @@
     "morgan": "^1.11.0",
     "multer": "^2.1.1",
     "nodemailer": "^8.0.11",
-    "puppeteer": "^25.1.0",
     "qrcode": "^1.5.4",
     "rate-limit-redis": "^4.3.1",
     "razorpay": "^2.9.6",
@@ -31,10 +23,5 @@
     "twilio": "^6.0.2",
     "uuid": "^14.0.1",
     "xlsx": "^0.18.5"
-  },
-  "devDependencies": {
-    "@types/node": "^26.1.1",
-    "ts-node": "^10.9.2",
-    "typescript": "^7.0.2"
   }
 }
