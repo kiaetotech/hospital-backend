@@ -1,9 +1,9 @@
 // D:\hospital backend\ai-core\agents\executive\CEOAgent.ts
 
-import { AgentRole, AgentStatus, AgentRequest, AgentResponse } from '../../../shared/types/AgentTypes';
-import { BaseAgent } from '../base/BaseAgent';
-import { ProviderManager } from '../../providers/ProviderManager';
-import { CapabilityRegistry } from '../../router/CapabilityRegistry';
+const { AgentRole, AgentStatus, AgentRequest, AgentResponse } = require('../../../shared/types/AgentTypes');
+const { BaseAgent } = require('../base/BaseAgent');
+const { ProviderManager } = require('../../providers/ProviderManager');
+const { CapabilityRegistry } = require('../../router/CapabilityRegistry');
 
 
 
@@ -504,5 +504,6 @@ export class CEOAgent extends BaseAgent {
     return null;
   }
 }
+
 
 

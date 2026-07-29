@@ -1,6 +1,6 @@
 // D:\hospital backend\ai-core\providers\adapters\OllamaAdapter.ts
 
-import { ProviderType, LLMResponse } from '../ProviderManager';
+const { ProviderType, LLMResponse } = require('../ProviderManager');
 
 export class OllamaAdapter {
   private baseUrl;
@@ -69,5 +69,6 @@ export class OllamaAdapter {
     return 450; // Average latency in ms (slower than cloud)
   }
 }
+
 
 

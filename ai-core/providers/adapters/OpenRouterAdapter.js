@@ -1,6 +1,6 @@
 // D:\hospital backend\ai-core\providers\adapters\OpenRouterAdapter.ts
 
-import { ProviderType, LLMResponse } from '../ProviderManager';
+const { ProviderType, LLMResponse } = require('../ProviderManager');
 
 export class OpenRouterAdapter {
   private apiKey;
@@ -82,5 +82,6 @@ export class OpenRouterAdapter {
     return 350; // Average latency in ms
   }
 }
+
 
 

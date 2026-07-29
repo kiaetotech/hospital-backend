@@ -1,6 +1,6 @@
 // D:\hospital backend\ai-core\providers\adapters\GeminiAdapter.ts
 
-import { ProviderType, LLMResponse } from '../ProviderManager';
+const { ProviderType, LLMResponse } = require('../ProviderManager');
 
 export class GeminiAdapter {
   private apiKey;
@@ -80,5 +80,6 @@ export class GeminiAdapter {
     return 300; // Average latency in ms
   }
 }
+
 
 

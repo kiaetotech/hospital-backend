@@ -1,8 +1,8 @@
 // D:\hospital backend\ai-core\monitoring\QueueManager.ts
 
-import { Queue, Worker, Job } from 'bullmq';
-import Redis from 'ioredis';
-import { AgentRequest, AgentResponse } from '../../shared/types/AgentTypes';
+const { Queue, Worker, Job } = require('bullmq');
+const Redis = require('ioredis');
+const { AgentRequest, AgentResponse } = require('../../shared/types/AgentTypes');
 
 export 
 
@@ -496,5 +496,6 @@ export function getQueueManager(config?){
   }
   return queueManagerInstance;
 }
+
 
 

@@ -1,16 +1,16 @@
 // packages/ai-core/src/monitoring/MonitoringAggregationService.ts
 
-import { 
+const { 
   AgentHealth, 
   AgentCost, 
   AgentQueue, 
   MonitoringSnapshot 
-} from '../../shared/types/MonitoringTypes';
-import { CapabilityRegistry } from '../router/CapabilityRegistry';
-import { ProviderManager } from '../providers/ProviderManager';
-import { HealthManager } from './HealthManager';
-import { BudgetManager } from './BudgetManager';
-import { QueueManager } from './QueueManager';
+} = require('../../shared/types/MonitoringTypes');
+const { CapabilityRegistry } = require('../router/CapabilityRegistry');
+const { ProviderManager } = require('../providers/ProviderManager');
+const { HealthManager } = require('./HealthManager');
+const { BudgetManager } = require('./BudgetManager');
+const { QueueManager } = require('./QueueManager');
 
 
 
@@ -147,5 +147,6 @@ export class MonitoringAggregationService {
     }
   }
 }
+
 
 

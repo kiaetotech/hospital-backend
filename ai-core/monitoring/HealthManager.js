@@ -1,6 +1,6 @@
 // D:\hospital backend\ai-core\monitoring\HealthManager.ts
 
-import { AgentStatus } from '../../shared/types/AgentTypes';
+const { AgentStatus } = require('../../shared/types/AgentTypes');
 
 export 
 
@@ -383,5 +383,6 @@ export function getHealthManager(checkFrequency?){
   }
   return healthManagerInstance;
 }
+
 
 

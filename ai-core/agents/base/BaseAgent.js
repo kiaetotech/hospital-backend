@@ -1,15 +1,15 @@
 // D:\hospital backend\ai-core\agents\base\BaseAgent.ts
 
-import { 
+const { 
   AgentRole, 
   AgentStatus, 
   AgentCapability, 
   AgentRegistration,
   AgentRequest,
   AgentResponse 
-} from '../../../shared/types/AgentTypes';
-import { ProviderManager } from '../../providers/ProviderManager';
-import { v4 as uuidv4 } from 'uuid';
+} = require('../../../shared/types/AgentTypes');
+const { ProviderManager } = require('../../providers/ProviderManager');
+const { v4 as uuidv4 } = require('uuid');
 
 export 
 
@@ -186,5 +186,6 @@ export abstract class BaseAgent {
     this.lastActive = new Date();
   }
 }
+
 
 

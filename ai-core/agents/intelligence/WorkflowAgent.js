@@ -1,8 +1,8 @@
 // D:\hospital backend\ai-core\agents\intelligence\WorkflowAgent.ts
 
-import { AgentRole, AgentStatus, AgentRequest, AgentResponse } from '../../../shared/types/AgentTypes';
-import { BaseAgent } from '../base/BaseAgent';
-import { ProviderManager } from '../../providers/ProviderManager';
+const { AgentRole, AgentStatus, AgentRequest, AgentResponse } = require('../../../shared/types/AgentTypes');
+const { BaseAgent } = require('../base/BaseAgent');
+const { ProviderManager } = require('../../providers/ProviderManager');
 
 
 
@@ -361,5 +361,6 @@ export class WorkflowAgent extends BaseAgent {
     return null;
   }
 }
+
 
 

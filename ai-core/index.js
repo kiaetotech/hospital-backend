@@ -1,50 +1,51 @@
 // D:\hospital backend\ai-core\index.ts
 
-export { AIRouter } from './router/AIRouter';
-export { Orchestrator } from './router/Orchestrator';
-export { CapabilityRegistry } from './router/CapabilityRegistry';
+module.exports = {  AIRouter  }; from './router/AIRouter';
+module.exports = {  Orchestrator  }; from './router/Orchestrator';
+module.exports = {  CapabilityRegistry  }; from './router/CapabilityRegistry';
 
-export { ProviderManager } from './providers/ProviderManager';
+module.exports = {  ProviderManager  }; from './providers/ProviderManager';
 
-export { BaseAgent } from './agents/base/BaseAgent';
+module.exports = {  BaseAgent  }; from './agents/base/BaseAgent';
 
 // Business Agents
-export { HospitalAgent } from './agents/business/HospitalAgent';
-export { DoctorAgent } from './agents/business/DoctorAgent';
-export { DiagnosticsAgent } from './agents/business/DiagnosticsAgent';
-export { AmbulanceAgent } from './agents/business/AmbulanceAgent';
-export { InsuranceAgent } from './agents/business/InsuranceAgent';
-export { PharmacyAgent } from './agents/business/PharmacyAgent';
-export { CaregiverAgent } from './agents/business/CaregiverAgent';
-export { WellnessAgent } from './agents/business/WellnessAgent';
+module.exports = {  HospitalAgent  }; from './agents/business/HospitalAgent';
+module.exports = {  DoctorAgent  }; from './agents/business/DoctorAgent';
+module.exports = {  DiagnosticsAgent  }; from './agents/business/DiagnosticsAgent';
+module.exports = {  AmbulanceAgent  }; from './agents/business/AmbulanceAgent';
+module.exports = {  InsuranceAgent  }; from './agents/business/InsuranceAgent';
+module.exports = {  PharmacyAgent  }; from './agents/business/PharmacyAgent';
+module.exports = {  CaregiverAgent  }; from './agents/business/CaregiverAgent';
+module.exports = {  WellnessAgent  }; from './agents/business/WellnessAgent';
 
 // Operations Agents
-export { FinanceAgent } from './agents/operations/FinanceAgent';
-export { CRMAgent } from './agents/operations/CRMAgent';
-export { MarketingAgent } from './agents/operations/MarketingAgent';
-export { SupportAgent } from './agents/operations/SupportAgent';
-export { AnalyticsAgent } from './agents/operations/AnalyticsAgent';
+module.exports = {  FinanceAgent  }; from './agents/operations/FinanceAgent';
+module.exports = {  CRMAgent  }; from './agents/operations/CRMAgent';
+module.exports = {  MarketingAgent  }; from './agents/operations/MarketingAgent';
+module.exports = {  SupportAgent  }; from './agents/operations/SupportAgent';
+module.exports = {  AnalyticsAgent  }; from './agents/operations/AnalyticsAgent';
 
 // Intelligence Agents
-export { SearchIntelligenceAgent } from './agents/intelligence/SearchIntelligenceAgent';
-export { RecommendationAgent } from './agents/intelligence/RecommendationAgent';
-export { WorkflowAgent } from './agents/intelligence/WorkflowAgent';
-export { MemoryAgent } from './agents/intelligence/MemoryAgent';
-export { NotificationAgent } from './agents/intelligence/NotificationAgent';
+module.exports = {  SearchIntelligenceAgent  }; from './agents/intelligence/SearchIntelligenceAgent';
+module.exports = {  RecommendationAgent  }; from './agents/intelligence/RecommendationAgent';
+module.exports = {  WorkflowAgent  }; from './agents/intelligence/WorkflowAgent';
+module.exports = {  MemoryAgent  }; from './agents/intelligence/MemoryAgent';
+module.exports = {  NotificationAgent  }; from './agents/intelligence/NotificationAgent';
 
 // Executive Agents
-export { CEOAgent } from './agents/executive/CEOAgent';
-export { StrategyAgent } from './agents/executive/StrategyAgent';
+module.exports = {  CEOAgent  }; from './agents/executive/CEOAgent';
+module.exports = {  StrategyAgent  }; from './agents/executive/StrategyAgent';
 
 // Monitoring
-export { MonitoringAggregationService } from './monitoring/MonitoringAggregationService';
-export { HealthManager } from './monitoring/HealthManager';
-export { BudgetManager } from './monitoring/BudgetManager';
-export { QueueManager } from './monitoring/QueueManager';
+module.exports = {  MonitoringAggregationService  }; from './monitoring/MonitoringAggregationService';
+module.exports = {  HealthManager  }; from './monitoring/HealthManager';
+module.exports = {  BudgetManager  }; from './monitoring/BudgetManager';
+module.exports = {  QueueManager  }; from './monitoring/QueueManager';
 
 // Recovery
-export { CircuitBreaker } from './recovery/CircuitBreaker';
-export { RetryPolicy } from './recovery/RetryPolicy';
-export { FallbackHandler } from './recovery/FallbackHandler';
+module.exports = {  CircuitBreaker  }; from './recovery/CircuitBreaker';
+module.exports = {  RetryPolicy  }; from './recovery/RetryPolicy';
+module.exports = {  FallbackHandler  }; from './recovery/FallbackHandler';
+
 
 

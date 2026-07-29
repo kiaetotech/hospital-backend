@@ -1,6 +1,6 @@
 // D:\hospital backend\ai-core\providers\adapters\GroqAdapter.ts
 
-import { ProviderType, LLMResponse } from '../ProviderManager';
+const { ProviderType, LLMResponse } = require('../ProviderManager');
 
 export class GroqAdapter {
   private apiKey;
@@ -80,5 +80,6 @@ export class GroqAdapter {
     return 120; // Average latency in ms
   }
 }
+
 
 

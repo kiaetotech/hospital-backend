@@ -1,8 +1,8 @@
 // D:\hospital backend\ai-core\agents\operations\FinanceAgent.ts
 
-import { AgentRole, AgentStatus, AgentRequest, AgentResponse } from '../../../shared/types/AgentTypes';
-import { BaseAgent } from '../base/BaseAgent';
-import { ProviderManager } from '../../providers/ProviderManager';
+const { AgentRole, AgentStatus, AgentRequest, AgentResponse } = require('../../../shared/types/AgentTypes');
+const { BaseAgent } = require('../base/BaseAgent');
+const { ProviderManager } = require('../../providers/ProviderManager');
 
 ;
     requiredDocuments[];
@@ -541,5 +541,6 @@ export class FinanceAgent extends BaseAgent {
     return null;
   }
 }
+
 
 
