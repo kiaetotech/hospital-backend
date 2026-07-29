@@ -1,41 +1,29 @@
-// packages/ai-core/src/monitoring/BudgetManager.ts
+// D:\hospital backend\ai-core\monitoring\BudgetManager.js
 
-;
-}
+class BudgetManager {
+  constructor(config) {
+    this.config = {
+      dailyBudgetInr: config?.dailyBudgetInr || 100,
+      weeklyBudgetInr: config?.weeklyBudgetInr || 700,
+      monthlyBudgetInr: config?.monthlyBudgetInr || 3000,
+      alertThresholds: {
+        warn: 0.80,
+        critical: 0.90,
+        emergency: 0.95
+      }
+    };
 
-export class BudgetManager {
-  private config= {
-    dailyBudgetInr: 100, // ₹100 per day
-    weeklyBudgetInr: 700, // ₹700 per week
-    monthlyBudgetInr: 3000, // ₹3000 per month
-    alertThresholds: {
-      warn: 0.80,
-      critical: 0.90,
-      emergency: 0.95
-    }
-  };
-
-  private dailySpend= 0;
-  private weeklySpend= 0;
-  private monthlySpend= 0;
-  private dailyResetTime;
-  private weeklyResetTime;
-  private monthlyResetTime;
-  private alertListeners: ((message, level) => void)[] = [];
-
-  constructor(config?<BudgetConfig>) {
-    if (config) {
-      this.config = { ...this.config, ...config };
-    }
-    
+    this.dailySpend = 0;
+    this.weeklySpend = 0;
+    this.monthlySpend = 0;
     this.dailyResetTime = this.getNextResetTime('daily');
     this.weeklyResetTime = this.getNextResetTime('weekly');
     this.monthlyResetTime = this.getNextResetTime('monthly');
-
+    this.alertListeners = [];
     this.startResetTimers();
   }
 
-  private getNextResetTime(period: 'daily' | 'weekly' | 'monthly'){
+  getNextResetTime(period) {
     const now = new Date();
     if (period === 'daily') {
       const tomorrow = new Date(now);
@@ -56,105 +44,90 @@ export class BudgetManager {
     }
   }
 
-  private startResetTimers(){
-    // Reset daily
+  startResetTimers() {
+    const now = Date.now();
+    
     setTimeout(() => {
       this.dailySpend = 0;
       this.dailyResetTime = this.getNextResetTime('daily');
       this.startResetTimers();
-    }, this.dailyResetTime.getTime() - Date.now());
+    }, this.dailyResetTime.getTime() - now);
 
-    // Reset weekly
     setTimeout(() => {
       this.weeklySpend = 0;
       this.weeklyResetTime = this.getNextResetTime('weekly');
-    }, this.weeklyResetTime.getTime() - Date.now());
+    }, this.weeklyResetTime.getTime() - now);
 
-    // Reset monthly
     setTimeout(() => {
       this.monthlySpend = 0;
       this.monthlyResetTime = this.getNextResetTime('monthly');
-    }, this.monthlyResetTime.getTime() - Date.now());
+    }, this.monthlyResetTime.getTime() - now);
   }
 
-  canSpend(critical= false){
+  canSpend(critical = false) {
     const usagePercent = this.getUsagePercentage();
-    
-    // Critical tasks can always spend
     if (critical) {
       return true;
     }
-
-    // Block non-critical at emergency level
     if (usagePercent >= this.config.alertThresholds.emergency) {
       return false;
     }
-
     return true;
   }
 
-  recordSpend(amountInr, critical){
+  recordSpend(amountInr, critical) {
     this.dailySpend += amountInr;
     this.weeklySpend += amountInr;
     this.monthlySpend += amountInr;
-
     this.checkAlerts(critical);
   }
 
-  private checkAlerts(critical){
+  checkAlerts(critical) {
     const usagePercent = this.getUsagePercentage();
-    const { warn, critical, emergency } = this.config.alertThresholds;
+    const { warn, critical: criticalThreshold, emergency } = this.config.alertThresholds;
 
     if (usagePercent >= emergency) {
       this.notifyListeners(
-        `🚨 EMERGENCYusage at ${(usagePercent * 100).toFixed(1)}%. Non-critical requests blocked.`,
+        `🚨 EMERGENCY: Budget usage at ${(usagePercent * 100).toFixed(1)}%. Non-critical requests blocked.`,
         'emergency'
       );
     } else if (usagePercent >= criticalThreshold) {
       this.notifyListeners(
-        `⚠️ CRITICALusage at ${(usagePercent * 100).toFixed(1)}%. Switching to free providers.`,
+        `⚠️ CRITICAL: Budget usage at ${(usagePercent * 100).toFixed(1)}%. Switching to free providers.`,
         'critical'
       );
     } else if (usagePercent >= warn) {
       this.notifyListeners(
-        `⚠️ WARNINGusage at ${(usagePercent * 100).toFixed(1)}%. Consider optimizing usage.`,
+        `⚠️ WARNING: Budget usage at ${(usagePercent * 100).toFixed(1)}%. Consider optimizing usage.`,
         'warn'
       );
     }
   }
 
-  getUsagePercentage(){
+  getUsagePercentage() {
     return this.dailySpend / this.config.dailyBudgetInr;
   }
 
-  getCurrentSpend(): {
-    daily;
-    weekly;
-    monthly;
-    dailyPercent;
-    weeklyPercent;
-    monthlyPercent;
-  } {
+  getCurrentSpend() {
     return {
-      daily.dailySpend,
-      weekly.weeklySpend,
-      monthly.monthlySpend,
-      dailyPercent.dailySpend / this.config.dailyBudgetInr,
-      weeklyPercent.weeklySpend / this.config.weeklyBudgetInr,
-      monthlyPercent.monthlySpend / this.config.monthlyBudgetInr
+      daily: this.dailySpend,
+      weekly: this.weeklySpend,
+      monthly: this.monthlySpend,
+      dailyPercent: this.dailySpend / this.config.dailyBudgetInr,
+      weeklyPercent: this.weeklySpend / this.config.weeklyBudgetInr,
+      monthlyPercent: this.monthlySpend / this.config.monthlyBudgetInr
     };
   }
 
-  onAlert(listener: (message, level) => void){
+  onAlert(listener) {
     this.alertListeners.push(listener);
   }
 
-  private notifyListeners(message, level){
+  notifyListeners(message, level) {
     for (const listener of this.alertListeners) {
       listener(message, level);
     }
   }
 }
 
-
-
+module.exports = { BudgetManager };
