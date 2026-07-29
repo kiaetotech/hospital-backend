@@ -1,10 +1,13 @@
 // D:\hospital backend\ai-core\agents\base\BaseAgent.js
 
-const { v4: uuidv4 } = require('uuid');
+// UUID generator replacement
+function generateId() {
+  return 'id_' + Date.now().toString(36) + '_' + Math.random().toString(36).substr(2, 9);
+}
 
 class BaseAgent {
   constructor(config, providerManager) {
-    this.id = config.id || uuidv4();
+    this.id = config.id || generateId();
     this.name = config.name;
     this.role = config.role;
     this.status = 'idle';
