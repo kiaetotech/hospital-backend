@@ -1,12 +1,12 @@
 // D:\hospital backend\ai-core\router\AIRouter.js
 
-import { AgentStatus } from '../../shared/types/AgentTypes.js';
-import { CapabilityRegistry } from './CapabilityRegistry.js';
-import { Orchestrator } from './Orchestrator.js';
-import { ProviderManager } from '../providers/ProviderManager.js';
-import { HealthManager } from '../monitoring/HealthManager.js';
+const { AgentStatus } = require('../../shared/types/AgentTypes.js');
+const { CapabilityRegistry } = require('./CapabilityRegistry.js');
+const { Orchestrator } = require('./Orchestrator.js');
+const { ProviderManager } = require('../providers/ProviderManager.js');
+const { HealthManager } = require('../monitoring/HealthManager.js');
 
-export class AIRouter {
+class AIRouter {
   constructor(registry, orchestrator, providerManager, healthManager) {
     this.registry = registry;
     this.orchestrator = orchestrator;
@@ -264,3 +264,5 @@ export class AIRouter {
     };
   }
 }
+
+module.exports = { AIRouter };
