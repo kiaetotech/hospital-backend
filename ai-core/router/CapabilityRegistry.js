@@ -1,15 +1,15 @@
-// D:\hospital backend\ai-core\router\CapabilityRegistry.ts
+// D:\hospital backend\ai-core\router\CapabilityRegistry.js
 
-import { AgentRegistration, AgentCapability, AgentRole, AgentStatus } from '../../shared/types/AgentTypes';
+const { AgentStatus } = require('../../shared/types/AgentTypes.js');
 
+class CapabilityRegistry {
+  constructor() {
+    this.agents = new Map();
+    this.capabilityIndex = {};
+    this.roleMapping = new Map();
+  }
 
-
-export class CapabilityRegistry {
-  private agents<string, AgentRegistration> = new Map();
-  private capabilityIndex= {};
-  private roleMapping<AgentRole, string[]> = new Map();
-
-  register(agent){
+  register(agent) {
     this.agents.set(agent.id, agent);
     
     for (const capability of agent.capabilities) {
@@ -22,10 +22,10 @@ export class CapabilityRegistry {
     if (!this.roleMapping.has(agent.role)) {
       this.roleMapping.set(agent.role, []);
     }
-    this.roleMapping.get(agent.role)!.push(agent.id);
+    this.roleMapping.get(agent.role).push(agent.id);
   }
 
-  findAgentForTask(capability, role?)| null {
+  findAgentForTask(capability, role) {
     const candidates = this.capabilityIndex[capability] || [];
     
     if (candidates.length === 0) {
@@ -39,8 +39,8 @@ export class CapabilityRegistry {
     }
 
     const result = filteredCandidates
-      .map(id => this.agents.get(id)!)
-      .filter(agent => agent.status === AgentStatus.ONLINE || agent.status === AgentStatus.IDLE)
+      .map(id => this.agents.get(id))
+      .filter(agent => agent && (agent.status === 'online' || agent.status === 'idle'))
       .sort((a, b) => {
         const capA = a.capabilities.find(c => c.name === capability);
         const capB = b.capabilities.find(c => c.name === capability);
@@ -50,25 +50,25 @@ export class CapabilityRegistry {
     return result;
   }
 
-  // ✅ ADD THIS METHOD(id)| null {
+  getAgent(id) {
     return this.agents.get(id) || null;
   }
 
-  getAgentsByRole(role)[] {
+  getAgentsByRole(role) {
     const ids = this.roleMapping.get(role) || [];
-    return ids.map(id => this.agents.get(id)!).filter(Boolean);
+    return ids.map(id => this.agents.get(id)).filter(Boolean);
   }
 
-  getAllAgents()[] {
+  getAllAgents() {
     return Array.from(this.agents.values());
   }
 
-  getAgentCapabilities(agentId)[] {
+  getAgentCapabilities(agentId) {
     const agent = this.agents.get(agentId);
     return agent ? agent.capabilities : [];
   }
 
-  unregister(agentId){
+  unregister(agentId) {
     const agent = this.agents.get(agentId);
     if (!agent) return;
 
@@ -83,11 +83,11 @@ export class CapabilityRegistry {
     this.agents.delete(agentId);
   }
 
-  updateStatus(agentId, status){
+  updateStatus(agentId, status) {
     const agent = this.agents.get(agentId);
     if (!agent) return;
     agent.status = status;
   }
 }
 
-
+module.exports = { CapabilityRegistry };
