@@ -41,6 +41,11 @@ COPY --from=builder --chown=nodejs:nodejs /app/package*.json ./
 COPY --from=builder --chown=nodejs:nodejs /app/ai-core ./ai-core
 COPY --from=builder --chown=nodejs:nodejs /app/shared ./shared
 COPY --from=builder --chown=nodejs:nodejs /app/server.js ./
+COPY --from=builder --chown=nodejs:nodejs /app/routes ./routes
+COPY --from=builder --chown=nodejs:nodejs /app/models ./models
+COPY --from=builder --chown=nodejs:nodejs /app/services ./services
+COPY --from=builder --chown=nodejs:nodejs /app/socket ./socket
+COPY --from=builder --chown=nodejs:nodejs /app/middleware ./middleware
 
 # Create logs directory
 RUN mkdir -p logs && chown -R nodejs:nodejs logs
