@@ -1,24 +1,6 @@
 [build]
 builder = "NIXPACKS"
-buildCommand = "npm install"
+buildCommand = "npm run build"
 
 [deploy]
-startCommand = "npx ts-node server.js"
-
-[[deploy.include]]
-path = "routes"
-
-[[deploy.include]]
-path = "models"
-
-[[deploy.include]]
-path = "services"
-
-[[deploy.include]]
-path = "socket"
-
-[[deploy.include]]
-path = "ai-core"
-
-[[deploy.include]]
-path = "shared"
+startCommand = "node dist/server.js"
