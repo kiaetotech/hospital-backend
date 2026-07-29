@@ -1,6 +1,6 @@
 // D:\hospital backend\ai-core\router\Orchestrator.js
 
-const { v4: uuidv4 } = require('uuid');
+const crypto = require('crypto');
 
 class Orchestrator {
   constructor(registry, providerManager) {
@@ -65,13 +65,13 @@ class Orchestrator {
   }
 
   async executeWorkflow(request, tasks) {
-    const workflowId = uuidv4();
+    const workflowId = crypto.randomUUID();
     const steps = [];
 
     for (const task of tasks) {
       const agent = this.registry.findAgentForTask(task);
       steps.push({
-        id: uuidv4(),
+        id: crypto.randomUUID(),
         task,
         agentId: agent?.id || 'unknown',
         status: 'pending'
