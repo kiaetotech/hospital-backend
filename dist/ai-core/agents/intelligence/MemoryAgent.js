@@ -1,6 +1,6 @@
 "use strict";
 // D:\hospital backend\ai-core\agents\intelligence\MemoryAgent.ts
-Object.defineProperty(exports, "__esModule", { value: true });
+Object.defineProperty(exports, "__esModule", { value});
 exports.MemoryAgent = void 0;
 const AgentTypes_1 = require("../../../shared/types/AgentTypes");
 const BaseAgent_1 = require("../base/BaseAgent");
@@ -8,36 +8,32 @@ class MemoryAgent extends BaseAgent_1.BaseAgent {
     constructor(providerManager) {
         super({
             name: 'Memory Agent',
-            role: AgentTypes_1.AgentRole.MEMORY,
+            role_1.AgentRole.MEMORY,
             capabilities: [
                 {
                     name: 'store_memory',
                     description: 'Store user memory and preferences',
                     priority: 1,
                     estimatedLatency: 150,
-                    requiresAuth: true
-                },
+                    requiresAuth},
                 {
                     name: 'retrieve_memory',
                     description: 'Retrieve user memories and context',
                     priority: 1,
                     estimatedLatency: 150,
-                    requiresAuth: true
-                },
+                    requiresAuth},
                 {
                     name: 'conversation_memory',
                     description: 'Manage conversation context',
                     priority: 1,
                     estimatedLatency: 200,
-                    requiresAuth: true
-                },
+                    requiresAuth},
                 {
                     name: 'forget_memory',
                     description: 'Remove or expire old memories',
                     priority: 2,
                     estimatedLatency: 100,
-                    requiresAuth: true
-                }
+                    requiresAuth}
             ]
         }, providerManager);
         this.memories = new Map();
@@ -50,7 +46,7 @@ class MemoryAgent extends BaseAgent_1.BaseAgent {
         const samplePreferences = {
             language: 'English',
             city: 'Mumbai',
-            notifications: true,
+            notifications,
             preferredHospitals: ['Apollo Hospital', 'Fortis Hospital']
         };
         this.preferences.set('user1', samplePreferences);
@@ -60,7 +56,7 @@ class MemoryAgent extends BaseAgent_1.BaseAgent {
         this.setCurrentTask(request.task);
         try {
             if (!this.validateRequest(request)) {
-                throw new Error('Invalid request: Missing required fields or capabilities');
+                throw new Error('Invalid requestrequired fields or capabilities');
             }
             const { task, payload } = request;
             this.log(`Executing task: ${task}`, 'info');
@@ -83,10 +79,10 @@ class MemoryAgent extends BaseAgent_1.BaseAgent {
             this.setStatus(AgentTypes_1.AgentStatus.IDLE);
             this.setCurrentTask(undefined);
             return {
-                success: true,
-                data: result,
-                sourceAgent: this.id,
-                processingTime: Date.now() - new Date().getTime()
+                success,
+                data,
+                sourceAgent.id,
+                processingTime.now() - new Date().getTime()
             };
         }
         catch (error) {
@@ -106,9 +102,9 @@ class MemoryAgent extends BaseAgent_1.BaseAgent {
             type,
             key,
             value,
-            context: context || {},
+            context|| {},
             importance,
-            timestamp: new Date()
+            timestampDate()
         };
         if (!this.memories.has(userId)) {
             this.memories.set(userId, []);
@@ -122,12 +118,12 @@ class MemoryAgent extends BaseAgent_1.BaseAgent {
             this.preferences.get(userId)[key] = value;
         }
         return {
-            memoryId: entry.id,
+            memoryId.id,
             userId,
             type,
             key,
-            stored: true,
-            timestamp: new Date().toISOString()
+            stored,
+            timestampDate().toISOString()
         };
     }
     async retrieveMemory(payload) {
@@ -156,11 +152,11 @@ class MemoryAgent extends BaseAgent_1.BaseAgent {
         // Get user preferences
         const preferences = this.preferences.get(userId) || {};
         return {
-            memories: results.slice(0, limit),
+            memories.slice(0, limit),
             preferences,
-            total: results.length,
+            total.length,
             userId,
-            timestamp: new Date().toISOString()
+            timestampDate().toISOString()
         };
     }
     async handleConversationMemory(payload) {
@@ -173,54 +169,54 @@ class MemoryAgent extends BaseAgent_1.BaseAgent {
             // Add message to conversation
             if (!this.conversations.has(sessionKey)) {
                 this.conversations.set(sessionKey, {
-                    sessionId: sessionKey,
+                    sessionId,
                     userId,
                     messages: [],
-                    context: context || {},
-                    lastUpdated: new Date()
+                    context|| {},
+                    lastUpdatedDate()
                 });
             }
             const conversation = this.conversations.get(sessionKey);
             conversation.messages.push({
                 role,
-                content: message,
-                timestamp: new Date()
+                content,
+                timestampDate()
             });
             conversation.lastUpdated = new Date();
             if (context) {
                 conversation.context = { ...conversation.context, ...context };
             }
             return {
-                sessionId: sessionKey,
-                messageCount: conversation.messages.length,
-                added: true,
-                timestamp: new Date().toISOString()
+                sessionId,
+                messageCount.messages.length,
+                added,
+                timestampDate().toISOString()
             };
         }
         else if (action === 'get') {
             const conversation = this.conversations.get(sessionKey);
             if (!conversation) {
                 return {
-                    sessionId: sessionKey,
+                    sessionId,
                     messages: [],
                     context: {},
                     messageCount: 0
                 };
             }
             return {
-                sessionId: sessionKey,
-                messages: conversation.messages,
-                context: conversation.context,
-                messageCount: conversation.messages.length,
-                lastUpdated: conversation.lastUpdated
+                sessionId,
+                messages.messages,
+                context.context,
+                messageCount.messages.length,
+                lastUpdated.lastUpdated
             };
         }
         else if (action === 'clear') {
             this.conversations.delete(sessionKey);
             return {
-                sessionId: sessionKey,
-                cleared: true,
-                timestamp: new Date().toISOString()
+                sessionId,
+                cleared,
+                timestampDate().toISOString()
             };
         }
         throw new Error('Invalid conversation action');
@@ -260,7 +256,7 @@ class MemoryAgent extends BaseAgent_1.BaseAgent {
             userId,
             removed,
             remaining: (this.memories.get(userId) || []).length,
-            timestamp: new Date().toISOString()
+            timestampDate().toISOString()
         };
     }
     async handleComplexQuery(task, payload) {
@@ -276,9 +272,9 @@ class MemoryAgent extends BaseAgent_1.BaseAgent {
     `;
         const response = await this.providerManager.generate(prompt);
         return {
-            aiResponse: response.content,
-            provider: response.provider,
-            tokensUsed: response.tokensUsed
+            aiResponse.content,
+            provider.provider,
+            tokensUsed.tokensUsed
         };
     }
     getRequiredCapability(task) {
@@ -298,3 +294,5 @@ class MemoryAgent extends BaseAgent_1.BaseAgent {
     }
 }
 exports.MemoryAgent = MemoryAgent;
+
+

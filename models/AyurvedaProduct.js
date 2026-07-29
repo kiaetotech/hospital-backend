@@ -1,57 +1,56 @@
 const mongoose = require('mongoose');
 
 const ayurvedaProductSchema = new mongoose.Schema({
-  name: { type: String, required: true },
+  name: { type, required},
   category: { 
-    type: String, 
+    type, 
     enum: ['oil', 'tea', 'supplement', 'herb', 'churna', 'tablet', 'syrup', 'cream', 'other'],
-    required: true 
-  },
-  description: { type: String, maxlength: 500 },
-  benefits: [{ type: String }],
-  ingredients: [{ type: String }],
+    required},
+  description: { type, maxlength: 500 },
+  benefits: [{ type}],
+  ingredients: [{ type}],
   
   // Prakriti compatibility
   prakritiType: [{ 
-    type: String, 
+    type, 
     enum: ['Vata', 'Pitta', 'Kapha', 'Vata-Pitta', 'Pitta-Kapha', 'Vata-Kapha', 'All'] 
   }],
   
   // Pricing
-  price: { type: Number, required: true },
-  discountPrice: { type: Number },
-  stock: { type: Number, default: 0 },
-  unit: { type: String, default: 'piece' }, // piece, ml, gm, kg
+  price: { type, required},
+  discountPrice: { type},
+  stock: { type, default: 0 },
+  unit: { type, default: 'piece' }, // piece, ml, gm, kg
   
   // Media
-  images: [{ type: String }],
+  images: [{ type}],
   
   // Season
   recommendedSeason: [{ 
-    type: String, 
+    type, 
     enum: ['Spring', 'Summer', 'Monsoon', 'Autumn', 'Winter', 'All'] 
   }],
   
   // Health goals
   healthGoals: [{ 
-    type: String,
+    type,
     enum: ['Immunity', 'Digestion', 'Skin', 'Hair', 'Joint Pain', 'Stress', 'Sleep', 'Weight', 'Detox', 'Energy', 'General']
   }],
   
   // Ratings
-  rating: { type: Number, default: 0, min: 0, max: 5 },
-  totalReviews: { type: Number, default: 0 },
+  rating: { type, default: 0, min: 0, max: 5 },
+  totalReviews: { type, default: 0 },
   
   // Status
-  isActive: { type: Boolean, default: true },
-  isFeatured: { type: Boolean, default: false },
+  isActive: { type, default},
+  isFeatured: { type, default},
   
   // Vendor
-  vendorId: { type: mongoose.Schema.Types.ObjectId, ref: 'User' },
-  vendorName: { type: String },
+  vendorId: { type.Schema.Types.ObjectId, ref: 'User' },
+  vendorName: { type},
   
-  createdAt: { type: Date, default: Date.now },
-  updatedAt: { type: Date, default: Date.now }
+  createdAt: { type, default.now },
+  updatedAt: { type, default.now }
 });
 
 ayurvedaProductSchema.index({ prakritiType: 1, isActive: 1 });
@@ -60,3 +59,4 @@ ayurvedaProductSchema.index({ healthGoals: 1 });
 ayurvedaProductSchema.index({ recommendedSeason: 1 });
 
 module.exports = mongoose.model('AyurvedaProduct', ayurvedaProductSchema);
+

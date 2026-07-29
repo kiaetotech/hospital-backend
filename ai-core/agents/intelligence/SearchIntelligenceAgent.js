@@ -4,67 +4,46 @@ import { AgentRole, AgentStatus, AgentRequest, AgentResponse } from '../../../sh
 import { BaseAgent } from '../base/BaseAgent';
 import { ProviderManager } from '../../providers/ProviderManager';
 
-interface SearchResult {
-  id: string;
-  title: string;
-  description: string;
-  type: 'Hospital' | 'Doctor' | 'Lab' | 'Ambulance' | 'Insurance' | 'Wellness' | 'Caregiver';
-  relevanceScore: number;
-  metadata: Record<string, any>;
-}
 
-interface SearchQuery {
-  original: string;
-  processed: string;
-  intent: string;
-  entities: Record<string, any>;
-  filters: Record<string, any>;
-}
 
-interface AutoCompleteSuggestion {
-  text: string;
-  type: string;
-  score: number;
-}
+
+
+
 
 export class SearchIntelligenceAgent extends BaseAgent {
-  private searchHistory: SearchQuery[] = [];
-  private popularSearches: Map<string, number> = new Map();
+  private searchHistory[] = [];
+  private popularSearches<string, number> = new Map();
 
-  constructor(providerManager: ProviderManager) {
+  constructor(providerManager) {
     super(
       {
         name: 'Search Intelligence Agent',
-        role: AgentRole.SEARCH_INTELLIGENCE,
+        role.SEARCH_INTELLIGENCE,
         capabilities: [
           {
             name: 'semantic_search',
             description: 'Perform semantic search across all healthcare services',
             priority: 1,
             estimatedLatency: 300,
-            requiresAuth: false
-          },
+            requiresAuth},
           {
             name: 'understand_query',
             description: 'Understand and parse user search queries',
             priority: 1,
             estimatedLatency: 200,
-            requiresAuth: false
-          },
+            requiresAuth},
           {
             name: 'rank_results',
             description: 'Rank search results by relevance',
             priority: 2,
             estimatedLatency: 150,
-            requiresAuth: false
-          },
+            requiresAuth},
           {
             name: 'autocomplete',
             description: 'Provide autocomplete suggestions',
             priority: 2,
             estimatedLatency: 100,
-            requiresAuth: false
-          }
+            requiresAuth}
         ]
       },
       providerManager
@@ -73,7 +52,7 @@ export class SearchIntelligenceAgent extends BaseAgent {
     this.initializePopularSearches();
   }
 
-  private initializePopularSearches(): void {
+  private initializePopularSearches(){
     this.popularSearches.set('cardiologist', 450);
     this.popularSearches.set('orthopedic doctor', 380);
     this.popularSearches.set('blood test', 320);
@@ -86,19 +65,19 @@ export class SearchIntelligenceAgent extends BaseAgent {
     this.popularSearches.set('health insurance', 120);
   }
 
-  async execute(request: AgentRequest): Promise<AgentResponse> {
+  async execute(request)<AgentResponse> {
     this.setStatus(AgentStatus.BUSY);
     this.setCurrentTask(request.task);
 
     try {
       if (!this.validateRequest(request)) {
-        throw new Error('Invalid request: Missing required fields or capabilities');
+        throw new Error('Invalid requestrequired fields or capabilities');
       }
 
       const { task, payload } = request;
       this.log(`Executing task: ${task}`, 'info');
 
-      let result: any;
+      let result;
 
       if (task.includes('search') || task.includes('find')) {
         result = await this.semanticSearch(payload);
@@ -116,10 +95,10 @@ export class SearchIntelligenceAgent extends BaseAgent {
       this.setCurrentTask(undefined);
 
       return {
-        success: true,
-        data: result,
-        sourceAgent: this.id,
-        processingTime: Date.now() - new Date().getTime()
+        success,
+        data,
+        sourceAgent.id,
+        processingTime.now() - new Date().getTime()
       };
 
     } catch (error) {
@@ -129,7 +108,7 @@ export class SearchIntelligenceAgent extends BaseAgent {
     }
   }
 
-  private async semanticSearch(payload: any): Promise<any> {
+  private async semanticSearch(payload)<any> {
     const { query, filters, limit = 10 } = payload;
 
     if (!query) {
@@ -140,7 +119,7 @@ export class SearchIntelligenceAgent extends BaseAgent {
     const understood = await this.understandQuery({ query });
 
     // Simulate search results (in production, this would query databases)
-    const mockResults: SearchResult[] = [
+    const mockResults[] = [
       {
         id: '1',
         title: 'Apollo Hospital Mumbai',
@@ -202,22 +181,22 @@ export class SearchIntelligenceAgent extends BaseAgent {
 
     // Record search
     this.searchHistory.push({
-      original: query,
-      processed: understood.processedQuery,
-      intent: understood.intent,
-      entities: understood.entities,
-      filters: filters || {}
+      original,
+      processed.processedQuery,
+      intent.intent,
+      entities.entities,
+      filters|| {}
     });
 
     return {
       results,
-      total: results.length,
-      query: understood,
-      timestamp: new Date().toISOString()
+      total.length,
+      query,
+      timestampDate().toISOString()
     };
   }
 
-  private async understandQuery(payload: any): Promise<any> {
+  private async understandQuery(payload)<any> {
     const { query } = payload;
 
     if (!query) {
@@ -239,19 +218,19 @@ export class SearchIntelligenceAgent extends BaseAgent {
 
     // Parse response (simplified)
     const understood = {
-      original: query,
-      processedQuery: query.toLowerCase().trim(),
-      intent: this.detectIntent(query),
-      entities: this.extractEntities(query),
+      original,
+      processedQuery.toLowerCase().trim(),
+      intent.detectIntent(query),
+      entities.extractEntities(query),
       filters: {},
       confidence: 85,
-      aiAnalysis: response.content
+      aiAnalysis.content
     };
 
     return understood;
   }
 
-  private detectIntent(query: string): string {
+  private detectIntent(query){
     const lower = query.toLowerCase();
     
     if (lower.includes('hospital') || lower.includes('clinic')) return 'find_hospital';
@@ -265,8 +244,8 @@ export class SearchIntelligenceAgent extends BaseAgent {
     return 'general_search';
   }
 
-  private extractEntities(query: string): Record<string, any> {
-    const entities: Record<string, any> = {};
+  private extractEntities(query){
+    const entities= {};
     const lower = query.toLowerCase();
 
     // Extract city
@@ -290,7 +269,7 @@ export class SearchIntelligenceAgent extends BaseAgent {
     return entities;
   }
 
-  private async rankResults(payload: any): Promise<any> {
+  private async rankResults(payload)<any> {
     const { results, queryContext } = payload;
 
     if (!results || !Array.isArray(results)) {
@@ -298,12 +277,12 @@ export class SearchIntelligenceAgent extends BaseAgent {
     }
 
     // Simulate ranking logic
-    const rankedResults = results.map((result: SearchResult) => {
+    const rankedResults = results.map((result) => {
       let score = result.relevanceScore || 50;
 
       // Boost by type based on query context
       if (queryContext && queryContext.intent) {
-        const typeBoost: Record<string, string> = {
+        const typeBoost= {
           'find_hospital': 'Hospital',
           'find_doctor': 'Doctor',
           'find_lab': 'Lab',
@@ -323,37 +302,36 @@ export class SearchIntelligenceAgent extends BaseAgent {
 
       return {
         ...result,
-        relevanceScore: Math.min(score, 100)
+        relevanceScore.min(score, 100)
       };
     });
 
     rankedResults.sort((a, b) => b.relevanceScore - a.relevanceScore);
 
     return {
-      results: rankedResults,
-      total: rankedResults.length,
+      results,
+      total.length,
       method: 'AI-powered ranking'
     };
   }
 
-  private async autocomplete(payload: any): Promise<any> {
+  private async autocomplete(payload)<any> {
     const { query, limit = 5 } = payload;
 
     if (!query || query.length < 2) {
       return { suggestions: [] };
     }
 
-    const suggestions: AutoCompleteSuggestion[] = [];
+    const suggestions[] = [];
     const lowerQuery = query.toLowerCase();
 
     // Check popular searches
     for (const [key, count] of this.popularSearches) {
       if (key.includes(lowerQuery)) {
         suggestions.push({
-          text: key,
+          text,
           type: 'popular',
-          score: count
-        });
+          score});
       }
     }
 
@@ -375,8 +353,8 @@ export class SearchIntelligenceAgent extends BaseAgent {
     for (const service of services) {
       if (service.text.toLowerCase().includes(lowerQuery)) {
         suggestions.push({
-          text: service.text,
-          type: service.type,
+          text.text,
+          type.type,
           score: 50
         });
       }
@@ -389,13 +367,13 @@ export class SearchIntelligenceAgent extends BaseAgent {
     const limited = suggestions.slice(0, limit);
 
     return {
-      suggestions: limited,
-      total: limited.length,
+      suggestions,
+      total.length,
       query
     };
   }
 
-  private async handleComplexQuery(task: string, payload: any): Promise<any> {
+  private async handleComplexQuery(task, payload)<any> {
     const prompt = `
       Task: ${task}
       Payload: ${JSON.stringify(payload)}
@@ -409,13 +387,13 @@ export class SearchIntelligenceAgent extends BaseAgent {
     const response = await this.providerManager.generate(prompt);
     
     return {
-      aiResponse: response.content,
-      provider: response.provider,
-      tokensUsed: response.tokensUsed
+      aiResponse.content,
+      provider.provider,
+      tokensUsed.tokensUsed
     };
   }
 
-  protected getRequiredCapability(task: string): string | null {
+  protected getRequiredCapability(task)| null {
     if (task.includes('search') || task.includes('find')) {
       return 'semantic_search';
     }
@@ -431,3 +409,5 @@ export class SearchIntelligenceAgent extends BaseAgent {
     return null;
   }
 }
+
+

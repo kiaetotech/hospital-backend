@@ -6,7 +6,7 @@ const InsurancePlan = require('../models/InsurancePlan');
 const InsurancePolicy = require('../models/InsurancePolicy');
 const InsuranceClaim = require('../models/InsuranceClaim');
 const Transaction = require('../models/Transaction');
-const { authenticate: auth } = require('../middleware/auth');
+const { authenticate} = require('../middleware/auth');
 
 // ============================================
 // MIDDLEWARE - Check if user is an insurer
@@ -15,13 +15,12 @@ const { authenticate: auth } = require('../middleware/auth');
 const checkInsurer = async (req, res, next) => {
   try {
     const company = await InsuranceCompany.findOne({ 
-      userId: req.user.id,
-      isActive: true 
-    });
+      userId.user.id,
+      isActive});
     
     if (!company) {
       return res.status(403).json({
-        success: false,
+        success,
         message: 'Insurance company access required'
       });
     }
@@ -31,7 +30,7 @@ const checkInsurer = async (req, res, next) => {
   } catch (error) {
     console.error('Insurer check error:', error);
     res.status(500).json({
-      success: false,
+      success,
       message: 'Authorization error'
     });
   }
@@ -64,7 +63,7 @@ router.get('/dashboard', auth, checkInsurer, async (req, res) => {
 
     // Get transactions
     const transactions = await Transaction.find({ 
-      insurancePolicyId: { $in: policies.map(p => p._id) },
+      insurancePolicyId: { $in.map(p => p._id) },
       status: 'completed'
     });
 
@@ -76,7 +75,7 @@ router.get('/dashboard', auth, checkInsurer, async (req, res) => {
     const monthlyData = await Transaction.aggregate([
       {
         $match: {
-          insurancePolicyId: { $in: policies.map(p => p._id) },
+          insurancePolicyId: { $in.map(p => p._id) },
           status: 'completed'
         }
       },
@@ -97,30 +96,30 @@ router.get('/dashboard', auth, checkInsurer, async (req, res) => {
     ]);
 
     res.json({
-      success: true,
+      success,
       data: {
         stats: {
-          totalPlans: plans.length,
-          activePlans: activePlans.length,
-          totalPolicies: policies.length,
-          activePolicies: activePolicies.length,
-          pendingPolicies: pendingPolicies.length,
-          totalClaims: claims.length,
-          pendingClaims: pendingClaims.length,
-          approvedClaims: approvedClaims.length,
-          settledClaims: settledClaims.length,
+          totalPlans.length,
+          activePlans.length,
+          totalPolicies.length,
+          activePolicies.length,
+          pendingPolicies.length,
+          totalClaims.length,
+          pendingClaims.length,
+          approvedClaims.length,
+          settledClaims.length,
           totalPremium,
           totalCommission,
           totalPayout
         },
         monthlyData,
-        recentPolicies: policies.slice(0, 5),
-        recentClaims: claims.slice(0, 5),
+        recentPolicies.slice(0, 5),
+        recentClaims.slice(0, 5),
         company: {
-          id: company._id,
-          name: company.companyName,
-          status: company.status,
-          isVerified: company.isVerified
+          id._id,
+          name.companyName,
+          status.status,
+          isVerified.isVerified
         }
       }
     });
@@ -128,7 +127,7 @@ router.get('/dashboard', auth, checkInsurer, async (req, res) => {
   } catch (error) {
     console.error('Dashboard error:', error);
     res.status(500).json({
-      success: false,
+      success,
       message: 'Failed to fetch dashboard data'
     });
   }
@@ -157,20 +156,20 @@ router.get('/plans', auth, checkInsurer, async (req, res) => {
     const total = await InsurancePlan.countDocuments(query);
 
     res.json({
-      success: true,
-      data: plans,
+      success,
+      data,
       pagination: {
-        page: parseInt(page),
-        limit: parseInt(limit),
+        page(page),
+        limit(limit),
         total,
-        pages: Math.ceil(total / limit)
+        pages.ceil(total / limit)
       }
     });
 
   } catch (error) {
     console.error('Plans fetch error:', error);
     res.status(500).json({
-      success: false,
+      success,
       message: 'Failed to fetch plans'
     });
   }
@@ -185,7 +184,7 @@ router.post('/plans', auth, checkInsurer, async (req, res) => {
     // Validate company is verified
     if (!req.insuranceCompany.isVerified) {
       return res.status(403).json({
-        success: false,
+        success,
         message: 'Company must be verified to create plans'
       });
     }
@@ -194,10 +193,9 @@ router.post('/plans', auth, checkInsurer, async (req, res) => {
     const plan = new InsurancePlan({
       ...planData,
       companyId,
-      createdBy: req.user.id,
-      isVerified: req.insuranceCompany.autoApprovePlans || false,
-      verificationDate: req.insuranceCompany.autoApprovePlans ? new Date() : null
-    });
+      createdBy.user.id,
+      isVerified.insuranceCompany.autoApprovePlans || false,
+      verificationDate.insuranceCompany.autoApprovePlans ? new Date() });
 
     await plan.save();
 
@@ -207,30 +205,29 @@ router.post('/plans', auth, checkInsurer, async (req, res) => {
     });
 
     res.json({
-      success: true,
+      success,
       message: 'Plan created successfully',
-      data: plan
-    });
+      data});
 
   } catch (error) {
     console.error('Plan creation error:', error);
     res.status(500).json({
-      success: false,
+      success,
       message: 'Failed to create plan: ' + error.message
     });
   }
 });
 
 // Update plan
-router.put('/plans/:id', auth, checkInsurer, async (req, res) => {
+router.put('/plans/', auth, checkInsurer, async (req, res) => {
   try {
     const companyId = req.insuranceCompany._id;
     const planId = req.params.id;
 
-    const plan = await InsurancePlan.findOne({ _id: planId, companyId });
+    const plan = await InsurancePlan.findOne({ _id, companyId });
     if (!plan) {
       return res.status(404).json({
-        success: false,
+        success,
         message: 'Plan not found'
       });
     }
@@ -239,37 +236,36 @@ router.put('/plans/:id', auth, checkInsurer, async (req, res) => {
       planId,
       {
         ...req.body,
-        updatedBy: req.user.id,
-        updatedAt: new Date()
+        updatedBy.user.id,
+        updatedAtDate()
       },
-      { new: true, runValidators: true }
+      { new, runValidators}
     );
 
     res.json({
-      success: true,
+      success,
       message: 'Plan updated successfully',
-      data: updatedPlan
-    });
+      data});
 
   } catch (error) {
     console.error('Plan update error:', error);
     res.status(500).json({
-      success: false,
+      success,
       message: 'Failed to update plan: ' + error.message
     });
   }
 });
 
 // Delete plan (soft delete)
-router.delete('/plans/:id', auth, checkInsurer, async (req, res) => {
+router.delete('/plans/', auth, checkInsurer, async (req, res) => {
   try {
     const companyId = req.insuranceCompany._id;
     const planId = req.params.id;
 
-    const plan = await InsurancePlan.findOne({ _id: planId, companyId });
+    const plan = await InsurancePlan.findOne({ _id, companyId });
     if (!plan) {
       return res.status(404).json({
-        success: false,
+        success,
         message: 'Plan not found'
       });
     }
@@ -282,7 +278,7 @@ router.delete('/plans/:id', auth, checkInsurer, async (req, res) => {
 
     if (activePolicies > 0) {
       return res.status(400).json({
-        success: false,
+        success,
         message: 'Cannot delete plan with active policies. Deactivate it instead.'
       });
     }
@@ -293,14 +289,14 @@ router.delete('/plans/:id', auth, checkInsurer, async (req, res) => {
     await plan.save();
 
     res.json({
-      success: true,
+      success,
       message: 'Plan deactivated successfully'
     });
 
   } catch (error) {
     console.error('Plan deletion error:', error);
     res.status(500).json({
-      success: false,
+      success,
       message: 'Failed to delete plan'
     });
   }
@@ -335,51 +331,50 @@ router.get('/policies', auth, checkInsurer, async (req, res) => {
     const total = await InsurancePolicy.countDocuments(query);
 
     res.json({
-      success: true,
-      data: policies,
+      success,
+      data,
       pagination: {
-        page: parseInt(page),
-        limit: parseInt(limit),
+        page(page),
+        limit(limit),
         total,
-        pages: Math.ceil(total / limit)
+        pages.ceil(total / limit)
       }
     });
 
   } catch (error) {
     console.error('Policies fetch error:', error);
     res.status(500).json({
-      success: false,
+      success,
       message: 'Failed to fetch policies'
     });
   }
 });
 
 // Get policy details
-router.get('/policies/:id', auth, checkInsurer, async (req, res) => {
+router.get('/policies/', auth, checkInsurer, async (req, res) => {
   try {
     const companyId = req.insuranceCompany._id;
     const policyId = req.params.id;
 
-    const policy = await InsurancePolicy.findOne({ _id: policyId, companyId })
+    const policy = await InsurancePolicy.findOne({ _id, companyId })
       .populate('planId')
       .populate('userId', 'name email phone address');
 
     if (!policy) {
       return res.status(404).json({
-        success: false,
+        success,
         message: 'Policy not found'
       });
     }
 
     res.json({
-      success: true,
-      data: policy
-    });
+      success,
+      data});
 
   } catch (error) {
     console.error('Policy details error:', error);
     res.status(500).json({
-      success: false,
+      success,
       message: 'Failed to fetch policy details'
     });
   }
@@ -409,67 +404,66 @@ router.get('/claims', auth, checkInsurer, async (req, res) => {
     const total = await InsuranceClaim.countDocuments(query);
 
     res.json({
-      success: true,
-      data: claims,
+      success,
+      data,
       pagination: {
-        page: parseInt(page),
-        limit: parseInt(limit),
+        page(page),
+        limit(limit),
         total,
-        pages: Math.ceil(total / limit)
+        pages.ceil(total / limit)
       }
     });
 
   } catch (error) {
     console.error('Claims fetch error:', error);
     res.status(500).json({
-      success: false,
+      success,
       message: 'Failed to fetch claims'
     });
   }
 });
 
 // Get claim details
-router.get('/claims/:id', auth, checkInsurer, async (req, res) => {
+router.get('/claims/', auth, checkInsurer, async (req, res) => {
   try {
     const companyId = req.insuranceCompany._id;
     const claimId = req.params.id;
 
-    const claim = await InsuranceClaim.findOne({ _id: claimId, companyId })
+    const claim = await InsuranceClaim.findOne({ _id, companyId })
       .populate('policyId')
       .populate('userId', 'name email phone address');
 
     if (!claim) {
       return res.status(404).json({
-        success: false,
+        success,
         message: 'Claim not found'
       });
     }
 
     res.json({
-      success: true,
-      data: claim
-    });
+      success,
+      data});
 
   } catch (error) {
     console.error('Claim details error:', error);
     res.status(500).json({
-      success: false,
+      success,
       message: 'Failed to fetch claim details'
     });
   }
 });
 
 // Update claim status
-router.put('/claims/:id/status', auth, checkInsurer, async (req, res) => {
+router.put('/claims//status', auth, checkInsurer, async (req, res) => {
   try {
     const companyId = req.insuranceCompany._id;
     const claimId = req.params.id;
     const { status, note, amount } = req.body;
 
-    const claim = await InsuranceClaim.findOne({ _id: claimId, companyId });
+    const claim = await InsuranceClaim.findOne({ _id, companyId });
     if (!claim) {
       return res.status(404).json({
-        success: false,
+        success,
         message: 'Claim not found'
       });
     }
@@ -501,15 +495,14 @@ router.put('/claims/:id/status', auth, checkInsurer, async (req, res) => {
     await claim.addTimeline(status, note || `Status updated to ${status}`, req.user.id);
 
     res.json({
-      success: true,
+      success,
       message: 'Claim status updated successfully',
-      data: claim
-    });
+      data});
 
   } catch (error) {
     console.error('Claim status update error:', error);
     res.status(500).json({
-      success: false,
+      success,
       message: 'Failed to update claim status'
     });
   }
@@ -527,7 +520,7 @@ router.get('/settlements', auth, checkInsurer, async (req, res) => {
 
     const query = { 
       companyId,
-      'commissionStatus': status === 'paid' ? 'paid' : { $ne: 'paid' }
+      'commissionStatus'=== 'paid' ? 'paid' : { $ne: 'paid' }
     };
 
     const transactions = await Transaction.find(query)
@@ -539,20 +532,20 @@ router.get('/settlements', auth, checkInsurer, async (req, res) => {
     const total = await Transaction.countDocuments(query);
 
     res.json({
-      success: true,
-      data: transactions,
+      success,
+      data,
       pagination: {
-        page: parseInt(page),
-        limit: parseInt(limit),
+        page(page),
+        limit(limit),
         total,
-        pages: Math.ceil(total / limit)
+        pages.ceil(total / limit)
       }
     });
 
   } catch (error) {
     console.error('Settlements fetch error:', error);
     res.status(500).json({
-      success: false,
+      success,
       message: 'Failed to fetch settlements'
     });
   }
@@ -569,14 +562,13 @@ router.get('/profile', auth, checkInsurer, async (req, res) => {
       .select('-apiConfig.apiSecret');
 
     res.json({
-      success: true,
-      data: company
-    });
+      success,
+      data});
 
   } catch (error) {
     console.error('Profile fetch error:', error);
     res.status(500).json({
-      success: false,
+      success,
       message: 'Failed to fetch profile'
     });
   }
@@ -595,22 +587,21 @@ router.put('/profile', auth, checkInsurer, async (req, res) => {
       companyId,
       {
         ...updateData,
-        updatedAt: new Date(),
-        updatedBy: req.user.id
+        updatedAtDate(),
+        updatedBy.user.id
       },
-      { new: true, runValidators: true }
+      { new, runValidators}
     ).select('-apiConfig.apiSecret');
 
     res.json({
-      success: true,
+      success,
       message: 'Profile updated successfully',
-      data: updatedCompany
-    });
+      data});
 
   } catch (error) {
     console.error('Profile update error:', error);
     res.status(500).json({
-      success: false,
+      success,
       message: 'Failed to update profile'
     });
   }
@@ -638,10 +629,10 @@ router.get('/reports/sales', auth, checkInsurer, async (req, res) => {
     }
 
     const report = await Transaction.aggregate([
-      { $match: match },
+      { $match},
       {
         $group: {
-          _id: null,
+          _id,
           totalPolicies: { $sum: 1 },
           totalPremium: { $sum: '$premiumAmount' },
           totalCommission: { $sum: '$insurancePlatformCommission' },
@@ -664,9 +655,9 @@ router.get('/reports/sales', auth, checkInsurer, async (req, res) => {
     ]);
 
     res.json({
-      success: true,
+      success,
       data: {
-        summary: report[0] || {
+        summary[0] || {
           totalPolicies: 0,
           totalPremium: 0,
           totalCommission: 0,
@@ -680,10 +671,11 @@ router.get('/reports/sales', auth, checkInsurer, async (req, res) => {
   } catch (error) {
     console.error('Sales report error:', error);
     res.status(500).json({
-      success: false,
+      success,
       message: 'Failed to generate sales report'
     });
   }
 });
 
 module.exports = router;
+

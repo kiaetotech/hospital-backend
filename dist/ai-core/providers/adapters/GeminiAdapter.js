@@ -1,6 +1,6 @@
 "use strict";
 // D:\hospital backend\ai-core\providers\adapters\GeminiAdapter.ts
-Object.defineProperty(exports, "__esModule", { value: true });
+Object.defineProperty(exports, "__esModule", { value});
 exports.GeminiAdapter = void 0;
 const ProviderManager_1 = require("../ProviderManager");
 class GeminiAdapter {
@@ -32,20 +32,20 @@ class GeminiAdapter {
             const startTime = Date.now();
             // In production, replace with actual Gemini API call:
             // const response = await fetch(
-            //   `https://generativelanguage.googleapis.com/v1beta/models/gemini-pro:generateContent?key=${this.apiKey}`,
+            //   `https://generativelanguage.googleapis.com/v1beta/models/gemini-pro?key=${this.apiKey}`,
             //   {
             //     method: 'POST',
             //     headers: { 'Content-Type': 'application/json' },
-            //     body: JSON.stringify({
-            //       contents: [{ parts: [{ text: prompt }] }]
+            //     body.stringify({
+            //       contents: [{ parts: [{ text}] }]
             //     })
             //   }
             // );
             // Simulated response for now
             const simulatedResponse = {
                 content: `Gemini response: ${prompt.substring(0, 50)}...`,
-                provider: ProviderManager_1.ProviderType.GEMINI,
-                tokensUsed: Math.floor(prompt.length / 3),
+                provider_1.ProviderType.GEMINI,
+                tokensUsed.floor(prompt.length / 3),
                 costInr: 0, // Free tier
                 latency: 300
             };
@@ -69,3 +69,5 @@ class GeminiAdapter {
     }
 }
 exports.GeminiAdapter = GeminiAdapter;
+
+

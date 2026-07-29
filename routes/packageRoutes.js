@@ -8,7 +8,7 @@ const TestPricing = require('../models/TestPricing');
 const Hospital = require('../models/Hospital');
 const { authenticateHospital } = require('../middleware/auth');
 
-const upload = multer({ storage: multer.memoryStorage() });
+const upload = multer({ storage.memoryStorage() });
 
 // Download package template
 router.get('/template', (req, res, next) => {
@@ -18,24 +18,24 @@ router.get('/template', (req, res, next) => {
   next();
 }, authenticateHospital, async (req, res) => {
   try {
-    const pricedTests = await TestPricing.find({ provider_id: req.user._id }).lean();
+    const pricedTests = await TestPricing.find({ provider_id.user._id }).lean();
     const testIds = pricedTests.map(p => p.test_id);
-    const tests = await TestMaster.find({ _id: { $in: testIds } }).select('test_name test_code major_category').lean();
+    const tests = await TestMaster.find({ _id: { $in} }).select('test_name test_code major_category').lean();
     const testMap = {};
     tests.forEach(t => { testMap[t._id.toString()] = t; });
 
     if (!pricedTests.length) {
       return res.status(400).json({ 
-        success: false, 
+        success, 
         message: 'No priced tests found. Please upload lab prices first from the Lab Catalog tab.' 
       });
     }
 
     const template = pricedTests.map(p => ({
-      'Test Code': testMap[p.test_id?.toString()]?.test_code || '',
-      'Test Name': testMap[p.test_id?.toString()]?.test_name || '',
-      'Category': testMap[p.test_id?.toString()]?.major_category || '',
-      'Your Price (₹)': p.discounted_price || 0,
+      'Test Code'[p.test_id?.toString()]?.test_code || '',
+      'Test Name'[p.test_id?.toString()]?.test_name || '',
+      'Category'[p.test_id?.toString()]?.major_category || '',
+      'Your Price (₹)'.discounted_price || 0,
       'Pkg 1': '', 'Pkg 2': '', 'Pkg 3': '', 'Pkg 4': '', 'Pkg 5': '',
       'Pkg 6': '', 'Pkg 7': '', 'Pkg 8': '', 'Pkg 9': '', 'Pkg 10': ''
     }));
@@ -74,7 +74,7 @@ router.get('/template', (req, res, next) => {
     res.setHeader('Content-Disposition', 'attachment; filename=package_builder.xlsx');
     res.send(buffer);
   } catch (error) {
-    res.status(500).json({ success: false, message: error.message });
+    res.status(500).json({ success, message.message });
   }
 });
 
@@ -82,7 +82,7 @@ router.get('/template', (req, res, next) => {
 router.post('/upload', authenticateHospital, upload.single('file'), async (req, res) => {
   try {
     if (!req.file) {
-      return res.status(400).json({ success: false, message: 'Please upload an Excel file' });
+      return res.status(400).json({ success, message: 'Please upload an Excel file' });
     }
 
     const workbook = xlsx.read(req.file.buffer, { type: 'buffer' });
@@ -90,12 +90,12 @@ router.post('/upload', authenticateHospital, upload.single('file'), async (req, 
     const rows = xlsx.utils.sheet_to_json(sheet);
 
     if (!rows.length) {
-      return res.status(400).json({ success: false, message: 'Excel file is empty' });
+      return res.status(400).json({ success, message: 'Excel file is empty' });
     }
 
     // Find pricing section
     let pricingStartIndex = rows.findIndex(r => r['Test Code'] === 'PACKAGE PRICING');
-    const testRows = pricingStartIndex > -1 ? rows.slice(0, pricingStartIndex) : rows;
+    const testRows = pricingStartIndex > -1 ? rows.slice(0, pricingStartIndex) ;
     const pricingRows = pricingStartIndex > -1 ? rows.slice(pricingStartIndex) : [];
 
     // Detect package columns dynamically (all columns after first 4)
@@ -132,12 +132,12 @@ pkgColumns.forEach(pkgCol => {
 });
 
     if (Object.keys(packages).length === 0) {
-      return res.status(400).json({ success: false, message: 'No packages found. Mark tests with ✓ or Yes in package columns.' });
+      return res.status(400).json({ success, message: 'No packages found. Mark tests with ✓ or Yes in package columns.' });
     }
 
     const hospital = await Hospital.findById(req.user._id);
     if (!hospital) {
-      return res.status(404).json({ success: false, message: 'Hospital not found' });
+      return res.status(404).json({ success, message: 'Hospital not found' });
     }
 
     let packagesAdded = 0;
@@ -147,7 +147,7 @@ pkgColumns.forEach(pkgCol => {
       
       const testIds = [];
       for (const t of pkgTests) {
-        const test = await TestMaster.findOne({ test_name: t['Test Name'] || t['test_name'] || '' });
+        const test = await TestMaster.findOne({ test_name['Test Name'] || t['test_name'] || '' });
         if (test) testIds.push(test._id);
       }
 
@@ -159,12 +159,12 @@ pkgColumns.forEach(pkgCol => {
       const discount = individualTotal > 0 ? Math.round(((individualTotal - packagePrice) / individualTotal) * 100) : 0;
 
       hospital.pricing.health_packages.push({
-        name: pkgCol,
-        original_price: individualTotal,
-        discounted_price: packagePrice || individualTotal,
-        includes: testIds,
-        includes_names: pkgTests.map(t => t['Test Name'] || t['test_name']),
-        discount_percentage: discount > 0 ? discount : 0
+        name,
+        original_price,
+        discounted_price|| individualTotal,
+        includes,
+        includes_names.map(t => t['Test Name'] || t['test_name']),
+        discount_percentage> 0 ? discount : 0
       });
 
       packagesAdded++;
@@ -173,13 +173,13 @@ pkgColumns.forEach(pkgCol => {
     await hospital.save();
 
     res.json({
-      success: true,
+      success,
       message: `${packagesAdded} packages created`,
       packagesAdded,
-      packageNames: Object.keys(packages)
+      packageNames.keys(packages)
     });
   } catch (error) {
-    res.status(500).json({ success: false, message: error.message });
+    res.status(500).json({ success, message.message });
   }
 });
 
@@ -187,22 +187,23 @@ pkgColumns.forEach(pkgCol => {
 router.get('/my-packages', authenticateHospital, async (req, res) => {
   try {
     const hospital = await Hospital.findById(req.user._id).select('pricing.health_packages');
-    res.json({ success: true, data: hospital?.pricing?.health_packages || [] });
+    res.json({ success, data?.pricing?.health_packages || [] });
   } catch (error) {
-    res.status(500).json({ success: false, message: error.message });
+    res.status(500).json({ success, message.message });
   }
 });
 
 // Delete a package
-router.delete('/:packageId', authenticateHospital, async (req, res) => {
+router.delete('/', authenticateHospital, async (req, res) => {
   try {
     const hospital = await Hospital.findById(req.user._id);
     hospital.pricing.health_packages.pull(req.params.packageId);
     await hospital.save();
-    res.json({ success: true, message: 'Package removed' });
+    res.json({ success, message: 'Package removed' });
   } catch (error) {
-    res.status(400).json({ success: false, message: error.message });
+    res.status(400).json({ success, message.message });
   }
 });
 
 module.exports = router;
+

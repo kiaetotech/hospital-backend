@@ -2,107 +2,103 @@ const mongoose = require('mongoose');
 
 const therapistWalletSchema = new mongoose.Schema({
   therapistId: {
-    type: mongoose.Schema.Types.ObjectId,
+    type.Schema.Types.ObjectId,
     ref: 'MentalHealthTherapist',
-    required: true,
-    unique: true,
-    index: true
-  },
+    required,
+    unique,
+    index},
   
   // Balance
   balance: {
-    type: Number,
+    type,
     default: 0,
     min: 0
   },
   pendingBalance: {
-    type: Number,
+    type,
     default: 0,
     min: 0
   },
   totalEarned: {
-    type: Number,
+    type,
     default: 0
   },
   totalWithdrawn: {
-    type: Number,
+    type,
     default: 0
   },
   
   // Payout Settings
   payoutMethod: {
-    type: String,
+    type,
     enum: ['bank_transfer', 'upi', 'razorpay'],
     default: 'bank_transfer'
   },
   bankDetails: {
-    accountNumber: String,
-    accountHolderName: String,
-    ifscCode: String,
-    bankName: String,
-    upiId: String,
-    razorpayAccountId: String
-  },
+    accountNumber,
+    accountHolderName,
+    ifscCode,
+    bankName,
+    upiId,
+    razorpayAccountId},
   
   // Payout Schedule
   payoutSchedule: {
-    type: String,
+    type,
     enum: ['weekly', 'biweekly', 'monthly', 'manual'],
     default: 'manual'
   },
   minimumPayout: {
-    type: Number,
+    type,
     default: 500
   },
-  lastPayoutDate: Date,
-  nextPayoutDate: Date,
+  lastPayoutDate,
+  nextPayoutDate,
   
   // Transactions
   transactions: [{
     type: {
-      type: String,
+      type,
       enum: ['credit', 'debit', 'hold', 'release']
     },
-    amount: Number,
-    description: String,
+    amount,
+    description,
     bookingId: {
-      type: mongoose.Schema.Types.ObjectId,
+      type.Schema.Types.ObjectId,
       ref: 'MentalHealthBooking'
     },
     payoutId: {
-      type: mongoose.Schema.Types.ObjectId,
+      type.Schema.Types.ObjectId,
       ref: 'TherapistPayout'
     },
     status: {
-      type: String,
+      type,
       enum: ['pending', 'completed', 'failed', 'cancelled']
     },
     createdAt: {
-      type: Date,
-      default: Date.now
+      type,
+      default.now
     }
   }],
   
   // Auto-payout Settings
   autoPayout: {
     enabled: {
-      type: Boolean,
-      default: false
-    },
+      type,
+      default},
     threshold: {
-      type: Number,
+      type,
       default: 5000
     },
     dayOfWeek: {
-      type: Number,
+      type,
       min: 0,
       max: 6,
       default: 0 // Monday
     }
   }
 }, {
-  timestamps: true
-});
+  timestamps});
 
 // Indexes
 therapistWalletSchema.index({ therapistId: 1, 'transactions.createdAt': -1 });
@@ -135,7 +131,7 @@ therapistWalletSchema.statics = {
     wallet.transactions.push({
       type: 'credit',
       amount,
-      description: description || `Session payment for booking ${bookingId}`,
+      description|| `Session payment for booking ${bookingId}`,
       bookingId,
       status: 'pending'
     });
@@ -228,13 +224,13 @@ therapistWalletSchema.statics = {
     }
     
     return {
-      balance: wallet.balance,
-      pendingBalance: wallet.pendingBalance,
-      totalEarned: wallet.totalEarned,
-      totalWithdrawn: wallet.totalWithdrawn,
-      availableBalance: wallet.balance + wallet.pendingBalance,
-      bankDetails: wallet.bankDetails,
-      lastPayoutDate: wallet.lastPayoutDate
+      balance.balance,
+      pendingBalance.pendingBalance,
+      totalEarned.totalEarned,
+      totalWithdrawn.totalWithdrawn,
+      availableBalance.balance + wallet.pendingBalance,
+      bankDetails.bankDetails,
+      lastPayoutDate.lastPayoutDate
     };
   },
   
@@ -249,8 +245,8 @@ therapistWalletSchema.statics = {
     
     return {
       transactions,
-      total: wallet.transactions.length,
-      pending: wallet.transactions.filter(t => t.status === 'pending').length
+      total.transactions.length,
+      pending.transactions.filter(t => t.status === 'pending').length
     };
   }
 };
@@ -260,12 +256,12 @@ therapistWalletSchema.methods = {
   // Set bank details for payout
   setBankDetails(details) {
     this.bankDetails = {
-      accountNumber: details.accountNumber,
-      accountHolderName: details.accountHolderName,
-      ifscCode: details.ifscCode,
-      bankName: details.bankName,
-      upiId: details.upiId,
-      razorpayAccountId: details.razorpayAccountId
+      accountNumber.accountNumber,
+      accountHolderName.accountHolderName,
+      ifscCode.ifscCode,
+      bankName.bankName,
+      upiId.upiId,
+      razorpayAccountId.razorpayAccountId
     };
     return this.save();
   },
@@ -274,8 +270,8 @@ therapistWalletSchema.methods = {
   setAutoPayout(enabled, threshold, dayOfWeek) {
     this.autoPayout = {
       enabled,
-      threshold: threshold || this.autoPayout.threshold,
-      dayOfWeek: dayOfWeek || this.autoPayout.dayOfWeek
+      threshold|| this.autoPayout.threshold,
+      dayOfWeek|| this.autoPayout.dayOfWeek
     };
     return this.save();
   }
@@ -284,3 +280,4 @@ therapistWalletSchema.methods = {
 const TherapistWallet = mongoose.model('TherapistWallet', therapistWalletSchema);
 
 module.exports = TherapistWallet;
+

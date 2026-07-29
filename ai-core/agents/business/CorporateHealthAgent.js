@@ -4,68 +4,50 @@ import { AgentRole, AgentStatus, AgentRequest, AgentResponse } from '../../../sh
 import { BaseAgent } from '../base/BaseAgent';
 import { ProviderManager } from '../../providers/ProviderManager';
 
-interface CorporatePlan {
-  id: string;
-  name: string;
-  provider: string;
-  type: 'Comprehensive' | 'Basic' | 'Custom' | 'Enterprise';
-  coverage: {
-    hospitalCoverage: boolean;
-    doctorConsultation: boolean;
-    diagnosticTests: boolean;
-    wellnessPrograms: boolean;
-    mentalHealth: boolean;
-    dental: boolean;
-    vision: boolean;
-    maternity: boolean;
-    emergency: boolean;
-  };
+;
   pricing: {
-    perEmployeeAnnual: number;
-    perEmployeeMonthly: number;
-    minEmployees: number;
-    maxEmployees: number;
+    perEmployeeAnnual;
+    perEmployeeMonthly;
+    minEmployees;
+    maxEmployees;
   };
   network: {
-    hospitals: number;
-    doctors: number;
-    labs: number;
-    wellnessCenters: number;
+    hospitals;
+    doctors;
+    labs;
+    wellnessCenters;
   };
-  features: string[];
-  insurancePartner: string;
+  features[];
+  insurancePartner;
 }
 
 export class CorporateHealthAgent extends BaseAgent {
-  private corporatePlans: CorporatePlan[] = [];
+  private corporatePlans[] = [];
 
-  constructor(providerManager: ProviderManager) {
+  constructor(providerManager) {
     super(
       {
         name: 'Corporate Health Agent',
-        role: AgentRole.CORPORATE,
+        role.CORPORATE,
         capabilities: [
           {
             name: 'get_corporate_plans',
             description: 'Get corporate health plans for companies',
             priority: 1,
             estimatedLatency: 200,
-            requiresAuth: false
-          },
+            requiresAuth},
           {
             name: 'compare_corporate_plans',
             description: 'Compare corporate health plans',
             priority: 1,
             estimatedLatency: 250,
-            requiresAuth: false
-          },
+            requiresAuth},
           {
             name: 'enroll_employees',
             description: 'Enroll employees in corporate health plan',
             priority: 2,
             estimatedLatency: 300,
-            requiresAuth: true
-          }
+            requiresAuth}
         ]
       },
       providerManager
@@ -74,7 +56,7 @@ export class CorporateHealthAgent extends BaseAgent {
     this.initializeCorporatePlans();
   }
 
-  private initializeCorporatePlans(): void {
+  private initializeCorporatePlans(){
     this.corporatePlans = [
       {
         id: 'cp1',
@@ -82,16 +64,15 @@ export class CorporateHealthAgent extends BaseAgent {
         provider: 'ICICI Lombard',
         type: 'Enterprise',
         coverage: {
-          hospitalCoverage: true,
-          doctorConsultation: true,
-          diagnosticTests: true,
-          wellnessPrograms: true,
-          mentalHealth: true,
-          dental: true,
-          vision: true,
-          maternity: true,
-          emergency: true
-        },
+          hospitalCoverage,
+          doctorConsultation,
+          diagnosticTests,
+          wellnessPrograms,
+          mentalHealth,
+          dental,
+          vision,
+          maternity,
+          emergency},
         pricing: {
           perEmployeeAnnual: 12000,
           perEmployeeMonthly: 1000,
@@ -120,16 +101,15 @@ export class CorporateHealthAgent extends BaseAgent {
         provider: 'HDFC Ergo',
         type: 'Comprehensive',
         coverage: {
-          hospitalCoverage: true,
-          doctorConsultation: true,
-          diagnosticTests: true,
-          wellnessPrograms: true,
-          mentalHealth: true,
-          dental: false,
-          vision: false,
-          maternity: true,
-          emergency: true
-        },
+          hospitalCoverage,
+          doctorConsultation,
+          diagnosticTests,
+          wellnessPrograms,
+          mentalHealth,
+          dental,
+          vision,
+          maternity,
+          emergency},
         pricing: {
           perEmployeeAnnual: 8000,
           perEmployeeMonthly: 667,
@@ -157,16 +137,15 @@ export class CorporateHealthAgent extends BaseAgent {
         provider: 'Bajaj Allianz',
         type: 'Basic',
         coverage: {
-          hospitalCoverage: true,
-          doctorConsultation: true,
-          diagnosticTests: true,
-          wellnessPrograms: false,
-          mentalHealth: false,
-          dental: false,
-          vision: false,
-          maternity: false,
-          emergency: true
-        },
+          hospitalCoverage,
+          doctorConsultation,
+          diagnosticTests,
+          wellnessPrograms,
+          mentalHealth,
+          dental,
+          vision,
+          maternity,
+          emergency},
         pricing: {
           perEmployeeAnnual: 5000,
           perEmployeeMonthly: 417,
@@ -193,16 +172,15 @@ export class CorporateHealthAgent extends BaseAgent {
         provider: 'Star Health',
         type: 'Comprehensive',
         coverage: {
-          hospitalCoverage: true,
-          doctorConsultation: true,
-          diagnosticTests: true,
-          wellnessPrograms: true,
-          mentalHealth: true,
-          dental: true,
-          vision: true,
-          maternity: true,
-          emergency: true
-        },
+          hospitalCoverage,
+          doctorConsultation,
+          diagnosticTests,
+          wellnessPrograms,
+          mentalHealth,
+          dental,
+          vision,
+          maternity,
+          emergency},
         pricing: {
           perEmployeeAnnual: 15000,
           perEmployeeMonthly: 1250,
@@ -232,16 +210,15 @@ export class CorporateHealthAgent extends BaseAgent {
         provider: 'SBI General',
         type: 'Custom',
         coverage: {
-          hospitalCoverage: true,
-          doctorConsultation: true,
-          diagnosticTests: true,
-          wellnessPrograms: true,
-          mentalHealth: false,
-          dental: false,
-          vision: false,
-          maternity: false,
-          emergency: true
-        },
+          hospitalCoverage,
+          doctorConsultation,
+          diagnosticTests,
+          wellnessPrograms,
+          mentalHealth,
+          dental,
+          vision,
+          maternity,
+          emergency},
         pricing: {
           perEmployeeAnnual: 6500,
           perEmployeeMonthly: 542,
@@ -265,19 +242,19 @@ export class CorporateHealthAgent extends BaseAgent {
     ];
   }
 
-  async execute(request: AgentRequest): Promise<AgentResponse> {
+  async execute(request)<AgentResponse> {
     this.setStatus(AgentStatus.BUSY);
     this.setCurrentTask(request.task);
 
     try {
       if (!this.validateRequest(request)) {
-        throw new Error('Invalid request: Missing required fields or capabilities');
+        throw new Error('Invalid requestrequired fields or capabilities');
       }
 
       const { task, payload } = request;
       this.log(`Executing task: ${task}`, 'info');
 
-      let result: any;
+      let result;
 
       if (task.includes('get') || task.includes('list')) {
         result = await this.getCorporatePlans(payload);
@@ -293,10 +270,10 @@ export class CorporateHealthAgent extends BaseAgent {
       this.setCurrentTask(undefined);
 
       return {
-        success: true,
-        data: result,
-        sourceAgent: this.id,
-        processingTime: Date.now() - new Date().getTime()
+        success,
+        data,
+        sourceAgent.id,
+        processingTime.now() - new Date().getTime()
       };
 
     } catch (error) {
@@ -306,7 +283,7 @@ export class CorporateHealthAgent extends BaseAgent {
     }
   }
 
-  private async getCorporatePlans(payload: any): Promise<any> {
+  private async getCorporatePlans(payload)<any> {
     const { type, minEmployees, maxBudget } = payload;
 
     let results = this.corporatePlans;
@@ -324,14 +301,14 @@ export class CorporateHealthAgent extends BaseAgent {
     }
 
     return {
-      plans: results,
-      total: results.length,
+      plans,
+      total.length,
       query: { type, minEmployees, maxBudget },
-      recommendation: results.length > 0 ? `Recommended: ${results[0].name}` : 'No matching plans found'
+      recommendation.length > 0 ? `Recommended: ${results[0].name}` : 'No matching plans found'
     };
   }
 
-  private async comparePlans(payload: any): Promise<any> {
+  private async comparePlans(payload)<any> {
     const { planIds } = payload;
 
     let selectedPlans = this.corporatePlans;
@@ -340,36 +317,36 @@ export class CorporateHealthAgent extends BaseAgent {
     }
 
     const comparison = selectedPlans.map(plan => ({
-      name: plan.name,
-      provider: plan.provider,
-      type: plan.type,
+      name.name,
+      provider.provider,
+      type.type,
       perEmployeeCost: `₹${plan.pricing.perEmployeeAnnual}`,
-      minEmployees: plan.pricing.minEmployees,
-      coverage: Object.entries(plan.coverage)
+      minEmployees.pricing.minEmployees,
+      coverage.entries(plan.coverage)
         .filter(([_, covered]) => covered)
         .map(([key]) => key)
         .join(', '),
       network: {
-        hospitals: plan.network.hospitals,
-        doctors: plan.network.doctors,
-        labs: plan.network.labs
+        hospitals.network.hospitals,
+        doctors.network.doctors,
+        labs.network.labs
       },
-      features: plan.features.slice(0, 3).join(', '),
-      insurancePartner: plan.insurancePartner
+      features.features.slice(0, 3).join(', '),
+      insurancePartner.insurancePartner
     }));
 
     return {
       comparison,
-      totalPlans: comparison.length,
-      bestValue: comparison.reduce((a, b) => {
+      totalPlans.length,
+      bestValue.reduce((a, b) => {
         const aCost = parseInt(a.perEmployeeCost.replace('₹', ''));
         const bCost = parseInt(b.perEmployeeCost.replace('₹', ''));
-        return aCost < bCost ? a : b;
+        return aCost < bCost ? a ;
       }, comparison[0])
     };
   }
 
-  private async enrollEmployees(payload: any): Promise<any> {
+  private async enrollEmployees(payload)<any> {
     const { companyName, employeeCount, planId, contactPerson, contactEmail, contactPhone } = payload;
 
     if (!companyName || !employeeCount || !planId) {
@@ -393,17 +370,17 @@ export class CorporateHealthAgent extends BaseAgent {
     return {
       enrollmentId,
       company: {
-        name: companyName,
+        name,
         employeeCount,
         contactPerson,
         contactEmail,
         contactPhone
       },
       plan: {
-        name: plan.name,
-        type: plan.type,
-        provider: plan.provider,
-        insurancePartner: plan.insurancePartner
+        name.name,
+        type.type,
+        provider.provider,
+        insurancePartner.insurancePartner
       },
       cost: {
         perEmployeeAnnual: `₹${plan.pricing.perEmployeeAnnual}`,
@@ -418,11 +395,11 @@ export class CorporateHealthAgent extends BaseAgent {
         'Review and sign agreement',
         'Pay first month premium'
       ],
-      timestamp: new Date().toISOString()
+      timestampDate().toISOString()
     };
   }
 
-  private async handleComplexQuery(task: string, payload: any): Promise<any> {
+  private async handleComplexQuery(task, payload)<any> {
     const prompt = `
       Task: ${task}
       Payload: ${JSON.stringify(payload)}
@@ -435,13 +412,13 @@ export class CorporateHealthAgent extends BaseAgent {
     const response = await this.providerManager.generate(prompt);
     
     return {
-      aiResponse: response.content,
-      provider: response.provider,
-      tokensUsed: response.tokensUsed
+      aiResponse.content,
+      provider.provider,
+      tokensUsed.tokensUsed
     };
   }
 
-  protected getRequiredCapability(task: string): string | null {
+  protected getRequiredCapability(task)| null {
     if (task.includes('get') || task.includes('list')) {
       return 'get_corporate_plans';
     }
@@ -454,3 +431,5 @@ export class CorporateHealthAgent extends BaseAgent {
     return null;
   }
 }
+
+

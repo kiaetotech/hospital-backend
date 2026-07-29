@@ -4,114 +4,111 @@ const ayurvedaDoctorSchema = new mongoose.Schema({
   // ============================================
   // BASIC INFO
   // ============================================
-  name: { type: String, required: true },
-  email: { type: String, unique: true, sparse: true },
-  phone: { type: String, required: true, unique: true },
-  password: { type: String },
+  name: { type, required},
+  email: { type, unique, sparse},
+  phone: { type, required, unique},
+  password: { type},
   
   // ============================================
   // PROFESSIONAL DETAILS
   // ============================================
   specialization: { 
-    type: String, 
+    type, 
     enum: [
       'Panchakarma', 'General Ayurveda', 'Kerala Ayurveda', 
       'Ayurvedic Dermatology', 'Kayachikitsa', 'Rasayana Therapy',
       'Shalya Tantra', 'Shalakya Tantra', 'Prasuti & Stri Roga',
       'Bal Roga', 'Swasthavritta'
     ],
-    required: true 
-  },
-  experience: { type: Number, required: true },
-  education: { type: String, required: true },
-  about: { type: String, maxlength: 1000 },
-  languages: [{ type: String }],
+    required},
+  experience: { type, required},
+  education: { type, required},
+  about: { type, maxlength: 1000 },
+  languages: [{ type}],
   
   // ============================================
   // CONSULTATION
   // ============================================
-  consultationFee: { type: Number, required: true },
+  consultationFee: { type, required},
   consultationTypes: {
-    online: { type: Boolean, default: true },
-    clinic: { type: Boolean, default: true },
-    homeVisit: { type: Boolean, default: false }
+    online: { type, default},
+    clinic: { type, default},
+    homeVisit: { type, default}
   },
   
   // ============================================
   // LOCATION
   // ============================================
   address: {
-    street: String,
-    area: String,
-    city: { type: String, required: true },
-    state: { type: String, required: true },
-    pincode: String,
+    street,
+    area,
+    city: { type, required},
+    state: { type, required},
+    pincode,
     coordinates: {
-      lat: Number,
-      lng: Number
-    }
+      lat,
+      lng}
   },
   
   // ============================================
   // WELLNESS CENTER / CLINIC INFO
   // ============================================
   wellnessCenter: {
-    name: { type: String, required: true },
-    type: { type: String, enum: ['Own Clinic', 'Hospital Attached', 'Wellness Center', 'Franchise'], default: 'Own Clinic' },
-    address: String,
+    name: { type, required},
+    type: { type, enum: ['Own Clinic', 'Hospital Attached', 'Wellness Center', 'Franchise'], default: 'Own Clinic' },
+    address,
     facilities: [String],
     photos: [String],
-    established: Number,
-    bedCount: Number,
-    panchakarmaRooms: Number
-  },
+    established,
+    bedCount,
+    panchakarmaRooms},
   
   // ============================================
   // KYC & VERIFICATION DOCUMENTS
   // ============================================
   documents: {
-    ayushCertificate: { type: String, required: true },
-    degreeCertificate: { type: String },
-    idProof: { type: String, required: true },
-    photo: { type: String },
-    clinicLicense: { type: String },
-    panCard: { type: String }
+    ayushCertificate: { type, required},
+    degreeCertificate: { type},
+    idProof: { type, required},
+    photo: { type},
+    clinicLicense: { type},
+    panCard: { type}
   },
   
   // ============================================
   // AYUSH REGISTRATION
   // ============================================
-  ayushRegNo: { type: String, required: true, unique: true },
-  ayushRegYear: Number,
+  ayushRegNo: { type, required, unique},
+  ayushRegYear,
   
   // ============================================
   // VERIFICATION & APPROVAL STATUS
   // ============================================
   verificationStatus: {
-    type: String,
+    type,
     enum: ['pending', 'documents_verified', 'approved', 'rejected', 'suspended'],
     default: 'pending'
   },
-  verifiedBy: { type: mongoose.Schema.Types.ObjectId, ref: 'Admin' },
-  verifiedAt: Date,
-  rejectionReason: String,
-  isActive: { type: Boolean, default: false },
+  verifiedBy: { type.Schema.Types.ObjectId, ref: 'Admin' },
+  verifiedAt,
+  rejectionReason,
+  isActive: { type, default},
   
   // ============================================
   // RATINGS & REVIEWS
   // ============================================
-  rating: { type: Number, default: 0 },
-  totalReviews: { type: Number, default: 0 },
+  rating: { type, default: 0 },
+  totalReviews: { type, default: 0 },
   reviews: [{
-    patient: { type: mongoose.Schema.Types.ObjectId, ref: 'Patient' },
-    patientName: String,
-    rating: { type: Number, min: 1, max: 5 },
-    review: String,
-    treatment: String,
-    consultationType: String,
-    createdAt: { type: Date, default: Date.now },
-    verified: { type: Boolean, default: false },
-    adminApproved: { type: Boolean, default: false }
+    patient: { type.Schema.Types.ObjectId, ref: 'Patient' },
+    patientName,
+    rating: { type, min: 1, max: 5 },
+    review,
+    treatment,
+    consultationType,
+    createdAt: { type, default.now },
+    verified: { type, default},
+    adminApproved: { type, default}
   }],
   
   // ============================================
@@ -119,14 +116,14 @@ const ayurvedaDoctorSchema = new mongoose.Schema({
   // ============================================
   availability: [{
     day: { 
-      type: String, 
+      type, 
       enum: ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'] 
     },
     slots: [{
-      startTime: String,
-      endTime: String,
-      maxBookings: { type: Number, default: 5 },
-      currentBookings: { type: Number, default: 0 }
+      startTime,
+      endTime,
+      maxBookings: { type, default: 5 },
+      currentBookings: { type, default: 0 }
     }]
   }],
   
@@ -134,13 +131,13 @@ const ayurvedaDoctorSchema = new mongoose.Schema({
   // COMMISSION & SUBSCRIPTION
   // ============================================
   subscription: {
-    plan: { type: String, enum: ['free', 'basic', 'premium', 'enterprise'], default: 'free' },
-    startDate: Date,
-    endDate: Date,
+    plan: { type, enum: ['free', 'basic', 'premium', 'enterprise'], default: 'free' },
+    startDate,
+    endDate,
     commissionRate: {
-      firstConsult: { type: Number, default: 15 },
-      repeatConsult: { type: Number, default: 5 },
-      package: { type: Number, default: 20 }
+      firstConsult: { type, default: 15 },
+      repeatConsult: { type, default: 5 },
+      package: { type, default: 20 }
     }
   },
   
@@ -148,147 +145,144 @@ const ayurvedaDoctorSchema = new mongoose.Schema({
   // STATISTICS
   // ============================================
   stats: {
-    totalConsultations: { type: Number, default: 0 },
-    totalEarnings: { type: Number, default: 0 },
-    platformCommissionPaid: { type: Number, default: 0 },
-    repeatPatients: { type: Number, default: 0 }
+    totalConsultations: { type, default: 0 },
+    totalEarnings: { type, default: 0 },
+    platformCommissionPaid: { type, default: 0 },
+    repeatPatients: { type, default: 0 }
   },
   
   // ============================================
   // BANK DETAILS
   // ============================================
   bankDetails: {
-    accountHolder: String,
-    accountNumber: String,
-    ifscCode: String,
-    bankName: String,
-    upiId: String
-  },
+    accountHolder,
+    accountNumber,
+    ifscCode,
+    bankName,
+    upiId},
   
   // ============================================
   // DISCOUNTS
   // ============================================
   discounts: [{
-    code: String,
-    percentage: Number,
-    maxAmount: Number,
-    validFrom: Date,
-    validTill: Date,
-    isActive: { type: Boolean, default: true },
-    usageLimit: Number,
-    usedCount: { type: Number, default: 0 }
+    code,
+    percentage,
+    maxAmount,
+    validFrom,
+    validTill,
+    isActive: { type, default},
+    usageLimit,
+    usedCount: { type, default: 0 }
   }],
 
   // ============================================
   // ✅ CORPORATE WELLNESS (ORIGINAL - KEPT)
   // ============================================
   offersCorporateWellness: {
-    type: Boolean,
-    default: false
-  },
+    type,
+    default},
   minEmployees: {
-    type: Number,
+    type,
     default: 10
   },
   corporateWellnessPackages: [{
-    name: { type: String, required: true },
-    description: { type: String },
-    pricePerEmployee: { type: Number, required: true },
+    name: { type, required},
+    description: { type},
+    pricePerEmployee: { type, required},
     duration: { 
-      type: String, 
+      type, 
       enum: ['1-day', '3-day', '5-day', '7-day', '14-day', '21-day', 'monthly'],
       default: '1-day'
     },
-    sessions: { type: Number, default: 1 },
-    includes: [{ type: String }],
-    benefits: [{ type: String }],
-    therapies: [{ type: String }],
+    sessions: { type, default: 1 },
+    includes: [{ type}],
+    benefits: [{ type}],
+    therapies: [{ type}],
     category: {
-      type: String,
+      type,
       enum: ['stress_management', 'detox', 'panchakarma', 'immunity_boost', 'sleep_health', 'weight_management', 'general_wellness']
     },
-    isActive: { type: Boolean, default: true },
-    createdAt: { type: Date, default: Date.now }
+    isActive: { type, default},
+    createdAt: { type, default.now }
   }],
   corporatePricing: {
-    basePricePerEmployee: { type: Number },
-    discountPerEmployee: { type: Number, default: 0 },
+    basePricePerEmployee: { type},
+    discountPerEmployee: { type, default: 0 },
     bulkDiscount: {
-      enabled: { type: Boolean, default: false },
+      enabled: { type, default},
       tiers: [{
-        minEmployees: { type: Number },
-        maxEmployees: { type: Number },
-        discountPercentage: { type: Number }
+        minEmployees: { type},
+        maxEmployees: { type},
+        discountPercentage: { type}
       }]
     }
   },
   corporateDiscount: {
-    type: Number,
+    type,
     default: 15,
     min: 0,
     max: 50
   },
   corporateServices: [{
-    name: { type: String },
-    description: { type: String },
-    price: { type: Number },
-    duration: { type: String },
-    category: { type: String }
+    name: { type},
+    description: { type},
+    price: { type},
+    duration: { type},
+    category: { type}
   }],
   corporateWorkshops: [{
-    name: { type: String },
-    description: { type: String },
-    duration: { type: String, default: '2 hours' },
-    maxParticipants: { type: Number, default: 20 },
-    price: { type: Number },
-    topics: [{ type: String }],
-    isActive: { type: Boolean, default: true }
+    name: { type},
+    description: { type},
+    duration: { type, default: '2 hours' },
+    maxParticipants: { type, default: 20 },
+    price: { type},
+    topics: [{ type}],
+    isActive: { type, default}
   }],
   corporateSettings: {
-    allowGroupSessions: { type: Boolean, default: true },
-    dedicatedWellnessCoach: { type: Boolean, default: false },
-    coachName: { type: String },
-    coachPhone: { type: String },
-    coachEmail: { type: String },
-    reportDeliveryTime: { type: String, default: '48 hours' },
-    corporateVisitAvailable: { type: Boolean, default: false }
+    allowGroupSessions: { type, default},
+    dedicatedWellnessCoach: { type, default},
+    coachName: { type},
+    coachPhone: { type},
+    coachEmail: { type},
+    reportDeliveryTime: { type, default: '48 hours' },
+    corporateVisitAvailable: { type, default}
   },
   corporateAnalytics: {
-    totalCorporateBookings: { type: Number, default: 0 },
-    totalCorporateRevenue: { type: Number, default: 0 },
-    corporateClients: [{ type: String }]
+    totalCorporateBookings: { type, default: 0 },
+    totalCorporateRevenue: { type, default: 0 },
+    corporateClients: [{ type}]
   },
 
   // ============================================
   // 🆕 STANDARDIZED CORPORATE FIELDS (ADDED)
   // ============================================
   servesCorporate: { 
-    type: Boolean, 
-    default: false,
-    index: true
-  },
+    type, 
+    default,
+    index},
   
   corporateEnquiries: [{
-    companyName: String,
-    contactPerson: String,
-    email: String,
-    phone: String,
-    employeeCount: Number,
-    requirements: String,
+    companyName,
+    contactPerson,
+    email,
+    phone,
+    employeeCount,
+    requirements,
     interestedIn: [String],
     status: {
-      type: String,
+      type,
       enum: ['new', 'contacted', 'negotiating', 'converted', 'closed'],
       default: 'new'
     },
-    createdAt: { type: Date, default: Date.now }
+    createdAt: { type, default.now }
   }],
 
   // ============================================
   // TIMESTAMPS
   // ============================================
-  createdAt: { type: Date, default: Date.now },
-  updatedAt: { type: Date, default: Date.now }
+  createdAt: { type, default.now },
+  updatedAt: { type, default.now }
 });
 
 // ============================================
@@ -375,13 +369,13 @@ ayurvedaDoctorSchema.methods.calculateCorporatePrice = function(employeeCount, p
   const totalPrice = pricePerEmployee * employeeCount;
 
   return {
-    packageName: packageItem.name,
-    pricePerEmployee: Math.round(pricePerEmployee),
+    packageName.name,
+    pricePerEmployee.round(pricePerEmployee),
     employeeCount,
-    totalPrice: Math.round(totalPrice),
-    discountApplied: this.corporateDiscount || 0,
-    duration: packageItem.duration,
-    sessions: packageItem.sessions
+    totalPrice.round(totalPrice),
+    discountApplied.corporateDiscount || 0,
+    duration.duration,
+    sessions.sessions
   };
 };
 
@@ -396,16 +390,16 @@ ayurvedaDoctorSchema.methods.getActiveCorporateWorkshops = function() {
 ayurvedaDoctorSchema.methods.getCorporateSummary = function() {
   if (!this.offersCorporateWellness) return null;
   return {
-    doctorId: this._id,
-    name: this.name,
-    city: this.address?.city,
-    rating: this.rating,
-    minEmployees: this.minEmployees || 10,
-    packages: this.getActiveCorporatePackages().length,
-    workshops: this.getActiveCorporateWorkshops().length,
-    discount: this.corporateDiscount || 0,
-    isActive: this.isActive,
-    verificationStatus: this.verificationStatus
+    doctorId._id,
+    name.name,
+    city.address?.city,
+    rating.rating,
+    minEmployees.minEmployees || 10,
+    packages.getActiveCorporatePackages().length,
+    workshops.getActiveCorporateWorkshops().length,
+    discount.corporateDiscount || 0,
+    isActive.isActive,
+    verificationStatus.verificationStatus
   };
 };
 
@@ -426,22 +420,22 @@ ayurvedaDoctorSchema.methods.toggleCorporate = function(enable = true) {
 
 ayurvedaDoctorSchema.statics.findCorporateDoctors = function(filters = {}) {
   const query = {
-    offersCorporateWellness: true,
-    isActive: true,
+    offersCorporateWellness,
+    isActive,
     verificationStatus: 'approved'
   };
 
   if (filters.city) {
-    query['address.city'] = { $regex: filters.city, $options: 'i' };
+    query['address.city'] = { $regex.city, $options: 'i' };
   }
   if (filters.specialization) {
     query.specialization = filters.specialization;
   }
   if (filters.minEmployees) {
-    query.minEmployees = { $lte: parseInt(filters.minEmployees) };
+    query.minEmployees = { $lte(filters.minEmployees) };
   }
   if (filters.minRating) {
-    query.rating = { $gte: parseFloat(filters.minRating) };
+    query.rating = { $gte(filters.minRating) };
   }
 
   return this.find(query)
@@ -450,32 +444,33 @@ ayurvedaDoctorSchema.statics.findCorporateDoctors = function(filters = {}) {
 };
 
 ayurvedaDoctorSchema.statics.getCorporateStats = async function() {
-  const total = await this.countDocuments({ offersCorporateWellness: true });
+  const total = await this.countDocuments({ offersCorporateWellness});
   const active = await this.countDocuments({
-    offersCorporateWellness: true,
-    isActive: true,
+    offersCorporateWellness,
+    isActive,
     verificationStatus: 'approved'
   });
 
   const bySpecialization = await this.aggregate([
-    { $match: { offersCorporateWellness: true, isActive: true } },
+    { $match: { offersCorporateWellness, isActive} },
     { $group: { _id: '$specialization', count: { $sum: 1 } } },
     { $sort: { count: -1 } }
   ]);
 
   const totalPackages = await this.aggregate([
-    { $match: { offersCorporateWellness: true } },
+    { $match: { offersCorporateWellness} },
     { $unwind: '$corporateWellnessPackages' },
-    { $match: { 'corporateWellnessPackages.isActive': true } },
+    { $match: { 'corporateWellnessPackages.isActive'} },
     { $count: 'total' }
   ]);
 
   return {
-    totalDoctors: total,
-    activeDoctors: active,
+    totalDoctors,
+    activeDoctors,
     bySpecialization,
-    totalPackages: totalPackages[0]?.total || 0
+    totalPackages[0]?.total || 0
   };
 };
 
 module.exports = mongoose.model('AyurvedaDoctor', ayurvedaDoctorSchema);
+

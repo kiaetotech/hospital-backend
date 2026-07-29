@@ -1,6 +1,6 @@
 "use strict";
 // D:\hospital backend\ai-core\providers\adapters\OpenRouterAdapter.ts
-Object.defineProperty(exports, "__esModule", { value: true });
+Object.defineProperty(exports, "__esModule", { value});
 exports.OpenRouterAdapter = void 0;
 const ProviderManager_1 = require("../ProviderManager");
 class OpenRouterAdapter {
@@ -38,16 +38,16 @@ class OpenRouterAdapter {
             //     'Authorization': `Bearer ${this.apiKey}`,
             //     'Content-Type': 'application/json'
             //   },
-            //   body: JSON.stringify({
+            //   body.stringify({
             //     model: 'mistralai/mistral-7b-instruct',
-            //     messages: [{ role: 'user', content: prompt }]
+            //     messages: [{ role: 'user', content}]
             //   })
             // });
             // Simulated response for now
             const simulatedResponse = {
                 content: `OpenRouter response: ${prompt.substring(0, 50)}...`,
-                provider: ProviderManager_1.ProviderType.OPENROUTER,
-                tokensUsed: Math.floor(prompt.length / 4),
+                provider_1.ProviderType.OPENROUTER,
+                tokensUsed.floor(prompt.length / 4),
                 costInr: 0, // Free tier
                 latency: 350
             };
@@ -71,3 +71,5 @@ class OpenRouterAdapter {
     }
 }
 exports.OpenRouterAdapter = OpenRouterAdapter;
+
+

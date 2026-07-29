@@ -2,111 +2,108 @@ const mongoose = require('mongoose');
 
 const panchakarmaCenterSchema = new mongoose.Schema({
   // Basic Info
-  name: { type: String, required: true },
-  email: { type: String, unique: true, sparse: true },
-  phone: { type: String, required: true, unique: true },
-  password: String,
+  name: { type, required},
+  email: { type, unique, sparse},
+  phone: { type, required, unique},
+  password,
   
   // Location
   address: {
-    street: String,
-    area: String,
-    city: { type: String, required: true },
-    state: { type: String, required: true },
-    pincode: String,
+    street,
+    area,
+    city: { type, required},
+    state: { type, required},
+    pincode,
     coordinates: {
-      lat: Number,
-      lng: Number
-    }
+      lat,
+      lng}
   },
   
   // Center Details
-  type: { type: String, enum: ['Hospital', 'Wellness Center', 'Retreat', 'Clinic'], default: 'Wellness Center' },
-  description: { type: String, maxlength: 2000 },
-  established: Number,
-  bedCount: Number,
-  panchakarmaRooms: Number,
-  doctorCount: Number,
-  staffCount: Number,
+  type: { type, enum: ['Hospital', 'Wellness Center', 'Retreat', 'Clinic'], default: 'Wellness Center' },
+  description: { type, maxlength: 2000 },
+  established,
+  bedCount,
+  panchakarmaRooms,
+  doctorCount,
+  staffCount,
   
   // Facilities
   facilities: [String],
   photos: [String],
   
   // Doctors associated
-  doctors: [{ type: mongoose.Schema.Types.ObjectId, ref: 'AyurvedaDoctor' }],
+  doctors: [{ type.Schema.Types.ObjectId, ref: 'AyurvedaDoctor' }],
   
   // Packages
   packages: [{
-    name: { type: String, required: true },
-    duration: { type: Number, required: true }, // Days
-    price: { type: Number, required: true },
-    discountPrice: Number,
-    description: String,
+    name: { type, required},
+    duration: { type, required}, // Days
+    price: { type, required},
+    discountPrice,
+    description,
     therapies: [String],
     inclusions: [String], // Food, Stay, etc.
-    maxCapacity: { type: Number, default: 10 },
-    currentBookings: { type: Number, default: 0 },
-    isActive: { type: Boolean, default: true }
+    maxCapacity: { type, default: 10 },
+    currentBookings: { type, default: 0 },
+    isActive: { type, default}
   }],
   
   // Verification
   documents: {
-    license: { type: String, required: true },
-    registration: { type: String, required: true },
-    panCard: String,
-    gstCertificate: String,
+    license: { type, required},
+    registration: { type, required},
+    panCard,
+    gstCertificate,
     photos: [String]
   },
   verificationStatus: {
-    type: String,
+    type,
     enum: ['pending', 'verified', 'approved', 'rejected', 'suspended'],
     default: 'pending'
   },
-  verifiedBy: { type: mongoose.Schema.Types.ObjectId, ref: 'Admin' },
-  verifiedAt: Date,
-  isActive: { type: Boolean, default: false },
+  verifiedBy: { type.Schema.Types.ObjectId, ref: 'Admin' },
+  verifiedAt,
+  isActive: { type, default},
   
   // Ratings
-  rating: { type: Number, default: 0 },
-  totalReviews: { type: Number, default: 0 },
+  rating: { type, default: 0 },
+  totalReviews: { type, default: 0 },
   reviews: [{
-    patient: { type: mongoose.Schema.Types.ObjectId, ref: 'Patient' },
-    patientName: String,
-    rating: Number,
-    review: String,
-    packageName: String,
-    createdAt: { type: Date, default: Date.now },
-    adminApproved: { type: Boolean, default: false }
+    patient: { type.Schema.Types.ObjectId, ref: 'Patient' },
+    patientName,
+    rating,
+    review,
+    packageName,
+    createdAt: { type, default.now },
+    adminApproved: { type, default}
   }],
   
   // Commission
-  commissionRate: { type: Number, default: 20 }, // 20%
+  commissionRate: { type, default: 20 }, // 20%
   
   // Bank Details
   bankDetails: {
-    accountHolder: String,
-    accountNumber: String,
-    ifscCode: String,
-    bankName: String,
-    upiId: String
-  },
+    accountHolder,
+    accountNumber,
+    ifscCode,
+    bankName,
+    upiId},
   
   // Discounts
   discounts: [{
-    code: String,
-    percentage: Number,
-    maxAmount: Number,
-    validFrom: Date,
-    validTill: Date,
-    isActive: Boolean
-  }],
+    code,
+    percentage,
+    maxAmount,
+    validFrom,
+    validTill,
+    isActive}],
   
-  nearestAirport: String,
-  distanceFromAirport: Number,
+  nearestAirport,
+  distanceFromAirport,
   
-  createdAt: { type: Date, default: Date.now },
-  updatedAt: { type: Date, default: Date.now }
+  createdAt: { type, default.now },
+  updatedAt: { type, default.now }
 });
 
 panchakarmaCenterSchema.index({ 'address.city': 1 });
@@ -114,3 +111,4 @@ panchakarmaCenterSchema.index({ rating: -1 });
 panchakarmaCenterSchema.index({ name: 'text', 'address.city': 'text' });
 
 module.exports = mongoose.model('PanchakarmaCenter', panchakarmaCenterSchema);
+

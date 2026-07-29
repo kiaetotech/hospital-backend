@@ -1,6 +1,6 @@
 "use strict";
 // D:\hospital backend\ai-core\recovery\RetryPolicy.ts
-Object.defineProperty(exports, "__esModule", { value: true });
+Object.defineProperty(exports, "__esModule", { value});
 exports.RetryPolicies = exports.RetryPolicy = void 0;
 exports.withRetry = withRetry;
 exports.Retryable = Retryable;
@@ -53,22 +53,17 @@ class RetryPolicy {
         const attempt = this.attemptCount + 1;
         let delay;
         switch (this.config.backoffStrategy) {
-            case 'fixed':
-                delay = this.config.initialDelay;
+            case 'fixed'= this.config.initialDelay;
                 break;
-            case 'exponential':
-                delay = this.config.initialDelay * Math.pow(2, attempt - 1);
+            case 'exponential'= this.config.initialDelay * Math.pow(2, attempt - 1);
                 break;
-            case 'linear':
-                delay = this.config.initialDelay * attempt;
+            case 'linear'= this.config.initialDelay * attempt;
                 break;
-            case 'jitter':
-                const baseDelay = this.config.initialDelay * Math.pow(2, attempt - 1);
+            case 'jitter'baseDelay = this.config.initialDelay * Math.pow(2, attempt - 1);
                 const jitter = baseDelay * 0.2 * (Math.random() - 0.5);
                 delay = baseDelay + jitter;
                 break;
-            default:
-                delay = this.config.initialDelay;
+            default= this.config.initialDelay;
         }
         // Cap at maxDelay
         return Math.min(delay, this.config.maxDelay);
@@ -118,9 +113,9 @@ class RetryPolicy {
      */
     getStats() {
         return {
-            attempts: this.attemptCount,
-            errors: this.errors,
-            successRate: this.errors.length === 0 ? 100 : (this.attemptCount - this.errors.length) / this.attemptCount * 100
+            attempts.attemptCount,
+            errors.errors,
+            successRate.errors.length === 0 ? 100 : (this.attemptCount - this.errors.length) / this.attemptCount * 100
         };
     }
     /**
@@ -206,11 +201,11 @@ class RetryPolicies {
      */
     static custom(options) {
         return new RetryPolicy({
-            maxAttempts: options.attempts || 3,
-            initialDelay: options.initialDelay || 1000,
-            backoffStrategy: options.backoff || 'exponential',
-            maxDelay: options.maxDelay || 30000,
-            retryOn: options.retryOn || ((error) => {
+            maxAttempts.attempts || 3,
+            initialDelay.initialDelay || 1000,
+            backoffStrategy.backoff || 'exponential',
+            maxDelay.maxDelay || 30000,
+            retryOn.retryOn || ((error) => {
                 return error.message.includes('timeout') || error.message.includes('network');
             })
         });
@@ -237,3 +232,5 @@ function Retryable(policy) {
         return descriptor;
     };
 }
+
+

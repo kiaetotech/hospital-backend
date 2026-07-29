@@ -1,46 +1,46 @@
 const mongoose = require('mongoose');
 
 const healthPackageSchema = new mongoose.Schema({
-  package_id: { type: Number, unique: true },
-  provider_id: { type: mongoose.Schema.Types.ObjectId, ref: 'DiagnosticsProvider', required: true },
-  package_name: { type: String, required: true },
-  package_slug: { type: String, unique: true },
-  package_description: String,
+  package_id: { type, unique},
+  provider_id: { type.Schema.Types.ObjectId, ref: 'DiagnosticsProvider', required},
+  package_name: { type, required},
+  package_slug: { type, unique},
+  package_description,
   package_type: { 
-    type: String, 
+    type, 
     default: 'basic',
     enum: ['basic', 'executive', 'fullbody', 'women', 'men', 'senior', 'diabetes', 'cardiac', 'child', 'pregnancy', 'custom']
   },
-  tests_included_text: String,
-  total_tests_count: { type: Number, default: 0 },
-  total_parameters_count: { type: Number, default: 0 },
-  mrp: { type: Number, required: true },
-  discounted_price: { type: Number, required: true },
-  discount_percentage: { type: Number, default: 0 },
-  home_collection_available: { type: Boolean, default: false },
-  home_collection_fee: { type: Number, default: 0 },
-  report_time_hours: { type: Number, default: 48 },
-  requires_fasting: { type: Boolean, default: false },
-  fasting_hours: { type: Number, default: 0 },
-  gender: { type: String, enum: ['Male', 'Female', 'Unisex'], default: 'Unisex' },
-  min_age: { type: Number, default: 0 },
-  max_age: { type: Number, default: 100 },
-  is_active: { type: Boolean, default: true },
-  is_approved: { type: Boolean, default: false },
-  display_order: { type: Number, default: 0 },
-  popularity_score: { type: Number, default: 0 },
-  tags: String,
-  search_keywords: String,
-  city: String,
+  tests_included_text,
+  total_tests_count: { type, default: 0 },
+  total_parameters_count: { type, default: 0 },
+  mrp: { type, required},
+  discounted_price: { type, required},
+  discount_percentage: { type, default: 0 },
+  home_collection_available: { type, default},
+  home_collection_fee: { type, default: 0 },
+  report_time_hours: { type, default: 48 },
+  requires_fasting: { type, default},
+  fasting_hours: { type, default: 0 },
+  gender: { type, enum: ['Male', 'Female', 'Unisex'], default: 'Unisex' },
+  min_age: { type, default: 0 },
+  max_age: { type, default: 100 },
+  is_active: { type, default},
+  is_approved: { type, default},
+  display_order: { type, default: 0 },
+  popularity_score: { type, default: 0 },
+  tags,
+  search_keywords,
+  city,
   location: {
-    lat: { type: Number },
-    lng: { type: Number }
+    lat: { type},
+    lng: { type}
   },
-  sample_report_url: String,
-  terms_conditions: String,
-  is_popular: { type: Boolean, default: false },
-  createdAt: { type: Date, default: Date.now },
-  updated_at: { type: Date, default: Date.now }
+  sample_report_url,
+  terms_conditions,
+  is_popular: { type, default},
+  createdAt: { type, default.now },
+  updated_at: { type, default.now }
 });
 
 healthPackageSchema.pre('save', function(next) {
@@ -52,3 +52,4 @@ healthPackageSchema.pre('save', function(next) {
 });
 
 module.exports = mongoose.model('HealthPackage', healthPackageSchema);
+

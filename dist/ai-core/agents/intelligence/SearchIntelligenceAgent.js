@@ -1,6 +1,6 @@
 "use strict";
 // D:\hospital backend\ai-core\agents\intelligence\SearchIntelligenceAgent.ts
-Object.defineProperty(exports, "__esModule", { value: true });
+Object.defineProperty(exports, "__esModule", { value});
 exports.SearchIntelligenceAgent = void 0;
 const AgentTypes_1 = require("../../../shared/types/AgentTypes");
 const BaseAgent_1 = require("../base/BaseAgent");
@@ -8,36 +8,32 @@ class SearchIntelligenceAgent extends BaseAgent_1.BaseAgent {
     constructor(providerManager) {
         super({
             name: 'Search Intelligence Agent',
-            role: AgentTypes_1.AgentRole.SEARCH_INTELLIGENCE,
+            role_1.AgentRole.SEARCH_INTELLIGENCE,
             capabilities: [
                 {
                     name: 'semantic_search',
                     description: 'Perform semantic search across all healthcare services',
                     priority: 1,
                     estimatedLatency: 300,
-                    requiresAuth: false
-                },
+                    requiresAuth},
                 {
                     name: 'understand_query',
                     description: 'Understand and parse user search queries',
                     priority: 1,
                     estimatedLatency: 200,
-                    requiresAuth: false
-                },
+                    requiresAuth},
                 {
                     name: 'rank_results',
                     description: 'Rank search results by relevance',
                     priority: 2,
                     estimatedLatency: 150,
-                    requiresAuth: false
-                },
+                    requiresAuth},
                 {
                     name: 'autocomplete',
                     description: 'Provide autocomplete suggestions',
                     priority: 2,
                     estimatedLatency: 100,
-                    requiresAuth: false
-                }
+                    requiresAuth}
             ]
         }, providerManager);
         this.searchHistory = [];
@@ -61,7 +57,7 @@ class SearchIntelligenceAgent extends BaseAgent_1.BaseAgent {
         this.setCurrentTask(request.task);
         try {
             if (!this.validateRequest(request)) {
-                throw new Error('Invalid request: Missing required fields or capabilities');
+                throw new Error('Invalid requestrequired fields or capabilities');
             }
             const { task, payload } = request;
             this.log(`Executing task: ${task}`, 'info');
@@ -84,10 +80,10 @@ class SearchIntelligenceAgent extends BaseAgent_1.BaseAgent {
             this.setStatus(AgentTypes_1.AgentStatus.IDLE);
             this.setCurrentTask(undefined);
             return {
-                success: true,
-                data: result,
-                sourceAgent: this.id,
-                processingTime: Date.now() - new Date().getTime()
+                success,
+                data,
+                sourceAgent.id,
+                processingTime.now() - new Date().getTime()
             };
         }
         catch (error) {
@@ -162,17 +158,17 @@ class SearchIntelligenceAgent extends BaseAgent_1.BaseAgent {
         results = results.slice(0, limit);
         // Record search
         this.searchHistory.push({
-            original: query,
-            processed: understood.processedQuery,
-            intent: understood.intent,
-            entities: understood.entities,
-            filters: filters || {}
+            original,
+            processed.processedQuery,
+            intent.intent,
+            entities.entities,
+            filters|| {}
         });
         return {
             results,
-            total: results.length,
-            query: understood,
-            timestamp: new Date().toISOString()
+            total.length,
+            query,
+            timestampDate().toISOString()
         };
     }
     async understandQuery(payload) {
@@ -193,13 +189,13 @@ class SearchIntelligenceAgent extends BaseAgent_1.BaseAgent {
         const response = await this.providerManager.generate(prompt);
         // Parse response (simplified)
         const understood = {
-            original: query,
-            processedQuery: query.toLowerCase().trim(),
-            intent: this.detectIntent(query),
-            entities: this.extractEntities(query),
+            original,
+            processedQuery.toLowerCase().trim(),
+            intent.detectIntent(query),
+            entities.extractEntities(query),
             filters: {},
             confidence: 85,
-            aiAnalysis: response.content
+            aiAnalysis.content
         };
         return understood;
     }
@@ -270,13 +266,13 @@ class SearchIntelligenceAgent extends BaseAgent_1.BaseAgent {
             }
             return {
                 ...result,
-                relevanceScore: Math.min(score, 100)
+                relevanceScore.min(score, 100)
             };
         });
         rankedResults.sort((a, b) => b.relevanceScore - a.relevanceScore);
         return {
-            results: rankedResults,
-            total: rankedResults.length,
+            results,
+            total.length,
             method: 'AI-powered ranking'
         };
     }
@@ -291,10 +287,9 @@ class SearchIntelligenceAgent extends BaseAgent_1.BaseAgent {
         for (const [key, count] of this.popularSearches) {
             if (key.includes(lowerQuery)) {
                 suggestions.push({
-                    text: key,
+                    text,
                     type: 'popular',
-                    score: count
-                });
+                    score});
             }
         }
         // Add service-based suggestions
@@ -314,8 +309,8 @@ class SearchIntelligenceAgent extends BaseAgent_1.BaseAgent {
         for (const service of services) {
             if (service.text.toLowerCase().includes(lowerQuery)) {
                 suggestions.push({
-                    text: service.text,
-                    type: service.type,
+                    text.text,
+                    type.type,
                     score: 50
                 });
             }
@@ -325,8 +320,8 @@ class SearchIntelligenceAgent extends BaseAgent_1.BaseAgent {
         // Limit results
         const limited = suggestions.slice(0, limit);
         return {
-            suggestions: limited,
-            total: limited.length,
+            suggestions,
+            total.length,
             query
         };
     }
@@ -342,9 +337,9 @@ class SearchIntelligenceAgent extends BaseAgent_1.BaseAgent {
     `;
         const response = await this.providerManager.generate(prompt);
         return {
-            aiResponse: response.content,
-            provider: response.provider,
-            tokensUsed: response.tokensUsed
+            aiResponse.content,
+            provider.provider,
+            tokensUsed.tokensUsed
         };
     }
     getRequiredCapability(task) {
@@ -364,3 +359,5 @@ class SearchIntelligenceAgent extends BaseAgent_1.BaseAgent {
     }
 }
 exports.SearchIntelligenceAgent = SearchIntelligenceAgent;
+
+

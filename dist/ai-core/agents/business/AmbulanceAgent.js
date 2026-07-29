@@ -1,6 +1,6 @@
 "use strict";
 // D:\hospital backend\ai-core\agents\business\AmbulanceAgent.ts
-Object.defineProperty(exports, "__esModule", { value: true });
+Object.defineProperty(exports, "__esModule", { value});
 exports.AmbulanceAgent = void 0;
 const AgentTypes_1 = require("../../../shared/types/AgentTypes");
 const BaseAgent_1 = require("../base/BaseAgent");
@@ -8,36 +8,32 @@ class AmbulanceAgent extends BaseAgent_1.BaseAgent {
     constructor(providerManager) {
         super({
             name: 'Ambulance Agent',
-            role: AgentTypes_1.AgentRole.AMBULANCE,
+            role_1.AgentRole.AMBULANCE,
             capabilities: [
                 {
                     name: 'dispatch_ambulance',
                     description: 'Dispatch nearest available ambulance to emergency location',
                     priority: 1,
                     estimatedLatency: 200,
-                    requiresAuth: true
-                },
+                    requiresAuth},
                 {
                     name: 'track_ambulance',
                     description: 'Track ambulance location and ETA in real-time',
                     priority: 2,
                     estimatedLatency: 100,
-                    requiresAuth: false
-                },
+                    requiresAuth},
                 {
                     name: 'check_availability',
                     description: 'Check ambulance availability by location and type',
                     priority: 1,
                     estimatedLatency: 150,
-                    requiresAuth: false
-                },
+                    requiresAuth},
                 {
                     name: 'calculate_eta',
                     description: 'Calculate estimated time of arrival for ambulance',
                     priority: 2,
                     estimatedLatency: 100,
-                    requiresAuth: false
-                }
+                    requiresAuth}
             ]
         }, providerManager);
         this.ambulances = [];
@@ -113,7 +109,7 @@ class AmbulanceAgent extends BaseAgent_1.BaseAgent {
         this.setCurrentTask(request.task);
         try {
             if (!this.validateRequest(request)) {
-                throw new Error('Invalid request: Missing required fields or capabilities');
+                throw new Error('Invalid requestrequired fields or capabilities');
             }
             const { task, payload } = request;
             this.log(`Executing task: ${task}`, 'info');
@@ -136,10 +132,10 @@ class AmbulanceAgent extends BaseAgent_1.BaseAgent {
             this.setStatus(AgentTypes_1.AgentStatus.IDLE);
             this.setCurrentTask(undefined);
             return {
-                success: true,
-                data: result,
-                sourceAgent: this.id,
-                processingTime: Date.now() - new Date().getTime()
+                success,
+                data,
+                sourceAgent.id,
+                processingTime.now() - new Date().getTime()
             };
         }
         catch (error) {
@@ -168,33 +164,32 @@ class AmbulanceAgent extends BaseAgent_1.BaseAgent {
         const tripId = `TRIP${Date.now()}`;
         // Store active trip
         this.activeTrips.set(tripId, {
-            ambulanceId: nearestAmbulance.id,
+            ambulanceId.id,
             patientName,
             patientContact,
             pickupLocation,
             dropoffLocation,
-            emergencyType: emergencyType || 'Medical',
+            emergencyType|| 'Medical',
             status: 'Dispatched',
-            dispatchedAt: new Date().toISOString(),
-            estimatedArrival: etaMinutes
-        });
+            dispatchedAtDate().toISOString(),
+            estimatedArrival});
         return {
             tripId,
             ambulance: {
-                id: nearestAmbulance.id,
-                vehicleNumber: nearestAmbulance.vehicleNumber,
-                type: nearestAmbulance.type,
-                driverName: nearestAmbulance.driverName,
-                driverContact: nearestAmbulance.driverContact
+                id.id,
+                vehicleNumber.vehicleNumber,
+                type.type,
+                driverName.driverName,
+                driverContact.driverContact
             },
-            eta: etaMinutes,
+            eta,
             status: 'Dispatched',
-            emergencyType: emergencyType || 'Medical',
+            emergencyType|| 'Medical',
             message: `Ambulance ${nearestAmbulance.vehicleNumber} is on its way. ETA: ${etaMinutes} minutes`,
             tracking: {
-                ambulanceLocation: nearestAmbulance.currentLocation,
+                ambulanceLocation.currentLocation,
                 pickupLocation,
-                dropoffLocation: dropoffLocation || null
+                dropoffLocation|| null
             }
         };
     }
@@ -205,7 +200,7 @@ class AmbulanceAgent extends BaseAgent_1.BaseAgent {
             if (ambulance.status !== 'Available')
                 continue;
             const distance = this.calculateDistance(pickupLocation, ambulance.currentLocation);
-            // Priority: Advanced > ICU > Basic
+            // Priority> ICU > Basic
             const typePriority = { 'Advanced': 3, 'ICU': 2, 'Basic': 1 };
             const typeScore = typePriority[ambulance.type] || 1;
             // Combine distance and type priority
@@ -238,17 +233,17 @@ class AmbulanceAgent extends BaseAgent_1.BaseAgent {
             const ambulance = this.ambulances.find(a => a.id === trip.ambulanceId);
             return {
                 tripId,
-                status: trip.status,
-                ambulance: ambulance ? {
-                    id: ambulance.id,
-                    vehicleNumber: ambulance.vehicleNumber,
-                    driverName: ambulance.driverName,
-                    driverContact: ambulance.driverContact,
-                    currentLocation: ambulance.currentLocation,
-                    estimatedArrival: ambulance.estimatedArrival
-                } : null,
-                patientName: trip.patientName,
-                dispatchedAt: trip.dispatchedAt
+                status.status,
+                ambulance? {
+                    id.id,
+                    vehicleNumber.vehicleNumber,
+                    driverName.driverName,
+                    driverContact.driverContact,
+                    currentLocation.currentLocation,
+                    estimatedArrival.estimatedArrival
+                } ,
+                patientName.patientName,
+                dispatchedAt.dispatchedAt
             };
         }
         if (ambulanceId) {
@@ -258,12 +253,12 @@ class AmbulanceAgent extends BaseAgent_1.BaseAgent {
             }
             return {
                 ambulance: {
-                    id: ambulance.id,
-                    vehicleNumber: ambulance.vehicleNumber,
-                    status: ambulance.status,
-                    currentLocation: ambulance.currentLocation,
-                    estimatedArrival: ambulance.estimatedArrival,
-                    driverName: ambulance.driverName
+                    id.id,
+                    vehicleNumber.vehicleNumber,
+                    status.status,
+                    currentLocation.currentLocation,
+                    estimatedArrival.estimatedArrival,
+                    driverName.driverName
                 }
             };
         }
@@ -279,14 +274,14 @@ class AmbulanceAgent extends BaseAgent_1.BaseAgent {
             availableAmbulances = availableAmbulances.filter(a => a.type === type);
         }
         return {
-            available: availableAmbulances.length,
-            ambulances: availableAmbulances.map(a => ({
-                id: a.id,
-                vehicleNumber: a.vehicleNumber,
-                type: a.type,
-                driverName: a.driverName,
-                city: a.city,
-                equipment: a.equipment
+            available.length,
+            ambulances.map(a => ({
+                id.id,
+                vehicleNumber.vehicleNumber,
+                type.type,
+                driverName.driverName,
+                city.city,
+                equipment.equipment
             })),
             query: { city, type }
         };
@@ -313,14 +308,14 @@ class AmbulanceAgent extends BaseAgent_1.BaseAgent {
         const etaMinutes = Math.round(distance * 2);
         return {
             ambulance: {
-                id: ambulance.id,
-                vehicleNumber: ambulance.vehicleNumber,
-                type: ambulance.type,
-                currentLocation: ambulance.currentLocation
+                id.id,
+                vehicleNumber.vehicleNumber,
+                type.type,
+                currentLocation.currentLocation
             },
             distance: `${distance.toFixed(1)} km`,
             eta: `${etaMinutes} minutes`,
-            estimatedArrival: new Date(Date.now() + etaMinutes * 60000).toISOString()
+            estimatedArrivalDate(Date.now() + etaMinutes * 60000).toISOString()
         };
     }
     async handleComplexQuery(task, payload) {
@@ -334,9 +329,9 @@ class AmbulanceAgent extends BaseAgent_1.BaseAgent {
     `;
         const response = await this.providerManager.generate(prompt);
         return {
-            aiResponse: response.content,
-            provider: response.provider,
-            tokensUsed: response.tokensUsed
+            aiResponse.content,
+            provider.provider,
+            tokensUsed.tokensUsed
         };
     }
     getRequiredCapability(task) {
@@ -356,3 +351,5 @@ class AmbulanceAgent extends BaseAgent_1.BaseAgent {
     }
 }
 exports.AmbulanceAgent = AmbulanceAgent;
+
+

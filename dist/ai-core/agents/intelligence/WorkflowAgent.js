@@ -1,6 +1,6 @@
 "use strict";
 // D:\hospital backend\ai-core\agents\intelligence\WorkflowAgent.ts
-Object.defineProperty(exports, "__esModule", { value: true });
+Object.defineProperty(exports, "__esModule", { value});
 exports.WorkflowAgent = void 0;
 const AgentTypes_1 = require("../../../shared/types/AgentTypes");
 const BaseAgent_1 = require("../base/BaseAgent");
@@ -8,36 +8,32 @@ class WorkflowAgent extends BaseAgent_1.BaseAgent {
     constructor(providerManager) {
         super({
             name: 'Workflow Agent',
-            role: AgentTypes_1.AgentRole.WORKFLOW,
+            role_1.AgentRole.WORKFLOW,
             capabilities: [
                 {
                     name: 'create_workflow',
                     description: 'Create a new workflow from steps',
                     priority: 1,
                     estimatedLatency: 200,
-                    requiresAuth: true
-                },
+                    requiresAuth},
                 {
                     name: 'execute_workflow',
                     description: 'Execute an existing workflow',
                     priority: 1,
                     estimatedLatency: 500,
-                    requiresAuth: true
-                },
+                    requiresAuth},
                 {
                     name: 'get_workflow_status',
                     description: 'Get workflow execution status',
                     priority: 2,
                     estimatedLatency: 100,
-                    requiresAuth: true
-                },
+                    requiresAuth},
                 {
                     name: 'pause_workflow',
                     description: 'Pause a running workflow',
                     priority: 2,
                     estimatedLatency: 100,
-                    requiresAuth: true
-                }
+                    requiresAuth}
             ]
         }, providerManager);
         this.workflows = new Map();
@@ -47,7 +43,7 @@ class WorkflowAgent extends BaseAgent_1.BaseAgent {
         this.setCurrentTask(request.task);
         try {
             if (!this.validateRequest(request)) {
-                throw new Error('Invalid request: Missing required fields or capabilities');
+                throw new Error('Invalid requestrequired fields or capabilities');
             }
             const { task, payload } = request;
             this.log(`Executing task: ${task}`, 'info');
@@ -70,10 +66,10 @@ class WorkflowAgent extends BaseAgent_1.BaseAgent {
             this.setStatus(AgentTypes_1.AgentStatus.IDLE);
             this.setCurrentTask(undefined);
             return {
-                success: true,
-                data: result,
-                sourceAgent: this.id,
-                processingTime: Date.now() - new Date().getTime()
+                success,
+                data,
+                sourceAgent.id,
+                processingTime.now() - new Date().getTime()
             };
         }
         catch (error) {
@@ -90,28 +86,28 @@ class WorkflowAgent extends BaseAgent_1.BaseAgent {
         const workflow = {
             id: `wf${Date.now()}`,
             name,
-            steps: steps.map((s, index) => ({
+            steps.map((s, index) => ({
                 id: `step${index}`,
-                name: s.name,
-                type: s.type || 'Action',
-                action: s.action,
-                agent: s.agent,
-                payload: s.payload || {},
-                nextSteps: s.nextSteps || [],
+                name.name,
+                type.type || 'Action',
+                action.action,
+                agent.agent,
+                payload.payload || {},
+                nextSteps.nextSteps || [],
                 status: 'Pending'
             })),
             currentStepIndex: 0,
             status: 'Created',
-            context: context || {},
-            createdAt: new Date(),
-            updatedAt: new Date()
+            context|| {},
+            createdAtDate(),
+            updatedAtDate()
         };
         this.workflows.set(workflow.id, workflow);
         return {
-            workflowId: workflow.id,
-            name: workflow.name,
-            steps: workflow.steps,
-            status: workflow.status,
+            workflowId.id,
+            name.name,
+            steps.steps,
+            status.status,
             message: 'Workflow created successfully'
         };
     }
@@ -161,9 +157,9 @@ class WorkflowAgent extends BaseAgent_1.BaseAgent {
                     workflow.updatedAt = new Date();
                     return {
                         workflowId,
-                        status: workflow.status,
-                        failedStep: step,
-                        error: error.message,
+                        status.status,
+                        failedStep,
+                        error.message,
                         message: 'Workflow execution failed'
                     };
                 }
@@ -172,9 +168,9 @@ class WorkflowAgent extends BaseAgent_1.BaseAgent {
             workflow.updatedAt = new Date();
             return {
                 workflowId,
-                status: workflow.status,
-                steps: workflow.steps,
-                context: workflow.context,
+                status.status,
+                steps.steps,
+                context.context,
                 message: 'Workflow completed successfully'
             };
         }
@@ -188,25 +184,20 @@ class WorkflowAgent extends BaseAgent_1.BaseAgent {
         this.log(`Executing step: ${step.name}`, 'info');
         // Simulate different step types
         switch (step.type) {
-            case 'Action':
-                return this.executeActionStep(step, context);
-            case 'Decision':
-                return this.executeDecisionStep(step, context);
-            case 'Parallel':
-                return this.executeParallelStep(step, context);
-            case 'Join':
-                return this.executeJoinStep(step, context);
-            default:
-                throw new Error(`Unknown step type: ${step.type}`);
+            case 'Action'this.executeActionStep(step, context);
+            case 'Decision'this.executeDecisionStep(step, context);
+            case 'Parallel'this.executeParallelStep(step, context);
+            case 'Join'this.executeJoinStep(step, context);
+            defaultnew Error(`Unknown step type: ${step.type}`);
         }
     }
     async executeActionStep(step, context) {
         // Simulate action execution
         await new Promise(resolve => setTimeout(resolve, 500));
         return {
-            action: step.action || 'default_action',
+            action.action || 'default_action',
             status: 'success',
-            timestamp: new Date().toISOString(),
+            timestampDate().toISOString(),
             data: {
                 message: `Action ${step.action || 'default'} executed successfully`,
                 context
@@ -218,8 +209,8 @@ class WorkflowAgent extends BaseAgent_1.BaseAgent {
         const decision = Math.random() > 0.5 ? 'approved' : 'pending';
         return {
             decision,
-            timestamp: new Date().toISOString(),
-            nextStep: decision === 'approved' ? 'proceed' : 'review'
+            timestampDate().toISOString(),
+            nextStep=== 'approved' ? 'proceed' : 'review'
         };
     }
     async executeParallelStep(step, context) {
@@ -230,14 +221,14 @@ class WorkflowAgent extends BaseAgent_1.BaseAgent {
             return { task, status: 'completed' };
         }));
         return {
-            parallelResults: results,
-            timestamp: new Date().toISOString()
+            parallelResults,
+            timestampDate().toISOString()
         };
     }
     async executeJoinStep(step, context) {
         return {
-            join: true,
-            timestamp: new Date().toISOString(),
+            join,
+            timestampDate().toISOString(),
             message: 'All parallel tasks completed'
         };
     }
@@ -245,8 +236,8 @@ class WorkflowAgent extends BaseAgent_1.BaseAgent {
         const { workflowId } = payload;
         if (!workflowId) {
             return {
-                workflows: Array.from(this.workflows.values()),
-                total: this.workflows.size
+                workflows.from(this.workflows.values()),
+                total.workflows.size
             };
         }
         const workflow = this.workflows.get(workflowId);
@@ -254,15 +245,15 @@ class WorkflowAgent extends BaseAgent_1.BaseAgent {
             throw new Error('Workflow not found');
         }
         return {
-            workflowId: workflow.id,
-            name: workflow.name,
-            status: workflow.status,
-            currentStepIndex: workflow.currentStepIndex,
-            totalSteps: workflow.steps.length,
-            steps: workflow.steps,
-            context: workflow.context,
-            createdAt: workflow.createdAt,
-            updatedAt: workflow.updatedAt
+            workflowId.id,
+            name.name,
+            status.status,
+            currentStepIndex.currentStepIndex,
+            totalSteps.steps.length,
+            steps.steps,
+            context.context,
+            createdAt.createdAt,
+            updatedAt.updatedAt
         };
     }
     async pauseWorkflow(payload) {
@@ -281,7 +272,7 @@ class WorkflowAgent extends BaseAgent_1.BaseAgent {
         workflow.updatedAt = new Date();
         return {
             workflowId,
-            status: workflow.status,
+            status.status,
             message: 'Workflow paused successfully'
         };
     }
@@ -296,9 +287,9 @@ class WorkflowAgent extends BaseAgent_1.BaseAgent {
     `;
         const response = await this.providerManager.generate(prompt);
         return {
-            aiResponse: response.content,
-            provider: response.provider,
-            tokensUsed: response.tokensUsed
+            aiResponse.content,
+            provider.provider,
+            tokensUsed.tokensUsed
         };
     }
     getRequiredCapability(task) {
@@ -318,3 +309,5 @@ class WorkflowAgent extends BaseAgent_1.BaseAgent {
     }
 }
 exports.WorkflowAgent = WorkflowAgent;
+
+

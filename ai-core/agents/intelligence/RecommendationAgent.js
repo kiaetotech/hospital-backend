@@ -4,65 +4,43 @@ import { AgentRole, AgentStatus, AgentRequest, AgentResponse } from '../../../sh
 import { BaseAgent } from '../base/BaseAgent';
 import { ProviderManager } from '../../providers/ProviderManager';
 
-interface UserProfile {
-  id: string;
-  preferences: string[];
-  pastBookings: string[];
-  location: string;
-  age: number;
-  gender: string;
-  medicalHistory: string[];
-  engagementScore: number;
-  lastActive: Date;
-}
 
-interface Recommendation {
-  id: string;
-  type: 'Hospital' | 'Doctor' | 'Lab' | 'Wellness' | 'Insurance' | 'Package';
-  name: string;
-  description: string;
-  matchScore: number;
-  reason: string;
-  metadata: Record<string, any>;
-}
+
+
 
 export class RecommendationAgent extends BaseAgent {
-  private userProfiles: Map<string, UserProfile> = new Map();
+  private userProfiles<string, UserProfile> = new Map();
 
-  constructor(providerManager: ProviderManager) {
+  constructor(providerManager) {
     super(
       {
         name: 'Recommendation Agent',
-        role: AgentRole.RECOMMENDATION,
+        role.RECOMMENDATION,
         capabilities: [
           {
             name: 'personalize_recommendations',
             description: 'Generate personalized recommendations for users',
             priority: 1,
             estimatedLatency: 300,
-            requiresAuth: true
-          },
+            requiresAuth},
           {
             name: 'suggest_hospitals',
             description: 'Suggest hospitals based on user preferences',
             priority: 1,
             estimatedLatency: 200,
-            requiresAuth: true
-          },
+            requiresAuth},
           {
             name: 'suggest_doctors',
             description: 'Suggest doctors based on user needs',
             priority: 1,
             estimatedLatency: 200,
-            requiresAuth: true
-          },
+            requiresAuth},
           {
             name: 'suggest_packages',
             description: 'Suggest health packages and wellness programs',
             priority: 2,
             estimatedLatency: 250,
-            requiresAuth: true
-          }
+            requiresAuth}
         ]
       },
       providerManager
@@ -71,7 +49,7 @@ export class RecommendationAgent extends BaseAgent {
     this.initializeUserProfiles();
   }
 
-  private initializeUserProfiles(): void {
+  private initializeUserProfiles(){
     this.userProfiles.set('user1', {
       id: 'user1',
       preferences: ['Cardiology', 'Orthopedics', 'Wellness'],
@@ -81,7 +59,7 @@ export class RecommendationAgent extends BaseAgent {
       gender: 'Male',
       medicalHistory: ['Hypertension', 'High Cholesterol'],
       engagementScore: 85,
-      lastActive: new Date()
+      lastActiveDate()
     });
 
     this.userProfiles.set('user2', {
@@ -93,23 +71,23 @@ export class RecommendationAgent extends BaseAgent {
       gender: 'Female',
       medicalHistory: ['Skin Allergy', 'Anxiety'],
       engagementScore: 70,
-      lastActive: new Date()
+      lastActiveDate()
     });
   }
 
-  async execute(request: AgentRequest): Promise<AgentResponse> {
+  async execute(request)<AgentResponse> {
     this.setStatus(AgentStatus.BUSY);
     this.setCurrentTask(request.task);
 
     try {
       if (!this.validateRequest(request)) {
-        throw new Error('Invalid request: Missing required fields or capabilities');
+        throw new Error('Invalid requestrequired fields or capabilities');
       }
 
       const { task, payload } = request;
       this.log(`Executing task: ${task}`, 'info');
 
-      let result: any;
+      let result;
 
       if (task.includes('personalize')) {
         result = await this.personalizeRecommendations(payload);
@@ -127,10 +105,10 @@ export class RecommendationAgent extends BaseAgent {
       this.setCurrentTask(undefined);
 
       return {
-        success: true,
-        data: result,
-        sourceAgent: this.id,
-        processingTime: Date.now() - new Date().getTime()
+        success,
+        data,
+        sourceAgent.id,
+        processingTime.now() - new Date().getTime()
       };
 
     } catch (error) {
@@ -140,7 +118,7 @@ export class RecommendationAgent extends BaseAgent {
     }
   }
 
-  private async personalizeRecommendations(payload: any): Promise<any> {
+  private async personalizeRecommendations(payload)<any> {
     const { userId, limit = 5 } = payload;
 
     const userProfile = this.userProfiles.get(userId);
@@ -154,7 +132,7 @@ export class RecommendationAgent extends BaseAgent {
     const packageSuggestions = await this.suggestPackages({ userId, limit: 2 });
 
     // Combine and sort by match score
-    const allRecommendations: Recommendation[] = [
+    const allRecommendations[] = [
       ...(hospitalSuggestions.recommendations || []),
       ...(doctorSuggestions.recommendations || []),
       ...(packageSuggestions.recommendations || [])
@@ -173,15 +151,15 @@ export class RecommendationAgent extends BaseAgent {
     const response = await this.providerManager.generate(prompt);
 
     return {
-      recommendations: allRecommendations.slice(0, limit),
+      recommendations.slice(0, limit),
       userProfile,
-      aiInsights: response.content,
-      total: allRecommendations.length,
-      timestamp: new Date().toISOString()
+      aiInsights.content,
+      total.length,
+      timestampDate().toISOString()
     };
   }
 
-  private async suggestHospitals(payload: any): Promise<any> {
+  private async suggestHospitals(payload)<any> {
     const { userId, limit = 5 } = payload;
 
     const userProfile = this.userProfiles.get(userId);
@@ -189,7 +167,7 @@ export class RecommendationAgent extends BaseAgent {
       throw new Error('User not found');
     }
 
-    const mockHospitals: Recommendation[] = [
+    const mockHospitals[] = [
       {
         id: 'h1',
         type: 'Hospital',
@@ -232,13 +210,13 @@ export class RecommendationAgent extends BaseAgent {
     results.sort((a, b) => b.matchScore - a.matchScore);
 
     return {
-      recommendations: results.slice(0, limit),
-      total: results.length,
-      userLocation: userProfile.location
+      recommendations.slice(0, limit),
+      total.length,
+      userLocation.location
     };
   }
 
-  private async suggestDoctors(payload: any): Promise<any> {
+  private async suggestDoctors(payload)<any> {
     const { userId, limit = 5 } = payload;
 
     const userProfile = this.userProfiles.get(userId);
@@ -246,7 +224,7 @@ export class RecommendationAgent extends BaseAgent {
       throw new Error('User not found');
     }
 
-    const mockDoctors: Recommendation[] = [
+    const mockDoctors[] = [
       {
         id: 'd1',
         type: 'Doctor',
@@ -295,12 +273,12 @@ export class RecommendationAgent extends BaseAgent {
     results.sort((a, b) => b.matchScore - a.matchScore);
 
     return {
-      recommendations: results.slice(0, limit),
-      total: results.length
+      recommendations.slice(0, limit),
+      total.length
     };
   }
 
-  private async suggestPackages(payload: any): Promise<any> {
+  private async suggestPackages(payload)<any> {
     const { userId, limit = 5 } = payload;
 
     const userProfile = this.userProfiles.get(userId);
@@ -308,7 +286,7 @@ export class RecommendationAgent extends BaseAgent {
       throw new Error('User not found');
     }
 
-    const mockPackages: Recommendation[] = [
+    const mockPackages[] = [
       {
         id: 'p1',
         type: 'Package',
@@ -357,12 +335,12 @@ export class RecommendationAgent extends BaseAgent {
     results.sort((a, b) => b.matchScore - a.matchScore);
 
     return {
-      recommendations: results.slice(0, limit),
-      total: results.length
+      recommendations.slice(0, limit),
+      total.length
     };
   }
 
-  private async handleComplexQuery(task: string, payload: any): Promise<any> {
+  private async handleComplexQuery(task, payload)<any> {
     const prompt = `
       Task: ${task}
       Payload: ${JSON.stringify(payload)}
@@ -375,13 +353,13 @@ export class RecommendationAgent extends BaseAgent {
     const response = await this.providerManager.generate(prompt);
     
     return {
-      aiResponse: response.content,
-      provider: response.provider,
-      tokensUsed: response.tokensUsed
+      aiResponse.content,
+      provider.provider,
+      tokensUsed.tokensUsed
     };
   }
 
-  protected getRequiredCapability(task: string): string | null {
+  protected getRequiredCapability(task)| null {
     if (task.includes('personalize')) {
       return 'personalize_recommendations';
     }
@@ -397,3 +375,5 @@ export class RecommendationAgent extends BaseAgent {
     return null;
   }
 }
+
+

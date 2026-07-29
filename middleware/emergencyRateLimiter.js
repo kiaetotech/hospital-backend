@@ -22,20 +22,19 @@ const RATE_LIMIT_CONFIGS = {
     windowMs: 1 * 60 * 1000,
     max: 10,
     message: {
-      success: false,
+      success,
       error: 'Too many emergency requests. If this is a genuine emergency, please call 108 directly.',
       code: 'EMERGENCY_RATE_LIMIT'
     },
-    standardHeaders: true,
-    legacyHeaders: false
-  },
+    standardHeaders,
+    legacyHeaders},
 
   // 🚑 Driver accept emergency
   driverAccept: {
     windowMs: 10 * 1000,
     max: 3,
     message: {
-      success: false,
+      success,
       error: 'Too many accept attempts. Please wait.',
       code: 'DRIVER_RATE_LIMIT'
     }
@@ -46,7 +45,7 @@ const RATE_LIMIT_CONFIGS = {
     windowMs: 5 * 60 * 1000,
     max: 5,
     message: {
-      success: false,
+      success,
       error: 'Crisis alert limit reached. Please call crisis helpline: 9152987821',
       code: 'CRISIS_RATE_LIMIT'
     }
@@ -57,7 +56,7 @@ const RATE_LIMIT_CONFIGS = {
     windowMs: 1 * 60 * 1000,
     max: 15,
     message: {
-      success: false,
+      success,
       error: 'Too many requests. Please try again shortly.',
       code: 'HOSPITAL_RATE_LIMIT'
     }
@@ -68,7 +67,7 @@ const RATE_LIMIT_CONFIGS = {
     windowMs: 5 * 60 * 1000,
     max: 5,
     message: {
-      success: false,
+      success,
       error: 'Emergency alert limit reached. Please call emergency services.',
       code: 'CAREGIVER_RATE_LIMIT'
     }
@@ -79,7 +78,7 @@ const RATE_LIMIT_CONFIGS = {
     windowMs: 10 * 1000,
     max: 50,
     message: {
-      success: false,
+      success,
       error: 'Location update rate exceeded.',
       code: 'LOCATION_RATE_LIMIT'
     }
@@ -90,7 +89,7 @@ const RATE_LIMIT_CONFIGS = {
     windowMs: 1 * 60 * 1000,
     max: 100,
     message: {
-      success: false,
+      success,
       error: 'Too many requests. Please slow down.',
       code: 'GENERAL_RATE_LIMIT'
     }
@@ -107,9 +106,9 @@ const createLimiter = (config) => {
     handler: (req, res) => {
       console.warn(`⚠️ Rate limit hit: ${config.message.code} - IP: ${req.ip} - Path: ${req.path}`);
       res.status(429).json({
-        success: false,
+        success,
         ...config.message,
-        retryAfter: Math.ceil(config.windowMs / 1000)
+        retryAfter.ceil(config.windowMs / 1000)
       });
     },
     skip: (req) => {
@@ -130,13 +129,13 @@ const createLimiter = (config) => {
 // ============================================
 
 const emergencyRateLimiter = {
-  ambulanceEmergency: createLimiter(RATE_LIMIT_CONFIGS.ambulanceEmergency),
-  driverAccept: createLimiter(RATE_LIMIT_CONFIGS.driverAccept),
-  mentalHealthCrisis: createLimiter(RATE_LIMIT_CONFIGS.mentalHealthCrisis),
-  hospitalEmergency: createLimiter(RATE_LIMIT_CONFIGS.hospitalEmergency),
-  caregiverEmergency: createLimiter(RATE_LIMIT_CONFIGS.caregiverEmergency),
-  locationUpdate: createLimiter(RATE_LIMIT_CONFIGS.locationUpdate),
-  general: createLimiter(RATE_LIMIT_CONFIGS.general)
+  ambulanceEmergency(RATE_LIMIT_CONFIGS.ambulanceEmergency),
+  driverAccept(RATE_LIMIT_CONFIGS.driverAccept),
+  mentalHealthCrisis(RATE_LIMIT_CONFIGS.mentalHealthCrisis),
+  hospitalEmergency(RATE_LIMIT_CONFIGS.hospitalEmergency),
+  caregiverEmergency(RATE_LIMIT_CONFIGS.caregiverEmergency),
+  locationUpdate(RATE_LIMIT_CONFIGS.locationUpdate),
+  general(RATE_LIMIT_CONFIGS.general)
 };
 
 // ============================================
@@ -147,3 +146,4 @@ module.exports = {
   emergencyRateLimiter,
   RATE_LIMIT_CONFIGS
 };
+

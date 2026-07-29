@@ -4,72 +4,47 @@ import { AgentRole, AgentStatus, AgentRequest, AgentResponse } from '../../../sh
 import { BaseAgent } from '../base/BaseAgent';
 import { ProviderManager } from '../../providers/ProviderManager';
 
-interface Lab {
-  id: string;
-  name: string;
-  city: string;
-  tests: string[];
-  packages: DiagnosticPackage[];
-  rating: number;
-  turnaroundTime: number; // hours
-  priceRange: { min: number; max: number };
-  accredited: boolean;
+;
+  accredited;
 }
 
-interface DiagnosticPackage {
-  id: string;
-  name: string;
-  tests: string[];
-  price: number;
-  discount: number;
-  preparation: string;
-}
 
-interface TestResult {
-  testName: string;
-  value: string;
-  referenceRange: string;
-  status: 'Normal' | 'Abnormal' | 'Critical';
-  interpretation: string;
-}
+
+
 
 export class DiagnosticsAgent extends BaseAgent {
-  private labs: Lab[] = [];
+  private labs[] = [];
 
-  constructor(providerManager: ProviderManager) {
+  constructor(providerManager) {
     super(
       {
         name: 'Diagnostics Agent',
-        role: AgentRole.DIAGNOSTICS,
+        role.DIAGNOSTICS,
         capabilities: [
           {
             name: 'find_lab',
             description: 'Find diagnostic labs by location and test availability',
             priority: 1,
             estimatedLatency: 200,
-            requiresAuth: false
-          },
+            requiresAuth},
           {
             name: 'compare_packages',
             description: 'Compare diagnostic packages from different labs',
             priority: 2,
             estimatedLatency: 300,
-            requiresAuth: false
-          },
+            requiresAuth},
           {
             name: 'book_test',
             description: 'Book a diagnostic test or package',
             priority: 1,
             estimatedLatency: 300,
-            requiresAuth: true
-          },
+            requiresAuth},
           {
             name: 'interpret_results',
             description: 'Interpret diagnostic test results with AI',
             priority: 2,
             estimatedLatency: 500,
-            requiresAuth: true
-          }
+            requiresAuth}
         ]
       },
       providerManager
@@ -78,7 +53,7 @@ export class DiagnosticsAgent extends BaseAgent {
     this.initializeLabs();
   }
 
-  private initializeLabs(): void {
+  private initializeLabs(){
     this.labs = [
       {
         id: 'l1',
@@ -106,8 +81,7 @@ export class DiagnosticsAgent extends BaseAgent {
         rating: 4.8,
         turnaroundTime: 24,
         priceRange: { min: 499, max: 9999 },
-        accredited: true
-      },
+        accredited},
       {
         id: 'l2',
         name: 'Thyrocare',
@@ -134,8 +108,7 @@ export class DiagnosticsAgent extends BaseAgent {
         rating: 4.6,
         turnaroundTime: 48,
         priceRange: { min: 399, max: 7999 },
-        accredited: true
-      },
+        accredited},
       {
         id: 'l3',
         name: 'Metropolis Lab',
@@ -162,8 +135,7 @@ export class DiagnosticsAgent extends BaseAgent {
         rating: 4.7,
         turnaroundTime: 36,
         priceRange: { min: 299, max: 14999 },
-        accredited: true
-      },
+        accredited},
       {
         id: 'l4',
         name: 'Dr. Lal PathLabs',
@@ -182,8 +154,7 @@ export class DiagnosticsAgent extends BaseAgent {
         rating: 4.9,
         turnaroundTime: 24,
         priceRange: { min: 499, max: 8999 },
-        accredited: true
-      },
+        accredited},
       {
         id: 'l5',
         name: 'Suburban Diagnostics',
@@ -202,24 +173,23 @@ export class DiagnosticsAgent extends BaseAgent {
         rating: 4.5,
         turnaroundTime: 48,
         priceRange: { min: 399, max: 5999 },
-        accredited: true
-      }
+        accredited}
     ];
   }
 
-  async execute(request: AgentRequest): Promise<AgentResponse> {
+  async execute(request)<AgentResponse> {
     this.setStatus(AgentStatus.BUSY);
     this.setCurrentTask(request.task);
 
     try {
       if (!this.validateRequest(request)) {
-        throw new Error('Invalid request: Missing required fields or capabilities');
+        throw new Error('Invalid requestrequired fields or capabilities');
       }
 
       const { task, payload } = request;
       this.log(`Executing task: ${task}`, 'info');
 
-      let result: any;
+      let result;
 
       if (task.includes('find') || task.includes('search') || task.includes('lab')) {
         result = await this.findLabs(payload);
@@ -237,10 +207,10 @@ export class DiagnosticsAgent extends BaseAgent {
       this.setCurrentTask(undefined);
 
       return {
-        success: true,
-        data: result,
-        sourceAgent: this.id,
-        processingTime: Date.now() - new Date().getTime()
+        success,
+        data,
+        sourceAgent.id,
+        processingTime.now() - new Date().getTime()
       };
 
     } catch (error) {
@@ -250,7 +220,7 @@ export class DiagnosticsAgent extends BaseAgent {
     }
   }
 
-  private async findLabs(payload: any): Promise<any> {
+  private async findLabs(payload)<any> {
     const { city, test, maxResults = 10 } = payload;
 
     let results = this.labs;
@@ -270,13 +240,13 @@ export class DiagnosticsAgent extends BaseAgent {
     results = results.slice(0, maxResults);
 
     return {
-      labs: results,
-      total: results.length,
+      labs,
+      total.length,
       query: { city, test }
     };
   }
 
-  private async comparePackages(payload: any): Promise<any> {
+  private async comparePackages(payload)<any> {
     const { labIds, packageIds } = payload;
 
     let selectedLabs = this.labs;
@@ -287,10 +257,10 @@ export class DiagnosticsAgent extends BaseAgent {
     let packages = selectedLabs.flatMap(l => 
       l.packages.map(p => ({
         ...p,
-        labName: l.name,
-        labId: l.id,
-        rating: l.rating,
-        turnaroundTime: l.turnaroundTime
+        labName.name,
+        labId.id,
+        rating.rating,
+        turnaroundTime.turnaroundTime
       }))
     );
 
@@ -303,11 +273,11 @@ export class DiagnosticsAgent extends BaseAgent {
 
     return {
       packages,
-      total: packages.length
+      total.length
     };
   }
 
-  private async bookTest(payload: any): Promise<any> {
+  private async bookTest(payload)<any> {
     const { labId, packageId, testName, patientName, patientContact, date, time } = payload;
 
     const lab = this.labs.find(l => l.id === labId);
@@ -316,7 +286,7 @@ export class DiagnosticsAgent extends BaseAgent {
     }
 
     let testPackage = lab.packages.find(p => p.id === packageId);
-    let selectedTests: string[] = [];
+    let selectedTests[] = [];
     let price = 0;
 
     if (testPackage) {
@@ -338,30 +308,29 @@ export class DiagnosticsAgent extends BaseAgent {
     return {
       bookingId,
       lab: {
-        id: lab.id,
-        name: lab.name,
+        id.id,
+        name.name,
         address: `${lab.city}, India`
       },
-      tests: selectedTests,
-      package: testPackage ? {
-        id: testPackage.id,
-        name: testPackage.name,
-        discount: testPackage.discount
-      } : null,
+      tests,
+      package? {
+        id.id,
+        name.name,
+        discount.discount
+      } ,
       price,
       patient: {
-        name: patientName,
-        contact: patientContact
-      },
-      date: date || new Date().toISOString().split('T')[0],
-      time: time || '9:00 AM',
-      preparation: testPackage?.preparation || 'Follow standard preparation guidelines',
+        name,
+        contact},
+      date|| new Date().toISOString().split('T')[0],
+      time|| '9:00 AM',
+      preparation?.preparation || 'Follow standard preparation guidelines',
       status: 'Confirmed',
-      timestamp: new Date().toISOString()
+      timestampDate().toISOString()
     };
   }
 
-  private async interpretResults(payload: any): Promise<any> {
+  private async interpretResults(payload)<any> {
     const { results } = payload;
 
     // Use AI to interpret results
@@ -375,21 +344,21 @@ export class DiagnosticsAgent extends BaseAgent {
       3. Lifestyle recommendations
       4. What to do next (if further tests needed, consult a doctor, etc.)
       
-      IMPORTANT: Always recommend consulting a doctor for abnormal results.
+      IMPORTANTrecommend consulting a doctor for abnormal results.
     `;
 
     const response = await this.providerManager.generate(prompt);
 
     return {
       results,
-      interpretation: response.content,
-      provider: response.provider,
-      tokensUsed: response.tokensUsed,
+      interpretation.content,
+      provider.provider,
+      tokensUsed.tokensUsed,
       disclaimer: 'This interpretation is AI-generated and should not replace professional medical advice. Please consult your doctor.'
     };
   }
 
-  private async handleComplexQuery(task: string, payload: any): Promise<any> {
+  private async handleComplexQuery(task, payload)<any> {
     const prompt = `
       Task: ${task}
       Payload: ${JSON.stringify(payload)}
@@ -402,13 +371,13 @@ export class DiagnosticsAgent extends BaseAgent {
     const response = await this.providerManager.generate(prompt);
     
     return {
-      aiResponse: response.content,
-      provider: response.provider,
-      tokensUsed: response.tokensUsed
+      aiResponse.content,
+      provider.provider,
+      tokensUsed.tokensUsed
     };
   }
 
-  protected getRequiredCapability(task: string): string | null {
+  protected getRequiredCapability(task)| null {
     if (task.includes('find') || task.includes('search') || task.includes('lab')) {
       return 'find_lab';
     }
@@ -424,3 +393,5 @@ export class DiagnosticsAgent extends BaseAgent {
     return null;
   }
 }
+
+

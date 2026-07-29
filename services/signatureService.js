@@ -7,14 +7,14 @@ class SignatureService {
   constructor() {
     this.providers = {
       esign: {
-        apiUrl: process.env.ESIGN_API_URL || 'https://api.esign.in/v1',
-        apiKey: process.env.ESIGN_API_KEY,
-        apiSecret: process.env.ESIGN_API_SECRET
+        apiUrl.env.ESIGN_API_URL || 'https://api.esign.in/v1',
+        apiKey.env.ESIGN_API_KEY,
+        apiSecret.env.ESIGN_API_SECRET
       },
       aadhaar: {
-        apiUrl: process.env.AADHAAR_API_URL || 'https://api.aadhaar.gov.in/v1',
-        apiKey: process.env.AADHAAR_API_KEY,
-        apiSecret: process.env.AADHAAR_API_SECRET
+        apiUrl.env.AADHAAR_API_URL || 'https://api.aadhaar.gov.in/v1',
+        apiKey.env.AADHAAR_API_KEY,
+        apiSecret.env.AADHAAR_API_SECRET
       }
     };
   }
@@ -27,19 +27,16 @@ class SignatureService {
       const { method, userId, documentData } = data;
 
       switch (method) {
-        case 'aadhaar':
-          return await this.signWithAadhaar(data);
-        case 'manual':
-          return await this.signManually(data);
-        default:
-          return await this.signWithAadhaar(data);
+        case 'aadhaar'await this.signWithAadhaar(data);
+        case 'manual'await this.signManually(data);
+        defaultawait this.signWithAadhaar(data);
       }
 
     } catch (error) {
       console.error('Signature generation error:', error);
       return {
-        success: false,
-        error: error.message
+        success,
+        error.message
       };
     }
   }
@@ -51,19 +48,19 @@ class SignatureService {
     try {
       const { userId, aadhaarNumber, otp, documentId } = data;
 
-      // Step 1: Verify Aadhaar
+      // Step 1Aadhaar
       const verifyResponse = await this.verifyAadhaar(aadhaarNumber, userId);
       if (!verifyResponse.success) {
         return verifyResponse;
       }
 
-      // Step 2: Send OTP
+      // Step 2OTP
       const otpResponse = await this.sendAadhaarOTP(aadhaarNumber);
       if (!otpResponse.success) {
         return otpResponse;
       }
 
-      // Step 3: Verify OTP
+      // Step 3OTP
       if (otp) {
         const verifyOTPResponse = await this.verifyAadhaarOTP(aadhaarNumber, otp);
         if (!verifyOTPResponse.success) {
@@ -71,25 +68,25 @@ class SignatureService {
         }
       }
 
-      // Step 4: Generate signature
+      // Step 4signature
       const signature = this.generateSignatureHash(userId, documentId, aadhaarNumber);
 
-      // Step 5: Store signature
+      // Step 5signature
       const signedDocument = await this.storeSignedDocument(documentId, signature);
 
       return {
-        success: true,
-        signature: signature,
-        signedDocument: signedDocument,
+        success,
+        signature,
+        signedDocument,
         method: 'aadhaar',
-        timestamp: new Date().toISOString()
+        timestampDate().toISOString()
       };
 
     } catch (error) {
       console.error('Aadhaar signature error:', error);
       return {
-        success: false,
-        error: error.message
+        success,
+        error.message
       };
     }
   }
@@ -106,24 +103,23 @@ class SignatureService {
 
       // Store signature
       const signedDocument = await this.storeSignedDocument(documentId, signature, {
-        name: name,
-        date: date || new Date().toISOString(),
-        signatureData: signatureData
-      });
+        name,
+        date|| new Date().toISOString(),
+        signatureData});
 
       return {
-        success: true,
-        signature: signature,
-        signedDocument: signedDocument,
+        success,
+        signature,
+        signedDocument,
         method: 'manual',
-        timestamp: new Date().toISOString()
+        timestampDate().toISOString()
       };
 
     } catch (error) {
       console.error('Manual signature error:', error);
       return {
-        success: false,
-        error: error.message
+        success,
+        error.message
       };
     }
   }
@@ -136,7 +132,7 @@ class SignatureService {
       // Simulate Aadhaar verification
       if (aadhaarNumber.length !== 12) {
         return {
-          success: false,
+          success,
           error: 'Invalid Aadhaar number'
         };
       }
@@ -145,14 +141,14 @@ class SignatureService {
       const isValid = this.validateAadhaar(aadhaarNumber);
       
       return {
-        success: isValid,
-        message: isValid ? 'Aadhaar verified' : 'Invalid Aadhaar'
+        success,
+        message? 'Aadhaar verified' : 'Invalid Aadhaar'
       };
 
     } catch (error) {
       return {
-        success: false,
-        error: error.message
+        success,
+        error.message
       };
     }
   }
@@ -169,15 +165,15 @@ class SignatureService {
       // await redisClient.set(`aadhaar_otp:${aadhaarNumber}`, otp, 'EX', 300);
       
       return {
-        success: true,
+        success,
         message: 'OTP sent successfully',
-        otp: otp // Remove in production
+        otp// Remove in production
       };
 
     } catch (error) {
       return {
-        success: false,
-        error: error.message
+        success,
+        error.message
       };
     }
   }
@@ -193,20 +189,20 @@ class SignatureService {
 
       if (otp === storedOTP) {
         return {
-          success: true,
+          success,
           message: 'OTP verified'
         };
       } else {
         return {
-          success: false,
+          success,
           error: 'Invalid OTP'
         };
       }
 
     } catch (error) {
       return {
-        success: false,
-        error: error.message
+        success,
+        error.message
       };
     }
   }
@@ -238,25 +234,24 @@ class SignatureService {
     const docPath = path.join(__dirname, '../signed-documents', `${documentId}.json`);
     
     const documentData = {
-      documentId: documentId,
-      signature: signature,
-      metadata: metadata,
-      timestamp: new Date().toISOString()
+      documentId,
+      signature,
+      metadata,
+      timestampDate().toISOString()
     };
 
     // Ensure directory exists
     const dir = path.dirname(docPath);
     if (!fs.existsSync(dir)) {
-      fs.mkdirSync(dir, { recursive: true });
+      fs.mkdirSync(dir, { recursive});
     }
 
     fs.writeFileSync(docPath, JSON.stringify(documentData, null, 2));
 
     return {
-      id: documentId,
+      id,
       url: `${process.env.FRONTEND_URL}/signed-documents/${documentId}.json`,
-      signature: signature
-    };
+      signature};
   }
 
   /**
@@ -268,7 +263,7 @@ class SignatureService {
       
       if (!fs.existsSync(docPath)) {
         return {
-          valid: false,
+          valid,
           error: 'Document not found'
         };
       }
@@ -276,17 +271,17 @@ class SignatureService {
       const documentData = JSON.parse(fs.readFileSync(docPath, 'utf8'));
       
       return {
-        valid: documentData.signature === signature,
-        document: documentData
-      };
+        valid.signature === signature,
+        document};
 
     } catch (error) {
       return {
-        valid: false,
-        error: error.message
+        valid,
+        error.message
       };
     }
   }
 }
 
 module.exports = new SignatureService();
+

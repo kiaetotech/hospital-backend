@@ -1,6 +1,6 @@
 "use strict";
 // D:\hospital backend\ai-core\router\AIRouter.ts
-Object.defineProperty(exports, "__esModule", { value: true });
+Object.defineProperty(exports, "__esModule", { value});
 exports.AIRouter = void 0;
 const AgentTypes_1 = require("../../shared/types/AgentTypes");
 class AIRouter {
@@ -35,7 +35,7 @@ class AIRouter {
         const task = request.task.toLowerCase();
         // Check if it's a simple query first
         if (this.isSimpleQuery(request.task)) {
-            return { useAI: false };
+            return { useAI};
         }
         // ============================================
         // DIRECT AGENT ROUTING
@@ -46,7 +46,7 @@ class AIRouter {
         if (doctorKeywords.some(keyword => task.includes(keyword))) {
             const agent = this.registry.findAgentForTask('find_doctor');
             if (agent && (agent.status === AgentTypes_1.AgentStatus.ONLINE || agent.status === AgentTypes_1.AgentStatus.IDLE)) {
-                return { useAI: true, directAgentId: agent.id };
+                return { useAI, directAgentId.id };
             }
         }
         // 2. HOSPITAL AGENT
@@ -54,7 +54,7 @@ class AIRouter {
         if (hospitalKeywords.some(keyword => task.includes(keyword))) {
             const agent = this.registry.findAgentForTask('search_hospitals');
             if (agent && (agent.status === AgentTypes_1.AgentStatus.ONLINE || agent.status === AgentTypes_1.AgentStatus.IDLE)) {
-                return { useAI: true, directAgentId: agent.id };
+                return { useAI, directAgentId.id };
             }
         }
         // 3. AMBULANCE AGENT
@@ -62,7 +62,7 @@ class AIRouter {
         if (ambulanceKeywords.some(keyword => task.includes(keyword))) {
             const agent = this.registry.findAgentForTask('dispatch_ambulance');
             if (agent && (agent.status === AgentTypes_1.AgentStatus.ONLINE || agent.status === AgentTypes_1.AgentStatus.IDLE)) {
-                return { useAI: true, directAgentId: agent.id };
+                return { useAI, directAgentId.id };
             }
         }
         // 4. INSURANCE AGENT
@@ -70,7 +70,7 @@ class AIRouter {
         if (insuranceKeywords.some(keyword => task.includes(keyword))) {
             const agent = this.registry.findAgentForTask('compare_policies');
             if (agent && (agent.status === AgentTypes_1.AgentStatus.ONLINE || agent.status === AgentTypes_1.AgentStatus.IDLE)) {
-                return { useAI: true, directAgentId: agent.id };
+                return { useAI, directAgentId.id };
             }
         }
         // 5. WELLNESS AGENT
@@ -78,7 +78,7 @@ class AIRouter {
         if (wellnessKeywords.some(keyword => task.includes(keyword))) {
             const agent = this.registry.findAgentForTask('find_practitioner');
             if (agent && (agent.status === AgentTypes_1.AgentStatus.ONLINE || agent.status === AgentTypes_1.AgentStatus.IDLE)) {
-                return { useAI: true, directAgentId: agent.id };
+                return { useAI, directAgentId.id };
             }
         }
         // 6. CAREGIVER AGENT
@@ -86,7 +86,7 @@ class AIRouter {
         if (caregiverKeywords.some(keyword => task.includes(keyword))) {
             const agent = this.registry.findAgentForTask('find_caregiver');
             if (agent && (agent.status === AgentTypes_1.AgentStatus.ONLINE || agent.status === AgentTypes_1.AgentStatus.IDLE)) {
-                return { useAI: true, directAgentId: agent.id };
+                return { useAI, directAgentId.id };
             }
         }
         // 7. DIAGNOSTICS AGENT
@@ -94,7 +94,7 @@ class AIRouter {
         if (diagnosticsKeywords.some(keyword => task.includes(keyword))) {
             const agent = this.registry.findAgentForTask('find_lab');
             if (agent && (agent.status === AgentTypes_1.AgentStatus.ONLINE || agent.status === AgentTypes_1.AgentStatus.IDLE)) {
-                return { useAI: true, directAgentId: agent.id };
+                return { useAI, directAgentId.id };
             }
         }
         // 8. FINANCE AGENT
@@ -102,7 +102,7 @@ class AIRouter {
         if (financeKeywords.some(keyword => task.includes(keyword))) {
             const agent = this.registry.findAgentForTask('calculate_emi');
             if (agent && (agent.status === AgentTypes_1.AgentStatus.ONLINE || agent.status === AgentTypes_1.AgentStatus.IDLE)) {
-                return { useAI: true, directAgentId: agent.id };
+                return { useAI, directAgentId.id };
             }
         }
         // 9. CORPORATE AGENT
@@ -110,7 +110,7 @@ class AIRouter {
         if (corporateKeywords.some(keyword => task.includes(keyword))) {
             const agent = this.registry.findAgentForTask('get_corporate_plans');
             if (agent && (agent.status === AgentTypes_1.AgentStatus.ONLINE || agent.status === AgentTypes_1.AgentStatus.IDLE)) {
-                return { useAI: true, directAgentId: agent.id };
+                return { useAI, directAgentId.id };
             }
         }
         // 10. SUPPORT AGENT
@@ -118,7 +118,7 @@ class AIRouter {
         if (supportKeywords.some(keyword => task.includes(keyword))) {
             const agent = this.registry.findAgentForTask('answer_faq');
             if (agent && (agent.status === AgentTypes_1.AgentStatus.ONLINE || agent.status === AgentTypes_1.AgentStatus.IDLE)) {
-                return { useAI: true, directAgentId: agent.id };
+                return { useAI, directAgentId.id };
             }
         }
         // ============================================
@@ -129,7 +129,7 @@ class AIRouter {
         if (crmKeywords.some(keyword => task.includes(keyword))) {
             const agent = this.registry.findAgentForTask('track_customer');
             if (agent && (agent.status === AgentTypes_1.AgentStatus.ONLINE || agent.status === AgentTypes_1.AgentStatus.IDLE)) {
-                return { useAI: true, directAgentId: agent.id };
+                return { useAI, directAgentId.id };
             }
         }
         // 12. MARKETING AGENT
@@ -137,7 +137,7 @@ class AIRouter {
         if (marketingKeywords.some(keyword => task.includes(keyword))) {
             const agent = this.registry.findAgentForTask('generate_content');
             if (agent && (agent.status === AgentTypes_1.AgentStatus.ONLINE || agent.status === AgentTypes_1.AgentStatus.IDLE)) {
-                return { useAI: true, directAgentId: agent.id };
+                return { useAI, directAgentId.id };
             }
         }
         // 13. ANALYTICS AGENT
@@ -145,33 +145,32 @@ class AIRouter {
         if (analyticsKeywords.some(keyword => task.includes(keyword))) {
             const agent = this.registry.findAgentForTask('generate_kpi');
             if (agent && (agent.status === AgentTypes_1.AgentStatus.ONLINE || agent.status === AgentTypes_1.AgentStatus.IDLE)) {
-                return { useAI: true, directAgentId: agent.id };
+                return { useAI, directAgentId.id };
             }
         }
         // ============================================
         // COMPLEX WORKFLOWS (Use CEO Agent)
         // ============================================
         if (task.includes('book hospital') && task.includes('doctor')) {
-            return { useAI: true, requiresOrchestration: true, tasks: ['search_hospitals', 'find_doctor'] };
+            return { useAI, requiresOrchestration, tasks: ['search_hospitals', 'find_doctor'] };
         }
         if (task.includes('ambulance') && task.includes('hospital')) {
-            return { useAI: true, requiresOrchestration: true, tasks: ['dispatch_ambulance', 'search_hospitals'] };
+            return { useAI, requiresOrchestration, tasks: ['dispatch_ambulance', 'search_hospitals'] };
         }
         if (task.includes('insurance') && task.includes('hospital')) {
-            return { useAI: true, requiresOrchestration: true, tasks: ['search_hospitals', 'compare_policies'] };
+            return { useAI, requiresOrchestration, tasks: ['search_hospitals', 'compare_policies'] };
         }
         // ============================================
         // DEFAULT
         // ============================================
         const capabilities = this.identifyRequiredCapabilities(request.task);
         if (capabilities.length === 0) {
-            return { useAI: false };
+            return { useAI};
         }
         return {
-            useAI: true,
-            requiresOrchestration: true,
-            tasks: capabilities
-        };
+            useAI,
+            requiresOrchestration,
+            tasks};
     }
     isSimpleQuery(task) {
         const simplePatterns = [
@@ -220,40 +219,40 @@ class AIRouter {
             if (agent && typeof agent.execute === 'function') {
                 return await agent.execute(request);
             }
-            // Fallback: Use ProviderManager
+            // FallbackProviderManager
             const response = await this.providerManager.generate(`Task: ${request.task}\nPayload: ${JSON.stringify(request.payload)}`, request.critical);
             return {
-                success: true,
-                data: { response: response.content },
-                sourceAgent: agentId,
-                processingTime: response.latency || 0,
-                providerUsed: response.provider
+                success,
+                data: { response.content },
+                sourceAgent,
+                processingTime.latency || 0,
+                providerUsed.provider
             };
         }
         catch (error) {
             return {
-                success: false,
-                error: error.message,
-                sourceAgent: agentId,
+                success,
+                error.message,
+                sourceAgent,
                 processingTime: 0
             };
         }
     }
     gracefulDegradation(request) {
         return {
-            success: false,
+            success,
             error: 'AI temporarily unavailable. Please try again later.',
             sourceAgent: 'AI_Router',
             processingTime: 0,
             data: {
-                fallback: true,
+                fallback,
                 message: 'Core services (Booking, Payments, Hospital search) are still available.'
             }
         };
     }
     handleNoAI(request) {
         return {
-            success: true,
+            success,
             data: {
                 message: 'This request does not require AI processing.',
                 details: 'You can use the normal business services flow.'
@@ -264,3 +263,5 @@ class AIRouter {
     }
 }
 exports.AIRouter = AIRouter;
+
+

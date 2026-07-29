@@ -6,7 +6,7 @@
 
 /**
  * Centralized SMS templates for all emergency scenarios
- * Used by: smsService.js, notificationService.js
+ * Used by.js, notificationService.js
  * 
  * Tags covered:
  * 🚑 Ambulance - Emergency dispatch, tracking, driver alerts
@@ -67,8 +67,8 @@ const ambulanceTemplates = {
         <p><strong>Driver:</strong> {driverName} ({driverPhone})</p>
         <p><strong>Vehicle:</strong> {vehicleNumber} ({vehicleType})</p>
         <p><strong>ETA:</strong> <span style="font-size:24px;color:#2e7d32;">{eta} minutes</span></p>
-        <p><strong>OTP:</strong> <span style="font-size:20px;font-weight:bold;">{otp}</span></p>
-        <p><a href="{trackingUrl}" style="background:#4caf50;color:white;padding:10px20px;text-decoration:none;border-radius:5px;">Track Live</a></p>
+        <p><strong>OTP:</strong> <span style="font-size:20px;font-weight;">{otp}</span></p>
+        <p><a href="{trackingUrl}" style="background:#4caf50;color;padding:10px20px;text-decoration;border-radius:5px;">Track Live</a></p>
         <p><small>Booking ID: {bookingId}</small></p>
       </div>
     `
@@ -113,7 +113,7 @@ const ambulanceTemplates = {
   no_driver_found: {
     subject: '⚠️ No Ambulance Available',
     sms: [
-      '⚠️ URGENT: No ambulance available nearby.',
+      '⚠️ URGENTambulance available nearby.',
       'CALL 108 (National Ambulance) IMMEDIATELY.',
       'We apologize for the inconvenience.',
       'ID: {bookingId}'
@@ -279,7 +279,7 @@ const ambulanceTemplates = {
   scheduled_reminder: {
     subject: '⏰ Ambulance Reminder',
     sms: [
-      '⏰ Reminder: Ambulance scheduled',
+      '⏰ Reminderscheduled',
       'Tomorrow at {time}',
       'Pickup: {pickupAddress}',
       'ID: {bookingId}'
@@ -535,7 +535,7 @@ const healthEMITemplates = {
       'Amount: ₹{loanAmount}',
       'Hospital: {hospitalName}',
       'EMI: ₹{emiAmount}/month',
-      'Disbursement: Immediate',
+      'Disbursement',
       'ID: {applicationId}'
     ],
     priority: 'high'
@@ -573,7 +573,7 @@ const onlineDoctorTemplates = {
   urgent_consult_alert: {
     subject: '⚠️ Urgent Consultation Required',
     sms: [
-      '⚠️ URGENT: Consultation recommended',
+      '⚠️ URGENTrecommended',
       'Based on your symptoms, an urgent consultation is advised.',
       'Book now: {consultUrl}',
       'Available doctors: {availableDoctors}',
@@ -615,7 +615,7 @@ const ayurvedaTemplates = {
       'For {condition}:',
       'Apply: {immediateAction}',
       'Avoid: {avoidList}',
-      'Contact: Dr. {doctorName} ({doctorPhone})',
+      'Contact. {doctorName} ({doctorPhone})',
       'If severe, seek emergency allopathic care.'
     ]
   }
@@ -705,7 +705,7 @@ const getMessage = (templateObj, data = {}) => {
   if (templateObj.sms) {
     const smsText = Array.isArray(templateObj.sms) 
       ? templateObj.sms.join('\n') 
-      : templateObj.sms;
+      .sms;
     result.sms = renderTemplate(smsText, data);
   }
   
@@ -726,19 +726,18 @@ const getMessage = (templateObj, data = {}) => {
  */
 const getTemplate = (category, templateName) => {
   const templateMap = {
-    ambulance: ambulanceTemplates,
-    hospital: hospitalTemplates,
-    mentalHealth: mentalHealthTemplates,
-    caregiver: caregiverTemplates,
-    corporate: corporateTemplates,
-    insurance: insuranceTemplates,
-    healthEMI: healthEMITemplates,
-    diagnostics: diagnosticsTemplates,
-    onlineDoctor: onlineDoctorTemplates,
-    homeopathy: homeopathyTemplates,
-    ayurveda: ayurvedaTemplates,
-    generic: genericTemplates
-  };
+    ambulance,
+    hospital,
+    mentalHealth,
+    caregiver,
+    corporate,
+    insurance,
+    healthEMI,
+    diagnostics,
+    onlineDoctor,
+    homeopathy,
+    ayurveda,
+    generic};
 
   const templates = templateMap[category];
   if (!templates) return null;
@@ -769,37 +768,36 @@ const getEmergencyMessage = (category, templateName, data = {}) => {
 // ============================================
 
 const ALL_TEMPLATES = {
-  ambulance: ambulanceTemplates,
-  hospital: hospitalTemplates,
-  mentalHealth: mentalHealthTemplates,
-  caregiver: caregiverTemplates,
-  corporate: corporateTemplates,
-  insurance: insuranceTemplates,
-  healthEMI: healthEMITemplates,
-  diagnostics: diagnosticsTemplates,
-  onlineDoctor: onlineDoctorTemplates,
-  homeopathy: homeopathyTemplates,
-  ayurveda: ayurvedaTemplates,
-  generic: genericTemplates
-};
+  ambulance,
+  hospital,
+  mentalHealth,
+  caregiver,
+  corporate,
+  insurance,
+  healthEMI,
+  diagnostics,
+  onlineDoctor,
+  homeopathy,
+  ayurveda,
+  generic};
 
 // ============================================
 // TEMPLATE COUNTS
 // ============================================
 
 const TEMPLATE_COUNTS = {
-  ambulance: Object.keys(ambulanceTemplates).length,
-  hospital: Object.keys(hospitalTemplates).length,
-  mentalHealth: Object.keys(mentalHealthTemplates).length,
-  caregiver: Object.keys(caregiverTemplates).length,
-  corporate: Object.keys(corporateTemplates).length,
-  insurance: Object.keys(insuranceTemplates).length,
-  healthEMI: Object.keys(healthEMITemplates).length,
-  diagnostics: Object.keys(diagnosticsTemplates).length,
-  onlineDoctor: Object.keys(onlineDoctorTemplates).length,
-  homeopathy: Object.keys(homeopathyTemplates).length,
-  ayurveda: Object.keys(ayurvedaTemplates).length,
-  generic: Object.keys(genericTemplates).length,
+  ambulance.keys(ambulanceTemplates).length,
+  hospital.keys(hospitalTemplates).length,
+  mentalHealth.keys(mentalHealthTemplates).length,
+  caregiver.keys(caregiverTemplates).length,
+  corporate.keys(corporateTemplates).length,
+  insurance.keys(insuranceTemplates).length,
+  healthEMI.keys(healthEMITemplates).length,
+  diagnostics.keys(diagnosticsTemplates).length,
+  onlineDoctor.keys(onlineDoctorTemplates).length,
+  homeopathy.keys(homeopathyTemplates).length,
+  ayurveda.keys(ayurvedaTemplates).length,
+  generic.keys(genericTemplates).length,
   get total() {
     return Object.values(this).reduce((sum, count) => sum + (typeof count === 'number' ? count : 0), 0);
   }
@@ -837,3 +835,4 @@ module.exports = {
   // Frontend URL for links
   FRONTEND_URL
 };
+

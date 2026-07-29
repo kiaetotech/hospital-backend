@@ -5,12 +5,12 @@ const userSchema = new mongoose.Schema({
   // YOUR EXISTING FIELDS (ALL PRESERVED)
   // ============================================
   
-  name: { type: String, required: true },
-  email: { type: String, required: true, unique: true },
-  phone: { type: String, required: true, unique: true },
-  password: { type: String, required: true },
+  name: { type, required},
+  email: { type, required, unique},
+  phone: { type, required, unique},
+  password: { type, required},
   role: { 
-    type: String, 
+    type, 
     enum: [
       'patient', 
       'caregiver', 
@@ -29,84 +29,84 @@ const userSchema = new mongoose.Schema({
     ], 
     default: 'patient' 
   },
-  isVerified: { type: Boolean, default: false },
-  createdAt: { type: Date, default: Date.now },
+  isVerified: { type, default},
+  createdAt: { type, default.now },
 
   // ============================================
   // NEW FIELDS FOR INSURANCE (ADDED)
   // ============================================
   
   // Insurance Company specific fields
-  companyName: { type: String },
-  companyRegistrationNumber: { type: String },
-  irdaRegistration: { type: String },
-  gstNumber: { type: String },
-  companyLogo: { type: String },
-  companyDescription: { type: String },
-  companyWebsite: { type: String },
-  companyPhone: { type: String },
-  companyEmail: { type: String },
+  companyName: { type},
+  companyRegistrationNumber: { type},
+  irdaRegistration: { type},
+  gstNumber: { type},
+  companyLogo: { type},
+  companyDescription: { type},
+  companyWebsite: { type},
+  companyPhone: { type},
+  companyEmail: { type},
   
   // Insurance Company address
   companyAddress: {
-    line1: { type: String },
-    line2: { type: String },
-    city: { type: String },
-    state: { type: String },
-    pincode: { type: String },
-    country: { type: String, default: 'India' }
+    line1: { type},
+    line2: { type},
+    city: { type},
+    state: { type},
+    pincode: { type},
+    country: { type, default: 'India' }
   },
   
   // Insurance Company bank details (for settlements)
   companyBankDetails: {
-    accountNumber: { type: String },
-    ifscCode: { type: String },
-    accountHolderName: { type: String },
-    bankName: { type: String },
-    branchName: { type: String }
+    accountNumber: { type},
+    ifscCode: { type},
+    accountHolderName: { type},
+    bankName: { type},
+    branchName: { type}
   },
   
   // Insurance Company documents
   companyDocuments: [{
-    name: { type: String },
-    url: { type: String },
-    type: { type: String }, // irda_certificate, gst_certificate, pan_card, etc.
-    uploadedAt: { type: Date, default: Date.now }
+    name: { type},
+    url: { type},
+    type: { type}, // irda_certificate, gst_certificate, pan_card, etc.
+    uploadedAt: { type, default.now }
   }],
   
   // Insurance Company settings
   companySettings: {
-    defaultCommissionRate: { type: Number, default: 15 }, // Platform commission percentage
+    defaultCommissionRate: { type, default: 15 }, // Platform commission percentage
     settlementTerms: { 
-      type: String, 
+      type, 
       enum: ['immediate', 'weekly', 'monthly'],
       default: 'weekly'
     },
-    autoApprovePlans: { type: Boolean, default: false },
-    enableCashlessClaim: { type: Boolean, default: true }
+    autoApprovePlans: { type, default},
+    enableCashlessClaim: { type, default}
   },
   
   // Insurance Agent specific fields
-  agentId: { type: String },
-  agentLicenseNumber: { type: String },
-  agencyName: { type: String },
-  agentExperience: { type: Number },
-  agentSpecializations: [{ type: String }],
-  agentCommissionRate: { type: Number, default: 5 }, // Agent's commission share
+  agentId: { type},
+  agentLicenseNumber: { type},
+  agencyName: { type},
+  agentExperience: { type},
+  agentSpecializations: [{ type}],
+  agentCommissionRate: { type, default: 5 }, // Agent's commission share
   
   // Corporate HR specific fields
-  corporateName: { type: String },
-  corporateGST: { type: String },
-  corporatePAN: { type: String },
-  employeeCount: { type: Number },
-  corporateIndustry: { type: String },
+  corporateName: { type},
+  corporateGST: { type},
+  corporatePAN: { type},
+  employeeCount: { type},
+  corporateIndustry: { type},
   corporateAddress: {
-    line1: { type: String },
-    line2: { type: String },
-    city: { type: String },
-    state: { type: String },
-    pincode: { type: String },
-    country: { type: String, default: 'India' }
+    line1: { type},
+    line2: { type},
+    city: { type},
+    state: { type},
+    pincode: { type},
+    country: { type, default: 'India' }
   },
 
   // ============================================
@@ -114,116 +114,116 @@ const userSchema = new mongoose.Schema({
   // ============================================
 
   // Ambulance company/fleet details
-  ambulanceCompanyName: { type: String },
-  ambulanceCompanyPhone: { type: String },
-  ambulanceCompanyEmail: { type: String },
+  ambulanceCompanyName: { type},
+  ambulanceCompanyPhone: { type},
+  ambulanceCompanyEmail: { type},
   ambulanceCompanyAddress: {
-    line1: { type: String },
-    line2: { type: String },
-    city: { type: String },
-    state: { type: String },
-    pincode: { type: String },
-    country: { type: String, default: 'India' }
+    line1: { type},
+    line2: { type},
+    city: { type},
+    state: { type},
+    pincode: { type},
+    country: { type, default: 'India' }
   },
-  ambulanceCompanyGST: { type: String },
-  ambulanceCompanyPAN: { type: String },
+  ambulanceCompanyGST: { type},
+  ambulanceCompanyPAN: { type},
 
   // Ambulance fleet
   ambulanceFleet: [{
-    vehicleId: { type: String },
-    vehicleNumber: { type: String },
+    vehicleId: { type},
+    vehicleNumber: { type},
     vehicleType: { 
-      type: String, 
+      type, 
       enum: ['basic', 'cardiac', 'ventilator', 'neonatal', 'mortuary', 'wheelchair']
     },
-    make: { type: String },           // Tata, Force, Maruti, etc.
-    model: { type: String },          // Winger, Traveller, Eeco, etc.
-    year: { type: Number },
-    registrationCertificate: { type: String },    // Cloudinary URL
-    insuranceDocument: { type: String },          // Cloudinary URL
-    fitnessCertificate: { type: String },         // Cloudinary URL
-    pollutionCertificate: { type: String },       // Cloudinary URL
-    permitsDocument: { type: String },            // Cloudinary URL
-    isVerified: { type: Boolean, default: false },
-    isActive: { type: Boolean, default: true },
+    make: { type},           // Tata, Force, Maruti, etc.
+    model: { type},          // Winger, Traveller, Eeco, etc.
+    year: { type},
+    registrationCertificate: { type},    // Cloudinary URL
+    insuranceDocument: { type},          // Cloudinary URL
+    fitnessCertificate: { type},         // Cloudinary URL
+    pollutionCertificate: { type},       // Cloudinary URL
+    permitsDocument: { type},            // Cloudinary URL
+    isVerified: { type, default},
+    isActive: { type, default},
     equipment: [{ 
-      name: { type: String },         // Oxygen cylinder, Defibrillator, Suction machine, etc.
-      available: { type: Boolean, default: true },
-      lastServiced: { type: Date }
+      name: { type},         // Oxygen cylinder, Defibrillator, Suction machine, etc.
+      available: { type, default},
+      lastServiced: { type}
     }],
-    basePrice: { type: Number },                  // Base fare for this vehicle
-    pricePerKm: { type: Number, default: 25 },    // Per km charge
-    minimumCharge: { type: Number, default: 500 }, // Minimum fare
-    nightChargeMultiplier: { type: Number, default: 1.5 },
-    oxygenCharge: { type: Number, default: 200 },
-    createdAt: { type: Date, default: Date.now }
+    basePrice: { type},                  // Base fare for this vehicle
+    pricePerKm: { type, default: 25 },    // Per km charge
+    minimumCharge: { type, default: 500 }, // Minimum fare
+    nightChargeMultiplier: { type, default: 1.5 },
+    oxygenCharge: { type, default: 200 },
+    createdAt: { type, default.now }
   }],
 
   // Ambulance drivers (managed by provider)
   ambulanceDrivers: [{
-    driverId: { type: String },
-    name: { type: String },
-    phone: { type: String },
-    email: { type: String },
-    dateOfBirth: { type: Date },
-    licenseNumber: { type: String },
-    licenseDocument: { type: String },            // Cloudinary URL
-    aadhaarCard: { type: String },                // Cloudinary URL
-    photo: { type: String },                      // Cloudinary URL
-    experience: { type: Number },                 // Years of experience
+    driverId: { type},
+    name: { type},
+    phone: { type},
+    email: { type},
+    dateOfBirth: { type},
+    licenseNumber: { type},
+    licenseDocument: { type},            // Cloudinary URL
+    aadhaarCard: { type},                // Cloudinary URL
+    photo: { type},                      // Cloudinary URL
+    experience: { type},                 // Years of experience
     trainingCertifications: [{ 
-      name: { type: String },                     // BLS, ACLS, First Aid, etc.
-      document: { type: String },                 // Cloudinary URL
-      issuedDate: { type: Date },
-      expiryDate: { type: Date }
+      name: { type},                     // BLS, ACLS, First Aid, etc.
+      document: { type},                 // Cloudinary URL
+      issuedDate: { type},
+      expiryDate: { type}
     }],
-    isVerified: { type: Boolean, default: false },
-    isAvailable: { type: Boolean, default: false },
+    isVerified: { type, default},
+    isAvailable: { type, default},
         currentLocation: {
-      type: { type: String, enum: ['Point'], default: 'Point' },
+      type: { type, enum: ['Point'], default: 'Point' },
       coordinates: { type: [Number], default: [0, 0] }
     },
-    lastLocationUpdate: { type: Date },
-    assignedVehicle: { type: String },
-    rating: { type: Number, default: 0 },
-    totalTrips: { type: Number, default: 0 },
-    totalEarnings: { type: Number, default: 0 },
-    emergencyTripsCompleted: { type: Number, default: 0 },
-    acceptanceRate: { type: Number, default: 100 },
-    averageResponseTime: { type: Number },
-    isOnTrip: { type: Boolean, default: false },
-    currentTripId: { type: String },
-    joinedAt: { type: Date, default: Date.now }
+    lastLocationUpdate: { type},
+    assignedVehicle: { type},
+    rating: { type, default: 0 },
+    totalTrips: { type, default: 0 },
+    totalEarnings: { type, default: 0 },
+    emergencyTripsCompleted: { type, default: 0 },
+    acceptanceRate: { type, default: 100 },
+    averageResponseTime: { type},
+    isOnTrip: { type, default},
+    currentTripId: { type},
+    joinedAt: { type, default.now }
   }],
 
   // Ambulance provider settings
   ambulanceSettings: {
-    serviceArea: { type: String },                // City/Region name
+    serviceArea: { type},                // City/Region name
     serviceAreaCoordinates: {
       center: {
-        lat: { type: Number },
-        lng: { type: Number }
+        lat: { type},
+        lng: { type}
       },
-      radius: { type: Number }                    // Service radius in km
+      radius: { type}                    // Service radius in km
     },
     operatingHours: {
-      open: { type: String, default: '00:00' },   // 24/7 by default
-      close: { type: String, default: '23:59' }
+      open: { type, default: '00:00' },   // 24/7 by default
+      close: { type, default: '23:59' }
     },
-    acceptsEmergency: { type: Boolean, default: true },
-    acceptsScheduled: { type: Boolean, default: true },
-    acceptsIntercity: { type: Boolean, default: false },
-    emergencyResponseTime: { type: Number },       // Target response time in minutes
-    maxConcurrentEmergencies: { type: Number, default: 5 },
-    autoAcceptEmergencies: { type: Boolean, default: false },
-    commissionRate: { type: Number, default: 15 }, // Platform commission
+    acceptsEmergency: { type, default},
+    acceptsScheduled: { type, default},
+    acceptsIntercity: { type, default},
+    emergencyResponseTime: { type},       // Target response time in minutes
+    maxConcurrentEmergencies: { type, default: 5 },
+    autoAcceptEmergencies: { type, default},
+    commissionRate: { type, default: 15 }, // Platform commission
     settlementTerms: {
-      type: String,
+      type,
       enum: ['daily', 'weekly', 'biweekly', 'monthly'],
       default: 'weekly'
     },
     paymentMethod: {
-      type: String,
+      type,
       enum: ['bank_transfer', 'upi', 'both'],
       default: 'bank_transfer'
     }
@@ -231,81 +231,81 @@ const userSchema = new mongoose.Schema({
 
   // Ambulance provider bank details
   ambulanceBankDetails: {
-    accountNumber: { type: String },
-    ifscCode: { type: String },
-    accountHolderName: { type: String },
-    bankName: { type: String },
-    branchName: { type: String },
-    upiId: { type: String }
+    accountNumber: { type},
+    ifscCode: { type},
+    accountHolderName: { type},
+    bankName: { type},
+    branchName: { type},
+    upiId: { type}
   },
 
   // Ambulance provider documents
   ambulanceDocuments: [{
-    name: { type: String },
-    url: { type: String },
-    type: { type: String },              // pan_card, gst_certificate, fleet_registration, etc.
-    uploadedAt: { type: Date, default: Date.now },
-    verified: { type: Boolean, default: false },
-    verifiedAt: { type: Date },
-    rejectionReason: { type: String }
+    name: { type},
+    url: { type},
+    type: { type},              // pan_card, gst_certificate, fleet_registration, etc.
+    uploadedAt: { type, default.now },
+    verified: { type, default},
+    verifiedAt: { type},
+    rejectionReason: { type}
   }],
 
   // Ambulance provider statistics
   ambulanceStats: {
-    totalTripsCompleted: { type: Number, default: 0 },
-    emergencyTripsCompleted: { type: Number, default: 0 },
-    scheduledTripsCompleted: { type: Number, default: 0 },
-    totalEarnings: { type: Number, default: 0 },
-    totalCommissionPaid: { type: Number, default: 0 },
-    averageRating: { type: Number, default: 0 },
-    averageResponseTime: { type: Number },       // Seconds across all trips
-    cancellationRate: { type: Number, default: 0 },
-    activeVehicles: { type: Number, default: 0 },
-    activeDrivers: { type: Number, default: 0 },
-    lastUpdated: { type: Date, default: Date.now }
+    totalTripsCompleted: { type, default: 0 },
+    emergencyTripsCompleted: { type, default: 0 },
+    scheduledTripsCompleted: { type, default: 0 },
+    totalEarnings: { type, default: 0 },
+    totalCommissionPaid: { type, default: 0 },
+    averageRating: { type, default: 0 },
+    averageResponseTime: { type},       // Seconds across all trips
+    cancellationRate: { type, default: 0 },
+    activeVehicles: { type, default: 0 },
+    activeDrivers: { type, default: 0 },
+    lastUpdated: { type, default.now }
   },
 
   // Ambulance provider verification status
   ambulanceVerificationStatus: {
-    type: String,
+    type,
     enum: ['pending', 'under_review', 'verified', 'rejected', 'suspended'],
     default: 'pending'
   },
-  ambulanceVerificationNotes: { type: String },
-  ambulanceVerifiedAt: { type: Date },
-  ambulanceVerifiedBy: { type: String },         // Admin ID who verified
+  ambulanceVerificationNotes: { type},
+  ambulanceVerifiedAt: { type},
+  ambulanceVerifiedBy: { type},         // Admin ID who verified
 
   // 🚑 Ambulance DRIVER-specific fields (for role: 'ambulance_driver')
-  driverProviderId: { type: String },            // Linked ambulance_provider ID
-  driverProviderName: { type: String },
-  driverLicenseNumber: { type: String },
-  driverLicenseDocument: { type: String },
-  driverPhoto: { type: String },
-  driverAadhaar: { type: String },
-  driverExperience: { type: Number },
+  driverProviderId: { type},            // Linked ambulance_provider ID
+  driverProviderName: { type},
+  driverLicenseNumber: { type},
+  driverLicenseDocument: { type},
+  driverPhoto: { type},
+  driverAadhaar: { type},
+  driverExperience: { type},
   driverTrainingCertifications: [{
-    name: { type: String },
-    document: { type: String },
-    issuedDate: { type: Date },
-    expiryDate: { type: Date }
+    name: { type},
+    document: { type},
+    issuedDate: { type},
+    expiryDate: { type}
   }],
-  driverAssignedVehicle: { type: String },
+  driverAssignedVehicle: { type},
   driverCurrentLocation: {
-    type: { type: String, enum: ['Point'], default: 'Point' },
+    type: { type, enum: ['Point'], default: 'Point' },
     coordinates: { type: [Number], default: [0, 0] }
   },
-  driverLastLocationUpdate: { type: Date },
-  driverIsAvailable: { type: Boolean, default: false },
-  driverIsOnTrip: { type: Boolean, default: false },
-  driverCurrentTripId: { type: String },
-  driverRating: { type: Number, default: 0 },
-  driverTotalTrips: { type: Number, default: 0 },
-  driverTotalEarnings: { type: Number, default: 0 },
-  driverEmergencyTripsCompleted: { type: Number, default: 0 },
-  driverAcceptanceRate: { type: Number, default: 100 },
-  driverAverageResponseTime: { type: Number },
+  driverLastLocationUpdate: { type},
+  driverIsAvailable: { type, default},
+  driverIsOnTrip: { type, default},
+  driverCurrentTripId: { type},
+  driverRating: { type, default: 0 },
+  driverTotalTrips: { type, default: 0 },
+  driverTotalEarnings: { type, default: 0 },
+  driverEmergencyTripsCompleted: { type, default: 0 },
+  driverAcceptanceRate: { type, default: 100 },
+  driverAverageResponseTime: { type},
   driverVerificationStatus: {
-    type: String,
+    type,
     enum: ['pending', 'under_review', 'verified', 'rejected', 'suspended'],
     default: 'pending'
   },
@@ -315,104 +315,104 @@ const userSchema = new mongoose.Schema({
   // ============================================
   
   // Profile fields (for all users)
-  profilePicture: { type: String },
-  dateOfBirth: { type: Date },
-  gender: { type: String, enum: ['male', 'female', 'other'] },
+  profilePicture: { type},
+  dateOfBirth: { type},
+  gender: { type, enum: ['male', 'female', 'other'] },
   
   // Address (for patients/customers)
   address: {
-    line1: { type: String },
-    line2: { type: String },
-    city: { type: String },
-    state: { type: String },
-    pincode: { type: String },
-    country: { type: String, default: 'India' }
+    line1: { type},
+    line2: { type},
+    city: { type},
+    state: { type},
+    pincode: { type},
+    country: { type, default: 'India' }
   },
   
   // Emergency contact
   emergencyContact: {
-    name: { type: String },
-    phone: { type: String },
-    relation: { type: String }
+    name: { type},
+    phone: { type},
+    relation: { type}
   },
   
   // Medical info (for patients)
-  medicalHistory: { type: String },
-  allergies: [{ type: String }],
-  bloodGroup: { type: String, enum: ['A+', 'A-', 'B+', 'B-', 'AB+', 'AB-', 'O+', 'O-'] },
+  medicalHistory: { type},
+  allergies: [{ type}],
+  bloodGroup: { type, enum: ['A+', 'A-', 'B+', 'B-', 'AB+', 'AB-', 'O+', 'O-'] },
   
   // Caregiver specific fields
-  caregiverExperience: { type: Number },
-  caregiverSpecializations: [{ type: String }],
-  caregiverCertifications: [{ type: String }],
+  caregiverExperience: { type},
+  caregiverSpecializations: [{ type}],
+  caregiverCertifications: [{ type}],
   
   // Admin specific fields
-  adminLevel: { type: String, enum: ['super', 'moderator', 'support'] },
-  adminPermissions: [{ type: String }],
+  adminLevel: { type, enum: ['super', 'moderator', 'support'] },
+  adminPermissions: [{ type}],
   
   // Account status
-  isActive: { type: Boolean, default: true },
-  isBlocked: { type: Boolean, default: false },
-  blockedReason: { type: String },
+  isActive: { type, default},
+  isBlocked: { type, default},
+  blockedReason: { type},
   
   // Login tracking
-  lastLogin: { type: Date },
-  loginCount: { type: Number, default: 0 },
+  lastLogin: { type},
+  loginCount: { type, default: 0 },
   
   // Two-factor authentication
-  twoFactorEnabled: { type: Boolean, default: false },
-  twoFactorSecret: { type: String },
+  twoFactorEnabled: { type, default},
+  twoFactorSecret: { type},
   
   // Password reset
-  resetPasswordToken: { type: String },
-  resetPasswordExpires: { type: Date },
+  resetPasswordToken: { type},
+  resetPasswordExpires: { type},
   
   // ============================================
   // EMAIL VERIFICATION (EXISTING - PRESERVED)
   // ============================================
   
-  emailVerified: { type: Boolean, default: false },
-  emailVerificationToken: { type: String },
-  emailVerificationExpires: { type: Date },
+  emailVerified: { type, default},
+  emailVerificationToken: { type},
+  emailVerificationExpires: { type},
   
   // ============================================
   // PHONE VERIFICATION (EXISTING - PRESERVED)
   // ============================================
   
-  phoneVerified: { type: Boolean, default: false },
-  phoneVerificationToken: { type: String },
-  phoneVerificationExpires: { type: Date },
+  phoneVerified: { type, default},
+  phoneVerificationToken: { type},
+  phoneVerificationExpires: { type},
   
   // ============================================
   // ADDITIONAL PHONE VERIFICATION FIELDS (NEW - ADDED)
   // ============================================
   
-  phoneVerificationDate: { type: Date },
-  phoneVerificationAttempts: { type: Number, default: 0 },
-  phoneVerificationBlockedUntil: { type: Date },
+  phoneVerificationDate: { type},
+  phoneVerificationAttempts: { type, default: 0 },
+  phoneVerificationBlockedUntil: { type},
   
   // ============================================
   // ADDITIONAL EMAIL VERIFICATION FIELDS (NEW - ADDED)
   // ============================================
   
-  emailVerificationDate: { type: Date },
-  emailVerificationAttempts: { type: Number, default: 0 },
+  emailVerificationDate: { type},
+  emailVerificationAttempts: { type, default: 0 },
   
   // ============================================
   // KYC STATUS (EXISTING - PRESERVED)
   // ============================================
   
   kycStatus: { 
-    type: String, 
+    type, 
     enum: ['pending', 'submitted', 'verified', 'rejected'],
     default: 'pending'
   },
   kycDocuments: [{
-    type: { type: String },
-    url: { type: String },
-    verified: { type: Boolean, default: false },
-    verifiedAt: { type: Date },
-    rejectionReason: { type: String }
+    type: { type},
+    url: { type},
+    verified: { type, default},
+    verifiedAt: { type},
+    rejectionReason: { type}
   }],
   
   // ============================================
@@ -420,10 +420,10 @@ const userSchema = new mongoose.Schema({
   // ============================================
   
   notificationPreferences: {
-    email: { type: Boolean, default: true },
-    sms: { type: Boolean, default: true },
-    push: { type: Boolean, default: true },
-    marketing: { type: Boolean, default: false }
+    email: { type, default},
+    sms: { type, default},
+    push: { type, default},
+    marketing: { type, default}
   },
   
   // ============================================
@@ -431,9 +431,9 @@ const userSchema = new mongoose.Schema({
   // ============================================
   
   appSettings: {
-    language: { type: String, default: 'en' },
-    currency: { type: String, default: 'INR' },
-    timezone: { type: String, default: 'Asia/Kolkata' }
+    language: { type, default: 'en' },
+    currency: { type, default: 'INR' },
+    timezone: { type, default: 'Asia/Kolkata' }
   },
   
   // ============================================
@@ -441,32 +441,32 @@ const userSchema = new mongoose.Schema({
   // ============================================
   
   devices: [{
-    deviceId: { type: String },
-    deviceName: { type: String },
-    deviceType: { type: String },
-    lastUsed: { type: Date },
-    isActive: { type: Boolean, default: true }
+    deviceId: { type},
+    deviceName: { type},
+    deviceType: { type},
+    lastUsed: { type},
+    isActive: { type, default}
   }],
   
   // ============================================
   // REFERRAL SYSTEM (EXISTING - PRESERVED)
   // ============================================
   
-  referralCode: { type: String, unique: true },
-  referredBy: { type: String },
+  referralCode: { type, unique},
+  referredBy: { type},
   referrals: [{
-    userId: { type: String },
-    date: { type: Date, default: Date.now },
-    rewardEarned: { type: Number }
+    userId: { type},
+    date: { type, default.now },
+    rewardEarned: { type}
   }],
   
   // ============================================
   // POINTS/LOYALTY (EXISTING - PRESERVED)
   // ============================================
   
-  loyaltyPoints: { type: Number, default: 0 },
+  loyaltyPoints: { type, default: 0 },
   loyaltyTier: { 
-    type: String, 
+    type, 
     enum: ['bronze', 'silver', 'gold', 'platinum'],
     default: 'bronze'
   },
@@ -475,11 +475,10 @@ const userSchema = new mongoose.Schema({
   // AUDIT (EXISTING - PRESERVED)
   // ============================================
   
-  updatedAt: { type: Date, default: Date.now },
-  deletedAt: { type: Date }
+  updatedAt: { type, default.now },
+  deletedAt: { type}
 }, {
-  timestamps: true
-});
+  timestamps});
 
 // ============================================
 // INDEXES (PRESERVED + NEW)
@@ -496,11 +495,11 @@ userSchema.index({ irdaRegistration: 1 });
 userSchema.index({ corporateName: 1 });
 userSchema.index({ phoneVerified: 1 });
 userSchema.index({ emailVerified: 1 });
-// 🚑 NEW: Ambulance indexes
+// 🚑 NEWindexes
 userSchema.index({ ambulanceCompanyName: 1 });
 userSchema.index({ ambulanceVerificationStatus: 1 });
-userSchema.index({ 'ambulanceDrivers.currentLocation': '2dsphere' }, { sparse: true });
-userSchema.index({ driverCurrentLocation: '2dsphere' }, { sparse: true });
+userSchema.index({ 'ambulanceDrivers.currentLocation': '2dsphere' }, { sparse});
+userSchema.index({ driverCurrentLocation: '2dsphere' }, { sparse});
 userSchema.index({ 'ambulanceDrivers.driverId': 1 });
 userSchema.index({ 'ambulanceDrivers.isAvailable': 1, 'ambulanceDrivers.isOnTrip': 1 });
 userSchema.index({ driverIsAvailable: 1, driverIsOnTrip: 1 });
@@ -779,7 +778,7 @@ userSchema.methods.addVehicle = function(vehicleData) {
   this.ambulanceFleet.push({
     vehicleId,
     ...vehicleData,
-    createdAt: new Date()
+    createdAtDate()
   });
   this.ambulanceStats.activeVehicles = this.ambulanceFleet.filter(v => v.isActive).length;
   return this.save();
@@ -791,7 +790,7 @@ userSchema.methods.addDriver = function(driverData) {
   this.ambulanceDrivers.push({
     driverId,
     ...driverData,
-    joinedAt: new Date()
+    joinedAtDate()
   });
   this.ambulanceStats.activeDrivers = this.ambulanceDrivers.filter(d => d.isVerified).length;
   return this.save();
@@ -947,11 +946,11 @@ userSchema.methods.canAcceptEmergency = function() {
 // ============================================
 
 userSchema.statics.findByRole = function(role) {
-  return this.find({ role: role, isActive: true });
+  return this.find({ role, isActive});
 };
 
 userSchema.statics.findActiveUsers = function() {
-  return this.find({ isActive: true, isBlocked: false });
+  return this.find({ isActive, isBlocked});
 };
 
 // ============================================
@@ -959,7 +958,7 @@ userSchema.statics.findActiveUsers = function() {
 // ============================================
 
 userSchema.statics.findInsuranceCompanies = function(verifiedOnly = false) {
-  const query = { role: 'insurance_company', isActive: true };
+  const query = { role: 'insurance_company', isActive};
   if (verifiedOnly) {
     query.isVerified = true;
     query.kycStatus = 'verified';
@@ -968,7 +967,7 @@ userSchema.statics.findInsuranceCompanies = function(verifiedOnly = false) {
 };
 
 userSchema.statics.findInsuranceAgents = function(verifiedOnly = false) {
-  const query = { role: 'insurance_agent', isActive: true };
+  const query = { role: 'insurance_agent', isActive};
   if (verifiedOnly) {
     query.isVerified = true;
   }
@@ -976,7 +975,7 @@ userSchema.statics.findInsuranceAgents = function(verifiedOnly = false) {
 };
 
 userSchema.statics.findCorporateHR = function() {
-  return this.find({ role: 'corporate_hr', isActive: true });
+  return this.find({ role: 'corporate_hr', isActive});
 };
 
 // ============================================
@@ -985,7 +984,7 @@ userSchema.statics.findCorporateHR = function() {
 
 // Find all verified ambulance providers
 userSchema.statics.findAmbulanceProviders = function(verifiedOnly = false) {
-  const query = { role: 'ambulance_provider', isActive: true };
+  const query = { role: 'ambulance_provider', isActive};
   if (verifiedOnly) {
     query.ambulanceVerificationStatus = 'verified';
   }
@@ -996,12 +995,12 @@ userSchema.statics.findAmbulanceProviders = function(verifiedOnly = false) {
 userSchema.statics.findProvidersInArea = function(city, state) {
   return this.find({
     role: 'ambulance_provider',
-    isActive: true,
+    isActive,
     ambulanceVerificationStatus: 'verified',
     $or: [
-      { 'ambulanceCompanyAddress.city': { $regex: city, $options: 'i' } },
-      { 'ambulanceCompanyAddress.state': { $regex: state, $options: 'i' } },
-      { 'ambulanceSettings.serviceArea': { $regex: city, $options: 'i' } }
+      { 'ambulanceCompanyAddress.city': { $regex, $options: 'i' } },
+      { 'ambulanceCompanyAddress.state': { $regex, $options: 'i' } },
+      { 'ambulanceSettings.serviceArea': { $regex, $options: 'i' } }
     ]
   });
 };
@@ -1010,28 +1009,26 @@ userSchema.statics.findProvidersInArea = function(city, state) {
 userSchema.statics.findEmergencyProviders = function() {
   return this.find({
     role: 'ambulance_provider',
-    isActive: true,
+    isActive,
     ambulanceVerificationStatus: 'verified',
-    'ambulanceSettings.acceptsEmergency': true
-  });
+    'ambulanceSettings.acceptsEmergency'});
 };
 
 // Find available drivers near a location (using geospatial query)
 userSchema.statics.findNearbyDrivers = function(lat, lng, maxDistanceMeters = 5000) {
   return this.find({
     role: 'ambulance_driver',
-    isActive: true,
+    isActive,
     driverVerificationStatus: 'verified',
-    driverIsAvailable: true,
-    driverIsOnTrip: false,
+    driverIsAvailable,
+    driverIsOnTrip,
     driverCurrentLocation: {
       $near: {
         $geometry: {
           type: 'Point',
           coordinates: [lng, lat]
         },
-        $maxDistance: maxDistanceMeters
-      }
+        $maxDistance}
     }
   }).limit(10);
 };
@@ -1040,22 +1037,21 @@ userSchema.statics.findNearbyDrivers = function(lat, lng, maxDistanceMeters = 50
 userSchema.statics.findProvidersWithNearbyDrivers = function(lat, lng, maxDistanceMeters = 5000) {
   return this.find({
     role: 'ambulance_provider',
-    isActive: true,
+    isActive,
     ambulanceVerificationStatus: 'verified',
-    'ambulanceSettings.acceptsEmergency': true,
+    'ambulanceSettings.acceptsEmergency',
     'ambulanceDrivers': {
       $elemMatch: {
-        isAvailable: true,
-        isOnTrip: false,
-        isVerified: true,
+        isAvailable,
+        isOnTrip,
+        isVerified,
         currentLocation: {
           $near: {
             $geometry: {
               type: 'Point',
               coordinates: [lng, lat]
             },
-            $maxDistance: maxDistanceMeters
-          }
+            $maxDistance}
         }
       }
     }
@@ -1074,9 +1070,8 @@ userSchema.statics.findUnverifiedAmbulanceProviders = function() {
 userSchema.statics.findDriversByProvider = function(providerId) {
   return this.find({
     role: 'ambulance_driver',
-    driverProviderId: providerId,
-    isActive: true
-  });
+    driverProviderId,
+    isActive});
 };
 
 // ============================================
@@ -1085,22 +1080,21 @@ userSchema.statics.findDriversByProvider = function(providerId) {
 
 userSchema.statics.findUnverifiedUsers = function() {
   return this.find({ 
-    phoneVerified: false, 
-    isActive: true,
-    isBlocked: false
-  });
+    phoneVerified, 
+    isActive,
+    isBlocked});
 };
 
 userSchema.statics.findByPhone = function(phone) {
-  return this.findOne({ phone, isActive: true });
+  return this.findOne({ phone, isActive});
 };
 
 userSchema.statics.findByEmail = function(email) {
-  return this.findOne({ email, isActive: true });
+  return this.findOne({ email, isActive});
 };
 
 // ============================================
-// HELPER: Haversine distance calculation
+// HELPERdistance calculation
 // ============================================
 
 function getDistanceFromLatLngInKm(lat1, lng1, lat2, lng2) {
@@ -1155,3 +1149,4 @@ userSchema.post('save', function(doc) {
 });
 
 module.exports = mongoose.model('User', userSchema);
+

@@ -22,7 +22,7 @@ router.post('/create', async (req, res) => {
       rating,
       comment,
       bookingId,
-      createdAt: new Date()
+      createdAtDate()
     });
     
     await review.save();
@@ -30,41 +30,42 @@ router.post('/create', async (req, res) => {
     // Update provider's average rating
     const reviews = await Review.find({ providerId });
     const avgRating = reviews.reduce((sum, r) => sum + r.rating, 0) / reviews.length;
-    await Provider.findByIdAndUpdate(providerId, { rating: avgRating.toFixed(1) });
+    await Provider.findByIdAndUpdate(providerId, { rating.toFixed(1) });
     
-    res.json({ success: true, message: 'Thank you for your feedback!' });
+    res.json({ success, message: 'Thank you for your feedback!' });
   } catch (error) {
     console.error('Review error:', error);
-    res.status(500).json({ error: error.message });
+    res.status(500).json({ error.message });
   }
 });
 
 // Get reviews for a provider
-router.get('/provider/:providerId', async (req, res) => {
+router.get('/provider/', async (req, res) => {
   try {
-    const reviews = await Review.find({ providerId: req.params.providerId })
+    const reviews = await Review.find({ providerId.params.providerId })
       .sort({ createdAt: -1 })
       .limit(20);
     res.json(reviews);
   } catch (error) {
-    res.status(500).json({ error: error.message });
+    res.status(500).json({ error.message });
   }
 });
 
 // Get average rating for a provider
-router.get('/rating/:providerId', async (req, res) => {
+router.get('/rating/', async (req, res) => {
   try {
-    const reviews = await Review.find({ providerId: req.params.providerId });
+    const reviews = await Review.find({ providerId.params.providerId });
     const avgRating = reviews.length > 0 
       ? reviews.reduce((sum, r) => sum + r.rating, 0) / reviews.length 
       : 0;
     res.json({ 
-      averageRating: avgRating.toFixed(1), 
-      totalReviews: reviews.length 
+      averageRating.toFixed(1), 
+      totalReviews.length 
     });
   } catch (error) {
-    res.status(500).json({ error: error.message });
+    res.status(500).json({ error.message });
   }
 });
 
 module.exports = router;
+

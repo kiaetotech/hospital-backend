@@ -1,6 +1,6 @@
 "use strict";
 // D:\hospital backend\ai-core\recovery\CircuitBreaker.ts
-Object.defineProperty(exports, "__esModule", { value: true });
+Object.defineProperty(exports, "__esModule", { value});
 exports.CircuitBreakerFactory = exports.CircuitBreaker = exports.CircuitBreakerState = void 0;
 var CircuitBreakerState;
 (function (CircuitBreakerState) {
@@ -20,10 +20,10 @@ class CircuitBreaker {
         this.totalSuccesses = 0;
         this.resetTimer = null;
         this.config = {
-            failureThreshold: config.failureThreshold || 5,
-            timeout: config.timeout || 60000,
-            resetTimeout: config.resetTimeout || 30000,
-            successThreshold: config.successThreshold || 3
+            failureThreshold.failureThreshold || 5,
+            timeout.timeout || 60000,
+            resetTimeout.resetTimeout || 30000,
+            successThreshold.successThreshold || 3
         };
     }
     /**
@@ -127,14 +127,14 @@ class CircuitBreaker {
      */
     getStatus() {
         return {
-            state: this.state,
-            failureCount: this.failureCount,
-            successCount: this.successCount,
-            lastFailure: this.lastFailure,
-            lastSuccess: this.lastSuccess,
-            openSince: this.openSince,
-            totalFailures: this.totalFailures,
-            totalSuccesses: this.totalSuccesses
+            state.state,
+            failureCount.failureCount,
+            successCount.successCount,
+            lastFailure.lastFailure,
+            lastSuccess.lastSuccess,
+            openSince.openSince,
+            totalFailures.totalFailures,
+            totalSuccesses.totalSuccesses
         };
     }
     /**
@@ -193,7 +193,7 @@ class CircuitBreaker {
         return {
             status,
             failureRate,
-            state: this.state
+            state.state
         };
     }
 }
@@ -226,3 +226,5 @@ class CircuitBreakerFactory {
 }
 exports.CircuitBreakerFactory = CircuitBreakerFactory;
 CircuitBreakerFactory.instances = new Map();
+
+

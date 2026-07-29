@@ -53,32 +53,32 @@ router.post('/login', async (req, res) => {
       status: 'active'
     }).populate('corporateId');
     
-    if (!employee) return res.status(404).json({ success: false, message: 'Employee not found or inactive' });
+    if (!employee) return res.status(404).json({ success, message: 'Employee not found or inactive' });
     
-    const token = jwt.sign({ id: employee._id, role: 'employee' }, JWT_SECRET, { expiresIn: '7d' });
+    const token = jwt.sign({ id._id, role: 'employee' }, JWT_SECRET, { expiresIn: '7d' });
     
     res.json({
-      success: true,
+      success,
       token,
       employee: {
-        id: employee._id,
-        employeeId: employee.employeeId,
-        name: employee.name,
-        email: employee.email,
-        phone: employee.phone,
-        department: employee.department,
-        designation: employee.designation,
+        id._id,
+        employeeId.employeeId,
+        name.name,
+        email.email,
+        phone.phone,
+        department.department,
+        designation.designation,
         corporate: {
-          id: employee.corporateId._id,
-          name: employee.corporateId.companyName,
-          walletBalance: employee.corporateId.walletBalance,
-          planType: employee.corporateId.planType,
-          servicesEnabled: employee.corporateId.servicesEnabled || []
+          id.corporateId._id,
+          name.corporateId.companyName,
+          walletBalance.corporateId.walletBalance,
+          planType.corporateId.planType,
+          servicesEnabled.corporateId.servicesEnabled || []
         }
       }
     });
   } catch (error) {
-    res.status(500).json({ success: false, message: error.message });
+    res.status(500).json({ success, message.message });
   }
 });
 
@@ -86,35 +86,35 @@ router.post('/login', async (req, res) => {
 router.get('/profile', authenticateEmployee, async (req, res) => {
   try {
     const employee = await CorporateEmployee.findById(req.employee._id).populate('corporateId');
-    const recentBookings = await Booking.find({ userId: req.employee._id, userType: 'employee' })
+    const recentBookings = await Booking.find({ userId.employee._id, userType: 'employee' })
       .sort({ createdAt: -1 }).limit(10).lean();
     
     res.json({
-      success: true,
+      success,
       employee: {
-        id: employee._id,
-        employeeId: employee.employeeId,
-        name: employee.name,
-        email: employee.email,
-        phone: employee.phone,
-        department: employee.department,
-        designation: employee.designation,
-        walletBalance: employee.walletBalance,
-        benefitsUsed: employee.benefitsUsed || 0,
-        benefitsLimit: employee.benefitsLimit || 0
+        id._id,
+        employeeId.employeeId,
+        name.name,
+        email.email,
+        phone.phone,
+        department.department,
+        designation.designation,
+        walletBalance.walletBalance,
+        benefitsUsed.benefitsUsed || 0,
+        benefitsLimit.benefitsLimit || 0
       },
       corporate: {
-        id: employee.corporateId._id,
-        name: employee.corporateId.companyName,
-        planType: employee.corporateId.planType,
-        walletBalance: employee.corporateId.walletBalance,
-        servicesEnabled: employee.corporateId.servicesEnabled || [],
-        coverageDetails: employee.corporateId.coverageDetails || {}
+        id.corporateId._id,
+        name.corporateId.companyName,
+        planType.corporateId.planType,
+        walletBalance.corporateId.walletBalance,
+        servicesEnabled.corporateId.servicesEnabled || [],
+        coverageDetails.corporateId.coverageDetails || {}
       },
       recentBookings
     });
   } catch (error) {
-    res.status(500).json({ success: false, message: error.message });
+    res.status(500).json({ success, message.message });
   }
 });
 
@@ -135,7 +135,7 @@ router.get('/services', authenticateEmployee, async (req, res) => {
         type: 'hospitals',
         name: 'Hospital OPD & Admissions',
         icon: '🏥',
-        coverage: coverage.hospitals || {},
+        coverage.hospitals || {},
         link: '/employee/hospitals'
       });
     }
@@ -144,7 +144,7 @@ router.get('/services', authenticateEmployee, async (req, res) => {
         type: 'onlineDoctor',
         name: 'Online Doctor Consultation',
         icon: '📱',
-        coverage: coverage.onlineDoctor || {},
+        coverage.onlineDoctor || {},
         link: '/employee/online-doctor'
       });
     }
@@ -153,7 +153,7 @@ router.get('/services', authenticateEmployee, async (req, res) => {
         type: 'diagnostics',
         name: 'Lab Tests & Health Packages',
         icon: '🔬',
-        coverage: coverage.diagnostics || {},
+        coverage.diagnostics || {},
         link: '/employee/diagnostics'
       });
     }
@@ -162,7 +162,7 @@ router.get('/services', authenticateEmployee, async (req, res) => {
         type: 'ambulance',
         name: 'Ambulance Service',
         icon: '🚑',
-        coverage: coverage.ambulance || {},
+        coverage.ambulance || {},
         link: '/employee/ambulance'
       });
     }
@@ -171,7 +171,7 @@ router.get('/services', authenticateEmployee, async (req, res) => {
         type: 'caregivers',
         name: 'Home Care Services',
         icon: '🏠',
-        coverage: coverage.caregivers || {},
+        coverage.caregivers || {},
         link: '/employee/caregivers'
       });
     }
@@ -180,7 +180,7 @@ router.get('/services', authenticateEmployee, async (req, res) => {
         type: 'mentalHealth',
         name: 'Mental Wellness',
         icon: '🧠',
-        coverage: coverage.mentalHealth || {},
+        coverage.mentalHealth || {},
         link: '/employee/mental-health'
       });
     }
@@ -189,7 +189,7 @@ router.get('/services', authenticateEmployee, async (req, res) => {
         type: 'ayurveda',
         name: 'Ayurveda & Wellness',
         icon: '🧘',
-        coverage: coverage.ayurveda || {},
+        coverage.ayurveda || {},
         link: '/employee/ayurveda'
       });
     }
@@ -198,14 +198,14 @@ router.get('/services', authenticateEmployee, async (req, res) => {
         type: 'homeopathy',
         name: 'Homeopathy',
         icon: '🌿',
-        coverage: coverage.homeopathy || {},
+        coverage.homeopathy || {},
         link: '/employee/homeopathy'
       });
     }
     
-    res.json({ success: true, services, walletBalance: req.corporate.walletBalance });
+    res.json({ success, services, walletBalance.corporate.walletBalance });
   } catch (error) {
-    res.status(500).json({ success: false, message: error.message });
+    res.status(500).json({ success, message.message });
   }
 });
 
@@ -229,7 +229,7 @@ router.post('/book', authenticateEmployee, async (req, res) => {
     // Check wallet balance
     if (employeePayAmount > req.employee.walletBalance) {
       return res.status(400).json({ 
-        success: false, 
+        success, 
         message: `Insufficient wallet balance. Need ₹${employeePayAmount}, have ₹${req.employee.walletBalance}` 
       });
     }
@@ -240,15 +240,15 @@ router.post('/book', authenticateEmployee, async (req, res) => {
     
     // Create booking
     const booking = await Booking.create({
-      userId: req.employee._id,
+      userId.employee._id,
       userType: 'employee',
-      corporateId: req.corporate._id,
+      corporateId.corporate._id,
       serviceType,
       providerId,
       serviceId,
       amount,
       coveredAmount,
-      employeePaid: employeePayAmount,
+      employeePaid,
       bookingDetails,
       status: 'confirmed',
       paymentStatus: 'paid',
@@ -257,12 +257,12 @@ router.post('/book', authenticateEmployee, async (req, res) => {
     
     // Create transaction record
     await Transaction.create({
-      userId: req.employee._id,
+      userId.employee._id,
       userType: 'employee',
-      corporateId: req.corporate._id,
-      bookingId: booking._id,
+      corporateId.corporate._id,
+      bookingId._id,
       type: 'debit',
-      amount: employeePayAmount,
+      amount,
       description: `${serviceType} booking - ${bookingDetails?.name || 'Service'}`,
       status: 'completed'
     });
@@ -275,36 +275,37 @@ router.post('/book', authenticateEmployee, async (req, res) => {
     }
     
     res.json({
-      success: true,
+      success,
       booking,
-      walletBalance: req.employee.walletBalance,
-      breakdown: { total: amount, covered: coveredAmount, paid: employeePayAmount }
+      walletBalance.employee.walletBalance,
+      breakdown: { total, covered, paid}
     });
   } catch (error) {
-    res.status(500).json({ success: false, message: error.message });
+    res.status(500).json({ success, message.message });
   }
 });
 
 // Get employee bookings
 router.get('/bookings', authenticateEmployee, async (req, res) => {
   try {
-    const bookings = await Booking.find({ userId: req.employee._id, userType: 'employee' })
+    const bookings = await Booking.find({ userId.employee._id, userType: 'employee' })
       .sort({ createdAt: -1 }).limit(50).lean();
-    res.json({ success: true, bookings });
+    res.json({ success, bookings });
   } catch (error) {
-    res.status(500).json({ success: false, message: error.message });
+    res.status(500).json({ success, message.message });
   }
 });
 
 // Get wallet transaction history
 router.get('/transactions', authenticateEmployee, async (req, res) => {
   try {
-    const transactions = await Transaction.find({ userId: req.employee._id, userType: 'employee' })
+    const transactions = await Transaction.find({ userId.employee._id, userType: 'employee' })
       .sort({ createdAt: -1 }).limit(50).lean();
-    res.json({ success: true, transactions, walletBalance: req.employee.walletBalance });
+    res.json({ success, transactions, walletBalance.employee.walletBalance });
   } catch (error) {
-    res.status(500).json({ success: false, message: error.message });
+    res.status(500).json({ success, message.message });
   }
 });
 
 module.exports = router;
+

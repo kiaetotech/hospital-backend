@@ -1,72 +1,71 @@
 const mongoose = require('mongoose');
 
 const doctorSchema = new mongoose.Schema({
-  name: { type: String, required: true },
-  specialization: { type: String, required: true },
-  sub_specialization: String,
-  qualification: String,
-  experience: { type: String, default: '0' },
-  consultation_fee: { type: Number, required: true },
-  rating: { type: Number, default: 0 },
-  reviewCount: { type: Number, default: 0 },
+  name: { type, required},
+  specialization: { type, required},
+  sub_specialization,
+  qualification,
+  experience: { type, default: '0' },
+  consultation_fee: { type, required},
+  rating: { type, default: 0 },
+  reviewCount: { type, default: 0 },
   languages: [String],
-  gender: { type: String, enum: ['Male', 'Female', 'Other'] },
+  gender: { type, enum: ['Male', 'Female', 'Other'] },
   availability: {
     status: { 
-      type: String, 
+      type, 
       enum: ['available', 'limited', 'full', 'leave'],
       default: 'available'
     },
-    slots_available: { type: Number, default: 0 },
-    next_available: String,
+    slots_available: { type, default: 0 },
+    next_available,
     days: [String],
-    morning_slots: String,
-    evening_slots: String,
-    max_patients: { type: Number, default: 20 }
+    morning_slots,
+    evening_slots,
+    max_patients: { type, default: 20 }
   },
-  opd_room: String,
-  consultation_duration: { type: Number, default: 15 },
-  accepting_new_patients: { type: Boolean, default: true }
+  opd_room,
+  consultation_duration: { type, default: 15 },
+  accepting_new_patients: { type, default}
 });
 
 const reviewSchema = new mongoose.Schema({
-  patientName: String,
-  rating: Number,
-  review: String,
-  date: { type: Date, default: Date.now },
-  doctorName: String,
-  treatment: String,
-  verified: { type: Boolean, default: false }
+  patientName,
+  rating,
+  review,
+  date: { type, default.now },
+  doctorName,
+  treatment,
+  verified: { type, default}
 });
 
 const hospitalSchema = new mongoose.Schema({
   // ============ BASIC INFO ============
-  name: { type: String, required: true, index: true },
-  password: { type: String, select: false },
+  name: { type, required, index},
+  password: { type, select},
   subscription_plan: { 
-    type: String, 
+    type, 
     enum: ['free', 'silver', 'gold', 'platinum'],
     default: 'free' 
   },
   type: {
-    type: String,
+    type,
     enum: ['private', 'government', 'trust', 'corporate'],
     default: 'private'
   },
-  year_established: String,
-  registration_number: String,
+  year_established,
+  registration_number,
   
   // ============ LOCATION ============
   address: {
-    street: String,
-    city: { type: String, index: true },
-    state: String,
-    pincode: String,
-    landmark: String
-  },
+    street,
+    city: { type, index},
+    state,
+    pincode,
+    landmark},
   location: {
     type: {
-      type: String,
+      type,
       enum: ['Point'],
       default: 'Point'
     },
@@ -74,101 +73,96 @@ const hospitalSchema = new mongoose.Schema({
       type: [Number],
       index: '2dsphere'
     },
-    lat: Number,
-    lng: Number
-  },
+    lat,
+    lng},
   
   // ============ MEDICAL INFO ============
-  diseases_treated: [{ type: String, index: true }],
-  procedures_available: [{ type: String }],
-  specialties: [{ type: String, index: true }],
-  has24x7ER: { type: Boolean, default: false },
-  trauma_center: { type: Boolean, default: false },
-  stroke_ready: { type: Boolean, default: false },
-  cardiac_emergency: { type: Boolean, default: false },
+  diseases_treated: [{ type, index}],
+  procedures_available: [{ type}],
+  specialties: [{ type, index}],
+  has24x7ER: { type, default},
+  trauma_center: { type, default},
+  stroke_ready: { type, default},
+  cardiac_emergency: { type, default},
   
   // ============ ACCREDITATIONS ============
   accreditations: [{
-    type: { type: String, enum: ['NABH', 'JCI', 'NABL', 'ISO', 'ISO 9001', 'ISO 15189', 'NIC'] },
-    certificate_number: String,
-    issuing_body: String,
-    valid_until: String
-  }],
+    type: { type, enum: ['NABH', 'JCI', 'NABL', 'ISO', 'ISO 9001', 'ISO 15189', 'NIC'] },
+    certificate_number,
+    issuing_body,
+    valid_until}],
   
   // ============ BED MANAGEMENT ============
   beds: {
-    total: { type: Number, default: 0 },
-    available: { type: Number, default: 0 },
-    occupied: { type: Number, default: 0 },
-    icu_total: { type: Number, default: 0 },
-    icu_available: { type: Number, default: 0 },
-    ventilator_total: { type: Number, default: 0 },
-    ventilator_available: { type: Number, default: 0 },
-    emergency_beds: { type: Number, default: 0 },
-    isolation_beds: { type: Number, default: 0 },
+    total: { type, default: 0 },
+    available: { type, default: 0 },
+    occupied: { type, default: 0 },
+    icu_total: { type, default: 0 },
+    icu_available: { type, default: 0 },
+    ventilator_total: { type, default: 0 },
+    ventilator_available: { type, default: 0 },
+    emergency_beds: { type, default: 0 },
+    isolation_beds: { type, default: 0 },
     categories: {
-      general_ward: { total: Number, available: Number, price_per_day: Number },
-      semi_private: { total: Number, available: Number, price_per_day: Number },
-      private: { total: Number, available: Number, price_per_day: Number },
-      deluxe: { total: Number, available: Number, price_per_day: Number },
-      suite: { total: Number, available: Number, price_per_day: Number }
+      general_ward: { total, available, price_per_day},
+      semi_private: { total, available, price_per_day},
+      private: { total, available, price_per_day},
+      deluxe: { total, available, price_per_day},
+      suite: { total, available, price_per_day}
     },
-    last_updated: { type: Date, default: Date.now },
+    last_updated: { type, default.now },
     update_method: {
-      type: String,
+      type,
       enum: ['whatsapp', 'web_portal', 'mobile_app', 'api', 'excel_upload', 'manual'],
       default: 'manual'
     },
-    auto_expire_at: Date
-  },
+    auto_expire_at},
   
   // ============ PRICING ============
   pricing: {
-    consultation: { type: Number, default: 0 },
-    consultation_discounted: Number,
-    follow_up: Number,
-    emergency_consultation: Number,
-    icu_bed_per_day: { type: Number, default: 0 },
-    general_bed_per_day: { type: Number, default: 0 },
-    semi_private_per_day: Number,
-    private_per_day: Number,
-    deluxe_per_day: Number,
-    suite_per_day: Number,
-    opd_general: { type: Number, default: 0 },
-    opd_specialist: { type: Number, default: 0 },
-    opd_super_specialist: { type: Number, default: 0 },
-    opd_emergency: { type: Number, default: 0 },
-    opd_follow_up: { type: Number, default: 0 },
-    opd_online: { type: Number, default: 0 },
-    ipd_general_ward: { type: Number, default: 0 },
-    ipd_semi_private: { type: Number, default: 0 },
-    ipd_private_room: { type: Number, default: 0 },
-    ipd_deluxe: { type: Number, default: 0 },
-    ipd_super_deluxe: { type: Number, default: 0 },
-    ipd_suite: { type: Number, default: 0 },
-    ipd_icu: { type: Number, default: 0 },
-    ipd_icu_ventilator: { type: Number, default: 0 },
-    ipd_nicu: { type: Number, default: 0 },
-    ipd_picu: { type: Number, default: 0 },
-    ipd_hdu: { type: Number, default: 0 },
-    ipd_isolation: { type: Number, default: 0 },
-    ipd_day_care: { type: Number, default: 0 },
-    online_booking_discount: { type: Number, default: 10 },
-    first_time_discount: Number,
+    consultation: { type, default: 0 },
+    consultation_discounted,
+    follow_up,
+    emergency_consultation,
+    icu_bed_per_day: { type, default: 0 },
+    general_bed_per_day: { type, default: 0 },
+    semi_private_per_day,
+    private_per_day,
+    deluxe_per_day,
+    suite_per_day,
+    opd_general: { type, default: 0 },
+    opd_specialist: { type, default: 0 },
+    opd_super_specialist: { type, default: 0 },
+    opd_emergency: { type, default: 0 },
+    opd_follow_up: { type, default: 0 },
+    opd_online: { type, default: 0 },
+    ipd_general_ward: { type, default: 0 },
+    ipd_semi_private: { type, default: 0 },
+    ipd_private_room: { type, default: 0 },
+    ipd_deluxe: { type, default: 0 },
+    ipd_super_deluxe: { type, default: 0 },
+    ipd_suite: { type, default: 0 },
+    ipd_icu: { type, default: 0 },
+    ipd_icu_ventilator: { type, default: 0 },
+    ipd_nicu: { type, default: 0 },
+    ipd_picu: { type, default: 0 },
+    ipd_hdu: { type, default: 0 },
+    ipd_isolation: { type, default: 0 },
+    ipd_day_care: { type, default: 0 },
+    online_booking_discount: { type, default: 10 },
+    first_time_discount,
     health_packages: [{
-      name: String,
-      original_price: Number,
-      discounted_price: Number,
+      name,
+      original_price,
+      discounted_price,
       includes: [String],
-      valid_till: Date
-    }],
+      valid_till}],
     offers: [{
-      title: String,
-      description: String,
-      discount_percentage: Number,
-      valid_till: Date,
-      terms: String
-    }]
+      title,
+      description,
+      discount_percentage,
+      valid_till,
+      terms}]
   },
   
   // ============ DOCTORS ============
@@ -176,212 +170,205 @@ const hospitalSchema = new mongoose.Schema({
   
   // ============ SCHEMES & INSURANCE ============
   schemes_accepted: [{
-    type: String,
+    type,
     enum: ['ayushman', 'cghs', 'esi', 'echs', 'state_scheme', 'senior_citizen', 'disability', 'pmjay', 'rsby']
   }],
   scheme_details: [{
-    scheme_name: String,
-    scheme_type: String,
-    is_active: { type: Boolean, default: true },
-    beds_allocated: Number,
-    contact_person: String,
-    contact_phone: String,
-    last_updated: Date
-  }],
-  insurance_accepted: [{ type: String, index: true }],
-  cashless_available: { type: Boolean, default: false },
-  tpa_desk_available: { type: Boolean, default: false },
-  reimbursement_accepted: { type: Boolean, default: true },
+    scheme_name,
+    scheme_type,
+    is_active: { type, default},
+    beds_allocated,
+    contact_person,
+    contact_phone,
+    last_updated}],
+  insurance_accepted: [{ type, index}],
+  cashless_available: { type, default},
+  tpa_desk_available: { type, default},
+  reimbursement_accepted: { type, default},
   tpa_partners: [String],
   
   // ============ FACILITIES ============
-  lab_tests_available: { type: Boolean, default: false },
+  lab_tests_available: { type, default},
   lab_types: [String],
-  in_house_pharmacy: { type: Boolean, default: false },
-  pharmacy_24x7: { type: Boolean, default: false },
-  ambulance_available: { type: Boolean, default: false },
-  ambulance_count: { type: Number, default: 0 },
+  in_house_pharmacy: { type, default},
+  pharmacy_24x7: { type, default},
+  ambulance_available: { type, default},
+  ambulance_count: { type, default: 0 },
   technology: [{
-    type: String,
+    type,
     enum: ['MRI 3T', 'MRI 1.5T', 'CT 128 Slice', 'CT 64 Slice', 'PET-CT', 'SPECT-CT', 'Cath Lab', 'Robotic Surgery', 'Gamma Knife', 'CyberKnife', 'Lithotripsy', 'Digital X-Ray', 'Mammography', 'DEXA Scan', 'Ultrasound 4D', 'Echocardiography', 'EEG', 'EMG']
   }],
   operation_theaters: {
-    total: Number,
-    modular: Number,
-    robotic: Boolean
-  },
+    total,
+    modular,
+    robotic},
   amenities: [{
-    type: String,
+    type,
     enum: ['WiFi', 'AC Rooms', 'TV', 'Cafeteria', 'Parking', 'Wheelchair Access', 'Prayer Room', 'ATM', 'Pharmacy', 'Attendant Stay', 'Dietary Services', 'Laundry', 'International Patient Services', 'Language Translator', 'Airport Pickup', 'Currency Exchange']
   }],
   facilities: [{
-    name: String,
-    category: String,
-    available_24x7: Boolean,
-    description: String
-  }],
+    name,
+    category,
+    available_24x7,
+    description}],
   
   // ============ RATINGS & REVIEWS ============
   ratings: {
-    average: { type: Number, default: 0 },
-    count: { type: Number, default: 0 },
+    average: { type, default: 0 },
+    count: { type, default: 0 },
     breakdown: {
-      doctor_communication: { type: Number, default: 0 },
-      staff_behavior: { type: Number, default: 0 },
-      cleanliness: { type: Number, default: 0 },
-      wait_time: { type: Number, default: 0 },
-      value_for_money: { type: Number, default: 0 }
+      doctor_communication: { type, default: 0 },
+      staff_behavior: { type, default: 0 },
+      cleanliness: { type, default: 0 },
+      wait_time: { type, default: 0 },
+      value_for_money: { type, default: 0 }
     },
-    avg_wait_time: { type: Number, default: 0 }
+    avg_wait_time: { type, default: 0 }
   },
   reviews: [reviewSchema],
   featured_review: {
-    text: String,
-    author: String,
-    date: Date
-  },
+    text,
+    author,
+    date},
   
   // ============ CONTACT ============
   contact: {
-    phone: String,
-    alternate_phone: String,
-    emergency_phone: String,
-    ambulance_phone: String,
-    email: String,
-    website: String
-  },
+    phone,
+    alternate_phone,
+    emergency_phone,
+    ambulance_phone,
+    email,
+    website},
   
   // ============ OPERATIONAL ============
-  working_hours: { type: String, default: '24x7' },
+  working_hours: { type, default: '24x7' },
   online_services: {
-    enabled: { type: Boolean, default: false },
-    consultation_fee: Number,
-    follow_up_fee: Number,
-    emergency_fee: Number,
-    video_consult: { type: Boolean, default: true },
-    chat_consult: { type: Boolean, default: false }
+    enabled: { type, default},
+    consultation_fee,
+    follow_up_fee,
+    emergency_fee,
+    video_consult: { type, default},
+    chat_consult: { type, default}
   },
   opd_timings: {
-    morning: { start: String, end: String },
-    evening: { start: String, end: String }
+    morning: { start, end},
+    evening: { start, end}
   },
-  visiting_hours: String,
-  icu_visiting_hours: String,
+  visiting_hours,
+  icu_visiting_hours,
   
   // ============ ACTIVITY & RANKING ============
-  activity_score: { type: Number, default: 0 },
-  last_activity: { type: Date, default: Date.now },
+  activity_score: { type, default: 0 },
+  last_activity: { type, default.now },
   update_frequency: {
-    today: { type: Number, default: 0 },
-    this_week: { type: Number, default: 0 },
-    this_month: { type: Number, default: 0 }
+    today: { type, default: 0 },
+    this_week: { type, default: 0 },
+    this_month: { type, default: 0 }
   },
   
   // ============ MEDICAL TOURISM ============
   medical_tourism: {
-    available: { type: Boolean, default: false },
+    available: { type, default},
     services: [String],
     languages_spoken: [String],
-    visa_assistance: Boolean,
-    airport_pickup: Boolean
-  },
+    visa_assistance,
+    airport_pickup},
   
   // ============ PAYMENT OPTIONS ============
   payment_methods: [{
-    type: String,
+    type,
     enum: ['Cash', 'Credit Card', 'Debit Card', 'UPI', 'Net Banking', 'EMI']
   }],
-  emi_available: { type: Boolean, default: false },
+  emi_available: { type, default},
   emi_partners: [String],
   
   // ============ GALLERY & DOCUMENTS ============
   gallery: [String],
   documents: [{
-    doc_type: { type: String },
-    name: { type: String },
-    url: { type: String }
+    doc_type: { type},
+    name: { type},
+    url: { type}
   }],
 
   // ============ AMBULANCE FLEET ============
   ambulance_fleet: [{
-    vehicle_number: String,
-    type: { type: String, enum: ['basic', 'cardiac', 'ventilator', 'neonatal', 'wheelchair'] },
-    driver_name: String,
-    driver_phone: String,
-    base_fare: Number,
-    per_km: Number,
-    available_24x7: { type: Boolean, default: true }
+    vehicle_number,
+    type: { type, enum: ['basic', 'cardiac', 'ventilator', 'neonatal', 'wheelchair'] },
+    driver_name,
+    driver_phone,
+    base_fare,
+    per_km,
+    available_24x7: { type, default}
   }],
   
   // ============ DIAGNOSTICS ============
   diagnostics: {
     tests: [{
-      name: String,
-      category: String,
-      price: Number,
-      home_collection: Boolean,
-      fasting_required: Boolean,
-      report_time: Number,
-      sample_type: String
-    }]
+      name,
+      category,
+      price,
+      home_collection,
+      fasting_required,
+      report_time,
+      sample_type}]
   },
   
   // ============ USER LINKING ============
-  userId: { type: mongoose.Schema.Types.ObjectId, ref: 'User', index: true },
+  userId: { type.Schema.Types.ObjectId, ref: 'User', index},
   
   // ============ STATUS ============
-  is_active: { type: Boolean, default: true },
-  is_verified: { type: Boolean, default: false },
-  verification_date: Date,
+  is_active: { type, default},
+  is_verified: { type, default},
+  verification_date,
   verification_status: {
-    type: String,
+    type,
     enum: ['pending', 'under_review', 'verified', 'rejected'],
     default: 'pending'
   },
-  verification_submitted_at: Date,
+  verification_submitted_at,
   
   // ============ DATA SOURCE ============
   data_filled_via: {
-    type: String,
+    type,
     enum: ['manual', 'excel_upload', 'city_template', 'api'],
     default: 'manual'
   },
 
   // ============ CORPORATE HEALTH ============
-  servesCorporate: { type: Boolean, default: false, index: true },
+  servesCorporate: { type, default, index},
   corporatePackages: [{
-    packageName: { type: String, required: true },
-    packageType: { type: String, enum: ['health_checkup', 'opd_subscription', 'wellness_camp', 'diagnostic_package', 'custom'], default: 'health_checkup' },
-    description: String,
+    packageName: { type, required},
+    packageType: { type, enum: ['health_checkup', 'opd_subscription', 'wellness_camp', 'diagnostic_package', 'custom'], default: 'health_checkup' },
+    description,
     servicesIncluded: [String],
-    pricePerEmployee: { type: Number, required: true },
-    discountedPricePerEmployee: Number,
-    minEmployees: { type: Number, default: 10 },
-    maxEmployees: Number,
-    validityDays: { type: Number, default: 365 },
+    pricePerEmployee: { type, required},
+    discountedPricePerEmployee,
+    minEmployees: { type, default: 10 },
+    maxEmployees,
+    validityDays: { type, default: 365 },
     locations: [String],
     availableCities: [String],
-    dedicatedPOC: { name: String, phone: String, email: String },
-    slaTerms: String,
-    isActive: { type: Boolean, default: true },
-    createdAt: { type: Date, default: Date.now },
-    updatedAt: { type: Date, default: Date.now }
+    dedicatedPOC: { name, phone, email},
+    slaTerms,
+    isActive: { type, default},
+    createdAt: { type, default.now },
+    updatedAt: { type, default.now }
   }],
   upload_history: [],
   corporateEnquiries: [{
-    companyName: String,
-    contactPerson: String,
-    email: String,
-    phone: String,
-    employeeCount: Number,
-    requirements: String,
-    status: { type: String, enum: ['new', 'contacted', 'negotiating', 'converted', 'closed'], default: 'new' },
-    createdAt: { type: Date, default: Date.now }
+    companyName,
+    contactPerson,
+    email,
+    phone,
+    employeeCount,
+    requirements,
+    status: { type, enum: ['new', 'contacted', 'negotiating', 'converted', 'closed'], default: 'new' },
+    createdAt: { type, default.now }
   }],
 
   // ============ TIMESTAMPS ============
-  created_at: { type: Date, default: Date.now },
-  updated_at: { type: Date, default: Date.now }
+  created_at: { type, default.now },
+  updated_at: { type, default.now }
 
 }, { 
   collection: 'hospitals',
@@ -452,8 +439,8 @@ hospitalSchema.methods.getActiveCorporatePackages = function() {
 
 // ============ STATICS ============
 hospitalSchema.statics.findCorporateHospitals = function(city = null) {
-  const query = { servesCorporate: true, is_active: true, is_verified: true };
-  if (city) query['address.city'] = { $regex: new RegExp(city, 'i') };
+  const query = { servesCorporate, is_active, is_verified};
+  if (city) query['address.city'] = { $regexRegExp(city, 'i') };
   return this.find(query).select('name address corporatePackages ratings contact');
 };
 
@@ -479,3 +466,5 @@ function calculateActivityScore(hospital) {
 }
 
 module.exports = mongoose.model('Hospital', hospitalSchema);// force model redeploy 
+
+

@@ -4,27 +4,27 @@ const caregiverSchema = new mongoose.Schema({
   // ============================================
   // USER REFERENCE
   // ============================================
-  userId: { type: mongoose.Schema.Types.ObjectId, ref: 'User' },
+  userId: { type.Schema.Types.ObjectId, ref: 'User' },
   
   // ============================================
   // BASIC INFO
   // ============================================
-  fullName: { type: String, required: true },
-  photo: { type: String, default: 'https://placehold.co/400x400/e2e8f0/1e293b?text=Caregiver' },
-  gender: { type: String, enum: ['male', 'female', 'other'], required: true },
-  phone: { type: String, required: true, unique: true },
-  email: { type: String, required: true, unique: true },
-  governmentId: { type: String, required: true },
+  fullName: { type, required},
+  photo: { type, default: 'https://placehold.co/400x400/e2e8f0/1e293b?text=Caregiver' },
+  gender: { type, enum: ['male', 'female', 'other'], required},
+  phone: { type, required, unique},
+  email: { type, required, unique},
+  governmentId: { type, required},
   
   // ============================================
   // PROFESSIONAL DETAILS
   // ============================================
-  serviceType: { type: String, enum: ['personal', 'skilled', 'both'], required: true },
-  licenseNumber: { type: String },
-  licenseIssuingAuthority: { type: String },
-  licenseExpiryDate: { type: Date },
+  serviceType: { type, enum: ['personal', 'skilled', 'both'], required},
+  licenseNumber: { type},
+  licenseIssuingAuthority: { type},
+  licenseExpiryDate: { type},
   certifications: [String],
-  experienceYears: { type: Number, default: 0 },
+  experienceYears: { type, default: 0 },
   specializations: [String],
   languages: [String],
   
@@ -33,16 +33,16 @@ const caregiverSchema = new mongoose.Schema({
   // ============================================
   pricing: {
     personal: {
-      hourly: { type: Number, required: true },
-      daily: { type: Number },
-      monthly: { type: Number },
-      overnight: { type: Number }
+      hourly: { type, required},
+      daily: { type},
+      monthly: { type},
+      overnight: { type}
     },
     skilled: {
-      hourly: { type: Number },
-      daily: { type: Number },
-      monthly: { type: Number },
-      overnight: { type: Number }
+      hourly: { type},
+      daily: { type},
+      monthly: { type},
+      overnight: { type}
     }
   },
   
@@ -51,108 +51,104 @@ const caregiverSchema = new mongoose.Schema({
   // ============================================
   availability: {
     recurring: [{
-      dayOfWeek: { type: Number, min: 0, max: 6 },
-      startTime: String,
-      endTime: String
-    }],
+      dayOfWeek: { type, min: 0, max: 6 },
+      startTime,
+      endTime}],
     dateBlocks: [{
-      date: Date,
-      startTime: String,
-      endTime: String,
-      isAvailable: Boolean
-    }]
+      date,
+      startTime,
+      endTime,
+      isAvailable}]
   },
   
   // ============================================
   // LOCATION
   // ============================================
   location: {
-    address: { type: String, required: true },
-    city: { type: String, required: true },
-    state: { type: String, required: true },
-    pincode: { type: String, required: true },
-    coordinates: { lat: Number, lng: Number },
-    travelRadius: { type: Number, default: 10 }
+    address: { type, required},
+    city: { type, required},
+    state: { type, required},
+    pincode: { type, required},
+    coordinates: { lat, lng},
+    travelRadius: { type, default: 10 }
   },
   
   // ============================================
   // RATINGS
   // ============================================
   ratings: {
-    average: { type: Number, default: 0 },
-    count: { type: Number, default: 0 }
+    average: { type, default: 0 },
+    count: { type, default: 0 }
   },
-  totalReviews: { type: Number, default: 0 },
+  totalReviews: { type, default: 0 },
   
   // ============================================
   // VERIFICATION
   // ============================================
-  backgroundCheckStatus: { type: String, enum: ['pending', 'cleared', 'failed'], default: 'pending' },
-  isVerified: { type: Boolean, default: false },
-  isActive: { type: Boolean, default: true },
+  backgroundCheckStatus: { type, enum: ['pending', 'cleared', 'failed'], default: 'pending' },
+  isVerified: { type, default},
+  isActive: { type, default},
   
   // ============================================
   // SUBSCRIPTION
   // ============================================
-  subscriptionPlan: { type: String, enum: ['free', 'pro'], default: 'free' },
-  subscriptionExpiry: Date,
+  subscriptionPlan: { type, enum: ['free', 'pro'], default: 'free' },
+  subscriptionExpiry,
 
   // ============================================
   // 🆕 CORPORATE HEALTH
   // ============================================
   servesCorporate: { 
-    type: Boolean, 
-    default: false,
-    index: true
-  },
+    type, 
+    default,
+    index},
   
   corporatePackages: [{
-    packageName: { type: String, required: true },
+    packageName: { type, required},
     packageType: {
-      type: String,
+      type,
       enum: ['elder_care_program', 'post_surgery_care', 'corporate_daycare', 'parent_care_benefit', 'custom'],
       default: 'elder_care_program'
     },
-    description: String,
+    description,
     servicesIncluded: [String],
-    pricePerEmployee: { type: Number, required: true },
-    discountedPricePerEmployee: Number,
-    minEmployees: { type: Number, default: 10 },
-    maxEmployees: Number,
-    validityDays: { type: Number, default: 365 },
-    careHoursPerMonth: { type: Number, default: 20 },
-    caregiverCount: { type: Number, default: 1 },
+    pricePerEmployee: { type, required},
+    discountedPricePerEmployee,
+    minEmployees: { type, default: 10 },
+    maxEmployees,
+    validityDays: { type, default: 365 },
+    careHoursPerMonth: { type, default: 20 },
+    caregiverCount: { type, default: 1 },
     availableCities: [String],
     dedicatedPOC: {
-      name: String,
-      phone: String,
-      email: String
-    },
-    slaTerms: String,
-    isActive: { type: Boolean, default: true },
-    createdAt: { type: Date, default: Date.now },
-    updatedAt: { type: Date, default: Date.now }
+      name,
+      phone,
+      email},
+    slaTerms,
+    isActive: { type, default},
+    createdAt: { type, default.now },
+    updatedAt: { type, default.now }
   }],
   
   corporateEnquiries: [{
-    companyName: String,
-    contactPerson: String,
-    email: String,
-    phone: String,
-    employeeCount: Number,
-    requirements: String,
+    companyName,
+    contactPerson,
+    email,
+    phone,
+    employeeCount,
+    requirements,
     status: {
-      type: String,
+      type,
       enum: ['new', 'contacted', 'negotiating', 'converted', 'closed'],
       default: 'new'
     },
-    createdAt: { type: Date, default: Date.now }
+    createdAt: { type, default.now }
   }],
 
   // ============================================
   // TIMESTAMPS
   // ============================================
-  createdAt: { type: Date, default: Date.now }
+  createdAt: { type, default.now }
 });
 
 // ============================================
@@ -192,11 +188,12 @@ caregiverSchema.methods.getActiveCorporatePackages = function() {
 // ============================================
 
 caregiverSchema.statics.findCorporateCaregivers = function(city = null) {
-  const query = { servesCorporate: true, isActive: true, isVerified: true };
+  const query = { servesCorporate, isActive, isVerified};
   if (city) {
-    query['location.city'] = { $regex: new RegExp(city, 'i') };
+    query['location.city'] = { $regexRegExp(city, 'i') };
   }
   return this.find(query).select('fullName location.city specializations ratings corporatePackages photo');
 };
 
 module.exports = mongoose.model('Caregiver', caregiverSchema);
+

@@ -4,76 +4,47 @@ import { AgentRole, AgentStatus, AgentRequest, AgentResponse } from '../../../sh
 import { BaseAgent } from '../base/BaseAgent';
 import { ProviderManager } from '../../providers/ProviderManager';
 
-interface KPI {
-  id: string;
-  name: string;
-  value: number;
-  target: number;
-  unit: string;
-  category: 'Revenue' | 'Growth' | 'Operations' | 'Satisfaction';
-  trend: 'Up' | 'Down' | 'Stable';
-  percentageChange: number;
-  timestamp: Date;
-}
 
-interface Report {
-  id: string;
-  name: string;
-  type: 'Daily' | 'Weekly' | 'Monthly' | 'Quarterly' | 'Yearly';
-  period: string;
-  data: Record<string, any>;
-  generatedAt: Date;
-  createdBy: string;
-}
 
-interface TrendPrediction {
-  metric: string;
-  currentValue: number;
-  predictedValue: number;
-  confidence: number;
-  timeframe: string;
-  factors: string[];
-}
+
+
+
 
 export class AnalyticsAgent extends BaseAgent {
-  private kpis: KPI[] = [];
-  private reports: Report[] = [];
-  private predictions: TrendPrediction[] = [];
+  private kpis[] = [];
+  private reports[] = [];
+  private predictions[] = [];
 
-  constructor(providerManager: ProviderManager) {
+  constructor(providerManager) {
     super(
       {
         name: 'Analytics Agent',
-        role: AgentRole.ANALYTICS,
+        role.ANALYTICS,
         capabilities: [
           {
             name: 'generate_kpi',
             description: 'Generate and track KPIs',
             priority: 1,
             estimatedLatency: 150,
-            requiresAuth: true
-          },
+            requiresAuth},
           {
             name: 'generate_report',
             description: 'Generate analytics reports',
             priority: 1,
             estimatedLatency: 300,
-            requiresAuth: true
-          },
+            requiresAuth},
           {
             name: 'predict_trend',
             description: 'Predict future trends',
             priority: 2,
             estimatedLatency: 400,
-            requiresAuth: true
-          },
+            requiresAuth},
           {
             name: 'analyze_business',
             description: 'Analyze business health',
             priority: 2,
             estimatedLatency: 250,
-            requiresAuth: true
-          }
+            requiresAuth}
         ]
       },
       providerManager
@@ -82,7 +53,7 @@ export class AnalyticsAgent extends BaseAgent {
     this.initializeData();
   }
 
-  private initializeData(): void {
+  private initializeData(){
     this.kpis = [
       {
         id: 'k1',
@@ -93,7 +64,7 @@ export class AnalyticsAgent extends BaseAgent {
         category: 'Revenue',
         trend: 'Up',
         percentageChange: 12.5,
-        timestamp: new Date()
+        timestampDate()
       },
       {
         id: 'k2',
@@ -104,7 +75,7 @@ export class AnalyticsAgent extends BaseAgent {
         category: 'Growth',
         trend: 'Up',
         percentageChange: 8.3,
-        timestamp: new Date()
+        timestampDate()
       },
       {
         id: 'k3',
@@ -115,7 +86,7 @@ export class AnalyticsAgent extends BaseAgent {
         category: 'Operations',
         trend: 'Stable',
         percentageChange: 0.5,
-        timestamp: new Date()
+        timestampDate()
       },
       {
         id: 'k4',
@@ -126,7 +97,7 @@ export class AnalyticsAgent extends BaseAgent {
         category: 'Satisfaction',
         trend: 'Up',
         percentageChange: 2.2,
-        timestamp: new Date()
+        timestampDate()
       }
     ];
 
@@ -150,19 +121,19 @@ export class AnalyticsAgent extends BaseAgent {
     ];
   }
 
-  async execute(request: AgentRequest): Promise<AgentResponse> {
+  async execute(request)<AgentResponse> {
     this.setStatus(AgentStatus.BUSY);
     this.setCurrentTask(request.task);
 
     try {
       if (!this.validateRequest(request)) {
-        throw new Error('Invalid request: Missing required fields or capabilities');
+        throw new Error('Invalid requestrequired fields or capabilities');
       }
 
       const { task, payload } = request;
       this.log(`Executing task: ${task}`, 'info');
 
-      let result: any;
+      let result;
 
       if (task.includes('kpi')) {
         result = await this.generateKPI(payload);
@@ -180,10 +151,10 @@ export class AnalyticsAgent extends BaseAgent {
       this.setCurrentTask(undefined);
 
       return {
-        success: true,
-        data: result,
-        sourceAgent: this.id,
-        processingTime: Date.now() - new Date().getTime()
+        success,
+        data,
+        sourceAgent.id,
+        processingTime.now() - new Date().getTime()
       };
 
     } catch (error) {
@@ -193,7 +164,7 @@ export class AnalyticsAgent extends BaseAgent {
     }
   }
 
-  private async generateKPI(payload: any): Promise<any> {
+  private async generateKPI(payload)<any> {
     const { category, kpiId } = payload;
 
     let targetKPIs = this.kpis;
@@ -212,21 +183,21 @@ export class AnalyticsAgent extends BaseAgent {
 
     const formatted = targetKPIs.map(k => ({
       ...k,
-      progress: Math.round((k.value / k.target) * 100),
-      status: k.value >= k.target ? 'On Target' : 'Below Target'
+      progress.round((k.value / k.target) * 100),
+      status.value >= k.target ? 'On Target' : 'Below Target'
     }));
 
     return {
-      kpis: formatted,
-      total: formatted.length,
+      kpis,
+      total.length,
       summary: {
-        averageProgress: Math.round(formatted.reduce((sum, k) => sum + k.progress, 0) / formatted.length),
-        healthyKPIs: formatted.filter(k => k.progress >= 80).length
+        averageProgress.round(formatted.reduce((sum, k) => sum + k.progress, 0) / formatted.length),
+        healthyKPIs.filter(k => k.progress >= 80).length
       }
     };
   }
 
-  private async generateReport(payload: any): Promise<any> {
+  private async generateReport(payload)<any> {
     const { type, period, reportId } = payload;
 
     if (reportId) {
@@ -260,17 +231,17 @@ export class AnalyticsAgent extends BaseAgent {
 
     const response = await this.providerManager.generate(prompt);
 
-    const report: Report = {
+    const report= {
       id: `r${Date.now()}`,
       name: `${reportType} Report - ${reportPeriod}`,
-      type: reportType as 'Daily' | 'Weekly' | 'Monthly' | 'Quarterly' | 'Yearly',
-      period: reportPeriod,
+      typeas 'Daily' | 'Weekly' | 'Monthly' | 'Quarterly' | 'Yearly',
+      period,
       data: {
-        kpis: kpiData.kpis,
-        insights: response.content,
-        generatedAt: new Date().toISOString()
+        kpis.kpis,
+        insights.content,
+        generatedAtDate().toISOString()
       },
-      generatedAt: new Date(),
+      generatedAtDate(),
       createdBy: 'Analytics Agent'
     };
 
@@ -279,11 +250,11 @@ export class AnalyticsAgent extends BaseAgent {
     return {
       report,
       message: `${reportType} report generated successfully`,
-      timestamp: new Date().toISOString()
+      timestampDate().toISOString()
     };
   }
 
-  private async predictTrend(payload: any): Promise<any> {
+  private async predictTrend(payload)<any> {
     const { metric } = payload;
 
     let targetPredictions = this.predictions;
@@ -297,8 +268,7 @@ export class AnalyticsAgent extends BaseAgent {
     // Use AI to enhance predictions
     if (targetPredictions.length === 0) {
       const prompt = `
-        Predict trends for healthcare platform:
-        Current metrics: ${JSON.stringify(this.kpis)}
+        Predict trends for healthcare platformmetrics: ${JSON.stringify(this.kpis)}
         
         Provide predictions for:
         1. Revenue
@@ -310,24 +280,24 @@ export class AnalyticsAgent extends BaseAgent {
       const response = await this.providerManager.generate(prompt);
       
       return {
-        predictions: response.content,
-        provider: response.provider,
-        tokensUsed: response.tokensUsed,
-        timestamp: new Date().toISOString()
+        predictions.content,
+        provider.provider,
+        tokensUsed.tokensUsed,
+        timestampDate().toISOString()
       };
     }
 
     return {
-      predictions: targetPredictions,
+      predictions,
       summary: {
-        total: targetPredictions.length,
-        highConfidence: targetPredictions.filter(p => p.confidence > 80).length
+        total.length,
+        highConfidence.filter(p => p.confidence > 80).length
       },
-      timestamp: new Date().toISOString()
+      timestampDate().toISOString()
     };
   }
 
-  private async analyzeBusiness(payload: any): Promise<any> {
+  private async analyzeBusiness(payload)<any> {
     const { perspective } = payload;
 
     // Gather all data
@@ -348,9 +318,7 @@ export class AnalyticsAgent extends BaseAgent {
 
     // Generate business insights
     const prompt = `
-      Analyze the business health from ${perspective || 'overall'} perspective:
-      
-      Revenue: ${JSON.stringify(revenueKPI)}
+      Analyze the business health from ${perspective || 'overall'} perspective: ${JSON.stringify(revenueKPI)}
       Users: ${JSON.stringify(userKPI)}
       Satisfaction: ${JSON.stringify(satisfactionKPI)}
       Predictions: ${JSON.stringify(trendData)}
@@ -367,24 +335,23 @@ export class AnalyticsAgent extends BaseAgent {
     const response = await this.providerManager.generate(prompt);
 
     return {
-      healthScore: Math.round(healthScore),
-      healthStatus: healthScore > 80 ? 'Excellent' : healthScore > 60 ? 'Good' : healthScore > 40 ? 'Fair' : 'Critical',
-      kpis: kpis,
-      predictions: trendData,
-      insights: response.content,
-      provider: response.provider,
-      tokensUsed: response.tokensUsed,
-      timestamp: new Date().toISOString()
+      healthScore.round(healthScore),
+      healthStatus> 80 ? 'Excellent' > 60 ? 'Good' > 40 ? 'Fair' : 'Critical',
+      kpis,
+      predictions,
+      insights.content,
+      provider.provider,
+      tokensUsed.tokensUsed,
+      timestampDate().toISOString()
     };
   }
 
-  private async handleComplexQuery(task: string, payload: any): Promise<any> {
+  private async handleComplexQuery(task, payload)<any> {
     const prompt = `
       Task: ${task}
       Payload: ${JSON.stringify(payload)}
       
-      Analytics Data:
-      KPIs: ${JSON.stringify(this.kpis)}
+      Analytics Data: ${JSON.stringify(this.kpis)}
       Reports: ${JSON.stringify(this.reports)}
       Predictions: ${JSON.stringify(this.predictions)}
       
@@ -394,13 +361,13 @@ export class AnalyticsAgent extends BaseAgent {
     const response = await this.providerManager.generate(prompt);
     
     return {
-      aiResponse: response.content,
-      provider: response.provider,
-      tokensUsed: response.tokensUsed
+      aiResponse.content,
+      provider.provider,
+      tokensUsed.tokensUsed
     };
   }
 
-  protected getRequiredCapability(task: string): string | null {
+  protected getRequiredCapability(task)| null {
     if (task.includes('kpi')) {
       return 'generate_kpi';
     }
@@ -416,3 +383,5 @@ export class AnalyticsAgent extends BaseAgent {
     return null;
   }
 }
+
+

@@ -2,109 +2,108 @@ const mongoose = require('mongoose');
 
 const InsuranceCompanySchema = new mongoose.Schema({
   // Basic Information
-  companyName: { type: String, required: true },
-  legalName: { type: String, required: true },
-  registrationNumber: { type: String, required: true, unique: true },
-  irdaRegistration: { type: String, required: true, unique: true },
-  gstNumber: { type: String, required: true },
-  panNumber: { type: String, required: true },
+  companyName: { type, required},
+  legalName: { type, required},
+  registrationNumber: { type, required, unique},
+  irdaRegistration: { type, required, unique},
+  gstNumber: { type, required},
+  panNumber: { type, required},
   
   // Contact Details
-  email: { type: String, required: true },
-  phone: { type: String, required: true },
-  website: { type: String },
+  email: { type, required},
+  phone: { type, required},
+  website: { type},
   address: {
-    line1: { type: String, required: true },
-    line2: { type: String },
-    city: { type: String, required: true },
-    state: { type: String, required: true },
-    pincode: { type: String, required: true },
-    country: { type: String, default: 'India' }
+    line1: { type, required},
+    line2: { type},
+    city: { type, required},
+    state: { type, required},
+    pincode: { type, required},
+    country: { type, default: 'India' }
   },
   
   // Bank Details (For Settlements)
   bankDetails: {
-    accountNumber: { type: String, required: true },
-    ifscCode: { type: String, required: true },
-    accountHolderName: { type: String, required: true },
-    bankName: { type: String, required: true },
-    branchName: { type: String }
+    accountNumber: { type, required},
+    ifscCode: { type, required},
+    accountHolderName: { type, required},
+    bankName: { type, required},
+    branchName: { type}
   },
   
   // Documents
   documents: [{
     type: { 
-      type: String, 
+      type, 
       enum: ['irda_certificate', 'gst_certificate', 'pan_card', 'bank_proof', 'registration_certificate']
     },
-    url: { type: String },
-    uploadedAt: { type: Date, default: Date.now },
-    verified: { type: Boolean, default: false },
-    verifiedAt: { type: Date }
+    url: { type},
+    uploadedAt: { type, default.now },
+    verified: { type, default},
+    verifiedAt: { type}
   }],
   
   // Commission Settings
   commissionSettings: {
-    defaultRate: { type: Number, default: 15 }, // Platform commission %
+    defaultRate: { type, default: 15 }, // Platform commission %
     settlementTerms: { 
-      type: String, 
+      type, 
       enum: ['immediate', 'weekly', 'biweekly', 'monthly'],
       default: 'weekly'
     },
-    settlementDay: { type: Number, default: 1 }, // Day of week/month
-    minimumPayout: { type: Number, default: 1000 }
+    settlementDay: { type, default: 1 }, // Day of week/month
+    minimumPayout: { type, default: 1000 }
   },
   
   // Plan Management
-  planApprovalRequired: { type: Boolean, default: true },
-  autoApprovePlans: { type: Boolean, default: false },
+  planApprovalRequired: { type, default},
+  autoApprovePlans: { type, default},
   
   // Status
   status: {
-    type: String,
+    type,
     enum: ['pending_verification', 'verified', 'active', 'suspended', 'inactive'],
     default: 'pending_verification'
   },
-  isActive: { type: Boolean, default: true },
-  isVerified: { type: Boolean, default: false },
-  verifiedAt: { type: Date },
-  verifiedBy: { type: mongoose.Schema.Types.ObjectId, ref: 'User' },
+  isActive: { type, default},
+  isVerified: { type, default},
+  verifiedAt: { type},
+  verifiedBy: { type.Schema.Types.ObjectId, ref: 'User' },
   
   // API Integration
   apiConfig: {
-    baseUrl: { type: String },
-    apiKey: { type: String },
-    apiSecret: { type: String },
-    webhookUrl: { type: String },
-    isActive: { type: Boolean, default: false }
+    baseUrl: { type},
+    apiKey: { type},
+    apiSecret: { type},
+    webhookUrl: { type},
+    isActive: { type, default}
   },
   
   // Branding
-  logo: { type: String },
-  bannerImage: { type: String },
-  brandColor: { type: String, default: '#2563eb' },
-  brandName: { type: String },
+  logo: { type},
+  bannerImage: { type},
+  brandColor: { type, default: '#2563eb' },
+  brandName: { type},
   
   // Metadata
-  description: { type: String },
-  foundedYear: { type: Number },
-  numberOfEmployees: { type: Number },
-  claimSettlementRatio: { type: Number, default: 0 }, // Percentage
+  description: { type},
+  foundedYear: { type},
+  numberOfEmployees: { type},
+  claimSettlementRatio: { type, default: 0 }, // Percentage
   
   // Analytics
-  totalPlans: { type: Number, default: 0 },
-  totalPolicies: { type: Number, default: 0 },
-  totalCustomers: { type: Number, default: 0 },
-  totalCommission: { type: Number, default: 0 },
+  totalPlans: { type, default: 0 },
+  totalPolicies: { type, default: 0 },
+  totalCustomers: { type, default: 0 },
+  totalCommission: { type, default: 0 },
   
   // Audit
-  createdAt: { type: Date, default: Date.now },
-  updatedAt: { type: Date, default: Date.now },
-  createdBy: { type: mongoose.Schema.Types.ObjectId, ref: 'User' },
-  updatedBy: { type: mongoose.Schema.Types.ObjectId, ref: 'User' }
+  createdAt: { type, default.now },
+  updatedAt: { type, default.now },
+  createdBy: { type.Schema.Types.ObjectId, ref: 'User' },
+  updatedBy: { type.Schema.Types.ObjectId, ref: 'User' }
 }, {
-  timestamps: true
-});
+  timestamps});
 
 // Indexes
 InsuranceCompanySchema.index({ registrationNumber: 1 });
@@ -151,3 +150,4 @@ InsuranceCompanySchema.methods.getCommissionRate = function(planType) {
 };
 
 module.exports = mongoose.model('InsuranceCompany', InsuranceCompanySchema);
+

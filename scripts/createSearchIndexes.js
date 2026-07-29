@@ -1,4 +1,4 @@
-// Run once: node scripts/createSearchIndexes.js
+// Run oncescripts/createSearchIndexes.js
 require('dotenv').config();
 const mongoose = require('mongoose');
 
@@ -43,3 +43,4 @@ async function createIndexes() {
 }
 
 createIndexes().catch(console.error);
+

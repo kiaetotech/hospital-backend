@@ -42,7 +42,7 @@ const generateOTP = () => {
 const otpStore = new Map();
 
 const saveOTP = (mobile, otp) => {
-  otpStore.set(mobile, { otp, expiresAt: Date.now() + 10 * 60 * 1000 });
+  otpStore.set(mobile, { otp, expiresAt.now() + 10 * 60 * 1000 });
   setTimeout(() => otpStore.delete(mobile), 10 * 60 * 1000);
 };
 
@@ -93,31 +93,31 @@ const findNearestBranch = async (lenderId, patientPincode, patientDistrict, pati
   
   // If lender has branches, find the best match
   if (lender.branches && lender.branches.length > 0) {
-    // Priority 1: Exact pincode match
+    // Priority 1pincode match
     let matchedBranch = lender.branches.find(b => b.pincode === patientPincode && b.isActive);
-    if (matchedBranch) return { branch: matchedBranch, reason: 'exact_pincode_match' };
+    if (matchedBranch) return { branch, reason: 'exact_pincode_match' };
     
-    // Priority 2: District match
+    // Priority 2match
     if (patientDistrict) {
       matchedBranch = lender.branches.find(b => b.district === patientDistrict && b.isActive);
-      if (matchedBranch) return { branch: matchedBranch, reason: 'district_match' };
+      if (matchedBranch) return { branch, reason: 'district_match' };
     }
     
-    // Priority 3: City match
+    // Priority 3match
     if (patientCity) {
       matchedBranch = lender.branches.find(b => b.city === patientCity && b.isActive);
-      if (matchedBranch) return { branch: matchedBranch, reason: 'city_match' };
+      if (matchedBranch) return { branch, reason: 'city_match' };
     }
     
-    // Priority 4: State match
+    // Priority 4match
     if (patientState) {
       matchedBranch = lender.branches.find(b => b.state === patientState && b.isActive);
-      if (matchedBranch) return { branch: matchedBranch, reason: 'state_match' };
+      if (matchedBranch) return { branch, reason: 'state_match' };
     }
     
-    // Priority 5: First active branch
+    // Priority 5active branch
     const activeBranch = lender.branches.find(b => b.isActive);
-    if (activeBranch) return { branch: activeBranch, reason: 'default_branch' };
+    if (activeBranch) return { branch, reason: 'default_branch' };
   }
   
   return null;
@@ -132,33 +132,33 @@ const getAvailableLenders = async (pincode, city, district, state) => {
   
   // Regional lenders (serve state)
   if (state) {
-    locationConditions.push({ serviceStates: state, status: 'active' });
+    locationConditions.push({ serviceStates, status: 'active' });
   }
   
   // Local lenders (serve district/city)
   if (district) {
-    locationConditions.push({ serviceDistricts: district, status: 'active' });
+    locationConditions.push({ serviceDistricts, status: 'active' });
   }
   if (city) {
-    locationConditions.push({ serviceCities: city, status: 'active' });
+    locationConditions.push({ serviceCities, status: 'active' });
   }
   
   // Pincode specific lenders
   if (pincode) {
-    locationConditions.push({ servicePincodes: pincode, status: 'active' });
+    locationConditions.push({ servicePincodes, status: 'active' });
   }
   
-  const lenders = await Lender.find({ $or: locationConditions }).select('-password -apiConfig');
+  const lenders = await Lender.find({ $or}).select('-password -apiConfig');
   
   // For each lender, find the nearest branch
   const lendersWithBranches = await Promise.all(lenders.map(async (lender) => {
     const branchInfo = await findNearestBranch(lender._id, pincode, district, city, state);
     return {
       ...lender.toObject(),
-      nearestBranch: branchInfo?.branch || null,
-      assignmentReason: branchInfo?.reason || 'head_office',
-      assignedBranchId: branchInfo?.branch?.branchId || null,
-      assignedBranchName: branchInfo?.branch?.branchName || lender.registeredOffice?.city || 'Head Office'
+      nearestBranch?.branch || null,
+      assignmentReason?.reason || 'head_office',
+      assignedBranchId?.branch?.branchId || null,
+      assignedBranchName?.branch?.branchName || lender.registeredOffice?.city || 'Head Office'
     };
   }));
   
@@ -224,16 +224,15 @@ router.post('/send-otp', async (req, res) => {
     // In production, NEVER return the OTP in response
     if (process.env.NODE_ENV === 'production') {
       res.json({ 
-        success: true, 
+        success, 
         message: 'OTP sent successfully to your registered mobile number'
       });
     } else {
       // For development, include OTP for testing
       res.json({ 
-        success: true, 
+        success, 
         message: 'OTP sent successfully',
-        demoOtp: demoOtp
-      });
+        demoOtp});
     }
   } catch (error) {
     console.error('Error sending OTP:', error);
@@ -242,10 +241,9 @@ router.post('/send-otp', async (req, res) => {
     saveOTP(mobile, demoOtp);
     console.log(`📱 OTP for ${mobile}: ${demoOtp}`);
     res.json({ 
-      success: true, 
+      success, 
       message: 'OTP sent successfully',
-      demoOtp: process.env.NODE_ENV === 'production' ? undefined : demoOtp
-    });
+      demoOtp.env.NODE_ENV === 'production' ? undefined });
   }
 });
 
@@ -265,7 +263,7 @@ router.post('/verify-otp', async (req, res) => {
       const verification = verifyOTP(mobile, otp);
       isValid = verification.valid;
       if (!isValid) {
-        return res.status(401).json({ error: verification.reason });
+        return res.status(401).json({ error.reason });
       }
     } else {
       isValid = verifyOTPBackup(mobile, otp);
@@ -275,14 +273,14 @@ router.post('/verify-otp', async (req, res) => {
     }
     
     // Find or create patient
-    let patient = await Patient.findOne({ phone: mobile });
+    let patient = await Patient.findOne({ phone});
     
     if (!patient) {
       patient = new Patient({
-        fullName: fullName || 'Patient',
-        phone: mobile,
-        email: email || 'patient@example.com',
-        isPhoneVerified: true,
+        fullName|| 'Patient',
+        phone,
+        email|| 'patient@example.com',
+        isPhoneVerified,
         serviceAddress: {
           address: 'Address',
           city: 'City',
@@ -306,20 +304,20 @@ router.post('/verify-otp', async (req, res) => {
     }
     
     const token = jwt.sign(
-      { id: patient._id, phone: patient.phone, role: 'patient' },
+      { id._id, phone.phone, role: 'patient' },
       JWT_SECRET,
       { expiresIn: '30d' }
     );
     
     res.json({
-      success: true,
+      success,
       token,
       patient: {
-        id: patient._id,
-        fullName: patient.fullName,
-        phone: patient.phone,
-        email: patient.email,
-        isPhoneVerified: patient.isPhoneVerified
+        id._id,
+        fullName.fullName,
+        phone.phone,
+        email.email,
+        isPhoneVerified.isPhoneVerified
       }
     });
   } catch (error) {
@@ -369,17 +367,17 @@ router.put('/profile', authenticatePatient, async (req, res) => {
     // Update location details for lender assignment
     if (pincode || city || district || state) {
       patient.locationDetails = {
-        pincode: pincode || patient.serviceAddress.pincode,
-        city: city || patient.serviceAddress.city,
-        district: district || '',
-        state: state || patient.serviceAddress.state
+        pincode|| patient.serviceAddress.pincode,
+        city|| patient.serviceAddress.city,
+        district|| '',
+        state|| patient.serviceAddress.state
       };
     }
     
     patient.updatedAt = new Date();
     await patient.save();
     
-    res.json({ success: true, patient });
+    res.json({ success, patient });
   } catch (error) {
     console.error(error);
     res.status(500).json({ error: 'Failed to update profile' });
@@ -402,8 +400,8 @@ router.post('/lenders/nearby', async (req, res) => {
     const lenders = await getAvailableLenders(pincode, city, district, state);
     
     res.json({
-      success: true,
-      count: lenders.length,
+      success,
+      count.length,
       lenders,
       patientLocation: { pincode, city, district, state }
     });
@@ -424,7 +422,7 @@ router.get('/lenders', async (req, res) => {
       query = {
         status: 'active',
         $or: [
-          { servicePincodes: pincode },
+          { servicePincodes},
           { lenderType: 'national' }
         ]
       };
@@ -467,57 +465,57 @@ router.post('/applications', authenticatePatient, async (req, res) => {
     const applicationId = generateApplicationId();
     
     const finalPatientLocation = patientLocation || patient.locationDetails || {
-      pincode: patient.serviceAddress?.pincode,
-      city: patient.serviceAddress?.city,
-      state: patient.serviceAddress?.state
+      pincode.serviceAddress?.pincode,
+      city.serviceAddress?.city,
+      state.serviceAddress?.state
     };
     
     const application = new LoanApplication({
       applicationId,
-      patientId: patient._id,
-      lenderId: lenderId || 'demo_lender',
+      patientId._id,
+      lenderId|| 'demo_lender',
       patientLocation: {
-        pincode: finalPatientLocation.pincode,
-        city: finalPatientLocation.city,
-        district: finalPatientLocation.district,
-        state: finalPatientLocation.state
+        pincode.pincode,
+        city.city,
+        district.district,
+        state.state
       },
       patientDetails: {
-        fullName: patient.fullName,
-        phone: patient.phone,
-        email: patient.email,
-        pan: patient.pan,
-        aadhaar: patient.aadhaar,
-        address: patient.serviceAddress?.address,
-        pincode: patient.serviceAddress?.pincode,
-        city: patient.serviceAddress?.city,
-        state: patient.serviceAddress?.state
+        fullName.fullName,
+        phone.phone,
+        email.email,
+        pan.pan,
+        aadhaar.aadhaar,
+        address.serviceAddress?.address,
+        pincode.serviceAddress?.pincode,
+        city.serviceAddress?.city,
+        state.serviceAddress?.state
       },
       treatmentType,
       hospitalName,
       hospitalAddress,
       estimatedAmount,
-      requestedTenure: tenure,
-      documents: documents || {},
-      collateral: collateral || null,
+      requestedTenure,
+      documents|| {},
+      collateral|| null,
       status: 'submitted',
       statusHistory: [{
         status: 'submitted',
         note: 'Application submitted successfully',
-        updatedBy: patient.fullName,
+        updatedBy.fullName,
         updatedByRole: 'patient',
-        timestamp: new Date()
+        timestampDate()
       }],
-      submittedAt: new Date()
+      submittedAtDate()
     });
     
     await application.save();
     
     res.json({
-      success: true,
-      applicationId: application.applicationId,
+      success,
+      applicationId.applicationId,
       assignedBranch: {
-        branchId: null,
+        branchId,
         branchName: 'Demo Lender',
         branchAddress: 'Demo Address',
         branchPincode: '000000',
@@ -539,7 +537,7 @@ router.post('/applications', authenticatePatient, async (req, res) => {
 // Get all applications for logged-in patient
 router.get('/applications', authenticatePatient, async (req, res) => {
   try {
-    const applications = await LoanApplication.find({ patientId: req.user.id })
+    const applications = await LoanApplication.find({ patientId.user.id })
       .sort({ submittedAt: -1 })
       .populate('lenderId', 'businessName lenderType');
     
@@ -551,11 +549,11 @@ router.get('/applications', authenticatePatient, async (req, res) => {
 });
 
 // Get single application details with branch info
-router.get('/applications/:applicationId', authenticatePatient, async (req, res) => {
+router.get('/applications/', authenticatePatient, async (req, res) => {
   try {
     const application = await LoanApplication.findOne({
-      applicationId: req.params.applicationId,
-      patientId: req.user.id
+      applicationId.params.applicationId,
+      patientId.user.id
     }).populate('lenderId', 'businessName lenderType commissionRate');
     
     if (!application) {
@@ -565,13 +563,13 @@ router.get('/applications/:applicationId', authenticatePatient, async (req, res)
     res.json({
       application,
       assignedBranch: {
-        branchId: application.assignedBranchId,
-        branchName: application.assignedBranchName,
-        branchAddress: application.assignedBranchAddress,
-        branchPincode: application.assignedBranchPincode,
-        branchManager: application.assignedBranchManager,
-        assignmentReason: application.assignmentReason,
-        assignedAt: application.assignedAt
+        branchId.assignedBranchId,
+        branchName.assignedBranchName,
+        branchAddress.assignedBranchAddress,
+        branchPincode.assignedBranchPincode,
+        branchManager.assignedBranchManager,
+        assignmentReason.assignmentReason,
+        assignedAt.assignedAt
       }
     });
   } catch (error) {
@@ -585,7 +583,7 @@ router.get('/applications/:applicationId', authenticatePatient, async (req, res)
 // ============================================
 
 // Upload documents to Cloudinary
-router.post('/applications/:applicationId/upload-documents', 
+router.post('/applications//upload-documents', 
   authenticatePatient, 
   uploadDocuments, 
   async (req, res) => {
@@ -594,7 +592,7 @@ router.post('/applications/:applicationId/upload-documents',
       
       const application = await LoanApplication.findOne({
         applicationId,
-        patientId: req.user.id
+        patientId.user.id
       });
       
       if (!application) {
@@ -627,10 +625,9 @@ router.post('/applications/:applicationId/upload-documents',
       await application.save();
       
       res.json({
-        success: true,
+        success,
         message: 'Documents uploaded successfully',
-        documents: uploadedDocs
-      });
+        documents});
       
     } catch (error) {
       console.error('Upload error:', error);
@@ -640,7 +637,7 @@ router.post('/applications/:applicationId/upload-documents',
 );
 
 // Delete document from Cloudinary
-router.delete('/applications/:applicationId/documents/:docType', 
+router.delete('/applications//documents/', 
   authenticatePatient, 
   async (req, res) => {
     try {
@@ -648,7 +645,7 @@ router.delete('/applications/:applicationId/documents/:docType',
       
       const application = await LoanApplication.findOne({
         applicationId,
-        patientId: req.user.id
+        patientId.user.id
       });
       
       if (!application) {
@@ -669,7 +666,7 @@ router.delete('/applications/:applicationId/documents/:docType',
       await application.save();
       
       res.json({
-        success: true,
+        success,
         message: 'Document deleted successfully'
       });
       
@@ -685,14 +682,14 @@ router.delete('/applications/:applicationId/documents/:docType',
 // ============================================
 
 // Upload final bill after treatment
-router.post('/applications/:applicationId/final-bill', authenticatePatient, async (req, res) => {
+router.post('/applications//final-bill', authenticatePatient, async (req, res) => {
   try {
     const { applicationId } = req.params;
     const { finalBillUrl, finalBillAmount, hospitalFinalBillNumber } = req.body;
     
     const application = await LoanApplication.findOne({
       applicationId,
-      patientId: req.user.id
+      patientId.user.id
     });
     
     if (!application) {
@@ -710,14 +707,14 @@ router.post('/applications/:applicationId/final-bill', authenticatePatient, asyn
     application.statusHistory.push({
       status: 'pending_disbursal',
       note: `Final bill of ₹${finalBillAmount} submitted`,
-      updatedBy: application.patientDetails.fullName,
+      updatedBy.patientDetails.fullName,
       updatedByRole: 'patient',
-      timestamp: new Date()
+      timestampDate()
     });
     
     await application.save();
     
-    res.json({ success: true, message: 'Final bill submitted successfully' });
+    res.json({ success, message: 'Final bill submitted successfully' });
   } catch (error) {
     console.error(error);
     res.status(500).json({ error: 'Failed to upload final bill' });
@@ -729,14 +726,14 @@ router.post('/applications/:applicationId/final-bill', authenticatePatient, asyn
 // ============================================
 
 // Upload additional documents
-router.post('/applications/:applicationId/documents', authenticatePatient, async (req, res) => {
+router.post('/applications//documents', authenticatePatient, async (req, res) => {
   try {
     const { applicationId } = req.params;
     const { documentType, documentUrl } = req.body;
     
     const application = await LoanApplication.findOne({
       applicationId,
-      patientId: req.user.id
+      patientId.user.id
     });
     
     if (!application) {
@@ -751,7 +748,7 @@ router.post('/applications/:applicationId/documents', authenticatePatient, async
     application.documents[documentType] = documentUrl;
     await application.save();
     
-    res.json({ success: true, message: `${documentType} uploaded successfully` });
+    res.json({ success, message: `${documentType} uploaded successfully` });
   } catch (error) {
     console.error(error);
     res.status(500).json({ error: 'Failed to upload document' });
@@ -763,13 +760,13 @@ router.post('/applications/:applicationId/documents', authenticatePatient, async
 // ============================================
 
 // Cancel application
-router.delete('/applications/:applicationId', authenticatePatient, async (req, res) => {
+router.delete('/applications/', authenticatePatient, async (req, res) => {
   try {
     const { applicationId } = req.params;
     
     const application = await LoanApplication.findOne({
       applicationId,
-      patientId: req.user.id
+      patientId.user.id
     });
     
     if (!application) {
@@ -784,14 +781,14 @@ router.delete('/applications/:applicationId', authenticatePatient, async (req, r
     application.statusHistory.push({
       status: 'cancelled',
       note: 'Application cancelled by patient',
-      updatedBy: application.patientDetails.fullName,
+      updatedBy.patientDetails.fullName,
       updatedByRole: 'patient',
-      timestamp: new Date()
+      timestampDate()
     });
     
     await application.save();
     
-    res.json({ success: true, message: 'Application cancelled' });
+    res.json({ success, message: 'Application cancelled' });
   } catch (error) {
     console.error(error);
     res.status(500).json({ error: 'Failed to cancel application' });
@@ -804,8 +801,9 @@ router.delete('/applications/:applicationId', authenticatePatient, async (req, r
 router.get('/test', (req, res) => {
   res.json({ 
     message: 'Loan patient routes are working!',
-    timestamp: new Date().toISOString()
+    timestampDate().toISOString()
   });
 });
 
 module.exports = router;
+

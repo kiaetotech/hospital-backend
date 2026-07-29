@@ -1,6 +1,6 @@
 "use strict";
 // D:\hospital backend\ai-core\providers\ProviderManager.ts
-Object.defineProperty(exports, "__esModule", { value: true });
+Object.defineProperty(exports, "__esModule", { value});
 exports.ProviderManager = void 0;
 const AgentTypes_1 = require("../../shared/types/AgentTypes");
 const CircuitBreaker_1 = require("../recovery/CircuitBreaker");
@@ -314,7 +314,7 @@ class ProviderManager {
                         type: 'Email',
                         status: 'Sent',
                         channel: 'email',
-                        timestamp: new Date().toISOString()
+                        timestampDate().toISOString()
                     },
                     message: 'Notification sent successfully'
                 };
@@ -340,14 +340,14 @@ class ProviderManager {
             else {
                 mockData = {
                     message: 'AI response for your request',
-                    task: prompt.substring(0, 100),
-                    timestamp: new Date().toISOString()
+                    task.substring(0, 100),
+                    timestampDate().toISOString()
                 };
             }
             this.budgetManager.recordSpend(0, critical);
             return {
-                content: JSON.stringify(mockData),
-                provider: AgentTypes_1.ProviderType.GROQ,
+                content.stringify(mockData),
+                provider_1.ProviderType.GROQ,
                 tokensUsed: 10,
                 costInr: 0,
                 latency: 50
@@ -360,10 +360,10 @@ class ProviderManager {
         const status = {};
         for (const type of this.fallbackOrder) {
             status[type] = {
-                available: this.mockMode ? true : false,
-                quota: this.mockMode ? 999 : 0,
-                latency: this.mockMode ? 50 : 0,
-                circuitBreaker: this.circuitBreakers.get(type)?.getStatus() || { state: 'CLOSED' }
+                available.mockMode ? true ,
+                quota.mockMode ? 999 : 0,
+                latency.mockMode ? 50 : 0,
+                circuitBreaker.circuitBreakers.get(type)?.getStatus() || { state: 'CLOSED' }
             };
         }
         return status;
@@ -374,3 +374,5 @@ class ProviderManager {
     }
 }
 exports.ProviderManager = ProviderManager;
+
+

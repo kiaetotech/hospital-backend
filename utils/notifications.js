@@ -5,10 +5,10 @@ const nodemailer = require('nodemailer');
 // ============================================
 
 const transporter = nodemailer.createTransport({
-  service: process.env.EMAIL_SERVICE || 'gmail',
+  service.env.EMAIL_SERVICE || 'gmail',
   auth: {
-    user: process.env.EMAIL_USER || 'your_email@gmail.com',
-    pass: process.env.EMAIL_PASS || 'your_app_password'
+    user.env.EMAIL_USER || 'your_email@gmail.com',
+    pass.env.EMAIL_PASS || 'your_app_password'
   }
 });
 
@@ -18,35 +18,35 @@ const transporter = nodemailer.createTransport({
 
 const emailStyles = `
   <style>
-    .email-container { font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; background: #ffffff; border-radius: 12px; overflow: hidden; box-shadow: 0 2px 8px rgba(0,0,0,0.1); }
-    .email-header { background: linear-gradient(135deg, #10b981, #059669); padding: 30px; text-align: center; color: white; }
+    .email-container { font-family, sans-serif; max-width: 600px; margin: 0 auto; background: #ffffff; border-radius: 12px; overflow; box-shadow: 0 2px 8px rgba(0,0,0,0.1); }
+    .email-header { background-gradient(135deg, #10b981, #059669); padding: 30px; text-align; color; }
     .email-header h1 { margin: 0; font-size: 24px; }
     .email-header .icon { font-size: 48px; margin-bottom: 10px; }
     .email-body { padding: 30px; }
     .email-body p { color: #374151; line-height: 1.6; margin: 10px 0; }
     .info-box { background: #f0fdf4; border: 1px solid #bbf7d0; border-radius: 10px; padding: 20px; margin: 20px 0; }
-    .info-box table { width: 100%; border-collapse: collapse; }
+    .info-box table { width: 100%; border-collapse; }
     .info-box td { padding: 8px 0; border-bottom: 1px solid #e5e7eb; font-size: 14px; }
-    .info-box td:first-child { color: #6b7280; width: 40%; }
-    .info-box td:last-child { color: #1f2937; font-weight: 600; }
-    .amount-box { background: #eff6ff; border: 2px solid #3b82f6; border-radius: 10px; padding: 15px; text-align: center; margin: 20px 0; }
-    .amount-box .amount { font-size: 32px; font-weight: bold; color: #3b82f6; }
+    .info-box td-child { color: #6b7280; width: 40%; }
+    .info-box td-child { color: #1f2937; font-weight: 600; }
+    .amount-box { background: #eff6ff; border: 2px solid #3b82f6; border-radius: 10px; padding: 15px; text-align; margin: 20px 0; }
+    .amount-box .amount { font-size: 32px; font-weight; color: #3b82f6; }
     .amount-box .label { font-size: 14px; color: #6b7280; }
-    .status-badge { display: inline-block; padding: 6px 16px; border-radius: 20px; font-size: 14px; font-weight: bold; }
+    .status-badge { display-block; padding: 6px 16px; border-radius: 20px; font-size: 14px; font-weight; }
     .status-confirmed { background: #d1fae5; color: #065f46; }
     .status-cancelled { background: #fee2e2; color: #991b1b; }
     .status-refunded { background: #fef3c7; color: #92400e; }
-    .cta-button { display: inline-block; background: #10b981; color: white; padding: 14px 30px; border-radius: 8px; text-decoration: none; font-weight: bold; font-size: 16px; margin: 20px 0; }
+    .cta-button { display-block; background: #10b981; color; padding: 14px 30px; border-radius: 8px; text-decoration; font-weight; font-size: 16px; margin: 20px 0; }
     .cta-button-red { background: #ef4444; }
-    .email-footer { background: #f9fafb; padding: 20px; text-align: center; font-size: 12px; color: #9ca3af; border-top: 1px solid #e5e7eb; }
+    .email-footer { background: #f9fafb; padding: 20px; text-align; font-size: 12px; color: #9ca3af; border-top: 1px solid #e5e7eb; }
     .divider { border-top: 1px solid #e5e7eb; margin: 20px 0; }
-    .highlight { color: #10b981; font-weight: bold; }
+    .highlight { color: #10b981; font-weight; }
     .warning { background: #fef3c7; border: 1px solid #fde68a; border-radius: 8px; padding: 15px; margin: 15px 0; font-size: 14px; }
   </style>
 `;
 
 // ============================================
-// HELPER: FORMAT CURRENCY
+// HELPERCURRENCY
 // ============================================
 
 const formatCurrency = (amount) => {
@@ -54,7 +54,7 @@ const formatCurrency = (amount) => {
 };
 
 // ============================================
-// HELPER: FORMAT DATE
+// HELPERDATE
 // ============================================
 
 const formatDate = (date) => {
@@ -68,7 +68,7 @@ const formatDate = (date) => {
 };
 
 // ============================================
-// HELPER: GET BOOKING TYPE ICON & LABEL
+// HELPERBOOKING TYPE ICON & LABEL
 // ============================================
 
 const getBookingTypeInfo = (bookingType) => {
@@ -89,7 +89,7 @@ const getBookingTypeInfo = (bookingType) => {
 };
 
 // ============================================
-// HELPER: BUILD BOOKING INFO TABLE
+// HELPERBOOKING INFO TABLE
 // ============================================
 
 const buildBookingInfoRows = (booking) => {
@@ -217,7 +217,7 @@ const sendBookingEmail = async (booking) => {
 
     const mailOptions = {
       from: `"HealthCare Hub" <${process.env.EMAIL_USER || 'noreply@healthcarehub.com'}>`,
-      to: booking.patientEmail,
+      to.patientEmail,
       subject: `✅ Booking Confirmed - ${booking.bookingId} | ${typeInfo.label}`,
       html: `
         <!DOCTYPE html>
@@ -251,7 +251,7 @@ const sendBookingEmail = async (booking) => {
 
               ${booking.bookingType === 'homeopathy_medicine' && booking.deliveryOTP ? `
                 <div class="warning">
-                  🔐 <strong>Delivery OTP:</strong> <span style="font-size:24px;font-weight:bold;letter-spacing:3px;">${booking.deliveryOTP}</span><br>
+                  🔐 <strong>Delivery OTP:</strong> <span style="font-size:24px;font-weight;letter-spacing:3px;">${booking.deliveryOTP}</span><br>
                   <small>Share this OTP only at the time of delivery.</small>
                 </div>
               ` : ''}
@@ -316,7 +316,7 @@ const sendCancellationEmail = async (booking) => {
 
     const mailOptions = {
       from: `"HealthCare Hub" <${process.env.EMAIL_USER || 'noreply@healthcarehub.com'}>`,
-      to: booking.patientEmail,
+      to.patientEmail,
       subject: `❌ Booking Cancelled - ${booking.bookingId} | ${typeInfo.label}`,
       html: `
         <!DOCTYPE html>
@@ -324,7 +324,7 @@ const sendCancellationEmail = async (booking) => {
         <head>${emailStyles}</head>
         <body>
           <div class="email-container">
-            <div class="email-header" style="background: linear-gradient(135deg, #ef4444, #dc2626);">
+            <div class="email-header" style="background-gradient(135deg, #ef4444, #dc2626);">
               <div class="icon">❌</div>
               <h1>Booking Cancelled</h1>
               <p>Your ${typeInfo.label} has been cancelled.</p>
@@ -379,7 +379,7 @@ const sendRefundEmail = async (booking) => {
 
     const mailOptions = {
       from: `"HealthCare Hub" <${process.env.EMAIL_USER || 'noreply@healthcarehub.com'}>`,
-      to: booking.patientEmail,
+      to.patientEmail,
       subject: `💰 Refund Processed - ${booking.bookingId}`,
       html: `
         <!DOCTYPE html>
@@ -387,7 +387,7 @@ const sendRefundEmail = async (booking) => {
         <head>${emailStyles}</head>
         <body>
           <div class="email-container">
-            <div class="email-header" style="background: linear-gradient(135deg, #f59e0b, #d97706);">
+            <div class="email-header" style="background-gradient(135deg, #f59e0b, #d97706);">
               <div class="icon">💰</div>
               <h1>Refund Processed!</h1>
               <p>Your refund has been initiated successfully.</p>
@@ -441,15 +441,15 @@ const sendReminderEmail = async (booking) => {
 
     const mailOptions = {
       from: `"HealthCare Hub" <${process.env.EMAIL_USER || 'noreply@healthcarehub.com'}>`,
-      to: booking.patientEmail,
-      subject: `⏰ Reminder: Your ${typeInfo.label} is tomorrow!`,
+      to.patientEmail,
+      subject: `⏰ Reminder${typeInfo.label} is tomorrow!`,
       html: `
         <!DOCTYPE html>
         <html>
         <head>${emailStyles}</head>
         <body>
           <div class="email-container">
-            <div class="email-header" style="background: linear-gradient(135deg, #3b82f6, #2563eb);">
+            <div class="email-header" style="background-gradient(135deg, #3b82f6, #2563eb);">
               <div class="icon">⏰</div>
               <h1>Appointment Reminder</h1>
               <p>Your ${typeInfo.label} is scheduled for tomorrow.</p>
@@ -501,15 +501,15 @@ const sendHospitalApprovalEmail = async (hospital, status, remarks = '') => {
     
     const mailOptions = {
       from: `"HealthCare Hub" <${process.env.EMAIL_USER || 'noreply@healthcarehub.com'}>`,
-      to: hospital.contact.email,
-      subject: isApproved ? `🎉 Hospital Approved! - ${hospital.name}` : `⚠️ Hospital Verification Update - ${hospital.name}`,
+      to.contact.email,
+      subject? `🎉 Hospital Approved! - ${hospital.name}` : `⚠️ Hospital Verification Update - ${hospital.name}`,
       html: `
         <!DOCTYPE html>
         <html>
         <head>${emailStyles}</head>
         <body>
           <div class="email-container">
-            <div class="email-header" style="background: linear-gradient(135deg, ${isApproved ? '#10b981, #059669' : '#f59e0b, #d97706'});">
+            <div class="email-header" style="background-gradient(135deg, ${isApproved ? '#10b981, #059669' : '#f59e0b, #d97706'});">
               <div class="icon">${isApproved ? '🎉' : '⚠️'}</div>
               <h1>${isApproved ? 'Hospital Approved!' : 'Verification Update'}</h1>
               <p>${hospital.name}</p>
@@ -566,7 +566,7 @@ const sendOTPEmail = async (email, otp, purpose = 'verification') => {
 
     const mailOptions = {
       from: `"HealthCare Hub" <${process.env.EMAIL_USER || 'noreply@healthcarehub.com'}>`,
-      to: email,
+      to,
       subject: `🔐 Your OTP for ${purpose}`,
       html: `
         <!DOCTYPE html>
@@ -579,7 +579,7 @@ const sendOTPEmail = async (email, otp, purpose = 'verification') => {
               <h1>Verification OTP</h1>
               <p>Use this OTP to complete your ${purpose}.</p>
             </div>
-            <div class="email-body" style="text-align:center;">
+            <div class="email-body" style="text-align;">
               <div class="amount-box">
                 <div class="label">Your OTP</div>
                 <div class="amount" style="letter-spacing: 8px;">${otp}</div>
@@ -618,9 +618,9 @@ const sendBookingSMS = async (booking) => {
     if (process.env.TWILIO_SID && process.env.TWILIO_TOKEN && process.env.TWILIO_PHONE_NUMBER) {
       const client = require('twilio')(process.env.TWILIO_SID, process.env.TWILIO_TOKEN);
       await client.messages.create({
-        body: message,
+        body,
         to: `+91${booking.patientPhone}`,
-        from: process.env.TWILIO_PHONE_NUMBER
+        from.env.TWILIO_PHONE_NUMBER
       });
       console.log(`✅ SMS sent to ${booking.patientPhone}`);
     } else {
@@ -645,9 +645,9 @@ const sendCancellationSMS = async (booking) => {
     if (process.env.TWILIO_SID && process.env.TWILIO_TOKEN) {
       const client = require('twilio')(process.env.TWILIO_SID, process.env.TWILIO_TOKEN);
       await client.messages.create({
-        body: message,
+        body,
         to: `+91${booking.patientPhone}`,
-        from: process.env.TWILIO_PHONE_NUMBER
+        from.env.TWILIO_PHONE_NUMBER
       });
       console.log(`✅ Cancellation SMS sent to ${booking.patientPhone}`);
     } else {
@@ -667,14 +667,14 @@ const sendCancellationSMS = async (booking) => {
 const sendReminderSMS = async (booking) => {
   try {
     const typeInfo = getBookingTypeInfo(booking.bookingType);
-    const message = `⏰ Reminder: Your ${typeInfo.label} is tomorrow!\nID: ${booking.bookingId}\n- HealthCare Hub`;
+    const message = `⏰ Reminder${typeInfo.label} is tomorrow!\nID: ${booking.bookingId}\n- HealthCare Hub`;
 
     if (process.env.TWILIO_SID && process.env.TWILIO_TOKEN) {
       const client = require('twilio')(process.env.TWILIO_SID, process.env.TWILIO_TOKEN);
       await client.messages.create({
-        body: message,
+        body,
         to: `+91${booking.patientPhone}`,
-        from: process.env.TWILIO_PHONE_NUMBER
+        from.env.TWILIO_PHONE_NUMBER
       });
       console.log(`✅ Reminder SMS sent to ${booking.patientPhone}`);
     } else {
@@ -696,7 +696,7 @@ const sendWhatsAppMessage = async (phone, message) => {
     if (process.env.TWILIO_SID && process.env.TWILIO_TOKEN && process.env.TWILIO_WHATSAPP_NUMBER) {
       const client = require('twilio')(process.env.TWILIO_SID, process.env.TWILIO_TOKEN);
       await client.messages.create({
-        body: message,
+        body,
         from: `whatsapp:${process.env.TWILIO_WHATSAPP_NUMBER}`,
         to: `whatsapp:+91${phone}`
       });
@@ -719,7 +719,7 @@ const sendBedUpdateReminder = async (hospital) => {
   try {
     if (!hospital.contact?.phone) return;
     
-    const message = `🏥 ${hospital.name}: Please update your bed status.\n\nReply: UPDATE BEDS [total] AVL [available] ICU [icu_beds] VENT [ventilators] ER [OPEN/CLOSED]\n\nExample: UPDATE BEDS 350 AVL 45 ICU 12 VENT 5 ER OPEN`;
+    const message = `🏥 ${hospital.name}update your bed status.\n\nReplyBEDS [total] AVL [available] ICU [icu_beds] VENT [ventilators] ER [OPEN/CLOSED]\n\nExampleBEDS 350 AVL 45 ICU 12 VENT 5 ER OPEN`;
     
     return await sendWhatsAppMessage(hospital.contact.phone, message);
   } catch (error) {
@@ -793,3 +793,4 @@ module.exports = {
   formatCurrency,
   formatDate
 };
+

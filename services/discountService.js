@@ -14,13 +14,12 @@ const validateDiscount = async (code, amount, bookingType = 'general', userId = 
   try {
     // Find discount by code
     const discount = await Discount.findOne({ 
-      code: code.toUpperCase(),
-      isActive: true
-    });
+      code.toUpperCase(),
+      isActive});
     
     if (!discount) {
       return { 
-        valid: false, 
+        valid, 
         message: 'Invalid discount code' 
       };
     }
@@ -29,14 +28,14 @@ const validateDiscount = async (code, amount, bookingType = 'general', userId = 
     const now = new Date();
     if (discount.validFrom && now < discount.validFrom) {
       return { 
-        valid: false, 
+        valid, 
         message: 'Discount not yet active' 
       };
     }
     
     if (discount.validUntil && now > discount.validUntil) {
       return { 
-        valid: false, 
+        valid, 
         message: 'Discount code has expired' 
       };
     }
@@ -44,7 +43,7 @@ const validateDiscount = async (code, amount, bookingType = 'general', userId = 
     // Check usage limit
     if (discount.maxUses && discount.usedCount >= discount.maxUses) {
       return { 
-        valid: false, 
+        valid, 
         message: 'Discount code usage limit exceeded' 
       };
     }
@@ -52,7 +51,7 @@ const validateDiscount = async (code, amount, bookingType = 'general', userId = 
     // Check minimum amount
     if (discount.minAmount && amount < discount.minAmount) {
       return { 
-        valid: false, 
+        valid, 
         message: `Minimum order amount of ₹${discount.minAmount} required` 
       };
     }
@@ -61,7 +60,7 @@ const validateDiscount = async (code, amount, bookingType = 'general', userId = 
     if (discount.applicableTags && discount.applicableTags.length > 0) {
       if (!discount.applicableTags.includes(bookingType)) {
         return { 
-          valid: false, 
+          valid, 
           message: `Discount not applicable for ${bookingType}` 
         };
       }
@@ -79,17 +78,17 @@ const validateDiscount = async (code, amount, bookingType = 'general', userId = 
     }
     
     return {
-      valid: true,
-      discount: discount,
-      discountAmount: Math.round(discountAmount * 100) / 100,
-      finalAmount: Math.round((amount - discountAmount) * 100) / 100,
+      valid,
+      discount,
+      discountAmount.round(discountAmount * 100) / 100,
+      finalAmount.round((amount - discountAmount) * 100) / 100,
       message: `Discount applied: ${discount.code}`
     };
     
   } catch (error) {
     console.error('Validate discount error:', error);
     return { 
-      valid: false, 
+      valid, 
       message: 'Error validating discount' 
     };
   }
@@ -125,17 +124,17 @@ const applyDiscountToBooking = async (booking, discountCode) => {
     await booking.save();
     
     return {
-      success: true,
+      success,
       message: `Discount ${result.discount.code} applied`,
-      discountAmount: result.discountAmount,
-      finalAmount: result.finalAmount,
-      discount: result.discount
+      discountAmount.discountAmount,
+      finalAmount.finalAmount,
+      discount.discount
     };
     
   } catch (error) {
     console.error('Apply discount error:', error);
     return { 
-      success: false, 
+      success, 
       message: 'Failed to apply discount' 
     };
   }
@@ -149,7 +148,7 @@ const removeDiscountFromBooking = async (booking) => {
   try {
     if (!booking.discountCode) {
       return { 
-        success: false, 
+        success, 
         message: 'No discount to remove' 
       };
     }
@@ -163,15 +162,15 @@ const removeDiscountFromBooking = async (booking) => {
     await booking.save();
     
     return {
-      success: true,
+      success,
       message: 'Discount removed',
-      finalAmount: booking.finalAmount
+      finalAmount.finalAmount
     };
     
   } catch (error) {
     console.error('Remove discount error:', error);
     return { 
-      success: false, 
+      success, 
       message: 'Failed to remove discount' 
     };
   }
@@ -185,14 +184,14 @@ const getActiveDiscounts = async (bookingType = null) => {
   try {
     const now = new Date();
     const query = {
-      isActive: true,
+      isActive,
       $or: [
-        { validUntil: { $gt: now } },
-        { validUntil: null }
+        { validUntil: { $gt} },
+        { validUntil}
       ],
       $or: [
-        { validFrom: { $lt: now } },
-        { validFrom: null }
+        { validFrom: { $lt} },
+        { validFrom}
       ]
     };
     
@@ -218,9 +217,8 @@ const getActiveDiscounts = async (bookingType = null) => {
 const getDiscountByCode = async (code) => {
   try {
     const discount = await Discount.findOne({ 
-      code: code.toUpperCase(),
-      isActive: true 
-    });
+      code.toUpperCase(),
+      isActive});
     return discount;
   } catch (error) {
     console.error('Get discount error:', error);
@@ -235,18 +233,17 @@ const getDiscountByCode = async (code) => {
 const createDiscount = async (data) => {
   try {
     const discount = new Discount({
-      code: data.code.toUpperCase(),
-      type: data.type,
-      value: data.value,
-      description: data.description || '',
-      applicableTags: data.applicableTags || [],
-      minAmount: data.minAmount || 0,
-      maxDiscount: data.maxDiscount || null,
-      validFrom: data.validFrom || new Date(),
-      validUntil: data.validUntil || null,
-      maxUses: data.maxUses || null,
-      isActive: data.isActive !== undefined ? data.isActive : true
-    });
+      code.code.toUpperCase(),
+      type.type,
+      value.value,
+      description.description || '',
+      applicableTags.applicableTags || [],
+      minAmount.minAmount || 0,
+      maxDiscount.maxDiscount || null,
+      validFrom.validFrom || new Date(),
+      validUntil.validUntil || null,
+      maxUses.maxUses || null,
+      isActive.isActive !== undefined ? data.isActive });
     
     await discount.save();
     return discount;
@@ -262,7 +259,7 @@ const createDiscount = async (data) => {
 
 const updateDiscount = async (code, data) => {
   try {
-    const discount = await Discount.findOne({ code: code.toUpperCase() });
+    const discount = await Discount.findOne({ code.toUpperCase() });
     if (!discount) {
       throw new Error('Discount not found');
     }
@@ -292,11 +289,11 @@ const updateDiscount = async (code, data) => {
 
 const deleteDiscount = async (code) => {
   try {
-    const discount = await Discount.findOneAndDelete({ code: code.toUpperCase() });
+    const discount = await Discount.findOneAndDelete({ code.toUpperCase() });
     if (!discount) {
       throw new Error('Discount not found');
     }
-    return { success: true, message: 'Discount deleted' };
+    return { success, message: 'Discount deleted' };
   } catch (error) {
     console.error('Delete discount error:', error);
     throw error;
@@ -317,3 +314,4 @@ module.exports = {
   updateDiscount,
   deleteDiscount
 };
+

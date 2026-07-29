@@ -1,6 +1,6 @@
 "use strict";
 // D:\hospital backend\ai-core\agents\intelligence\RecommendationAgent.ts
-Object.defineProperty(exports, "__esModule", { value: true });
+Object.defineProperty(exports, "__esModule", { value});
 exports.RecommendationAgent = void 0;
 const AgentTypes_1 = require("../../../shared/types/AgentTypes");
 const BaseAgent_1 = require("../base/BaseAgent");
@@ -8,36 +8,32 @@ class RecommendationAgent extends BaseAgent_1.BaseAgent {
     constructor(providerManager) {
         super({
             name: 'Recommendation Agent',
-            role: AgentTypes_1.AgentRole.RECOMMENDATION,
+            role_1.AgentRole.RECOMMENDATION,
             capabilities: [
                 {
                     name: 'personalize_recommendations',
                     description: 'Generate personalized recommendations for users',
                     priority: 1,
                     estimatedLatency: 300,
-                    requiresAuth: true
-                },
+                    requiresAuth},
                 {
                     name: 'suggest_hospitals',
                     description: 'Suggest hospitals based on user preferences',
                     priority: 1,
                     estimatedLatency: 200,
-                    requiresAuth: true
-                },
+                    requiresAuth},
                 {
                     name: 'suggest_doctors',
                     description: 'Suggest doctors based on user needs',
                     priority: 1,
                     estimatedLatency: 200,
-                    requiresAuth: true
-                },
+                    requiresAuth},
                 {
                     name: 'suggest_packages',
                     description: 'Suggest health packages and wellness programs',
                     priority: 2,
                     estimatedLatency: 250,
-                    requiresAuth: true
-                }
+                    requiresAuth}
             ]
         }, providerManager);
         this.userProfiles = new Map();
@@ -53,7 +49,7 @@ class RecommendationAgent extends BaseAgent_1.BaseAgent {
             gender: 'Male',
             medicalHistory: ['Hypertension', 'High Cholesterol'],
             engagementScore: 85,
-            lastActive: new Date()
+            lastActiveDate()
         });
         this.userProfiles.set('user2', {
             id: 'user2',
@@ -64,7 +60,7 @@ class RecommendationAgent extends BaseAgent_1.BaseAgent {
             gender: 'Female',
             medicalHistory: ['Skin Allergy', 'Anxiety'],
             engagementScore: 70,
-            lastActive: new Date()
+            lastActiveDate()
         });
     }
     async execute(request) {
@@ -72,7 +68,7 @@ class RecommendationAgent extends BaseAgent_1.BaseAgent {
         this.setCurrentTask(request.task);
         try {
             if (!this.validateRequest(request)) {
-                throw new Error('Invalid request: Missing required fields or capabilities');
+                throw new Error('Invalid requestrequired fields or capabilities');
             }
             const { task, payload } = request;
             this.log(`Executing task: ${task}`, 'info');
@@ -95,10 +91,10 @@ class RecommendationAgent extends BaseAgent_1.BaseAgent {
             this.setStatus(AgentTypes_1.AgentStatus.IDLE);
             this.setCurrentTask(undefined);
             return {
-                success: true,
-                data: result,
-                sourceAgent: this.id,
-                processingTime: Date.now() - new Date().getTime()
+                success,
+                data,
+                sourceAgent.id,
+                processingTime.now() - new Date().getTime()
             };
         }
         catch (error) {
@@ -133,11 +129,11 @@ class RecommendationAgent extends BaseAgent_1.BaseAgent {
     `;
         const response = await this.providerManager.generate(prompt);
         return {
-            recommendations: allRecommendations.slice(0, limit),
+            recommendations.slice(0, limit),
             userProfile,
-            aiInsights: response.content,
-            total: allRecommendations.length,
-            timestamp: new Date().toISOString()
+            aiInsights.content,
+            total.length,
+            timestampDate().toISOString()
         };
     }
     async suggestHospitals(payload) {
@@ -183,9 +179,9 @@ class RecommendationAgent extends BaseAgent_1.BaseAgent {
         }
         results.sort((a, b) => b.matchScore - a.matchScore);
         return {
-            recommendations: results.slice(0, limit),
-            total: results.length,
-            userLocation: userProfile.location
+            recommendations.slice(0, limit),
+            total.length,
+            userLocation.location
         };
     }
     async suggestDoctors(payload) {
@@ -234,8 +230,8 @@ class RecommendationAgent extends BaseAgent_1.BaseAgent {
         }
         results.sort((a, b) => b.matchScore - a.matchScore);
         return {
-            recommendations: results.slice(0, limit),
-            total: results.length
+            recommendations.slice(0, limit),
+            total.length
         };
     }
     async suggestPackages(payload) {
@@ -284,8 +280,8 @@ class RecommendationAgent extends BaseAgent_1.BaseAgent {
         }
         results.sort((a, b) => b.matchScore - a.matchScore);
         return {
-            recommendations: results.slice(0, limit),
-            total: results.length
+            recommendations.slice(0, limit),
+            total.length
         };
     }
     async handleComplexQuery(task, payload) {
@@ -299,9 +295,9 @@ class RecommendationAgent extends BaseAgent_1.BaseAgent {
     `;
         const response = await this.providerManager.generate(prompt);
         return {
-            aiResponse: response.content,
-            provider: response.provider,
-            tokensUsed: response.tokensUsed
+            aiResponse.content,
+            provider.provider,
+            tokensUsed.tokensUsed
         };
     }
     getRequiredCapability(task) {
@@ -321,3 +317,5 @@ class RecommendationAgent extends BaseAgent_1.BaseAgent {
     }
 }
 exports.RecommendationAgent = RecommendationAgent;
+
+

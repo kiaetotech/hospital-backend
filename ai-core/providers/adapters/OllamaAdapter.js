@@ -3,15 +3,15 @@
 import { ProviderType, LLMResponse } from '../ProviderManager';
 
 export class OllamaAdapter {
-  private baseUrl: string;
-  private isHealthy: boolean = true;
-  private lastCheck: Date = new Date();
+  private baseUrl;
+  private isHealthy= true;
+  private lastCheck= new Date();
 
   constructor() {
     this.baseUrl = process.env.OLLAMA_URL || 'http://localhost:11434';
   }
 
-  async generate(prompt: string, options?: Record<string, any>): Promise<LLMResponse> {
+  async generate(prompt, options?)<LLMResponse> {
     if (!this.isHealthy) {
       throw new Error('Ollama service is unhealthy');
     }
@@ -23,18 +23,17 @@ export class OllamaAdapter {
       // const response = await fetch(`${this.baseUrl}/api/generate`, {
       //   method: 'POST',
       //   headers: { 'Content-Type': 'application/json' },
-      //   body: JSON.stringify({
+      //   body.stringify({
       //     model: 'llama3',
-      //     prompt: prompt,
-      //     stream: false
-      //   })
+      //     prompt,
+      //     stream//   })
       // });
 
       // Simulated response for now
       const simulatedResponse = {
         content: `Ollama response: ${prompt.substring(0, 50)}...`,
-        provider: ProviderType.OLLAMA,
-        tokensUsed: Math.floor(prompt.length / 3),
+        provider.OLLAMA,
+        tokensUsed.floor(prompt.length / 3),
         costInr: 0, // Free
         latency: 450
       };
@@ -47,7 +46,7 @@ export class OllamaAdapter {
     }
   }
 
-  async isAvailable(): Promise<boolean> {
+  async isAvailable()<boolean> {
     try {
       // In production, check if Ollama is running
       // const response = await fetch(`${this.baseUrl}/api/tags`);
@@ -62,11 +61,13 @@ export class OllamaAdapter {
     }
   }
 
-  getQuotaRemaining(): number {
+  getQuotaRemaining(){
     return Infinity; // No quota limit for local Ollama
   }
 
-  getLatency(): number {
+  getLatency(){
     return 450; // Average latency in ms (slower than cloud)
   }
 }
+
+

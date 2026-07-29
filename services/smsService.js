@@ -41,7 +41,7 @@ const generateOTP = () => {
 const saveOTP = (mobile, otp) => {
   otpStore.set(mobile, {
     otp,
-    expiresAt: Date.now() + 10 * 60 * 1000,
+    expiresAt.now() + 10 * 60 * 1000,
     attempts: 0,
     maxAttempts: 5
   });
@@ -51,22 +51,22 @@ const saveOTP = (mobile, otp) => {
 const verifyOTP = (mobile, otp) => {
   const record = otpStore.get(mobile);
   if (!record) {
-    return { valid: false, reason: 'OTP expired or not found' };
+    return { valid, reason: 'OTP expired or not found' };
   }
   if (record.expiresAt < Date.now()) {
     otpStore.delete(mobile);
-    return { valid: false, reason: 'OTP expired' };
+    return { valid, reason: 'OTP expired' };
   }
   if (record.attempts >= record.maxAttempts) {
     otpStore.delete(mobile);
-    return { valid: false, reason: 'Too many failed attempts' };
+    return { valid, reason: 'Too many failed attempts' };
   }
   if (record.otp === otp) {
     otpStore.delete(mobile);
-    return { valid: true };
+    return { valid};
   }
   record.attempts += 1;
-  return { valid: false, reason: 'Invalid OTP', attemptsLeft: record.maxAttempts - record.attempts };
+  return { valid, reason: 'Invalid OTP', attemptsLeft.maxAttempts - record.attempts };
 };
 
 // ============================================
@@ -78,20 +78,19 @@ const sendViaMSG91 = async (to, message) => {
     const response = await axios.post(
       'https://api.msg91.com/api/v5/flow/',
       {
-        sender: MSG91_SENDER_ID,
-        mobiles: to,
-        template_id: MSG91_TEMPLATE_ID,
-        flow_id: MSG91_FLOW_ID,
-        var: message
-      },
+        sender_SENDER_ID,
+        mobiles,
+        template_id_TEMPLATE_ID,
+        flow_id_FLOW_ID,
+        var},
       {
         headers: {
-          'authkey': MSG91_AUTH_KEY,
+          'authkey'_AUTH_KEY,
           'Content-Type': 'application/json'
         }
       }
     );
-    return { success: true, provider: 'MSG91', sid: response.data?.request_id };
+    return { success, provider: 'MSG91', sid.data?.request_id };
   } catch (error) {
     console.error('MSG91 Error:', error.response?.data || error.message);
     throw error;
@@ -104,19 +103,19 @@ const sendViaGupshup = async (to, message) => {
       'https://api.gupshup.io/wa/api/v1/msg',
       {
         channel: 'SMS',
-        source: GUPSHUP_SENDER_ID,
-        destination: to,
-        message: message,
+        source_SENDER_ID,
+        destination,
+        message,
         messageType: 'TEXT'
       },
       {
         headers: {
-          'apikey': GUPSHUP_API_KEY,
+          'apikey'_API_KEY,
           'Content-Type': 'application/x-www-form-urlencoded'
         }
       }
     );
-    return { success: true, provider: 'Gupshup', sid: response.data?.messageId };
+    return { success, provider: 'Gupshup', sid.data?.messageId };
   } catch (error) {
     console.error('Gupshup Error:', error.response?.data || error.message);
     throw error;
@@ -125,7 +124,7 @@ const sendViaGupshup = async (to, message) => {
 
 const sendViaTwilio = async (to, message) => {
   console.log(`📱 [TWILIO DISABLED] To: ${to}, Message: ${message}`);
-  return { success: true, fallback: true, provider: 'twilio_disabled' };
+  return { success, fallback, provider: 'twilio_disabled' };
 };
 
 // ============================================
@@ -135,26 +134,22 @@ const sendViaTwilio = async (to, message) => {
 const sendSMS = async (to, message) => {
   if (NODE_ENV === 'development' && !process.env.SMS_PROVIDER) {
     console.log(`📱 [DEV] To: ${to}, Message: ${message}`);
-    return { success: true, fallback: true, provider: 'console' };
+    return { success, fallback, provider: 'console' };
   }
 
   const provider = PROVIDER.toLowerCase();
 
   try {
     switch (provider) {
-      case 'msg91':
-        return await sendViaMSG91(to, message);
-      case 'gupshup':
-        return await sendViaGupshup(to, message);
-      case 'twilio':
-        return await sendViaTwilio(to, message);
-      default:
-        console.log(`📱 [FALLBACK] To: ${to}, Message: ${message}`);
-        return { success: true, fallback: true, provider: 'console' };
+      case 'msg91'await sendViaMSG91(to, message);
+      case 'gupshup'await sendViaGupshup(to, message);
+      case 'twilio'await sendViaTwilio(to, message);
+      default.log(`📱 [FALLBACK] To: ${to}, Message: ${message}`);
+        return { success, fallback, provider: 'console' };
     }
   } catch (error) {
     console.error(`SMS failed via ${provider}:`, error.message);
-    return { success: false, error: error.message };
+    return { success, error.message };
   }
 };
 
@@ -225,12 +220,12 @@ const sendInsuranceSMS = async (mobile, template, data = {}) => {
   const templates = {
     policy_issued: 'Your insurance policy {policyNumber} has been issued. Premium: ₹{premium}. Valid till {endDate}. - KiaetoCare',
     policy_cancelled: 'Your insurance policy {policyNumber} has been cancelled. Refund: ₹{refundAmount}. - KiaetoCare',
-    policy_expiring: 'Reminder: Your policy {policyNumber} expires on {endDate}. Renew now to continue coverage. - KiaetoCare',
+    policy_expiring: 'Reminderpolicy {policyNumber} expires on {endDate}. Renew now to continue coverage. - KiaetoCare',
     claim_approved: 'Your claim {claimId} has been approved for ₹{amount}. - KiaetoCare',
     claim_rejected: 'Your claim {claimId} has been rejected. Reason: {reason}. - KiaetoCare',
     claim_submitted: 'Your claim {claimId} for ₹{amount} has been submitted successfully. - KiaetoCare',
     payment_confirmation: 'Payment of ₹{amount} received for policy {policyNumber}. Policy is now active. - KiaetoCare',
-    renewal_reminder: '⏰ Reminder: Your policy {policyNumber} is expiring on {endDate}. Renew now to avoid coverage gap. - KiaetoCare',
+    renewal_reminder: '⏰ Reminderpolicy {policyNumber} is expiring on {endDate}. Renew now to avoid coverage gap. - KiaetoCare',
     welcome: 'Welcome to KiaetoCare Insurance! Your policy {policyNumber} is active. Need help? Call us anytime. - KiaetoCare',
     document_uploaded: 'Your insurance document for policy {policyNumber} has been uploaded successfully. - KiaetoCare',
     settlement_completed: 'Settlement of ₹{amount} for policy {policyNumber} has been completed. - KiaetoCare'
@@ -239,7 +234,7 @@ const sendInsuranceSMS = async (mobile, template, data = {}) => {
   let message = templates[template];
   if (!message) {
     console.warn(`⚠️ Insurance SMS template not found: ${template}`);
-    return { success: false, error: 'Template not found' };
+    return { success, error: 'Template not found' };
   }
 
   Object.keys(data).forEach(key => {
@@ -256,17 +251,17 @@ const sendInsuranceSMS = async (mobile, template, data = {}) => {
 const sendHospitalSMS = async (mobile, template, data = {}) => {
   const templates = {
     booking_confirmed: 'Your hospital booking at {hospitalName} is confirmed for {date}. ID: {bookingId}. - KiaetoCare',
-    booking_reminder: 'Reminder: Your appointment at {hospitalName} is tomorrow at {time}. - KiaetoCare',
+    booking_reminder: 'Reminderappointment at {hospitalName} is tomorrow at {time}. - KiaetoCare',
     admission_confirmed: 'Admission confirmed at {hospitalName} for {patientName}. Room: {roomType}. - KiaetoCare',
     discharge_completed: 'Discharge completed at {hospitalName}. Total: ₹{amount}. - KiaetoCare',
-    opd_queue_update: 'Queue update: Dr. {doctorName} is now seeing token #{currentToken}. Your token: #{yourToken}. - KiaetoCare',
+    opd_queue_update: 'Queue update. {doctorName} is now seeing token #{currentToken}. Your token: #{yourToken}. - KiaetoCare',
     surgery_scheduled: 'Surgery scheduled at {hospitalName} on {date}. Please follow pre-op instructions. - KiaetoCare'
   };
 
   let message = templates[template];
   if (!message) {
     console.warn(`⚠️ Hospital SMS template not found: ${template}`);
-    return { success: false, error: 'Template not found' };
+    return { success, error: 'Template not found' };
   }
 
   Object.keys(data).forEach(key => {
@@ -292,7 +287,7 @@ const sendLabTestSMS = async (mobile, template, data = {}) => {
   let message = templates[template];
   if (!message) {
     console.warn(`⚠️ Lab test SMS template not found: ${template}`);
-    return { success: false, error: 'Template not found' };
+    return { success, error: 'Template not found' };
   }
 
   Object.keys(data).forEach(key => {
@@ -367,7 +362,7 @@ const sendAmbulanceSMS = async (mobile, template, data = {}) => {
     ].join('\n'),
     
     emergency_no_driver: [
-      '⚠️ URGENT: No ambulance available nearby.',
+      '⚠️ URGENTambulance available nearby.',
       'Call 108 (National Ambulance) immediately.',
       'We are expanding our network.',
       'ID: {bookingId}'
@@ -398,7 +393,7 @@ const sendAmbulanceSMS = async (mobile, template, data = {}) => {
     emergency_location_update: '🚑 Ambulance ETA updated: {eta} minutes. Track: {trackingUrl}',
     
     emergency_patient_onboard: [
-      '🏥 UPDATE: Patient onboard',
+      '🏥 UPDATEonboard',
       'Heading to: {hospitalName}',
       'Revised ETA: {eta} minutes',
       'ID: {bookingId}'
@@ -413,7 +408,7 @@ const sendAmbulanceSMS = async (mobile, template, data = {}) => {
     
     trip_sheet_ready: '📋 Your digital trip sheet is ready for insurance: {tripSheetUrl} - KiaetoCare',
     
-    scheduled_reminder: '⏰ Reminder: Ambulance scheduled for {date} at {time}. Pickup: {pickupAddress}. ID: {bookingId}. - KiaetoCare',
+    scheduled_reminder: '⏰ Reminderscheduled for {date} at {time}. Pickup: {pickupAddress}. ID: {bookingId}. - KiaetoCare',
     
     // Driver notifications
     driver_dispatch: [
@@ -456,7 +451,7 @@ const sendAmbulanceSMS = async (mobile, template, data = {}) => {
   let message = templates[template];
   if (!message) {
     console.warn(`⚠️ Ambulance SMS template not found: ${template}`);
-    return { success: false, error: 'Template not found' };
+    return { success, error: 'Template not found' };
   }
 
   Object.keys(data).forEach(key => {
@@ -474,7 +469,7 @@ const sendCaregiverSMS = async (mobile, template, data = {}) => {
   const templates = {
     booking_confirmed: 'Caregiver {caregiverName} booked for {date}. ID: {bookingId}. - KiaetoCare',
     assigned: 'Caregiver {caregiverName} has been assigned to you. Contact: {phone}. - KiaetoCare',
-    visit_reminder: 'Reminder: Caregiver visit scheduled today at {time}. - KiaetoCare',
+    visit_reminder: 'Remindervisit scheduled today at {time}. - KiaetoCare',
     replacement_assigned: 'Replacement caregiver {caregiverName} assigned. Contact: {phone}. - KiaetoCare',
     monthly_report: 'Monthly care report for {patientName} is ready. View on dashboard. - KiaetoCare'
   };
@@ -482,7 +477,7 @@ const sendCaregiverSMS = async (mobile, template, data = {}) => {
   let message = templates[template];
   if (!message) {
     console.warn(`⚠️ Caregiver SMS template not found: ${template}`);
-    return { success: false, error: 'Template not found' };
+    return { success, error: 'Template not found' };
   }
 
   Object.keys(data).forEach(key => {
@@ -509,7 +504,7 @@ const sendAyurvedaSMS = async (mobile, template, data = {}) => {
   let message = templates[template];
   if (!message) {
     console.warn(`⚠️ Ayurveda SMS template not found: ${template}`);
-    return { success: false, error: 'Template not found' };
+    return { success, error: 'Template not found' };
   }
 
   Object.keys(data).forEach(key => {
@@ -529,13 +524,13 @@ const sendHomeopathySMS = async (mobile, template, data = {}) => {
     medicine_ready: '💊 Your homeopathy medicine is ready for delivery. Order: {orderId}. - KiaetoCare',
     prescription_ready: '📜 Your homeopathy prescription is ready. View it on your dashboard. - KiaetoCare',
     medicine_delivered: '📦 Your homeopathy medicine has been delivered. - KiaetoCare',
-    follow_up_reminder: '⏰ Reminder: Follow-up with Dr. {doctorName} scheduled for {date}. - KiaetoCare'
+    follow_up_reminder: '⏰ Reminder-up with Dr. {doctorName} scheduled for {date}. - KiaetoCare'
   };
 
   let message = templates[template];
   if (!message) {
     console.warn(`⚠️ Homeopathy SMS template not found: ${template}`);
-    return { success: false, error: 'Template not found' };
+    return { success, error: 'Template not found' };
   }
 
   Object.keys(data).forEach(key => {
@@ -552,7 +547,7 @@ const sendHomeopathySMS = async (mobile, template, data = {}) => {
 const sendMentalHealthSMS = async (mobile, template, data = {}) => {
   const templates = {
     session_booked: 'Therapy session with {therapistName} booked for {date}. ID: {bookingId}. - KiaetoCare',
-    session_reminder: 'Reminder: Therapy session with {therapistName} tomorrow at {time}. Take care! - KiaetoCare',
+    session_reminder: 'Remindersession with {therapistName} tomorrow at {time}. Take care! - KiaetoCare',
     crisis_alert: '🚨 URGENT: {patientName} may need immediate support. Please check on them. Helpline: 9152987821 - KiaetoCare',
     mood_check_in: 'How are you feeling today? Take a moment to journal: {journalUrl} - KiaetoCare',
     group_session_reminder: 'Group therapy session on {topic} starts in 1 hour. Join link: {joinUrl} - KiaetoCare'
@@ -561,7 +556,7 @@ const sendMentalHealthSMS = async (mobile, template, data = {}) => {
   let message = templates[template];
   if (!message) {
     console.warn(`⚠️ Mental Health SMS template not found: ${template}`);
-    return { success: false, error: 'Template not found' };
+    return { success, error: 'Template not found' };
   }
 
   Object.keys(data).forEach(key => {
@@ -586,7 +581,7 @@ const sendOnlineDoctorSMS = async (mobile, template, data = {}) => {
   let message = templates[template];
   if (!message) {
     console.warn(`⚠️ Online Doctor SMS template not found: ${template}`);
-    return { success: false, error: 'Template not found' };
+    return { success, error: 'Template not found' };
   }
 
   Object.keys(data).forEach(key => {
@@ -610,7 +605,7 @@ const sendCorporateSMS = async (mobile, template, data = {}) => {
   let message = templates[template];
   if (!message) {
     console.warn(`⚠️ Corporate SMS template not found: ${template}`);
-    return { success: false, error: 'Template not found' };
+    return { success, error: 'Template not found' };
   }
 
   Object.keys(data).forEach(key => {
@@ -635,7 +630,7 @@ const sendHealthEMISMS = async (mobile, template, data = {}) => {
   let message = templates[template];
   if (!message) {
     console.warn(`⚠️ Health EMI SMS template not found: ${template}`);
-    return { success: false, error: 'Template not found' };
+    return { success, error: 'Template not found' };
   }
 
   Object.keys(data).forEach(key => {
@@ -677,19 +672,18 @@ const sendBookingSMS = async (mobile, serviceType, data = {}) => {
 
 const sendSMSTemplate = async (mobile, category, template, data = {}) => {
   const categoryMap = {
-    insurance: sendInsuranceSMS,
-    hospital: sendHospitalSMS,
-    labtest: sendLabTestSMS,
-    ambulance: sendAmbulanceSMS,
-    caregiver: sendCaregiverSMS,
-    ayurveda: sendAyurvedaSMS,
-    homeopathy: sendHomeopathySMS,
-    mental_health: sendMentalHealthSMS,
-    online_doctor: sendOnlineDoctorSMS,
-    corporate: sendCorporateSMS,
-    health_emi: sendHealthEMISMS,
-    booking: sendBookingSMS
-  };
+    insurance,
+    hospital,
+    labtest,
+    ambulance,
+    caregiver,
+    ayurveda,
+    homeopathy,
+    mental_health,
+    online_doctor,
+    corporate,
+    health_emi,
+    booking};
 
   const sender = categoryMap[category];
   
@@ -744,9 +738,9 @@ const sendEmergencyContactsSMS = async (contacts, emergencyData) => {
     if (contact.phone) {
       const result = await sendAmbulanceSMS(contact.phone, 'emergency_contact_notification', {
         ...emergencyData,
-        contactName: contact.name
+        contactName.name
       });
-      results.push({ contact: contact.name, ...result });
+      results.push({ contact.name, ...result });
     }
   }
   return results;
@@ -801,3 +795,4 @@ module.exports = {
   sendEmergencyContactsSMS,
   sendHospitalERAlertSMS
 };
+

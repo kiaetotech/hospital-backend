@@ -12,28 +12,24 @@ import { HealthManager } from './HealthManager';
 import { BudgetManager } from './BudgetManager';
 import { QueueManager } from './QueueManager';
 
-interface WebSocketClient {
-  send: (data: string) => void;
-  isAlive: boolean;
-}
+
 
 export class MonitoringAggregationService {
-  private clients: WebSocketClient[] = [];
-  private registry: CapabilityRegistry;
-  private providerManager: ProviderManager;
-  private healthManager: HealthManager;
-  private budgetManager: BudgetManager;
-  private queueManager: QueueManager;
-  private lastSnapshot: MonitoringSnapshot | null = null;
-  private updateInterval: NodeJS.Timeout | null = null;
+  private clients[] = [];
+  private registry;
+  private providerManager;
+  private healthManager;
+  private budgetManager;
+  private queueManager;
+  private lastSnapshot| null = null;
+  private updateInterval.Timeout | null = null;
 
   constructor(
-    registry: CapabilityRegistry,
-    providerManager: ProviderManager,
-    healthManager: HealthManager,
-    budgetManager: BudgetManager,
-    queueManager: QueueManager
-  ) {
+    registry,
+    providerManager,
+    healthManager,
+    budgetManager,
+    queueManager) {
     this.registry = registry;
     this.providerManager = providerManager;
     this.healthManager = healthManager;
@@ -43,55 +39,55 @@ export class MonitoringAggregationService {
     this.startUpdates();
   }
 
-  private startUpdates(): void {
+  private startUpdates(){
     this.updateInterval = setInterval(() => {
       this.collectSnapshot();
     }, 10000); // Every 10 seconds
   }
 
-  private async collectSnapshot(): Promise<void> {
+  private async collectSnapshot()<void> {
     const snapshot = this.buildSnapshot();
     this.lastSnapshot = snapshot;
     this.broadcastToClients(snapshot);
   }
 
-  private buildSnapshot(): MonitoringSnapshot {
+  private buildSnapshot(){
     const agents = this.registry.getAllAgents();
-    const agentData: MonitoringSnapshot['agents'] = {};
+    const agentData['agents'] = {};
 
     for (const agent of agents) {
       const health = this.healthManager.getStatus(agent.id) as any;
       const queue = this.queueManager.getQueueStatus(agent.id);
 
       agentData[agent.id] = {
-        status: agent.status,
+        status.status,
         health: {
-          agentId: agent.id,
-          status: health?.status || 'unknown',
+          agentId.id,
+          status?.status || 'unknown',
           uptime: 0, // This would need to be tracked
-          responseTime: health?.responseTime || 0,
+          responseTime?.responseTime || 0,
           errorRate: 0,
-          lastCheck: new Date(),
-          details: health?.details || {}
+          lastCheckDate(),
+          details?.details || {}
         },
         cost: {
-          agentId: agent.id,
+          agentId.id,
           provider: 'unknown', // Would need to track per agent
           tokensUsed: 0,
           costInr: 0,
           dailyCostInr: 0,
           weeklyCostInr: 0,
           monthlyCostInr: 0,
-          budgetRemaining: this.budgetManager.getCurrentSpend().daily,
-          budgetPercentage: this.budgetManager.getUsagePercentage()
+          budgetRemaining.budgetManager.getCurrentSpend().daily,
+          budgetPercentage.budgetManager.getUsagePercentage()
         },
-        queues: queue || [],
+        queues|| [],
         memory: []
       };
     }
 
     const providerHealth = await this.providerManager.getHealthStatus();
-    const systemHealth: MonitoringSnapshot['systemHealth'] = {
+    const systemHealth['systemHealth'] = {
       mongodb: (this.healthManager.getStatus('mongodb')?.status as any) || 'healthy',
       redis: (this.healthManager.getStatus('redis')?.status as any) || 'healthy',
       providers: {}
@@ -104,20 +100,20 @@ export class MonitoringAggregationService {
     const spend = this.budgetManager.getCurrentSpend();
 
     return {
-      timestamp: new Date(),
-      agents: agentData,
+      timestampDate(),
+      agents,
       systemHealth,
-      totalCostToday: spend.daily,
+      totalCostToday.daily,
       totalRequestsToday: 0, // Would need to track requests
-      activeAgentsCount: agents.filter(a => a.status === 'online').length
+      activeAgentsCount.filter(a => a.status === 'online').length
     };
   }
 
-  getLatestSnapshot(): MonitoringSnapshot | null {
+  getLatestSnapshot()| null {
     return this.lastSnapshot;
   }
 
-  addClient(client: WebSocketClient): void {
+  addClient(client){
     this.clients.push(client);
     client.isAlive = true;
     
@@ -127,11 +123,11 @@ export class MonitoringAggregationService {
     }
   }
 
-  removeClient(client: WebSocketClient): void {
+  removeClient(client){
     this.clients = this.clients.filter(c => c !== client);
   }
 
-  private broadcastToClients(data: any): void {
+  private broadcastToClients(data){
     const message = JSON.stringify(data);
     for (const client of this.clients) {
       try {
@@ -144,10 +140,12 @@ export class MonitoringAggregationService {
     }
   }
 
-  stopUpdates(): void {
+  stopUpdates(){
     if (this.updateInterval) {
       clearInterval(this.updateInterval);
       this.updateInterval = null;
     }
   }
 }
+
+

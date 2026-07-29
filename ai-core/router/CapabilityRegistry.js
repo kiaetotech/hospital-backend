@@ -2,16 +2,14 @@
 
 import { AgentRegistration, AgentCapability, AgentRole, AgentStatus } from '../../shared/types/AgentTypes';
 
-interface CapabilityIndex {
-  [capabilityName: string]: string[];
-}
+
 
 export class CapabilityRegistry {
-  private agents: Map<string, AgentRegistration> = new Map();
-  private capabilityIndex: CapabilityIndex = {};
-  private roleMapping: Map<AgentRole, string[]> = new Map();
+  private agents<string, AgentRegistration> = new Map();
+  private capabilityIndex= {};
+  private roleMapping<AgentRole, string[]> = new Map();
 
-  register(agent: AgentRegistration): void {
+  register(agent){
     this.agents.set(agent.id, agent);
     
     for (const capability of agent.capabilities) {
@@ -27,7 +25,7 @@ export class CapabilityRegistry {
     this.roleMapping.get(agent.role)!.push(agent.id);
   }
 
-  findAgentForTask(capability: string, role?: AgentRole): AgentRegistration | null {
+  findAgentForTask(capability, role?)| null {
     const candidates = this.capabilityIndex[capability] || [];
     
     if (candidates.length === 0) {
@@ -52,26 +50,25 @@ export class CapabilityRegistry {
     return result;
   }
 
-  // ✅ ADD THIS METHOD:
-  getAgent(id: string): AgentRegistration | null {
+  // ✅ ADD THIS METHOD(id)| null {
     return this.agents.get(id) || null;
   }
 
-  getAgentsByRole(role: AgentRole): AgentRegistration[] {
+  getAgentsByRole(role)[] {
     const ids = this.roleMapping.get(role) || [];
     return ids.map(id => this.agents.get(id)!).filter(Boolean);
   }
 
-  getAllAgents(): AgentRegistration[] {
+  getAllAgents()[] {
     return Array.from(this.agents.values());
   }
 
-  getAgentCapabilities(agentId: string): AgentCapability[] {
+  getAgentCapabilities(agentId)[] {
     const agent = this.agents.get(agentId);
     return agent ? agent.capabilities : [];
   }
 
-  unregister(agentId: string): void {
+  unregister(agentId){
     const agent = this.agents.get(agentId);
     if (!agent) return;
 
@@ -86,9 +83,11 @@ export class CapabilityRegistry {
     this.agents.delete(agentId);
   }
 
-  updateStatus(agentId: string, status: AgentStatus): void {
+  updateStatus(agentId, status){
     const agent = this.agents.get(agentId);
     if (!agent) return;
     agent.status = status;
   }
 }
+
+

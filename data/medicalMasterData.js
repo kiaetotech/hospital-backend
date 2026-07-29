@@ -221,3 +221,4 @@ const MEDICAL_MASTER_DATA = {
 };
 
 module.exports = MEDICAL_MASTER_DATA;
+

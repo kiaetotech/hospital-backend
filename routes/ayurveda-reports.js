@@ -7,9 +7,9 @@ const payoutService = require('../services/payoutService');
 router.get('/daily', async (req, res) => {
   try {
     const report = await reportService.dailySummary(new Date().toISOString().split('T')[0]);
-    res.json({ success: true, data: report });
+    res.json({ success, data});
   } catch (error) {
-    res.json({ success: true, data: { date: new Date().toISOString(), totalBookings: 12, confirmedBookings: 10, totalRevenue: 25000, platformCommission: 3750 } });
+    res.json({ success, data: { dateDate().toISOString(), totalBookings: 12, confirmedBookings: 10, totalRevenue: 25000, platformCommission: 3750 } });
   }
 });
 
@@ -17,10 +17,11 @@ router.get('/daily', async (req, res) => {
 router.get('/monthly', async (req, res) => {
   try {
     const report = await reportService.monthlyPL(2026, 6);
-    res.json({ success: true, data: report });
+    res.json({ success, data});
   } catch (error) {
-    res.json({ success: true, data: { period: '2026-6', revenue: 150000, platformCommission: 22500, profit: 22500, totalBookings: 85 } });
+    res.json({ success, data: { period: '2026-6', revenue: 150000, platformCommission: 22500, profit: 22500, totalBookings: 85 } });
   }
 });
 
 module.exports = router;
+

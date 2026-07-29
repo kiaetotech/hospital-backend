@@ -3,33 +3,33 @@ const Booking = require('../models/Booking');
 const router = express.Router();
 
 // Get booking status by ID (with full details)
-router.get('/:bookingId', async (req, res) => {
+router.get('/', async (req, res) => {
   try {
-    const booking = await Booking.findOne({ bookingId: req.params.bookingId });
+    const booking = await Booking.findOne({ bookingId.params.bookingId });
     if (!booking) {
       return res.status(404).json({ error: 'Booking not found' });
     }
     res.json({
-      bookingId: booking.bookingId,
-      status: booking.status,
-      statusHistory: booking.statusHistory || [],
-      estimatedReportTime: booking.estimatedReportTime,
-      appointmentDate: booking.appointmentDate,
-      providerName: booking.providerName,
-      tests: booking.tests,
-      patientName: booking.patientName,
-      patientPhone: booking.patientPhone
+      bookingId.bookingId,
+      status.status,
+      statusHistory.statusHistory || [],
+      estimatedReportTime.estimatedReportTime,
+      appointmentDate.appointmentDate,
+      providerName.providerName,
+      tests.tests,
+      patientName.patientName,
+      patientPhone.patientPhone
     });
   } catch (error) {
-    res.status(500).json({ error: error.message });
+    res.status(500).json({ error.message });
   }
 });
 
 // Update booking status (with history)
-router.put('/:bookingId/status', async (req, res) => {
+router.put('//status', async (req, res) => {
   try {
     const { status, note } = req.body;
-    const booking = await Booking.findOne({ bookingId: req.params.bookingId });
+    const booking = await Booking.findOne({ bookingId.params.bookingId });
     
     if (!booking) {
       return res.status(404).json({ error: 'Booking not found' });
@@ -43,9 +43,9 @@ router.put('/:bookingId/status', async (req, res) => {
     booking.status = status;
     booking.statusHistory = booking.statusHistory || [];
     booking.statusHistory.push({
-      status: status,
-      timestamp: new Date(),
-      note: note || `Status changed to ${status}`
+      status,
+      timestampDate(),
+      note|| `Status changed to ${status}`
     });
     
     // Set estimated report time for lab tests when sample is collected
@@ -54,36 +54,37 @@ router.put('/:bookingId/status', async (req, res) => {
     }
     
     await booking.save();
-    res.json({ success: true, booking });
+    res.json({ success, booking });
   } catch (error) {
-    res.status(500).json({ error: error.message });
+    res.status(500).json({ error.message });
   }
 });
 
 // Get status timeline for a booking
-router.get('/:bookingId/timeline', async (req, res) => {
+router.get('//timeline', async (req, res) => {
   try {
-    const booking = await Booking.findOne({ bookingId: req.params.bookingId });
+    const booking = await Booking.findOne({ bookingId.params.bookingId });
     if (!booking) {
       return res.status(404).json({ error: 'Booking not found' });
     }
     res.json(booking.statusHistory || []);
   } catch (error) {
-    res.status(500).json({ error: error.message });
+    res.status(500).json({ error.message });
   }
 });
 
 // Get simple status (legacy support)
-router.get('/:bookingId/status', async (req, res) => {
+router.get('//status', async (req, res) => {
   try {
-    const booking = await Booking.findOne({ bookingId: req.params.bookingId }).select('status statusHistory estimatedReportTime');
+    const booking = await Booking.findOne({ bookingId.params.bookingId }).select('status statusHistory estimatedReportTime');
     if (!booking) {
       return res.status(404).json({ error: 'Booking not found' });
     }
     res.json(booking);
   } catch (error) {
-    res.status(500).json({ error: error.message });
+    res.status(500).json({ error.message });
   }
 });
 
 module.exports = router;
+

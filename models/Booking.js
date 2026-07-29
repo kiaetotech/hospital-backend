@@ -5,14 +5,14 @@ const bookingSchema = new mongoose.Schema({
   // COMMON FIELDS FOR ALL BOOKING TYPES
   // ============================================
   
-  userId: { type: String, required: true },
+  userId: { type, required},
   bookingType: { 
-    type: String, 
+    type, 
     enum: [
       'opd', 
       'admission', 
       'ambulance', 
-      'ambulance_emergency',     // 🚑 NEW: Emergency ambulance dispatch
+      'ambulance_emergency',     // 🚑 NEWambulance dispatch
       'labtest', 
       'health_package', 
       'caregiver', 
@@ -22,27 +22,26 @@ const bookingSchema = new mongoose.Schema({
       'insurance',
       'online_consult'
     ], 
-    required: true 
-  },
-  patientName: { type: String, required: true },
-  patientPhone: { type: String, required: true },
-  patientAge: { type: Number },
-  patientGender: { type: String, enum: ['male', 'female', 'other'] },
-  patientEmail: { type: String },
-  bookingDate: { type: Date, default: Date.now },
-  appointmentDate: { type: Date, required: true },
-  originalAmount: { type: Number, required: true },
-  discount: { type: Number, default: 0 },
-  finalAmount: { type: Number, required: true },
+    required},
+  patientName: { type, required},
+  patientPhone: { type, required},
+  patientAge: { type},
+  patientGender: { type, enum: ['male', 'female', 'other'] },
+  patientEmail: { type},
+  bookingDate: { type, default.now },
+  appointmentDate: { type, required},
+  originalAmount: { type, required},
+  discount: { type, default: 0 },
+  finalAmount: { type, required},
   paymentStatus: { 
-    type: String, 
+    type, 
     enum: ['pending', 'paid', 'failed', 'refunded', 'partially_refunded'], 
     default: 'pending' 
   },
-  paymentId: { type: String },
-  orderId: { type: String },
+  paymentId: { type},
+  orderId: { type},
   status: { 
-    type: String, 
+    type, 
     enum: [
       'pending', 
       'confirmed', 
@@ -55,7 +54,7 @@ const bookingSchema = new mongoose.Schema({
       'out_for_delivery', 
       'delivered',
       'policy_issued',
-      // 🚑 NEW: Ambulance emergency statuses
+      // 🚑 NEWemergency statuses
       'driver_assigned',
       'driver_en_route',
       'driver_arrived',
@@ -65,215 +64,214 @@ const bookingSchema = new mongoose.Schema({
     ], 
     default: 'pending' 
   },
-  createdAt: { type: Date, default: Date.now },
+  createdAt: { type, default.now },
   
   // ============================================
   // HOSPITAL / OPD / ADMISSION FIELDS
   // ============================================
   
-  hospitalId: { type: String },
-  hospitalName: { type: String },
-  doctorName: { type: String },
-  timeSlot: { type: String },
+  hospitalId: { type},
+  hospitalName: { type},
+  doctorName: { type},
+  timeSlot: { type},
   
   // ============================================
   // 🚑 AMBULANCE FIELDS (ENHANCED FOR BLITZ RESPONSE SYSTEM)
   // ============================================
   
   ambulanceType: { 
-    type: String,
+    type,
     enum: ['basic', 'cardiac', 'ventilator', 'neonatal', 'mortuary', 'wheelchair']
   },
-  pickupAddress: { type: String },
-  dropAddress: { type: String },
+  pickupAddress: { type},
+  dropAddress: { type},
 
   // 🚑 Emergency type classification
   emergencyType: {
-    type: String,
+    type,
     enum: ['blitz', 'scheduled', 'intercity'],
     default: 'scheduled'
   },
 
   // 🚑 Patient condition assessment (from triage quiz)
   patientCondition: {
-    isBreathing: { type: Boolean },
-    isConscious: { type: Boolean },
-    isBleeding: { type: Boolean },
-    chiefComplaint: { type: String },
-    additionalNotes: { type: String },
-    ageGroup: { type: String, enum: ['infant', 'child', 'adult', 'senior'] }
+    isBreathing: { type},
+    isConscious: { type},
+    isBleeding: { type},
+    chiefComplaint: { type},
+    additionalNotes: { type},
+    ageGroup: { type, enum: ['infant', 'child', 'adult', 'senior'] }
   },
 
   // 🚑 Geo-location for real-time tracking
   location: {
-    type: { type: String, enum: ['Point'], default: 'Point' },
+    type: { type, enum: ['Point'], default: 'Point' },
     coordinates: { type: [Number] }  // [longitude, latitude]
   },
 
   pickupCoordinates: {
-    lat: { type: Number },
-    lng: { type: Number }
+    lat: { type},
+    lng: { type}
   },
 
   pickupLocation: {
-    address: { type: String },
-    landmark: { type: String },
-    city: { type: String },
-    pincode: { type: String }
+    address: { type},
+    landmark: { type},
+    city: { type},
+    pincode: { type}
   },
 
   // 🚑 Hospital destination details
   hospitalDestination: {
-    hospitalId: { type: String },
-    hospitalName: { type: String },
-    address: { type: String },
+    hospitalId: { type},
+    hospitalName: { type},
+    address: { type},
     coordinates: {
-      lat: { type: Number },
-      lng: { type: Number }
+      lat: { type},
+      lng: { type}
     },
-    emergencyDepartment: { type: String },
+    emergencyDepartment: { type},
     bedAvailability: {
-      general: { type: Number },
-      icu: { type: Number },
-      ventilator: { type: Number }
+      general: { type},
+      icu: { type},
+      ventilator: { type}
     }
   },
 
   // 🚑 Driver assignment & tracking
-  driverId: { type: String },
-  driverName: { type: String },
-  driverPhone: { type: String },
-  driverRating: { type: Number },
-  vehicleNumber: { type: String },
-  vehicleType: { type: String },
+  driverId: { type},
+  driverName: { type},
+  driverPhone: { type},
+  driverRating: { type},
+  vehicleNumber: { type},
+  vehicleType: { type},
 
   // 🚑 Emergency timestamps for SLA tracking
-  emergencyRequestedAt: { type: Date },
-  driverAcceptedAt: { type: Date },
-  driverReachedAt: { type: Date },
-  patientOnboardAt: { type: Date },
-  arrivedHospitalAt: { type: Date },
-  completedAt: { type: Date },
+  emergencyRequestedAt: { type},
+  driverAcceptedAt: { type},
+  driverReachedAt: { type},
+  patientOnboardAt: { type},
+  arrivedHospitalAt: { type},
+  completedAt: { type},
 
   // 🚑 Dispatch metadata
-  dispatchAttempts: { type: Number, default: 0 },
+  dispatchAttempts: { type, default: 0 },
   driversContacted: [{ 
-    driverId: String, 
-    driverName: String,
-    accepted: Boolean, 
-    responseTime: Number  // seconds
+    driverId, 
+    driverName,
+    accepted, 
+    responseTime// seconds
   }],
-  dispatchRadius: { type: Number },  // km
-  retryCount: { type: Number, default: 0 },
+  dispatchRadius: { type},  // km
+  retryCount: { type, default: 0 },
 
   // 🚑 Trip OTP for patient-driver verification
-  tripOtp: { type: String },
-  otpVerified: { type: Boolean, default: false },
+  tripOtp: { type},
+  otpVerified: { type, default},
 
   // 🚑 Emergency contacts notified during emergency
   emergencyContacts: [{
-    name: { type: String },
-    phone: { type: String },
-    relationship: { type: String },
-    notified: { type: Boolean, default: false },
-    notifiedAt: { type: Date }
+    name: { type},
+    phone: { type},
+    relationship: { type},
+    notified: { type, default},
+    notifiedAt: { type}
   }],
 
   // 🚑 Hospital ER notification tracking
-  hospitalNotified: { type: Boolean, default: false },
-  hospitalNotificationId: { type: String },
-  hospitalNotificationTime: { type: Date },
+  hospitalNotified: { type, default},
+  hospitalNotificationId: { type},
+  hospitalNotificationTime: { type},
 
   // 🚑 Insurance card sharing with hospital
-  insuranceCardShared: { type: Boolean, default: false },
+  insuranceCardShared: { type, default},
   insuranceInfo: {
-    provider: { type: String },
-    policyNumber: { type: String },
-    cardImageUrl: { type: String }
+    provider: { type},
+    policyNumber: { type},
+    cardImageUrl: { type}
   },
 
   // 🚑 Digital trip sheet (insurance claim ready)
   digitalTripSheet: {
-    generated: { type: Boolean, default: false },
-    tripSheetId: { type: String },
-    pickupTime: { type: Date },
-    dropTime: { type: Date },
-    distance: { type: Number },  // km
-    duration: { type: Number },  // minutes
+    generated: { type, default},
+    tripSheetId: { type},
+    pickupTime: { type},
+    dropTime: { type},
+    distance: { type},  // km
+    duration: { type},  // minutes
     vitals: {
-      bloodPressure: { type: String },
-      pulse: { type: Number },
-      spo2: { type: Number },
-      temperature: { type: Number },
-      glucose: { type: Number }
+      bloodPressure: { type},
+      pulse: { type},
+      spo2: { type},
+      temperature: { type},
+      glucose: { type}
     },
-    oxygenAdministered: { type: Boolean, default: false },
-    oxygenFlowRate: { type: Number },  // L/min
+    oxygenAdministered: { type, default},
+    oxygenFlowRate: { type},  // L/min
     medicationsGiven: [{ 
-      name: String, 
-      dosage: String, 
-      time: Date 
-    }],
-    proceduresDone: [{ type: String }],
-    patientConditionDuringTransport: { type: String },
-    driverNotes: { type: String },
-    generatedAt: { type: Date }
+      name, 
+      dosage, 
+      time}],
+    proceduresDone: [{ type}],
+    patientConditionDuringTransport: { type},
+    driverNotes: { type},
+    generatedAt: { type}
   },
 
   // 🚑 Surge pricing
-  surgeMultiplier: { type: Number, default: 1.0 },
-  surgeReason: { type: String },
-  isPeakHour: { type: Boolean, default: false },
+  surgeMultiplier: { type, default: 1.0 },
+  surgeReason: { type},
+  isPeakHour: { type, default},
 
   // 🚑 Detailed fare breakdown
   fareBreakdown: {
-    baseFare: { type: Number },
-    distanceCharge: { type: Number },
-    waitingCharge: { type: Number },
-    nightCharge: { type: Number },
-    oxygenCharge: { type: Number },
-    equipmentCharge: { type: Number },
-    surgeCharge: { type: Number },
-    platformFee: { type: Number },
-    gst: { type: Number },
-    total: { type: Number }
+    baseFare: { type},
+    distanceCharge: { type},
+    waitingCharge: { type},
+    nightCharge: { type},
+    oxygenCharge: { type},
+    equipmentCharge: { type},
+    surgeCharge: { type},
+    platformFee: { type},
+    gst: { type},
+    total: { type}
   },
 
   // 🚑 Live tracking
-  trackingUrl: { type: String },
-  liveTrackingEnabled: { type: Boolean, default: false },
+  trackingUrl: { type},
+  liveTrackingEnabled: { type, default},
 
   // 🚑 Emergency-specific cancellation
   emergencyCancellation: {
-    cancelledAt: { type: Date },
-    cancelledBy: { type: String, enum: ['patient', 'driver', 'system'] },
-    reason: { type: String },
-    driverReachedBeforeCancel: { type: Boolean, default: false },
-    cancellationFee: { type: Number },
-    refundAmount: { type: Number }
+    cancelledAt: { type},
+    cancelledBy: { type, enum: ['patient', 'driver', 'system'] },
+    reason: { type},
+    driverReachedBeforeCancel: { type, default},
+    cancellationFee: { type},
+    refundAmount: { type}
   },
 
   // 🚑 Non-emergency scheduled transport
   scheduledTransport: {
-    isRecurring: { type: Boolean, default: false },
-    recurringDays: [{ type: String }],  // ['monday', 'wednesday', 'friday']
-    recurringEndDate: { type: Date },
-    requiresOxygen: { type: Boolean, default: false },
-    requiresAttendant: { type: Boolean, default: false },
-    mobilityType: { type: String, enum: ['walking', 'wheelchair', 'stretcher'] },
-    specialEquipment: [{ type: String }]
+    isRecurring: { type, default},
+    recurringDays: [{ type}],  // ['monday', 'wednesday', 'friday']
+    recurringEndDate: { type},
+    requiresOxygen: { type, default},
+    requiresAttendant: { type, default},
+    mobilityType: { type, enum: ['walking', 'wheelchair', 'stretcher'] },
+    specialEquipment: [{ type}]
   },
   
   // ============================================
   // LAB TEST / DIAGNOSTICS FIELDS
   // ============================================
   
-  tests: [{ type: String }],
-  providerId: { type: mongoose.Schema.Types.ObjectId, ref: 'Provider' },
-  providerName: { type: String },
-  homeCollectionRequested: { type: Boolean, default: false },
-  homeAddress: { type: String },
-  bookingId: { type: String, unique: true },
+  tests: [{ type}],
+  providerId: { type.Schema.Types.ObjectId, ref: 'Provider' },
+  providerName: { type},
+  homeCollectionRequested: { type, default},
+  homeAddress: { type},
+  bookingId: { type, unique},
   
   // ============================================
   // STATUS TRACKING
@@ -281,7 +279,7 @@ const bookingSchema = new mongoose.Schema({
   
   statusHistory: [{
     status: { 
-      type: String, 
+      type, 
       enum: [
         'pending', 
         'confirmed', 
@@ -303,147 +301,146 @@ const bookingSchema = new mongoose.Schema({
         'no_driver_found'
       ] 
     },
-    timestamp: { type: Date, default: Date.now },
-    note: { type: String }
+    timestamp: { type, default.now },
+    note: { type}
   }],
-  estimatedReportTime: { type: Date },
+  estimatedReportTime: { type},
   
   // ============================================
   // PAYMENT FIELDS
   // ============================================
   
-  razorpayOrderId: { type: String },
-  razorpayPaymentId: { type: String },
-  razorpaySignature: { type: String },
+  razorpayOrderId: { type},
+  razorpayPaymentId: { type},
+  razorpaySignature: { type},
   
-  discountCode: { type: String },
-  discountType: { type: String, enum: ['percentage', 'fixed'] },
-  discountValue: { type: Number },
+  discountCode: { type},
+  discountType: { type, enum: ['percentage', 'fixed'] },
+  discountValue: { type},
   
-  paymentMethod: { type: String, enum: ['card', 'upi', 'netbanking', 'wallet', 'emi'] },
+  paymentMethod: { type, enum: ['card', 'upi', 'netbanking', 'wallet', 'emi'] },
   
-  refundId: { type: String },
-  refundAmount: { type: Number },
-  refundStatus: { type: String, enum: ['pending', 'processed', 'failed'] },
-  refundedAt: { type: Date },
+  refundId: { type},
+  refundAmount: { type},
+  refundStatus: { type, enum: ['pending', 'processed', 'failed'] },
+  refundedAt: { type},
   
-  platformCommission: { type: Number, default: 0 },
-  providerCommission: { type: Number, default: 0 },
-  commissionStatus: { type: String, enum: ['pending', 'paid', 'failed'], default: 'pending' },
+  platformCommission: { type, default: 0 },
+  providerCommission: { type, default: 0 },
+  commissionStatus: { type, enum: ['pending', 'paid', 'failed'], default: 'pending' },
   
-  paymentAttempts: { type: Number, default: 0 },
-  lastPaymentError: { type: String },
+  paymentAttempts: { type, default: 0 },
+  lastPaymentError: { type},
   
-  settledToProvider: { type: Boolean, default: false },
-  settledAt: { type: Date },
-  settlementId: { type: String },
+  settledToProvider: { type, default},
+  settledAt: { type},
+  settlementId: { type},
   
-  deliveryOTP: { type: String },
+  deliveryOTP: { type},
   
   // ============================================
   // MEDICINE / HOMEOPATHY PHARMACY FIELDS
   // ============================================
   
   medicines: [{ 
-    name: String, 
-    potency: String, 
-    quantity: Number, 
-    price: Number 
-  }],
-  deliveryAddress: { type: String },
-  trackingNumber: { type: String },
-  deliveryStatus: { type: String, enum: ['processing', 'shipped', 'out_for_delivery', 'delivered'] },
+    name, 
+    potency, 
+    quantity, 
+    price}],
+  deliveryAddress: { type},
+  trackingNumber: { type},
+  deliveryStatus: { type, enum: ['processing', 'shipped', 'out_for_delivery', 'delivered'] },
 
   // ============================================
   // INSURANCE FIELDS
   // ============================================
   
-  insurancePolicyId: { type: mongoose.Schema.Types.ObjectId, ref: 'InsurancePolicy' },
-  insurancePlanId: { type: mongoose.Schema.Types.ObjectId, ref: 'InsurancePlan' },
-  insuranceCompanyName: { type: String },
-  insurancePlanName: { type: String },
-  policyNumber: { type: String },
-  sumInsured: { type: Number },
-  premiumAmount: { type: Number },
+  insurancePolicyId: { type.Schema.Types.ObjectId, ref: 'InsurancePolicy' },
+  insurancePlanId: { type.Schema.Types.ObjectId, ref: 'InsurancePlan' },
+  insuranceCompanyName: { type},
+  insurancePlanName: { type},
+  policyNumber: { type},
+  sumInsured: { type},
+  premiumAmount: { type},
   
   insuranceMembers: [{
-    name: { type: String },
-    relation: { type: String },
-    age: { type: Number },
-    gender: { type: String },
-    aadhaar: { type: String },
-    pan: { type: String }
+    name: { type},
+    relation: { type},
+    age: { type},
+    gender: { type},
+    aadhaar: { type},
+    pan: { type}
   }],
   
-  policyStartDate: { type: Date },
-  policyEndDate: { type: Date },
-  policyRenewalDate: { type: Date },
+  policyStartDate: { type},
+  policyEndDate: { type},
+  policyRenewalDate: { type},
   
-  insuranceClaimId: { type: String },
-  claimAmount: { type: Number },
+  insuranceClaimId: { type},
+  claimAmount: { type},
   claimStatus: { 
-    type: String, 
+    type, 
     enum: ['none', 'initiated', 'document_uploaded', 'under_review', 'approved', 'rejected', 'settled'],
     default: 'none'
   },
-  claimDocuments: [{ type: String }],
-  claimSettledAt: { type: Date },
+  claimDocuments: [{ type}],
+  claimSettledAt: { type},
 
   insuranceSettlementStatus: { 
-    type: String, 
+    type, 
     enum: ['pending', 'processing', 'completed', 'failed'],
     default: 'pending'
   },
-  insuranceSettlementDate: { type: Date },
-  insuranceSettlementTransactionId: { type: String },
+  insuranceSettlementDate: { type},
+  insuranceSettlementTransactionId: { type},
   
-  insurancePolicyDocumentUrl: { type: String },
-  insuranceCertificateUrl: { type: String },
-  insuranceProposalFormUrl: { type: String },
+  insurancePolicyDocumentUrl: { type},
+  insuranceCertificateUrl: { type},
+  insuranceProposalFormUrl: { type},
 
   // ============================================
   // OPD / ADMISSION SPECIFIC FIELDS
   // ============================================
   
-  doctorSpecialization: { type: String },
-  doctorQualification: { type: String },
-  consultationFee: { type: Number },
+  doctorSpecialization: { type},
+  doctorQualification: { type},
+  consultationFee: { type},
   
-  roomType: { type: String },
-  roomPrice: { type: Number },
-  numberOfDays: { type: Number, default: 1 },
-  advanceAmount: { type: Number, default: 0 },
-  remainingAmount: { type: Number },
+  roomType: { type},
+  roomPrice: { type},
+  numberOfDays: { type, default: 1 },
+  advanceAmount: { type, default: 0 },
+  remainingAmount: { type},
   
-  guardianName: { type: String },
-  guardianPhone: { type: String },
-  relation: { type: String },
+  guardianName: { type},
+  guardianPhone: { type},
+  relation: { type},
   
-  reason: { type: String },
-  existingReports: { type: Boolean, default: false },
+  reason: { type},
+  existingReports: { type, default},
   
-  insuranceProvider: { type: String },
-  insurancePolicyNumber: { type: String },
-  schemeApplied: { type: String },
+  insuranceProvider: { type},
+  insurancePolicyNumber: { type},
+  schemeApplied: { type},
   
   // ============================================
   // CANCELLATION & REFUND
   // ============================================
   
   cancellation: {
-    cancelledAt: { type: Date },
-    reason: { type: String },
-    cancelledBy: { type: String },
-    refundAmount: { type: Number, default: 0 },
-    refundPercentage: { type: Number, default: 0 },
-    cancellationFee: { type: Number, default: 0 },
+    cancelledAt: { type},
+    reason: { type},
+    cancelledBy: { type},
+    refundAmount: { type, default: 0 },
+    refundPercentage: { type, default: 0 },
+    cancellationFee: { type, default: 0 },
     refundStatus: {
-      type: String,
+      type,
       enum: ['pending', 'processed', 'failed', 'not_applicable'],
       default: 'not_applicable'
     },
-    refundProcessedAt: { type: Date },
-    refundTransactionId: { type: String }
+    refundProcessedAt: { type},
+    refundTransactionId: { type}
   },
   
   // ============================================
@@ -451,17 +448,17 @@ const bookingSchema = new mongoose.Schema({
   // ============================================
   
   review: {
-    rating: { type: Number, default: 0, min: 0, max: 5 },
-    review: { type: String },
-    doctorRating: { type: Number, default: 0, min: 0, max: 5 },
-    staffRating: { type: Number, default: 0, min: 0, max: 5 },
-    cleanlinessRating: { type: Number, default: 0, min: 0, max: 5 },
-    waitTimeRating: { type: Number, default: 0, min: 0, max: 5 },
-    valueForMoneyRating: { type: Number, default: 0, min: 0, max: 5 },
-    submittedAt: { type: Date },
-    isVerified: { type: Boolean, default: false },
-    response: { type: String },
-    responseAt: { type: Date }
+    rating: { type, default: 0, min: 0, max: 5 },
+    review: { type},
+    doctorRating: { type, default: 0, min: 0, max: 5 },
+    staffRating: { type, default: 0, min: 0, max: 5 },
+    cleanlinessRating: { type, default: 0, min: 0, max: 5 },
+    waitTimeRating: { type, default: 0, min: 0, max: 5 },
+    valueForMoneyRating: { type, default: 0, min: 0, max: 5 },
+    submittedAt: { type},
+    isVerified: { type, default},
+    response: { type},
+    responseAt: { type}
   },
   
   // ============================================
@@ -469,48 +466,46 @@ const bookingSchema = new mongoose.Schema({
   // ============================================
   
   feedback: {
-    wouldRecommend: { type: Boolean },
-    feedbackText: { type: String },
-    submittedAt: { type: Date }
+    wouldRecommend: { type},
+    feedbackText: { type},
+    submittedAt: { type}
   },
   
   followUp: {
-    required: { type: Boolean, default: false },
-    followUpDate: { type: Date },
-    followUpBooked: { type: Boolean, default: false },
-    followUpBookingId: { type: String }
+    required: { type, default},
+    followUpDate: { type},
+    followUpBooked: { type, default},
+    followUpBookingId: { type}
   },
   
   // ============================================
   // QUEUE & WAIT TIME
   // ============================================
   
-  queueNumber: { type: Number },
-  estimatedWaitTime: { type: Number },
-  actualWaitTime: { type: Number },
-  checkInTime: { type: Date },
-  consultationStartTime: { type: Date },
-  consultationEndTime: { type: Date },
+  queueNumber: { type},
+  estimatedWaitTime: { type},
+  actualWaitTime: { type},
+  checkInTime: { type},
+  consultationStartTime: { type},
+  consultationEndTime: { type},
   
   // ============================================
   // PRESCRIPTION
   // ============================================
   
   prescription: {
-    generated: { type: Boolean, default: false },
-    prescriptionId: { type: String },
+    generated: { type, default},
+    prescriptionId: { type},
     medicines: [{
-      name: String,
-      dosage: String,
-      duration: String,
-      instructions: String
-    }],
+      name,
+      dosage,
+      duration,
+      instructions}],
     tests: [{
-      testName: String,
-      instructions: String
-    }],
-    doctorNotes: { type: String },
-    generatedAt: { type: Date }
+      testName,
+      instructions}],
+    doctorNotes: { type},
+    generatedAt: { type}
   },
 
   // ============================================
@@ -518,35 +513,35 @@ const bookingSchema = new mongoose.Schema({
   // ============================================
   
   notifications: [{
-    type: { type: String, enum: ['email', 'sms', 'whatsapp', 'push'] },
-    sentAt: { type: Date, default: Date.now },
-    status: { type: String, enum: ['sent', 'failed', 'delivered', 'read'] },
-    message: { type: String }
+    type: { type, enum: ['email', 'sms', 'whatsapp', 'push'] },
+    sentAt: { type, default.now },
+    status: { type, enum: ['sent', 'failed', 'delivered', 'read'] },
+    message: { type}
   }],
   
   // ============================================
   // ADMIN & PROVIDER METADATA
   // ============================================
   
-  assignedTo: { type: String },
-  priority: { type: String, enum: ['normal', 'urgent', 'emergency'], default: 'normal' },
+  assignedTo: { type},
+  priority: { type, enum: ['normal', 'urgent', 'emergency'], default: 'normal' },
   notes: [{
-    text: { type: String },
-    addedBy: { type: String },
-    addedAt: { type: Date, default: Date.now }
+    text: { type},
+    addedBy: { type},
+    addedAt: { type, default.now }
   }],
   
-  reportDeliveryMethod: { type: String, enum: ['email', 'whatsapp', 'physical', 'portal'] },
-  reportDeliveredAt: { type: Date },
+  reportDeliveryMethod: { type, enum: ['email', 'whatsapp', 'physical', 'portal'] },
+  reportDeliveredAt: { type},
   
   // ============================================
   // SPECIAL REQUIREMENTS
   // ============================================
   
-  specialRequirements: { type: String },
-  languagePreference: { type: String },
-  wheelchairRequired: { type: Boolean, default: false },
-  interpreterRequired: { type: Boolean, default: false }
+  specialRequirements: { type},
+  languagePreference: { type},
+  wheelchairRequired: { type, default},
+  interpreterRequired: { type, default}
 });
 
 // ============================================
@@ -580,9 +575,9 @@ bookingSchema.pre('save', function(next) {
     if (this.statusHistory.length === 0 || 
         this.statusHistory[this.statusHistory.length - 1].status !== this.status) {
       this.statusHistory.push({
-        status: this.status,
-        timestamp: new Date(),
-        note: this.statusHistory.length === 0 ? 'Booking created' : `Status updated to ${this.status}`
+        status.status,
+        timestampDate(),
+        note.statusHistory.length === 0 ? 'Booking created' : `Status updated to ${this.status}`
       });
     }
   }
@@ -636,19 +631,19 @@ bookingSchema.virtual('canReview').get(function() {
 });
 
 bookingSchema.virtual('refundEligibility').get(function() {
-  if (!this.appointmentDate) return { eligible: false, percentage: 0 };
+  if (!this.appointmentDate) return { eligible, percentage: 0 };
   
   const now = new Date();
   const appointmentTime = new Date(this.appointmentDate);
   const hoursBefore = (appointmentTime - now) / (1000 * 60 * 60);
   
-  if (hoursBefore > 24) return { eligible: true, percentage: 90, label: 'Full refund (90%)' };
-  if (hoursBefore > 6) return { eligible: true, percentage: 50, label: 'Partial refund (50%)' };
-  if (hoursBefore > 2) return { eligible: true, percentage: 25, label: 'Partial refund (25%)' };
-  return { eligible: false, percentage: 0, label: 'No refund' };
+  if (hoursBefore > 24) return { eligible, percentage: 90, label: 'Full refund (90%)' };
+  if (hoursBefore > 6) return { eligible, percentage: 50, label: 'Partial refund (50%)' };
+  if (hoursBefore > 2) return { eligible, percentage: 25, label: 'Partial refund (25%)' };
+  return { eligible, percentage: 0, label: 'No refund' };
 });
 
-// 🚑 Virtual: Check if booking is an active emergency
+// 🚑 Virtualif booking is an active emergency
 bookingSchema.virtual('isActiveEmergency').get(function() {
   if (this.bookingType !== 'ambulance_emergency' && this.emergencyType !== 'blitz') {
     return false;
@@ -657,7 +652,7 @@ bookingSchema.virtual('isActiveEmergency').get(function() {
   return activeStatuses.includes(this.status);
 });
 
-// 🚑 Virtual: Get emergency response time in seconds
+// 🚑 Virtualemergency response time in seconds
 bookingSchema.virtual('emergencyResponseTime').get(function() {
   if (this.emergencyRequestedAt && this.driverAcceptedAt) {
     return Math.round((this.driverAcceptedAt - this.emergencyRequestedAt) / 1000);
@@ -665,7 +660,7 @@ bookingSchema.virtual('emergencyResponseTime').get(function() {
   return null;
 });
 
-// 🚑 Virtual: Get total trip time in minutes
+// 🚑 Virtualtotal trip time in minutes
 bookingSchema.virtual('totalTripTime').get(function() {
   if (this.driverAcceptedAt && this.arrivedHospitalAt) {
     return Math.round((this.arrivedHospitalAt - this.driverAcceptedAt) / (1000 * 60));
@@ -715,18 +710,18 @@ bookingSchema.methods.cancelBooking = async function(reason, cancelledBy) {
   
   this.status = 'cancelled';
   this.cancellation = {
-    cancelledAt: new Date(),
-    reason: reason || 'Cancelled by patient',
-    cancelledBy: cancelledBy || this.userId,
-    refundAmount: refundInfo.eligible ? Math.round(this.finalAmount * refundInfo.percentage / 100) : 0,
-    refundPercentage: refundInfo.percentage,
-    cancellationFee: this.finalAmount - (refundInfo.eligible ? Math.round(this.finalAmount * refundInfo.percentage / 100) : 0),
-    refundStatus: refundInfo.eligible ? 'pending' : 'not_applicable'
+    cancelledAtDate(),
+    reason|| 'Cancelled by patient',
+    cancelledBy|| this.userId,
+    refundAmount.eligible ? Math.round(this.finalAmount * refundInfo.percentage / 100) : 0,
+    refundPercentage.percentage,
+    cancellationFee.finalAmount - (refundInfo.eligible ? Math.round(this.finalAmount * refundInfo.percentage / 100) : 0),
+    refundStatus.eligible ? 'pending' : 'not_applicable'
   };
   
   this.statusHistory.push({
     status: 'cancelled',
-    timestamp: new Date(),
+    timestampDate(),
     note: `Cancelled. Refund: ₹${this.cancellation.refundAmount} (${refundInfo.percentage}%)`
   });
   
@@ -736,13 +731,12 @@ bookingSchema.methods.cancelBooking = async function(reason, cancelledBy) {
 bookingSchema.methods.submitReview = async function(reviewData) {
   this.review = {
     ...reviewData,
-    submittedAt: new Date(),
-    isVerified: false
-  };
+    submittedAtDate(),
+    isVerified};
   
   this.statusHistory.push({
-    status: this.status,
-    timestamp: new Date(),
+    status.status,
+    timestampDate(),
     note: 'Review submitted by patient'
   });
   
@@ -755,7 +749,7 @@ bookingSchema.methods.checkIn = async function() {
   
   this.statusHistory.push({
     status: 'in_progress',
-    timestamp: new Date(),
+    timestampDate(),
     note: 'Patient checked in'
   });
   
@@ -773,15 +767,15 @@ bookingSchema.methods.completeConsultation = async function(prescriptionData) {
   
   if (prescriptionData) {
     this.prescription = {
-      generated: true,
+      generated,
       ...prescriptionData,
-      generatedAt: new Date()
+      generatedAtDate()
     };
   }
   
   this.statusHistory.push({
     status: 'completed',
-    timestamp: new Date(),
+    timestampDate(),
     note: 'Consultation completed'
   });
   
@@ -805,7 +799,7 @@ bookingSchema.methods.assignDriver = async function(driverData) {
   
   this.statusHistory.push({
     status: 'driver_assigned',
-    timestamp: new Date(),
+    timestampDate(),
     note: `🚑 Driver ${driverData.name} (${driverData.vehicleNumber}) assigned. Response time: ${this.emergencyResponseTime}s`
   });
   
@@ -819,7 +813,7 @@ bookingSchema.methods.driverArrived = async function() {
   
   this.statusHistory.push({
     status: 'driver_arrived',
-    timestamp: new Date(),
+    timestampDate(),
     note: '🚑 Driver arrived at pickup location'
   });
   
@@ -834,7 +828,7 @@ bookingSchema.methods.patientOnboard = async function() {
   
   this.statusHistory.push({
     status: 'patient_onboard',
-    timestamp: new Date(),
+    timestampDate(),
     note: '🚑 Patient onboard, heading to hospital'
   });
   
@@ -852,7 +846,7 @@ bookingSchema.methods.arrivedHospital = async function(vitalsData) {
   
   this.statusHistory.push({
     status: 'arrived_hospital',
-    timestamp: new Date(),
+    timestampDate(),
     note: `🚑 Arrived at ${this.hospitalDestination?.hospitalName || 'hospital'}`
   });
   
@@ -874,7 +868,7 @@ bookingSchema.methods.completeEmergencyTrip = async function(tripData) {
   
   this.statusHistory.push({
     status: 'completed',
-    timestamp: new Date(),
+    timestampDate(),
     note: '🚑 Emergency trip completed'
   });
   
@@ -887,19 +881,19 @@ bookingSchema.methods.cancelEmergency = async function(reason, cancelledBy) {
   
   this.status = 'cancelled';
   this.emergencyCancellation = {
-    cancelledAt: now,
-    cancelledBy: cancelledBy || 'patient',
-    reason: reason || 'Cancelled by patient',
-    driverReachedBeforeCancel: this.status === 'driver_arrived',
-    cancellationFee: this.status === 'driver_arrived' ? Math.round(this.finalAmount * 0.3) : 0,
-    refundAmount: this.status === 'driver_arrived' 
+    cancelledAt,
+    cancelledBy|| 'patient',
+    reason|| 'Cancelled by patient',
+    driverReachedBeforeCancel.status === 'driver_arrived',
+    cancellationFee.status === 'driver_arrived' ? Math.round(this.finalAmount * 0.3) : 0,
+    refundAmount.status === 'driver_arrived' 
       ? Math.round(this.finalAmount * 0.7) 
-      : this.finalAmount
+      .finalAmount
   };
   
   this.statusHistory.push({
     status: 'cancelled',
-    timestamp: now,
+    timestamp,
     note: `🚑 Emergency cancelled by ${cancelledBy}. Reason: ${reason}`
   });
   
@@ -921,14 +915,14 @@ bookingSchema.methods.generateTripSheet = async function(tripData) {
   this.digitalTripSheet = {
     ...this.digitalTripSheet,
     ...tripData,
-    generated: true,
+    generated,
     tripSheetId: 'TRIP' + Date.now(),
-    generatedAt: new Date()
+    generatedAtDate()
   };
   
   this.statusHistory.push({
-    status: this.status,
-    timestamp: new Date(),
+    status.status,
+    timestampDate(),
     note: '🚑 Digital trip sheet generated for insurance'
   });
   
@@ -951,7 +945,7 @@ bookingSchema.methods.calculateFare = function() {
   
   this.fareBreakdown = {
     baseFare,
-    distanceCharge: distance * perKm,
+    distanceCharge* perKm,
     waitingCharge: 0,
     nightCharge,
     oxygenCharge,
@@ -995,8 +989,8 @@ bookingSchema.methods.notifyEmergencyContacts = async function() {
   if (this.emergencyContacts && this.emergencyContacts.length > 0) {
     this.emergencyContacts = this.emergencyContacts.map(contact => ({
       ...contact,
-      notified: true,
-      notifiedAt: new Date()
+      notified,
+      notifiedAtDate()
     }));
   }
   return this.save();
@@ -1033,3 +1027,4 @@ bookingSchema.index({ 'hospitalDestination.hospitalId': 1, status: 1 });
 // ============================================
 
 module.exports = mongoose.model('Booking', bookingSchema);
+

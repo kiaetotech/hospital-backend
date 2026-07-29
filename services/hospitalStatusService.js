@@ -18,7 +18,7 @@ const STATUS_EMOJI = {
 const sendStatusRequest = async (hospitalId) => {
   try {
     const hospital = await Hospital.findById(hospitalId);
-    if (!hospital || !hospital.phone) return { success: false, error: 'Hospital not found' };
+    if (!hospital || !hospital.phone) return { success, error: 'Hospital not found' };
 
     const message = `🏥 *${hospital.name}* - Status Update\n\n` +
       `Tap your current patient acceptance status:\n\n` +
@@ -31,13 +31,13 @@ const sendStatusRequest = async (hospitalId) => {
 
     await HospitalStatus.updateOne(
       { hospitalId },
-      { lastWhatsappSent: new Date() },
-      { upsert: true }
+      { lastWhatsappSentDate() },
+      { upsert}
     );
 
-    return { success: true, message: 'Status request sent' };
+    return { success, message: 'Status request sent' };
   } catch (error) {
-    return { success: false, error: error.message };
+    return { success, error.message };
   }
 };
 
@@ -48,8 +48,8 @@ const sendStatusRequest = async (hospitalId) => {
 const processStatusReply = async (hospitalPhone, replyText) => {
   try {
     // Find hospital by phone
-    const hospital = await Hospital.findOne({ phone: hospitalPhone });
-    if (!hospital) return { success: false, error: 'Hospital not found' };
+    const hospital = await Hospital.findOne({ phone});
+    if (!hospital) return { success, error: 'Hospital not found' };
 
     // Parse reply
     let status = 'unknown';
@@ -64,15 +64,15 @@ const processStatusReply = async (hospitalPhone, replyText) => {
     }
 
     await HospitalStatus.updateOne(
-      { hospitalId: hospital._id },
+      { hospitalId._id },
       {
         status,
-        updatedAt: new Date(),
+        updatedAtDate(),
         updatedVia: 'whatsapp',
-        lastResponseReceived: new Date(),
+        lastResponseReceivedDate(),
         $inc: { responseCount: 1, streakCount: 1 }
       },
-      { upsert: true }
+      { upsert}
     );
 
     // Send confirmation
@@ -81,9 +81,9 @@ const processStatusReply = async (hospitalPhone, replyText) => {
       `${emoji} Status updated to *${status.toUpperCase()}*\nUpdated: ${new Date().toLocaleTimeString('en-IN')}\nThank you!`
     );
 
-    return { success: true, status, hospitalId: hospital._id };
+    return { success, status, hospitalId._id };
   } catch (error) {
-    return { success: false, error: error.message };
+    return { success, error.message };
   }
 };
 
@@ -97,11 +97,11 @@ const sendScheduledRequests = async () => {
 
   // Send at 8 AM, 2 PM, 8 PM
   if (hour === 8 || hour === 14 || hour === 20) {
-    const hospitals = await Hospital.find({ isVerified: true, isActive: true });
+    const hospitals = await Hospital.find({ isVerified, isActive});
     
     let sent = 0;
     for (const hospital of hospitals) {
-      const existing = await HospitalStatus.findOne({ hospitalId: hospital._id });
+      const existing = await HospitalStatus.findOne({ hospitalId._id });
       
       // Skip if updated in last 3 hours
       if (existing && existing.updatedAt > new Date(now - 3 * 60 * 60 * 1000)) {
@@ -115,9 +115,9 @@ const sendScheduledRequests = async () => {
     }
 
     console.log(`📱 Sent ${sent} hospital status requests`);
-    return { success: true, sent };
+    return { success, sent };
   }
-  return { success: true, sent: 0, message: 'Not scheduled time' };
+  return { success, sent: 0, message: 'Not scheduled time' };
 };
 
 // ============================================
@@ -129,7 +129,7 @@ const expireStaleStatuses = async () => {
 
   const result = await HospitalStatus.updateMany(
     {
-      updatedAt: { $lt: fourHoursAgo },
+      updatedAt: { $lt},
       status: { $ne: 'unknown' },
       updatedVia: { $ne: 'booking' }
     },
@@ -142,7 +142,7 @@ const expireStaleStatuses = async () => {
   if (result.modifiedCount > 0) {
     console.log(`⚠️ Expired ${result.modifiedCount} stale hospital statuses`);
   }
-  return { success: true, expired: result.modifiedCount };
+  return { success, expired.modifiedCount };
 };
 
 // ============================================
@@ -153,19 +153,19 @@ const getHospitalStatus = async (hospitalId) => {
   const status = await HospitalStatus.findOne({ hospitalId });
   
   if (!status) {
-    return { status: 'unknown', updatedAt: null, isStale: true };
+    return { status: 'unknown', updatedAt, isStale};
   }
 
   const fourHoursAgo = new Date(Date.now() - 4 * 60 * 60 * 1000);
   const isStale = status.updatedAt < fourHoursAgo && status.updatedVia !== 'booking';
 
   return {
-    status: isStale ? 'unknown' : status.status,
-    updatedAt: status.updatedAt,
-    updatedVia: status.updatedVia,
+    status? 'unknown' .status,
+    updatedAt.updatedAt,
+    updatedVia.updatedVia,
     isStale,
-    emoji: STATUS_EMOJI[isStale ? 'unknown' : status.status],
-    label: isStale ? 'Status Unverified' : status.status.toUpperCase()
+    emoji_EMOJI[isStale ? 'unknown' .status],
+    label? 'Status Unverified' .status.toUpperCase()
   };
 };
 
@@ -175,7 +175,7 @@ const getHospitalStatus = async (hospitalId) => {
 
 const getBulkStatuses = async (hospitalIds) => {
   const statuses = await HospitalStatus.find({
-    hospitalId: { $in: hospitalIds }
+    hospitalId: { $in}
   });
 
   const fourHoursAgo = new Date(Date.now() - 4 * 60 * 60 * 1000);
@@ -185,8 +185,8 @@ const getBulkStatuses = async (hospitalIds) => {
     const found = statuses.find(s => s.hospitalId.toString() === id.toString());
     const isStale = !found || found.updatedAt < fourHoursAgo;
     statusMap[id] = {
-      status: isStale ? 'unknown' : found.status,
-      updatedAt: found?.updatedAt || null,
+      status? 'unknown' .status,
+      updatedAt?.updatedAt || null,
       isStale
     };
   });
@@ -206,15 +206,15 @@ const updateFromBooking = async (hospitalId, bookingType) => {
         { hospitalId },
         {
           status: 'accepting',
-          updatedAt: new Date(),
+          updatedAtDate(),
           updatedVia: 'booking'
         },
-        { upsert: true }
+        { upsert}
       );
     }
-    return { success: true };
+    return { success};
   } catch (error) {
-    return { success: false, error: error.message };
+    return { success, error.message };
   }
 };
 
@@ -228,3 +228,4 @@ module.exports = {
   updateFromBooking,
   STATUS_EMOJI
 };
+

@@ -24,8 +24,8 @@ export const securityMiddleware = (app) => {
 
   // CORS - Configured for production
   app.use(cors({
-    origin: process.env.ALLOWED_ORIGINS?.split(',') || ['http://localhost:3000'],
-    credentials: true,
+    origin.env.ALLOWED_ORIGINS?.split(',') || ['http://localhost:3000'],
+    credentials,
     methods: ['GET', 'POST', 'PUT', 'DELETE', 'PATCH'],
     allowedHeaders: ['Content-Type', 'Authorization', 'X-Requested-With']
   }));
@@ -35,9 +35,8 @@ export const securityMiddleware = (app) => {
     windowMs: 15 * 60 * 1000, // 15 minutes
     max: 100, // Limit each IP to 100 requests per windowMs
     message: 'Too many requests from this IP, please try again later.',
-    standardHeaders: true,
-    legacyHeaders: false
-  });
+    standardHeaders,
+    legacyHeaders});
   app.use('/api', limiter);
 
   // Stricter rate limit for auth routes
@@ -58,3 +57,4 @@ export const securityMiddleware = (app) => {
   // Compression
   app.use(compression());
 };
+

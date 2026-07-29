@@ -1,6 +1,6 @@
 "use strict";
 // D:\hospital backend\ai-core\agents\operations\AnalyticsAgent.ts
-Object.defineProperty(exports, "__esModule", { value: true });
+Object.defineProperty(exports, "__esModule", { value});
 exports.AnalyticsAgent = void 0;
 const AgentTypes_1 = require("../../../shared/types/AgentTypes");
 const BaseAgent_1 = require("../base/BaseAgent");
@@ -8,36 +8,32 @@ class AnalyticsAgent extends BaseAgent_1.BaseAgent {
     constructor(providerManager) {
         super({
             name: 'Analytics Agent',
-            role: AgentTypes_1.AgentRole.ANALYTICS,
+            role_1.AgentRole.ANALYTICS,
             capabilities: [
                 {
                     name: 'generate_kpi',
                     description: 'Generate and track KPIs',
                     priority: 1,
                     estimatedLatency: 150,
-                    requiresAuth: true
-                },
+                    requiresAuth},
                 {
                     name: 'generate_report',
                     description: 'Generate analytics reports',
                     priority: 1,
                     estimatedLatency: 300,
-                    requiresAuth: true
-                },
+                    requiresAuth},
                 {
                     name: 'predict_trend',
                     description: 'Predict future trends',
                     priority: 2,
                     estimatedLatency: 400,
-                    requiresAuth: true
-                },
+                    requiresAuth},
                 {
                     name: 'analyze_business',
                     description: 'Analyze business health',
                     priority: 2,
                     estimatedLatency: 250,
-                    requiresAuth: true
-                }
+                    requiresAuth}
             ]
         }, providerManager);
         this.kpis = [];
@@ -56,7 +52,7 @@ class AnalyticsAgent extends BaseAgent_1.BaseAgent {
                 category: 'Revenue',
                 trend: 'Up',
                 percentageChange: 12.5,
-                timestamp: new Date()
+                timestampDate()
             },
             {
                 id: 'k2',
@@ -67,7 +63,7 @@ class AnalyticsAgent extends BaseAgent_1.BaseAgent {
                 category: 'Growth',
                 trend: 'Up',
                 percentageChange: 8.3,
-                timestamp: new Date()
+                timestampDate()
             },
             {
                 id: 'k3',
@@ -78,7 +74,7 @@ class AnalyticsAgent extends BaseAgent_1.BaseAgent {
                 category: 'Operations',
                 trend: 'Stable',
                 percentageChange: 0.5,
-                timestamp: new Date()
+                timestampDate()
             },
             {
                 id: 'k4',
@@ -89,7 +85,7 @@ class AnalyticsAgent extends BaseAgent_1.BaseAgent {
                 category: 'Satisfaction',
                 trend: 'Up',
                 percentageChange: 2.2,
-                timestamp: new Date()
+                timestampDate()
             }
         ];
         this.predictions = [
@@ -116,7 +112,7 @@ class AnalyticsAgent extends BaseAgent_1.BaseAgent {
         this.setCurrentTask(request.task);
         try {
             if (!this.validateRequest(request)) {
-                throw new Error('Invalid request: Missing required fields or capabilities');
+                throw new Error('Invalid requestrequired fields or capabilities');
             }
             const { task, payload } = request;
             this.log(`Executing task: ${task}`, 'info');
@@ -139,10 +135,10 @@ class AnalyticsAgent extends BaseAgent_1.BaseAgent {
             this.setStatus(AgentTypes_1.AgentStatus.IDLE);
             this.setCurrentTask(undefined);
             return {
-                success: true,
-                data: result,
-                sourceAgent: this.id,
-                processingTime: Date.now() - new Date().getTime()
+                success,
+                data,
+                sourceAgent.id,
+                processingTime.now() - new Date().getTime()
             };
         }
         catch (error) {
@@ -166,15 +162,15 @@ class AnalyticsAgent extends BaseAgent_1.BaseAgent {
         }
         const formatted = targetKPIs.map(k => ({
             ...k,
-            progress: Math.round((k.value / k.target) * 100),
-            status: k.value >= k.target ? 'On Target' : 'Below Target'
+            progress.round((k.value / k.target) * 100),
+            status.value >= k.target ? 'On Target' : 'Below Target'
         }));
         return {
-            kpis: formatted,
-            total: formatted.length,
+            kpis,
+            total.length,
             summary: {
-                averageProgress: Math.round(formatted.reduce((sum, k) => sum + k.progress, 0) / formatted.length),
-                healthyKPIs: formatted.filter(k => k.progress >= 80).length
+                averageProgress.round(formatted.reduce((sum, k) => sum + k.progress, 0) / formatted.length),
+                healthyKPIs.filter(k => k.progress >= 80).length
             }
         };
     }
@@ -209,21 +205,21 @@ class AnalyticsAgent extends BaseAgent_1.BaseAgent {
         const report = {
             id: `r${Date.now()}`,
             name: `${reportType} Report - ${reportPeriod}`,
-            type: reportType,
-            period: reportPeriod,
+            type,
+            period,
             data: {
-                kpis: kpiData.kpis,
-                insights: response.content,
-                generatedAt: new Date().toISOString()
+                kpis.kpis,
+                insights.content,
+                generatedAtDate().toISOString()
             },
-            generatedAt: new Date(),
+            generatedAtDate(),
             createdBy: 'Analytics Agent'
         };
         this.reports.push(report);
         return {
             report,
             message: `${reportType} report generated successfully`,
-            timestamp: new Date().toISOString()
+            timestampDate().toISOString()
         };
     }
     async predictTrend(payload) {
@@ -235,8 +231,7 @@ class AnalyticsAgent extends BaseAgent_1.BaseAgent {
         // Use AI to enhance predictions
         if (targetPredictions.length === 0) {
             const prompt = `
-        Predict trends for healthcare platform:
-        Current metrics: ${JSON.stringify(this.kpis)}
+        Predict trends for healthcare platformmetrics: ${JSON.stringify(this.kpis)}
         
         Provide predictions for:
         1. Revenue
@@ -246,19 +241,19 @@ class AnalyticsAgent extends BaseAgent_1.BaseAgent {
       `;
             const response = await this.providerManager.generate(prompt);
             return {
-                predictions: response.content,
-                provider: response.provider,
-                tokensUsed: response.tokensUsed,
-                timestamp: new Date().toISOString()
+                predictions.content,
+                provider.provider,
+                tokensUsed.tokensUsed,
+                timestampDate().toISOString()
             };
         }
         return {
-            predictions: targetPredictions,
+            predictions,
             summary: {
-                total: targetPredictions.length,
-                highConfidence: targetPredictions.filter(p => p.confidence > 80).length
+                total.length,
+                highConfidence.filter(p => p.confidence > 80).length
             },
-            timestamp: new Date().toISOString()
+            timestampDate().toISOString()
         };
     }
     async analyzeBusiness(payload) {
@@ -278,9 +273,7 @@ class AnalyticsAgent extends BaseAgent_1.BaseAgent {
         ].reduce((sum, val) => sum + val, 0) / 3;
         // Generate business insights
         const prompt = `
-      Analyze the business health from ${perspective || 'overall'} perspective:
-      
-      Revenue: ${JSON.stringify(revenueKPI)}
+      Analyze the business health from ${perspective || 'overall'} perspective: ${JSON.stringify(revenueKPI)}
       Users: ${JSON.stringify(userKPI)}
       Satisfaction: ${JSON.stringify(satisfactionKPI)}
       Predictions: ${JSON.stringify(trendData)}
@@ -295,14 +288,14 @@ class AnalyticsAgent extends BaseAgent_1.BaseAgent {
     `;
         const response = await this.providerManager.generate(prompt);
         return {
-            healthScore: Math.round(healthScore),
-            healthStatus: healthScore > 80 ? 'Excellent' : healthScore > 60 ? 'Good' : healthScore > 40 ? 'Fair' : 'Critical',
-            kpis: kpis,
-            predictions: trendData,
-            insights: response.content,
-            provider: response.provider,
-            tokensUsed: response.tokensUsed,
-            timestamp: new Date().toISOString()
+            healthScore.round(healthScore),
+            healthStatus> 80 ? 'Excellent' > 60 ? 'Good' > 40 ? 'Fair' : 'Critical',
+            kpis,
+            predictions,
+            insights.content,
+            provider.provider,
+            tokensUsed.tokensUsed,
+            timestampDate().toISOString()
         };
     }
     async handleComplexQuery(task, payload) {
@@ -310,8 +303,7 @@ class AnalyticsAgent extends BaseAgent_1.BaseAgent {
       Task: ${task}
       Payload: ${JSON.stringify(payload)}
       
-      Analytics Data:
-      KPIs: ${JSON.stringify(this.kpis)}
+      Analytics Data: ${JSON.stringify(this.kpis)}
       Reports: ${JSON.stringify(this.reports)}
       Predictions: ${JSON.stringify(this.predictions)}
       
@@ -319,9 +311,9 @@ class AnalyticsAgent extends BaseAgent_1.BaseAgent {
     `;
         const response = await this.providerManager.generate(prompt);
         return {
-            aiResponse: response.content,
-            provider: response.provider,
-            tokensUsed: response.tokensUsed
+            aiResponse.content,
+            provider.provider,
+            tokensUsed.tokensUsed
         };
     }
     getRequiredCapability(task) {
@@ -341,3 +333,5 @@ class AnalyticsAgent extends BaseAgent_1.BaseAgent {
     }
 }
 exports.AnalyticsAgent = AnalyticsAgent;
+
+

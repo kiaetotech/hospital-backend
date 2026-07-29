@@ -1,6 +1,6 @@
 "use strict";
 // D:\hospital backend\ai-core\agents\business\WellnessAgent.ts
-Object.defineProperty(exports, "__esModule", { value: true });
+Object.defineProperty(exports, "__esModule", { value});
 exports.WellnessAgent = void 0;
 const AgentTypes_1 = require("../../../shared/types/AgentTypes");
 const BaseAgent_1 = require("../base/BaseAgent");
@@ -8,36 +8,32 @@ class WellnessAgent extends BaseAgent_1.BaseAgent {
     constructor(providerManager) {
         super({
             name: 'Wellness Agent',
-            role: AgentTypes_1.AgentRole.WELLNESS,
+            role_1.AgentRole.WELLNESS,
             capabilities: [
                 {
                     name: 'find_practitioner',
                     description: 'Find Ayurveda, Homeopathy, or Mental Wellness practitioners',
                     priority: 1,
                     estimatedLatency: 200,
-                    requiresAuth: false
-                },
+                    requiresAuth},
                 {
                     name: 'book_consultation',
                     description: 'Book a wellness consultation',
                     priority: 1,
                     estimatedLatency: 300,
-                    requiresAuth: true
-                },
+                    requiresAuth},
                 {
                     name: 'get_packages',
                     description: 'Get wellness packages and treatments',
                     priority: 2,
                     estimatedLatency: 150,
-                    requiresAuth: false
-                },
+                    requiresAuth},
                 {
                     name: 'check_availability',
                     description: 'Check practitioner availability',
                     priority: 1,
                     estimatedLatency: 150,
-                    requiresAuth: false
-                }
+                    requiresAuth}
             ]
         }, providerManager);
         this.practitioners = [];
@@ -49,7 +45,7 @@ class WellnessAgent extends BaseAgent_1.BaseAgent {
         this.practitioners = [
             // ============================================
             // AYURVEDA & WELLNESS (450+ Doctors)
-            // Service: Ayurveda & Wellness
+            // Service& Wellness
             // ============================================
             {
                 id: 'w1',
@@ -61,7 +57,7 @@ class WellnessAgent extends BaseAgent_1.BaseAgent {
                 rating: 4.9,
                 consultationFee: 600,
                 availableSlots: ['9:00 AM', '10:30 AM', '2:00 PM', '4:30 PM'],
-                onlineAvailable: true,
+                onlineAvailable,
                 languages: ['English', 'Hindi', 'Sanskrit'],
                 qualifications: ['BAMS', 'MD Ayurveda', 'Panchakarma Specialist'],
                 about: 'Specializing in traditional Ayurvedic treatments for digestive disorders and detoxification.'
@@ -76,7 +72,7 @@ class WellnessAgent extends BaseAgent_1.BaseAgent {
                 rating: 4.7,
                 consultationFee: 500,
                 availableSlots: ['9:30 AM', '11:00 AM', '3:00 PM', '5:00 PM'],
-                onlineAvailable: true,
+                onlineAvailable,
                 languages: ['English', 'Hindi', 'Marathi'],
                 qualifications: ['BAMS', 'MD Ayurveda', 'Dermatology'],
                 about: 'Expert in Ayurvedic solutions for skin and hair problems with natural remedies.'
@@ -91,7 +87,7 @@ class WellnessAgent extends BaseAgent_1.BaseAgent {
                 rating: 4.9,
                 consultationFee: 800,
                 availableSlots: ['10:00 AM', '1:00 PM', '3:30 PM'],
-                onlineAvailable: false,
+                onlineAvailable,
                 languages: ['English', 'Hindi', 'Tamil'],
                 qualifications: ['BAMS', 'MD Ayurveda', 'Gynecology'],
                 about: 'Specializing in women\'s health, pregnancy care, and post-natal Ayurvedic treatments.'
@@ -106,7 +102,7 @@ class WellnessAgent extends BaseAgent_1.BaseAgent {
                 rating: 4.8,
                 consultationFee: 700,
                 availableSlots: ['9:00 AM', '11:30 AM', '2:30 PM', '4:00 PM'],
-                onlineAvailable: true,
+                onlineAvailable,
                 languages: ['English', 'Hindi'],
                 qualifications: ['BAMS', 'MD Ayurveda', 'Orthopedics'],
                 about: 'Expert in treating joint disorders, arthritis, and chronic back pain using Ayurvedic methods.'
@@ -121,14 +117,14 @@ class WellnessAgent extends BaseAgent_1.BaseAgent {
                 rating: 4.6,
                 consultationFee: 450,
                 availableSlots: ['10:30 AM', '12:00 PM', '3:00 PM', '6:00 PM'],
-                onlineAvailable: true,
+                onlineAvailable,
                 languages: ['English', 'Hindi', 'Gujarati'],
                 qualifications: ['BAMS', 'MD Ayurveda', 'Psychology'],
                 about: 'Helping patients manage stress, anxiety, and sleep disorders through Ayurvedic therapies.'
             },
             // ============================================
             // HOMEOPATHY CARE (300+ Doctors)
-            // Service: Homeopathy Care
+            // ServiceCare
             // ============================================
             {
                 id: 'w6',
@@ -140,7 +136,7 @@ class WellnessAgent extends BaseAgent_1.BaseAgent {
                 rating: 4.7,
                 consultationFee: 400,
                 availableSlots: ['9:00 AM', '10:30 AM', '2:00 PM', '5:30 PM'],
-                onlineAvailable: true,
+                onlineAvailable,
                 languages: ['English', 'Hindi', 'Gujarati'],
                 qualifications: ['BHMS', 'MD Homeopathy', 'Dermatology'],
                 about: 'Specializing in treating allergies, skin diseases, and respiratory conditions with homeopathy.'
@@ -155,7 +151,7 @@ class WellnessAgent extends BaseAgent_1.BaseAgent {
                 rating: 4.8,
                 consultationFee: 350,
                 availableSlots: ['9:30 AM', '11:30 AM', '1:30 PM', '4:00 PM'],
-                onlineAvailable: true,
+                onlineAvailable,
                 languages: ['English', 'Hindi'],
                 qualifications: ['BHMS', 'MD Homeopathy', 'Pediatrics'],
                 about: 'Focusing on children\'s health, childhood illnesses, and behavioral issues using homeopathy.'
@@ -170,7 +166,7 @@ class WellnessAgent extends BaseAgent_1.BaseAgent {
                 rating: 4.9,
                 consultationFee: 600,
                 availableSlots: ['10:00 AM', '12:00 PM', '3:00 PM'],
-                onlineAvailable: false,
+                onlineAvailable,
                 languages: ['English', 'Hindi', 'Malayalam'],
                 qualifications: ['BHMS', 'MD Homeopathy', 'Immunology'],
                 about: 'Expert in treating chronic diseases, autoimmune disorders, and complex medical conditions.'
@@ -185,14 +181,14 @@ class WellnessAgent extends BaseAgent_1.BaseAgent {
                 rating: 4.7,
                 consultationFee: 500,
                 availableSlots: ['9:00 AM', '11:00 AM', '2:30 PM', '5:00 PM'],
-                onlineAvailable: true,
+                onlineAvailable,
                 languages: ['English', 'Hindi', 'Telugu'],
                 qualifications: ['BHMS', 'MD Homeopathy', 'Gynecology'],
                 about: 'Specializing in women\'s health, hormonal imbalances, and reproductive health.'
             },
             // ============================================
             // MENTAL WELLNESS (150+ Therapists)
-            // Service: Mental Wellness
+            // ServiceWellness
             // ============================================
             {
                 id: 'w10',
@@ -204,7 +200,7 @@ class WellnessAgent extends BaseAgent_1.BaseAgent {
                 rating: 4.8,
                 consultationFee: 800,
                 availableSlots: ['9:00 AM', '11:00 AM', '2:00 PM', '4:30 PM'],
-                onlineAvailable: true,
+                onlineAvailable,
                 languages: ['English', 'Hindi'],
                 qualifications: ['MBBS', 'MD Psychiatry', 'Cognitive Behavioral Therapy'],
                 about: 'Helping patients overcome anxiety, depression, and stress through evidence-based therapies.'
@@ -219,7 +215,7 @@ class WellnessAgent extends BaseAgent_1.BaseAgent {
                 rating: 4.6,
                 consultationFee: 700,
                 availableSlots: ['10:00 AM', '12:00 PM', '3:00 PM', '6:00 PM'],
-                onlineAvailable: true,
+                onlineAvailable,
                 languages: ['English', 'Hindi', 'Punjabi'],
                 qualifications: ['MA Psychology', 'PhD Clinical Psychology'],
                 about: 'Providing relationship counseling, marriage therapy, and family counseling services.'
@@ -234,7 +230,7 @@ class WellnessAgent extends BaseAgent_1.BaseAgent {
                 rating: 4.9,
                 consultationFee: 900,
                 availableSlots: ['9:30 AM', '11:30 AM', '2:30 PM', '5:30 PM'],
-                onlineAvailable: false,
+                onlineAvailable,
                 languages: ['English', 'Hindi'],
                 qualifications: ['MBBS', 'MD Psychiatry', 'Trauma Therapy'],
                 about: 'Expert in treating trauma, PTSD, grief, and loss through specialized therapeutic approaches.'
@@ -249,7 +245,7 @@ class WellnessAgent extends BaseAgent_1.BaseAgent {
                 rating: 4.7,
                 consultationFee: 750,
                 availableSlots: ['9:00 AM', '10:30 AM', '1:00 PM', '3:30 PM'],
-                onlineAvailable: true,
+                onlineAvailable,
                 languages: ['English', 'Hindi', 'Tamil'],
                 qualifications: ['MA Psychology', 'PhD Child Psychology', 'ADHD Specialist'],
                 about: 'Specializing in child psychology, ADHD, autism spectrum disorders, and developmental issues.'
@@ -264,7 +260,7 @@ class WellnessAgent extends BaseAgent_1.BaseAgent {
                 rating: 4.8,
                 consultationFee: 850,
                 availableSlots: ['10:00 AM', '12:30 PM', '3:00 PM', '6:30 PM'],
-                onlineAvailable: true,
+                onlineAvailable,
                 languages: ['English', 'Hindi'],
                 qualifications: ['MBBS', 'MD Psychiatry', 'Addiction Specialist'],
                 about: 'Helping patients overcome addiction, substance abuse, and behavioral issues with comprehensive care.'
@@ -343,7 +339,7 @@ class WellnessAgent extends BaseAgent_1.BaseAgent {
         this.setCurrentTask(request.task);
         try {
             if (!this.validateRequest(request)) {
-                throw new Error('Invalid request: Missing required fields or capabilities');
+                throw new Error('Invalid requestrequired fields or capabilities');
             }
             const { task, payload } = request;
             this.log(`Executing task: ${task}`, 'info');
@@ -366,10 +362,10 @@ class WellnessAgent extends BaseAgent_1.BaseAgent {
             this.setStatus(AgentTypes_1.AgentStatus.IDLE);
             this.setCurrentTask(undefined);
             return {
-                success: true,
-                data: result,
-                sourceAgent: this.id,
-                processingTime: Date.now() - new Date().getTime()
+                success,
+                data,
+                sourceAgent.id,
+                processingTime.now() - new Date().getTime()
             };
         }
         catch (error) {
@@ -409,17 +405,17 @@ class WellnessAgent extends BaseAgent_1.BaseAgent {
             'MentalHealth': 'Mental Wellness'
         };
         return {
-            practitioners: results.map(p => ({
+            practitioners.map(p => ({
                 ...p,
-                serviceType: typeLabels[p.type] || p.type,
+                serviceType[p.type] || p.type,
                 consultationFee: `₹${p.consultationFee}`
             })),
-            total: results.length,
+            total.length,
             query: { type, city, specialization, onlineOnly },
             serviceCounts: {
-                ayurveda: this.practitioners.filter(p => p.type === 'Ayurveda').length,
-                homeopathy: this.practitioners.filter(p => p.type === 'Homeopathy').length,
-                mentalHealth: this.practitioners.filter(p => p.type === 'MentalHealth').length
+                ayurveda.practitioners.filter(p => p.type === 'Ayurveda').length,
+                homeopathy.practitioners.filter(p => p.type === 'Homeopathy').length,
+                mentalHealth.practitioners.filter(p => p.type === 'MentalHealth').length
             }
         };
     }
@@ -449,23 +445,22 @@ class WellnessAgent extends BaseAgent_1.BaseAgent {
         return {
             bookingId,
             practitioner: {
-                id: practitioner.id,
-                name: practitioner.name,
-                type: practitioner.type,
-                serviceType: typeLabels[practitioner.type] || practitioner.type,
-                specialization: practitioner.specialization,
-                qualification: practitioner.qualifications[0]
+                id.id,
+                name.name,
+                type.type,
+                serviceType[practitioner.type] || practitioner.type,
+                specialization.specialization,
+                qualification.qualifications[0]
             },
             patient: {
-                name: patientName,
-                contact: patientContact
-            },
+                name,
+                contact},
             slot,
             type,
             consultationFee: `₹${practitioner.consultationFee}`,
             status: 'Confirmed',
-            timestamp: new Date().toISOString(),
-            instructions: type === 'online'
+            timestampDate().toISOString(),
+            instructions=== 'online'
                 ? 'You will receive a video call link 10 minutes before the session.'
                 : 'Please arrive 15 minutes before the scheduled time.'
         };
@@ -482,14 +477,14 @@ class WellnessAgent extends BaseAgent_1.BaseAgent {
             'MentalHealth': 'Mental Wellness'
         };
         return {
-            packages: results.map(p => ({
+            packages.map(p => ({
                 ...p,
-                serviceType: typeLabels[p.type] || p.type,
-                finalPrice: p.price - (p.price * p.discount / 100),
+                serviceType[p.type] || p.type,
+                finalPrice.price - (p.price * p.discount / 100),
                 price: `₹${p.price}`,
-                discount: p.discount > 0 ? `${p.discount}% off` : 'No discount'
+                discount.discount > 0 ? `${p.discount}% off` : 'No discount'
             })),
-            total: results.length,
+            total.length,
             query: { type }
         };
     }
@@ -500,17 +495,17 @@ class WellnessAgent extends BaseAgent_1.BaseAgent {
             targetPractitioners = this.practitioners.filter(p => p.id === practitionerId);
         }
         const availability = targetPractitioners.map(p => ({
-            id: p.id,
-            name: p.name,
-            type: p.type,
-            onlineAvailable: p.onlineAvailable,
-            availableSlots: p.availableSlots,
-            date: date || new Date().toISOString().split('T')[0],
+            id.id,
+            name.name,
+            type.type,
+            onlineAvailable.onlineAvailable,
+            availableSlots.availableSlots,
+            date|| new Date().toISOString().split('T')[0],
             consultationFee: `₹${p.consultationFee}`
         }));
         return {
             availability,
-            timestamp: new Date().toISOString()
+            timestampDate().toISOString()
         };
     }
     async handleComplexQuery(task, payload) {
@@ -525,9 +520,9 @@ class WellnessAgent extends BaseAgent_1.BaseAgent {
     `;
         const response = await this.providerManager.generate(prompt);
         return {
-            aiResponse: response.content,
-            provider: response.provider,
-            tokensUsed: response.tokensUsed
+            aiResponse.content,
+            provider.provider,
+            tokensUsed.tokensUsed
         };
     }
     getRequiredCapability(task) {
@@ -547,3 +542,5 @@ class WellnessAgent extends BaseAgent_1.BaseAgent {
     }
 }
 exports.WellnessAgent = WellnessAgent;
+
+

@@ -30,14 +30,14 @@ router.post('/validate', async (req, res) => {
     
     if (!code) {
       return res.status(400).json({ 
-        success: false, 
+        success, 
         message: 'Discount code required' 
       });
     }
     
     if (!amount || amount <= 0) {
       return res.status(400).json({ 
-        success: false, 
+        success, 
         message: 'Valid amount required' 
       });
     }
@@ -46,29 +46,29 @@ router.post('/validate', async (req, res) => {
     
     if (!result.valid) {
       return res.status(400).json({ 
-        success: false, 
-        message: result.message 
+        success, 
+        message.message 
       });
     }
     
     res.json({
-      success: true,
-      discountAmount: result.discountAmount,
-      finalAmount: result.finalAmount,
+      success,
+      discountAmount.discountAmount,
+      finalAmount.finalAmount,
       discount: {
-        code: result.discount.code,
-        type: result.discount.type,
-        value: result.discount.value,
-        description: result.discount.description,
-        minAmount: result.discount.minAmount,
-        maxDiscount: result.discount.maxDiscount
+        code.discount.code,
+        type.discount.type,
+        value.discount.value,
+        description.discount.description,
+        minAmount.discount.minAmount,
+        maxDiscount.discount.maxDiscount
       },
-      message: result.message
+      message.message
     });
   } catch (error) {
     console.error('Validate discount error:', error);
     res.status(500).json({ 
-      success: false, 
+      success, 
       message: 'Failed to validate discount' 
     });
   }
@@ -85,23 +85,23 @@ router.get('/active', async (req, res) => {
     const discounts = await getActiveDiscounts(bookingType);
     
     res.json({
-      success: true,
-      count: discounts.length,
-      discounts: discounts.map(d => ({
-        code: d.code,
-        type: d.type,
-        value: d.value,
-        description: d.description,
-        minAmount: d.minAmount,
-        maxDiscount: d.maxDiscount,
-        applicableTags: d.applicableTags,
-        validUntil: d.validUntil
+      success,
+      count.length,
+      discounts.map(d => ({
+        code.code,
+        type.type,
+        value.value,
+        description.description,
+        minAmount.minAmount,
+        maxDiscount.maxDiscount,
+        applicableTags.applicableTags,
+        validUntil.validUntil
       }))
     });
   } catch (error) {
     console.error('Get active discounts error:', error);
     res.status(500).json({ 
-      success: false, 
+      success, 
       message: 'Failed to fetch discounts' 
     });
   }
@@ -109,43 +109,42 @@ router.get('/active', async (req, res) => {
 
 // ============================================
 // 3. Get discount by code
-// GET /api/discounts/:code
-// ============================================
+// GET /api/discounts/// ============================================
 
-router.get('/:code', async (req, res) => {
+router.get('/', async (req, res) => {
   try {
     const discount = await getDiscountByCode(req.params.code);
     
     if (!discount) {
       return res.status(404).json({ 
-        success: false, 
+        success, 
         message: 'Discount not found' 
       });
     }
     
     res.json({
-      success: true,
+      success,
       discount: {
-        code: discount.code,
-        type: discount.type,
-        value: discount.value,
-        description: discount.description,
-        applicableTags: discount.applicableTags,
-        minAmount: discount.minAmount,
-        maxDiscount: discount.maxDiscount,
-        validFrom: discount.validFrom,
-        validUntil: discount.validUntil,
-        maxUses: discount.maxUses,
-        usedCount: discount.usedCount,
-        isActive: discount.isActive,
-        isExpired: discount.isExpired,
-        isCurrentlyActive: discount.isCurrentlyActive
+        code.code,
+        type.type,
+        value.value,
+        description.description,
+        applicableTags.applicableTags,
+        minAmount.minAmount,
+        maxDiscount.maxDiscount,
+        validFrom.validFrom,
+        validUntil.validUntil,
+        maxUses.maxUses,
+        usedCount.usedCount,
+        isActive.isActive,
+        isExpired.isExpired,
+        isCurrentlyActive.isCurrentlyActive
       }
     });
   } catch (error) {
     console.error('Get discount error:', error);
     res.status(500).json({ 
-      success: false, 
+      success, 
       message: 'Failed to fetch discount' 
     });
   }
@@ -157,17 +156,16 @@ router.get('/:code', async (req, res) => {
 
 // ============================================
 // 4. Apply discount to booking
-// POST /api/discounts/apply-to-booking/:bookingId
-// ============================================
+// POST /api/discounts/apply-to-booking/// ============================================
 
-router.post('/apply-to-booking/:bookingId', async (req, res) => {
+router.post('/apply-to-booking/', async (req, res) => {
   try {
     const { bookingId } = req.params;
     const { discountCode } = req.body;
     
     if (!discountCode) {
       return res.status(400).json({ 
-        success: false, 
+        success, 
         message: 'Discount code required' 
       });
     }
@@ -175,7 +173,7 @@ router.post('/apply-to-booking/:bookingId', async (req, res) => {
     const booking = await Booking.findOne({ bookingId });
     if (!booking) {
       return res.status(404).json({ 
-        success: false, 
+        success, 
         message: 'Booking not found' 
       });
     }
@@ -184,27 +182,27 @@ router.post('/apply-to-booking/:bookingId', async (req, res) => {
     
     if (!result.success) {
       return res.status(400).json({ 
-        success: false, 
-        message: result.message 
+        success, 
+        message.message 
       });
     }
     
     res.json({
-      success: true,
-      message: result.message,
-      discountAmount: result.discountAmount,
-      finalAmount: result.finalAmount,
-      originalAmount: booking.originalAmount,
+      success,
+      message.message,
+      discountAmount.discountAmount,
+      finalAmount.finalAmount,
+      originalAmount.originalAmount,
       discount: {
-        code: result.discount.code,
-        type: result.discount.type,
-        value: result.discount.value
+        code.discount.code,
+        type.discount.type,
+        value.discount.value
       }
     });
   } catch (error) {
     console.error('Apply discount error:', error);
     res.status(500).json({ 
-      success: false, 
+      success, 
       message: 'Failed to apply discount' 
     });
   }
@@ -212,17 +210,16 @@ router.post('/apply-to-booking/:bookingId', async (req, res) => {
 
 // ============================================
 // 5. Remove discount from booking
-// DELETE /api/discounts/remove-from-booking/:bookingId
-// ============================================
+// DELETE /api/discounts/remove-from-booking/// ============================================
 
-router.delete('/remove-from-booking/:bookingId', async (req, res) => {
+router.delete('/remove-from-booking/', async (req, res) => {
   try {
     const { bookingId } = req.params;
     
     const booking = await Booking.findOne({ bookingId });
     if (!booking) {
       return res.status(404).json({ 
-        success: false, 
+        success, 
         message: 'Booking not found' 
       });
     }
@@ -231,20 +228,20 @@ router.delete('/remove-from-booking/:bookingId', async (req, res) => {
     
     if (!result.success) {
       return res.status(400).json({ 
-        success: false, 
-        message: result.message 
+        success, 
+        message.message 
       });
     }
     
     res.json({
-      success: true,
-      message: result.message,
-      finalAmount: result.finalAmount
+      success,
+      message.message,
+      finalAmount.finalAmount
     });
   } catch (error) {
     console.error('Remove discount error:', error);
     res.status(500).json({ 
-      success: false, 
+      success, 
       message: 'Failed to remove discount' 
     });
   }
@@ -278,30 +275,30 @@ router.post('/admin/create', async (req, res) => {
     // Validate required fields
     if (!code) {
       return res.status(400).json({ 
-        success: false, 
+        success, 
         message: 'Discount code is required' 
       });
     }
     
     if (!type || !['percentage', 'fixed'].includes(type)) {
       return res.status(400).json({ 
-        success: false, 
+        success, 
         message: 'Valid discount type (percentage/fixed) is required' 
       });
     }
     
     if (!value || value <= 0) {
       return res.status(400).json({ 
-        success: false, 
+        success, 
         message: 'Valid discount value is required' 
       });
     }
     
     // Check if discount code already exists
-    const existing = await Discount.findOne({ code: code.toUpperCase() });
+    const existing = await Discount.findOne({ code.toUpperCase() });
     if (existing) {
       return res.status(400).json({ 
-        success: false, 
+        success, 
         message: 'Discount code already exists' 
       });
     }
@@ -311,37 +308,37 @@ router.post('/admin/create', async (req, res) => {
       type,
       value,
       description,
-      applicableTags: applicableTags || [],
-      minAmount: minAmount || 0,
-      maxDiscount: maxDiscount || null,
-      validFrom: validFrom || new Date(),
-      validUntil: validUntil || null,
-      maxUses: maxUses || null,
-      maxUsesPerUser: maxUsesPerUser || null
+      applicableTags|| [],
+      minAmount|| 0,
+      maxDiscount|| null,
+      validFrom|| new Date(),
+      validUntil|| null,
+      maxUses|| null,
+      maxUsesPerUser|| null
     });
     
     res.status(201).json({
-      success: true,
+      success,
       message: 'Discount created successfully',
       discount: {
-        code: discount.code,
-        type: discount.type,
-        value: discount.value,
-        description: discount.description,
-        applicableTags: discount.applicableTags,
-        minAmount: discount.minAmount,
-        maxDiscount: discount.maxDiscount,
-        validFrom: discount.validFrom,
-        validUntil: discount.validUntil,
-        maxUses: discount.maxUses,
-        maxUsesPerUser: discount.maxUsesPerUser,
-        isActive: discount.isActive
+        code.code,
+        type.type,
+        value.value,
+        description.description,
+        applicableTags.applicableTags,
+        minAmount.minAmount,
+        maxDiscount.maxDiscount,
+        validFrom.validFrom,
+        validUntil.validUntil,
+        maxUses.maxUses,
+        maxUsesPerUser.maxUsesPerUser,
+        isActive.isActive
       }
     });
   } catch (error) {
     console.error('Create discount error:', error);
     res.status(500).json({ 
-      success: false, 
+      success, 
       message: 'Failed to create discount: ' + error.message 
     });
   }
@@ -349,10 +346,9 @@ router.post('/admin/create', async (req, res) => {
 
 // ============================================
 // 7. Update discount (Admin only)
-// PUT /api/discounts/admin/:code
-// ============================================
+// PUT /api/discounts/admin/// ============================================
 
-router.put('/admin/:code', async (req, res) => {
+router.put('/admin/', async (req, res) => {
   try {
     const { code } = req.params;
     const data = req.body;
@@ -360,28 +356,28 @@ router.put('/admin/:code', async (req, res) => {
     const discount = await updateDiscount(code, data);
     
     res.json({
-      success: true,
+      success,
       message: 'Discount updated successfully',
       discount: {
-        code: discount.code,
-        type: discount.type,
-        value: discount.value,
-        description: discount.description,
-        applicableTags: discount.applicableTags,
-        minAmount: discount.minAmount,
-        maxDiscount: discount.maxDiscount,
-        validFrom: discount.validFrom,
-        validUntil: discount.validUntil,
-        maxUses: discount.maxUses,
-        maxUsesPerUser: discount.maxUsesPerUser,
-        isActive: discount.isActive,
-        usedCount: discount.usedCount
+        code.code,
+        type.type,
+        value.value,
+        description.description,
+        applicableTags.applicableTags,
+        minAmount.minAmount,
+        maxDiscount.maxDiscount,
+        validFrom.validFrom,
+        validUntil.validUntil,
+        maxUses.maxUses,
+        maxUsesPerUser.maxUsesPerUser,
+        isActive.isActive,
+        usedCount.usedCount
       }
     });
   } catch (error) {
     console.error('Update discount error:', error);
     res.status(500).json({ 
-      success: false, 
+      success, 
       message: 'Failed to update discount: ' + error.message 
     });
   }
@@ -389,22 +385,21 @@ router.put('/admin/:code', async (req, res) => {
 
 // ============================================
 // 8. Delete discount (Admin only)
-// DELETE /api/discounts/admin/:code
-// ============================================
+// DELETE /api/discounts/admin/// ============================================
 
-router.delete('/admin/:code', async (req, res) => {
+router.delete('/admin/', async (req, res) => {
   try {
     const { code } = req.params;
     const result = await deleteDiscount(code);
     
     res.json({
-      success: true,
-      message: result.message
+      success,
+      message.message
     });
   } catch (error) {
     console.error('Delete discount error:', error);
     res.status(500).json({ 
-      success: false, 
+      success, 
       message: 'Failed to delete discount: ' + error.message 
     });
   }
@@ -412,18 +407,18 @@ router.delete('/admin/:code', async (req, res) => {
 
 // ============================================
 // 9. Toggle discount active status (Admin only)
-// PATCH /api/discounts/admin/:code/toggle
+// PATCH /api/discounts/admin//toggle
 // ============================================
 
-router.patch('/admin/:code/toggle', async (req, res) => {
+router.patch('/admin//toggle', async (req, res) => {
   try {
     const { code } = req.params;
     const { isActive } = req.body;
     
-    const discount = await Discount.findOne({ code: code.toUpperCase() });
+    const discount = await Discount.findOne({ code.toUpperCase() });
     if (!discount) {
       return res.status(404).json({ 
-        success: false, 
+        success, 
         message: 'Discount not found' 
       });
     }
@@ -433,14 +428,14 @@ router.patch('/admin/:code/toggle', async (req, res) => {
     await discount.save();
     
     res.json({
-      success: true,
+      success,
       message: `Discount ${discount.isActive ? 'activated' : 'deactivated'} successfully`,
-      isActive: discount.isActive
+      isActive.isActive
     });
   } catch (error) {
     console.error('Toggle discount error:', error);
     res.status(500).json({ 
-      success: false, 
+      success, 
       message: 'Failed to toggle discount: ' + error.message 
     });
   }
@@ -460,8 +455,8 @@ router.get('/admin/all', async (req, res) => {
     if (status === 'inactive') query.isActive = false;
     if (search) {
       query.$or = [
-        { code: { $regex: search, $options: 'i' } },
-        { description: { $regex: search, $options: 'i' } }
+        { code: { $regex, $options: 'i' } },
+        { description: { $regex, $options: 'i' } }
       ];
     }
     
@@ -473,19 +468,20 @@ router.get('/admin/all', async (req, res) => {
     const total = await Discount.countDocuments(query);
     
     res.json({
-      success: true,
+      success,
       discounts,
       total,
-      page: parseInt(page),
-      totalPages: Math.ceil(total / parseInt(limit))
+      page(page),
+      totalPages.ceil(total / parseInt(limit))
     });
   } catch (error) {
     console.error('Get all discounts error:', error);
     res.status(500).json({ 
-      success: false, 
+      success, 
       message: 'Failed to fetch discounts' 
     });
   }
 });
 
 module.exports = router;
+

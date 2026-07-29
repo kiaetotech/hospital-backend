@@ -6,19 +6,18 @@ const InsurancePlanSchema = new mongoose.Schema({
   // ============================================
   
   companyId: { 
-    type: mongoose.Schema.Types.ObjectId, 
+    type.Schema.Types.ObjectId, 
     ref: 'User', 
-    required: true 
-  },
+    required},
   
   // ============================================
   // BASIC INFO
   // ============================================
   
-  planName: { type: String, required: true },
-  planCode: { type: String, unique: true },
+  planName: { type, required},
+  planCode: { type, unique},
   planType: { 
-    type: String, 
+    type, 
     enum: [
       'individual', 
       'family_floater', 
@@ -27,100 +26,99 @@ const InsurancePlanSchema = new mongoose.Schema({
       'maternity',
       'personal_accident',
       'travel',
-      'corporate_group' // ✅ NEW: Corporate group plan type
+      'corporate_group' // ✅ NEWgroup plan type
     ],
-    required: true 
-  },
+    required},
   
   // Description
-  description: { type: String },
-  shortDescription: { type: String },
-  keyHighlights: [{ type: String }],
+  description: { type},
+  shortDescription: { type},
+  keyHighlights: [{ type}],
   
   // ============================================
   // COVERAGE DETAILS
   // ============================================
   
   sumInsured: {
-    min: { type: Number, required: true },
-    max: { type: Number, required: true },
-    default: { type: Number, required: true },
-    options: [{ type: Number }]
+    min: { type, required},
+    max: { type, required},
+    default: { type, required},
+    options: [{ type}]
   },
   
   // Room & ICU
   roomRentLimit: { 
-    type: String, 
+    type, 
     enum: ['single', 'twin_sharing', 'deluxe', 'suite', 'no_limit'],
     default: 'single'
   },
-  icuCoverage: { type: Boolean, default: true },
-  icuLimit: { type: Number },
+  icuCoverage: { type, default},
+  icuLimit: { type},
   
   // Coverage Features
-  daycareCoverage: { type: Boolean, default: true },
-  domiciliaryCoverage: { type: Boolean, default: false },
-  ambulanceCoverage: { type: Boolean, default: true },
-  ambulanceLimit: { type: Number },
+  daycareCoverage: { type, default},
+  domiciliaryCoverage: { type, default},
+  ambulanceCoverage: { type, default},
+  ambulanceLimit: { type},
   
   // Hospitalization
-  hospitalizationCoverage: { type: Boolean, default: true },
-  preHospitalizationDays: { type: Number, default: 30 },
-  postHospitalizationDays: { type: Number, default: 60 },
+  hospitalizationCoverage: { type, default},
+  preHospitalizationDays: { type, default: 30 },
+  postHospitalizationDays: { type, default: 60 },
   
   // Organ transplant
-  organTransplantCoverage: { type: Boolean, default: false },
-  organTransplantLimit: { type: Number },
+  organTransplantCoverage: { type, default},
+  organTransplantLimit: { type},
   
   // Modern treatments
-  roboticSurgery: { type: Boolean, default: false },
-  laserTreatment: { type: Boolean, default: false },
-  stemCellTherapy: { type: Boolean, default: false },
+  roboticSurgery: { type, default},
+  laserTreatment: { type, default},
+  stemCellTherapy: { type, default},
   
   // ============================================
   // PRE-EXISTING CONDITIONS
   // ============================================
   
   preExistingWaiting: { 
-    type: Number, 
+    type, 
     default: 48,
     description: 'Waiting period for pre-existing conditions'
   },
   specificWaiting: [{
-    disease: { type: String },
-    waitingPeriod: { type: Number },
-    description: { type: String }
+    disease: { type},
+    waitingPeriod: { type},
+    description: { type}
   }],
   
   // ============================================
   // AGE LIMITS
   // ============================================
   
-  minEntryAge: { type: Number, default: 18 },
-  maxEntryAge: { type: Number, default: 65 },
-  maxRenewalAge: { type: Number, default: 80 },
-  childMinAge: { type: Number, default: 3 },
-  childMaxAge: { type: Number, default: 25 },
+  minEntryAge: { type, default: 18 },
+  maxEntryAge: { type, default: 65 },
+  maxRenewalAge: { type, default: 80 },
+  childMinAge: { type, default: 3 },
+  childMaxAge: { type, default: 25 },
   
   // ============================================
   // PRICING
   // ============================================
   
-  basePremium: { type: Number, required: true },
-  gstRate: { type: Number, default: 18 },
-  discountPercentage: { type: Number, default: 0 },
-  loadingFactor: { type: Number, default: 1 },
+  basePremium: { type, required},
+  gstRate: { type, default: 18 },
+  discountPercentage: { type, default: 0 },
+  loadingFactor: { type, default: 1 },
   
   // Age-wise premium loading
   ageLoading: [{
-    ageRange: { type: String },
-    loadingPercentage: { type: Number }
+    ageRange: { type},
+    loadingPercentage: { type}
   }],
   
   // Sum insured wise premium
   sumInsuredPremium: [{
-    sumInsured: { type: Number },
-    premium: { type: Number }
+    sumInsured: { type},
+    premium: { type}
   }],
   
   // ============================================
@@ -128,30 +126,30 @@ const InsurancePlanSchema = new mongoose.Schema({
   // ============================================
   
   features: [{
-    title: { type: String, required: true },
-    description: { type: String },
-    included: { type: Boolean, default: true },
-    icon: { type: String },
-    category: { type: String }
+    title: { type, required},
+    description: { type},
+    included: { type, default},
+    icon: { type},
+    category: { type}
   }],
   
   // ============================================
   // INCLUSIONS & EXCLUSIONS
   // ============================================
   
-  inclusions: [{ type: String }],
-  exclusions: [{ type: String }],
+  inclusions: [{ type}],
+  exclusions: [{ type}],
   
   // ============================================
   // ADD-ONS / RIDERS
   // ============================================
   
   addons: [{
-    name: { type: String },
-    description: { type: String },
-    price: { type: Number },
-    coverage: { type: String },
-    isActive: { type: Boolean, default: true }
+    name: { type},
+    description: { type},
+    price: { type},
+    coverage: { type},
+    isActive: { type, default}
   }],
   
   // ============================================
@@ -159,28 +157,28 @@ const InsurancePlanSchema = new mongoose.Schema({
   // ============================================
   
   networkHospitals: [{
-    name: { type: String },
-    city: { type: String },
-    state: { type: String },
-    address: { type: String },
-    empanelmentDate: { type: Date },
-    isActive: { type: Boolean, default: true }
+    name: { type},
+    city: { type},
+    state: { type},
+    address: { type},
+    empanelmentDate: { type},
+    isActive: { type, default}
   }],
   
-  totalNetworkHospitals: { type: Number, default: 0 },
+  totalNetworkHospitals: { type, default: 0 },
   
   // ============================================
   // CLAIM PROCESS
   // ============================================
   
   claimProcess: {
-    cashless: { type: Boolean, default: true },
-    reimbursement: { type: Boolean, default: true },
-    claimSettlementRatio: { type: Number },
-    averageSettlementTime: { type: String },
-    processDescription: { type: String },
-    requiredDocuments: [{ type: String }],
-    claimIntimationNumber: { type: String }
+    cashless: { type, default},
+    reimbursement: { type, default},
+    claimSettlementRatio: { type},
+    averageSettlementTime: { type},
+    processDescription: { type},
+    requiredDocuments: [{ type}],
+    claimIntimationNumber: { type}
   },
   
   // ============================================
@@ -188,59 +186,59 @@ const InsurancePlanSchema = new mongoose.Schema({
   // ============================================
   
   taxBenefits: [{
-    section: { type: String },
-    description: { type: String },
-    maxAmount: { type: Number },
-    eligibility: { type: String }
+    section: { type},
+    description: { type},
+    maxAmount: { type},
+    eligibility: { type}
   }],
   
   // ============================================
   // DOCUMENTS
   // ============================================
   
-  brochureUrl: { type: String },
-  policyWordingsUrl: { type: String },
-  proposalFormUrl: { type: String },
-  claimFormUrl: { type: String },
+  brochureUrl: { type},
+  policyWordingsUrl: { type},
+  proposalFormUrl: { type},
+  claimFormUrl: { type},
   
   // ============================================
   // COMMISSION
   // ============================================
   
   commissionRate: { 
-    type: Number, 
+    type, 
     default: 15,
     min: 0,
     max: 30
   },
-  agentCommissionRate: { type: Number, default: 5 },
+  agentCommissionRate: { type, default: 5 },
   
   // ============================================
   // STATUS
   // ============================================
   
-  isActive: { type: Boolean, default: true },
-  isFeatured: { type: Boolean, default: false },
-  isPopular: { type: Boolean, default: false },
-  isVerified: { type: Boolean, default: false },
-  verificationDate: { type: Date },
-  verifiedBy: { type: mongoose.Schema.Types.ObjectId, ref: 'User' },
+  isActive: { type, default},
+  isFeatured: { type, default},
+  isPopular: { type, default},
+  isVerified: { type, default},
+  verificationDate: { type},
+  verifiedBy: { type.Schema.Types.ObjectId, ref: 'User' },
   
   // ============================================
   // RATINGS
   // ============================================
   
-  rating: { type: Number, default: 0 },
-  totalReviews: { type: Number, default: 0 },
+  rating: { type, default: 0 },
+  totalReviews: { type, default: 0 },
   reviewStats: {
-    averageRating: { type: Number, default: 0 },
-    totalRatings: { type: Number, default: 0 },
+    averageRating: { type, default: 0 },
+    totalRatings: { type, default: 0 },
     ratingDistribution: {
-      1: { type: Number, default: 0 },
-      2: { type: Number, default: 0 },
-      3: { type: Number, default: 0 },
-      4: { type: Number, default: 0 },
-      5: { type: Number, default: 0 }
+      1: { type, default: 0 },
+      2: { type, default: 0 },
+      3: { type, default: 0 },
+      4: { type, default: 0 },
+      5: { type, default: 0 }
     }
   },
   
@@ -248,41 +246,41 @@ const InsurancePlanSchema = new mongoose.Schema({
   // METADATA
   // ============================================
   
-  tags: [{ type: String }],
-  category: { type: String },
-  subCategory: { type: String },
-  targetAudience: [{ type: String }],
+  tags: [{ type}],
+  category: { type},
+  subCategory: { type},
+  targetAudience: [{ type}],
   
   // ============================================
   // COMPETITIVE ANALYSIS
   // ============================================
   
   competitors: [{
-    companyName: { type: String },
-    planName: { type: String },
-    premium: { type: Number },
-    sumInsured: { type: Number },
-    comparisonUrl: { type: String }
+    companyName: { type},
+    planName: { type},
+    premium: { type},
+    sumInsured: { type},
+    comparisonUrl: { type}
   }],
   
   // ============================================
   // ANALYTICS
   // ============================================
   
-  views: { type: Number, default: 0 },
-  applications: { type: Number, default: 0 },
-  conversions: { type: Number, default: 0 },
-  conversionRate: { type: Number, default: 0 },
-  popularSearchTerms: [{ type: String }],
+  views: { type, default: 0 },
+  applications: { type, default: 0 },
+  conversions: { type, default: 0 },
+  conversionRate: { type, default: 0 },
+  popularSearchTerms: [{ type}],
   
   // ============================================
   // SELLING CHANNELS (MODIFIED)
   // ============================================
   
   sellingChannels: {
-    online: { type: Boolean, default: true },
-    offline: { type: Boolean, default: false },
-    corporate: { type: Boolean, default: false } // ✅ KEPT EXISTING
+    online: { type, default},
+    offline: { type, default},
+    corporate: { type, default} // ✅ KEPT EXISTING
   },
   
   // ============================================
@@ -291,107 +289,106 @@ const InsurancePlanSchema = new mongoose.Schema({
   
   // Mark plan as corporate offering
   isCorporate: { 
-    type: Boolean, 
-    default: false,
+    type, 
+    default,
     description: 'Whether this plan is available for corporate groups'
   },
   
   // Corporate plan type
   corporateType: {
-    type: String,
+    type,
     enum: ['group_health', 'group_wellness', 'group_insurance', 'employee_benefits'],
     default: 'group_health'
   },
   
   // Employee count requirements
   minEmployees: { 
-    type: Number, 
+    type, 
     default: 10,
     description: 'Minimum employees required for corporate plan'
   },
   maxEmployees: { 
-    type: Number, 
+    type, 
     default: 1000,
     description: 'Maximum employees allowed in this corporate plan'
   },
   
   // Corporate pricing structure
   corporatePricing: {
-    basePremiumPerEmployee: { type: Number },
-    discountPerEmployee: { type: Number, default: 0 },
+    basePremiumPerEmployee: { type},
+    discountPerEmployee: { type, default: 0 },
     bulkDiscount: {
-      enabled: { type: Boolean, default: false },
+      enabled: { type, default},
       tiers: [{
-        minEmployees: { type: Number },
-        maxEmployees: { type: Number },
-        discountPercentage: { type: Number }
+        minEmployees: { type},
+        maxEmployees: { type},
+        discountPercentage: { type}
       }]
     },
-    annualPremiumCap: { type: Number },
-    monthlyPaymentEnabled: { type: Boolean, default: false }
+    annualPremiumCap: { type},
+    monthlyPaymentEnabled: { type, default}
   },
   
   // Corporate-specific settings
   corporateSettings: {
-    allowEmployeeSelection: { type: Boolean, default: true },
-    allowDependentCoverage: { type: Boolean, default: true },
-    maxDependentsPerEmployee: { type: Number, default: 4 },
-    allowCustomCoverage: { type: Boolean, default: false },
-    autoEnrollNewEmployees: { type: Boolean, default: false },
-    probationPeriod: { type: Number, default: 0 }, // Days before employee eligible
-    renewalReminderDays: { type: Number, default: 30 }
+    allowEmployeeSelection: { type, default},
+    allowDependentCoverage: { type, default},
+    maxDependentsPerEmployee: { type, default: 4 },
+    allowCustomCoverage: { type, default},
+    autoEnrollNewEmployees: { type, default},
+    probationPeriod: { type, default: 0 }, // Days before employee eligible
+    renewalReminderDays: { type, default: 30 }
   },
   
   // Corporate features (additional features for corporate plans)
   corporateFeatures: [{
-    title: { type: String },
-    description: { type: String },
-    included: { type: Boolean, default: true }
+    title: { type},
+    description: { type},
+    included: { type, default}
   }],
   
   // Per-employee coverage
   employeeCoverage: {
     type: {
-      type: String,
+      type,
       enum: ['fixed', 'flexible', 'customizable'],
       default: 'fixed'
     },
     options: [{
-      name: { type: String },
-      coverageAmount: { type: Number },
-      premiumAmount: { type: Number },
-      isDefault: { type: Boolean, default: false }
+      name: { type},
+      coverageAmount: { type},
+      premiumAmount: { type},
+      isDefault: { type, default}
     }],
-    defaultCoverageAmount: { type: Number }
+    defaultCoverageAmount: { type}
   },
   
   // Corporate enrollment
   corporateEnrollment: {
-    requiresHRApproval: { type: Boolean, default: true },
-    employeeSelfEnrollment: { type: Boolean, default: false },
-    enrollmentWindowOpen: { type: Date },
-    enrollmentWindowClose: { type: Date }
+    requiresHRApproval: { type, default},
+    employeeSelfEnrollment: { type, default},
+    enrollmentWindowOpen: { type},
+    enrollmentWindowClose: { type}
   },
   
   // Corporate documents
   corporateDocuments: [{
-    name: { type: String },
-    url: { type: String },
-    type: { type: String, enum: ['brochure', 'policy_wording', 'proposal_form', 'claim_form'] },
-    uploadedAt: { type: Date, default: Date.now }
+    name: { type},
+    url: { type},
+    type: { type, enum: ['brochure', 'policy_wording', 'proposal_form', 'claim_form'] },
+    uploadedAt: { type, default.now }
   }],
   
   // ============================================
   // AUDIT
   // ============================================
   
-  createdAt: { type: Date, default: Date.now },
-  updatedAt: { type: Date, default: Date.now },
-  createdBy: { type: mongoose.Schema.Types.ObjectId, ref: 'User' },
-  updatedBy: { type: mongoose.Schema.Types.ObjectId, ref: 'User' }
+  createdAt: { type, default.now },
+  updatedAt: { type, default.now },
+  createdBy: { type.Schema.Types.ObjectId, ref: 'User' },
+  updatedBy: { type.Schema.Types.ObjectId, ref: 'User' }
 }, {
-  timestamps: true
-});
+  timestamps});
 
 // ============================================
 // INDEXES (EXISTING + NEW)
@@ -552,16 +549,16 @@ InsurancePlanSchema.methods.calculatePremium = function(age, sumInsured, members
   const payoutToCompany = totalPremium - platformCommission;
   
   return {
-    basePremium: this.basePremium,
-    calculatedPremium: basePremium,
-    ageLoading: basePremium - this.basePremium,
-    sumInsuredAdjustment: sumInsured ? (basePremium - this.basePremium) : 0,
-    familyFloaterAdjustment: membersCount > 1 ? (basePremium - this.basePremium) : 0,
-    smokerLoading: isSmoker ? basePremium * 0.3 : 0,
+    basePremium.basePremium,
+    calculatedPremium,
+    ageLoading- this.basePremium,
+    sumInsuredAdjustment? (basePremium - this.basePremium) : 0,
+    familyFloaterAdjustment> 1 ? (basePremium - this.basePremium) : 0,
+    smokerLoading? basePremium * 0.3 : 0,
     discountAmount,
     discountedPrice,
     gstAmount,
-    gstRate: this.gstRate,
+    gstRate.gstRate,
     totalPremium,
     platformCommission,
     payoutToCompany,
@@ -581,7 +578,7 @@ InsurancePlanSchema.methods.getPremiumForSumInsured = function(sumInsured) {
   
   const sorted = [...this.sumInsuredPremium].sort((a, b) => a.sumInsured - b.sumInsured);
   const closest = sorted.reduce((prev, curr) => {
-    return Math.abs(curr.sumInsured - sumInsured) < Math.abs(prev.sumInsured - sumInsured) ? curr : prev;
+    return Math.abs(curr.sumInsured - sumInsured) < Math.abs(prev.sumInsured - sumInsured) ? curr ;
   });
   
   return closest.premium;
@@ -670,7 +667,7 @@ InsurancePlanSchema.methods.calculateCorporatePremium = function(employeeCount, 
     finalPremium,
     platformCommission,
     payoutToCompany,
-    commissionRate: this.commissionRate
+    commissionRate.commissionRate
   };
 };
 
@@ -683,18 +680,18 @@ InsurancePlanSchema.methods.getCorporateSummary = function() {
   }
   
   return {
-    planId: this._id,
-    planName: this.planName,
-    planCode: this.planCode,
-    companyName: this.companyId?.name || 'Unknown',
-    minEmployees: this.minEmployees,
-    maxEmployees: this.maxEmployees,
-    pricePerEmployee: this.corporatePricing.basePremiumPerEmployee || this.basePremium * 0.7,
-    discount: this.corporateDiscountPercentage,
-    coverageAmount: this.employeeCoverage.defaultCoverageAmount || this.sumInsured.default,
-    features: this.corporateFeatures || this.features.slice(0, 5),
-    isActive: this.isActive,
-    isVerified: this.isVerified
+    planId._id,
+    planName.planName,
+    planCode.planCode,
+    companyName.companyId?.name || 'Unknown',
+    minEmployees.minEmployees,
+    maxEmployees.maxEmployees,
+    pricePerEmployee.corporatePricing.basePremiumPerEmployee || this.basePremium * 0.7,
+    discount.corporateDiscountPercentage,
+    coverageAmount.employeeCoverage.defaultCoverageAmount || this.sumInsured.default,
+    features.corporateFeatures || this.features.slice(0, 5),
+    isActive.isActive,
+    isVerified.isVerified
   };
 };
 
@@ -704,39 +701,39 @@ InsurancePlanSchema.methods.getCorporateSummary = function() {
 
 // Existing static methods
 InsurancePlanSchema.statics.findFeatured = function(limit = 10) {
-  return this.find({ isActive: true, isFeatured: true })
+  return this.find({ isActive, isFeatured})
     .populate('companyId', 'name companyLogo')
     .sort({ rating: -1 })
     .limit(limit);
 };
 
 InsurancePlanSchema.statics.findPopular = function(limit = 10) {
-  return this.find({ isActive: true, isPopular: true })
+  return this.find({ isActive, isPopular})
     .populate('companyId', 'name companyLogo')
     .sort({ views: -1 })
     .limit(limit);
 };
 
 InsurancePlanSchema.statics.findByCompany = function(companyId) {
-  return this.find({ companyId, isActive: true })
+  return this.find({ companyId, isActive})
     .sort({ createdAt: -1 });
 };
 
 InsurancePlanSchema.statics.findByPlanType = function(planType) {
-  return this.find({ planType, isActive: true })
+  return this.find({ planType, isActive})
     .populate('companyId', 'name companyLogo')
     .sort({ rating: -1 });
 };
 
 InsurancePlanSchema.statics.findByCategory = function(category) {
-  return this.find({ category, isActive: true })
+  return this.find({ category, isActive})
     .populate('companyId', 'name companyLogo')
     .sort({ rating: -1 });
 };
 
 InsurancePlanSchema.statics.searchPlans = function(searchTerm) {
   return this.find(
-    { $text: { $search: searchTerm }, isActive: true },
+    { $text: { $search}, isActive},
     { score: { $meta: 'textScore' } }
   )
     .populate('companyId', 'name companyLogo')
@@ -749,13 +746,13 @@ InsurancePlanSchema.statics.searchPlans = function(searchTerm) {
  * Find all corporate plans
  */
 InsurancePlanSchema.statics.findCorporatePlans = function(filters = {}) {
-  const query = { isCorporate: true, isActive: true };
+  const query = { isCorporate, isActive};
   
   if (filters.minEmployees) {
-    query.minEmployees = { $lte: parseInt(filters.minEmployees) };
+    query.minEmployees = { $lte(filters.minEmployees) };
   }
   if (filters.maxEmployees) {
-    query.maxEmployees = { $gte: parseInt(filters.maxEmployees) };
+    query.maxEmployees = { $gte(filters.maxEmployees) };
   }
   if (filters.planType) {
     query.corporateType = filters.planType;
@@ -774,10 +771,10 @@ InsurancePlanSchema.statics.findCorporatePlans = function(filters = {}) {
  */
 InsurancePlanSchema.statics.findCorporatePlanForEmployees = function(employeeCount) {
   return this.find({
-    isCorporate: true,
-    isActive: true,
-    minEmployees: { $lte: employeeCount },
-    maxEmployees: { $gte: employeeCount }
+    isCorporate,
+    isActive,
+    minEmployees: { $lte},
+    maxEmployees: { $gte}
   }).populate('companyId', 'name companyLogo');
 };
 
@@ -785,12 +782,12 @@ InsurancePlanSchema.statics.findCorporatePlanForEmployees = function(employeeCou
  * Get corporate plan stats
  */
 InsurancePlanSchema.statics.getCorporateStats = async function() {
-  const total = await this.countDocuments({ isCorporate: true });
-  const active = await this.countDocuments({ isCorporate: true, isActive: true });
-  const verified = await this.countDocuments({ isCorporate: true, isVerified: true });
+  const total = await this.countDocuments({ isCorporate});
+  const active = await this.countDocuments({ isCorporate, isActive});
+  const verified = await this.countDocuments({ isCorporate, isVerified});
   
   const byType = await this.aggregate([
-    { $match: { isCorporate: true } },
+    { $match: { isCorporate} },
     { $group: { _id: '$corporateType', count: { $sum: 1 } } }
   ]);
   
@@ -803,3 +800,4 @@ InsurancePlanSchema.statics.getCorporateStats = async function() {
 };
 
 module.exports = mongoose.model('InsurancePlan', InsurancePlanSchema);
+

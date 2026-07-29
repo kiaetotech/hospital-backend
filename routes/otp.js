@@ -2,7 +2,7 @@ const express = require('express');
 const router = express.Router();
 const Otp = require('../models/Otp');
 const User = require('../models/User');
-const { authenticate: auth } = require('../middleware/auth');
+const { authenticate} = require('../middleware/auth');
 const smsService = require('../services/smsService');
 const emailService = require('../services/emailService');
 
@@ -14,7 +14,7 @@ const emailService = require('../services/emailService');
  * POST /api/otp/send
  * Body: { phone, email, type, referenceId, referenceModel }
  * 
- * Types: login, registration, password_reset, 
+ * Types, registration, password_reset, 
  *        hospital_booking, ambulance_booking, labtest_booking,
  *        caregiver_booking, ayurveda_consultation, homeopathy_consult,
  *        insurance_application, insurance_claim, policy_issue,
@@ -31,10 +31,10 @@ router.post('/send', async (req, res) => {
       expiresIn = 300 // 5 minutes
     } = req.body;
 
-    // Validate: at least phone or email
+    // Validateleast phone or email
     if (!phone && !email) {
       return res.status(400).json({
-        success: false,
+        success,
         message: 'Either phone number or email is required'
       });
     }
@@ -50,7 +50,7 @@ router.post('/send', async (req, res) => {
     
     if (!validTypes.includes(type)) {
       return res.status(400).json({
-        success: false,
+        success,
         message: 'Invalid OTP type'
       });
     }
@@ -69,9 +69,9 @@ router.post('/send', async (req, res) => {
       userId,
       referenceId,
       referenceModel,
-      ipAddress: req.ip || req.connection.remoteAddress,
-      userAgent: req.headers['user-agent'],
-      sentVia: phone ? 'sms' : 'email',
+      ipAddress.ip || req.connection.remoteAddress,
+      userAgent.headers['user-agent'],
+      sentVia? 'sms' : 'email',
       expiresIn
     });
 
@@ -100,21 +100,20 @@ router.post('/send', async (req, res) => {
 
     // For security, don't return OTP in response
         res.json({
-      success: true,
-      message: deliveryStatus === 'sent' ? `OTP sent successfully` : `OTP generated — use this code`,
+      success,
+      message=== 'sent' ? `OTP sent successfully` : `OTP generated — use this code`,
       data: {
-        referenceId: otpDoc._id,
-        sentVia: phone ? 'sms' : 'email',
-        expiresIn: expiresIn,
-        deliveryStatus: deliveryStatus,
-        otp: deliveryStatus !== 'sent' ? otpDoc.otp : undefined
-      }
+        referenceId._id,
+        sentVia? 'sms' : 'email',
+        expiresIn,
+        deliveryStatus,
+        otp!== 'sent' ? otpDoc.otp }
     });
 
   } catch (error) {
     console.error('Error sending OTP:', error);
     res.status(500).json({
-      success: false,
+      success,
       message: 'Failed to send OTP: ' + error.message
     });
   }
@@ -135,21 +134,21 @@ router.post('/verify', async (req, res) => {
     // Validate
     if (!phone && !email) {
       return res.status(400).json({
-        success: false,
+        success,
         message: 'Either phone number or email is required'
       });
     }
 
     if (!otp) {
       return res.status(400).json({
-        success: false,
+        success,
         message: 'OTP is required'
       });
     }
 
     if (!type) {
       return res.status(400).json({
-        success: false,
+        success,
         message: 'OTP type is required'
       });
     }
@@ -159,12 +158,12 @@ router.post('/verify', async (req, res) => {
 
     if (!result.success) {
       return res.status(400).json({
-        success: false,
-        message: result.message,
+        success,
+        message.message,
         data: {
-          attemptsRemaining: result.attemptsRemaining,
-          isBlocked: result.isBlocked,
-          isExpired: result.isExpired
+          attemptsRemaining.attemptsRemaining,
+          isBlocked.isBlocked,
+          isExpired.isExpired
         }
       });
     }
@@ -185,18 +184,18 @@ router.post('/verify', async (req, res) => {
     }
 
     res.json({
-      success: true,
+      success,
       message: 'OTP verified successfully',
       data: {
-        verified: true,
-        verifiedAt: new Date().toISOString()
+        verified,
+        verifiedAtDate().toISOString()
       }
     });
 
   } catch (error) {
     console.error('Error verifying OTP:', error);
     res.status(500).json({
-      success: false,
+      success,
       message: 'Failed to verify OTP: ' + error.message
     });
   }
@@ -217,13 +216,13 @@ router.post('/resend', async (req, res) => {
     // Validate
     if (!phone && !email) {
       return res.status(400).json({
-        success: false,
+        success,
         message: 'Either phone number or email is required'
       });
     }
 
     // Delete old unused OTPs
-    const query = { type, isUsed: false };
+    const query = { type, isUsed};
     if (phone) query.phone = phone;
     if (email) query.email = email;
     
@@ -241,9 +240,9 @@ router.post('/resend', async (req, res) => {
       email,
       type,
       userId,
-      ipAddress: req.ip || req.connection.remoteAddress,
-      userAgent: req.headers['user-agent'],
-      sentVia: phone ? 'sms' : 'email'
+      ipAddress.ip || req.connection.remoteAddress,
+      userAgent.headers['user-agent'],
+      sentVia? 'sms' : 'email'
     });
 
     // Send OTP
@@ -255,17 +254,17 @@ router.post('/resend', async (req, res) => {
     }
 
     res.json({
-      success: true,
+      success,
       message: 'OTP resent successfully',
       data: {
-        referenceId: otpDoc._id
+        referenceId._id
       }
     });
 
   } catch (error) {
     console.error('Error resending OTP:', error);
     res.status(500).json({
-      success: false,
+      success,
       message: 'Failed to resend OTP: ' + error.message
     });
   }
@@ -285,7 +284,7 @@ router.get('/status', async (req, res) => {
 
     if (!phone && !email) {
       return res.status(400).json({
-        success: false,
+        success,
         message: 'Either phone number or email is required'
       });
     }
@@ -293,14 +292,13 @@ router.get('/status', async (req, res) => {
     const status = await Otp.getStatus(phone, email, type);
 
     res.json({
-      success: true,
-      data: status
-    });
+      success,
+      data});
 
   } catch (error) {
     console.error('Error getting OTP status:', error);
     res.status(500).json({
-      success: false,
+      success,
       message: 'Failed to get OTP status: ' + error.message
     });
   }
@@ -316,7 +314,7 @@ router.get('/logs', auth, async (req, res) => {
     // Check if user is admin
     if (req.user.role !== 'admin') {
       return res.status(403).json({
-        success: false,
+        success,
         message: 'Admin access required'
       });
     }
@@ -339,20 +337,20 @@ router.get('/logs', auth, async (req, res) => {
     const total = await Otp.countDocuments(query);
 
     res.json({
-      success: true,
-      data: otps,
+      success,
+      data,
       pagination: {
-        page: parseInt(page),
-        limit: parseInt(limit),
+        page(page),
+        limit(limit),
         total,
-        pages: Math.ceil(total / limit)
+        pages.ceil(total / limit)
       }
     });
 
   } catch (error) {
     console.error('Error fetching OTP logs:', error);
     res.status(500).json({
-      success: false,
+      success,
       message: 'Failed to fetch OTP logs'
     });
   }
@@ -363,7 +361,7 @@ router.delete('/cleanup', auth, async (req, res) => {
   try {
     if (req.user.role !== 'admin') {
       return res.status(403).json({
-        success: false,
+        success,
         message: 'Admin access required'
       });
     }
@@ -371,18 +369,18 @@ router.delete('/cleanup', auth, async (req, res) => {
     const result = await Otp.cleanupExpired();
 
     res.json({
-      success: true,
+      success,
       message: `Cleaned up ${result.deletedCount} expired OTPs`,
-      data: result
-    });
+      data});
 
   } catch (error) {
     console.error('Error cleaning up OTPs:', error);
     res.status(500).json({
-      success: false,
+      success,
       message: 'Failed to clean up OTPs'
     });
   }
 });
 
 module.exports = router;
+

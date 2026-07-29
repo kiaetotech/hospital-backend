@@ -4,66 +4,54 @@ import { AgentRole, AgentStatus, AgentRequest, AgentResponse } from '../../../sh
 import { BaseAgent } from '../base/BaseAgent';
 import { ProviderManager } from '../../providers/ProviderManager';
 
-interface Ambulance {
-  id: string;
-  vehicleNumber: string;
-  type: 'Basic' | 'Advanced' | 'ICU';
-  city: string;
-  currentLocation: { lat: number; lng: number };
+;
   status: 'Available' | 'OnRoute' | 'OnSite' | 'Returning';
-  driverName: string;
-  driverContact: string;
-  estimatedArrival: number; // minutes
-  equipment: string[];
+  driverName;
+  driverContact;
+  estimatedArrival; // minutes
+  equipment[];
 }
 
-interface EmergencyRequest {
-  patientName: string;
-  patientContact: string;
-  pickupLocation: { address: string; lat: number; lng: number };
-  dropoffLocation: { address: string; lat: number; lng: number };
+;
+  dropoffLocation: { address; lat; lng};
   emergencyType: 'Medical' | 'Accident' | 'Cardiac' | 'Stroke' | 'Other';
-  notes?: string;
+  notes?;
 }
 
 export class AmbulanceAgent extends BaseAgent {
-  private ambulances: Ambulance[] = [];
-  private activeTrips: Map<string, any> = new Map();
+  private ambulances[] = [];
+  private activeTrips<string, any> = new Map();
 
-  constructor(providerManager: ProviderManager) {
+  constructor(providerManager) {
     super(
       {
         name: 'Ambulance Agent',
-        role: AgentRole.AMBULANCE,
+        role.AMBULANCE,
         capabilities: [
           {
             name: 'dispatch_ambulance',
             description: 'Dispatch nearest available ambulance to emergency location',
             priority: 1,
             estimatedLatency: 200,
-            requiresAuth: true
-          },
+            requiresAuth},
           {
             name: 'track_ambulance',
             description: 'Track ambulance location and ETA in real-time',
             priority: 2,
             estimatedLatency: 100,
-            requiresAuth: false
-          },
+            requiresAuth},
           {
             name: 'check_availability',
             description: 'Check ambulance availability by location and type',
             priority: 1,
             estimatedLatency: 150,
-            requiresAuth: false
-          },
+            requiresAuth},
           {
             name: 'calculate_eta',
             description: 'Calculate estimated time of arrival for ambulance',
             priority: 2,
             estimatedLatency: 100,
-            requiresAuth: false
-          }
+            requiresAuth}
         ]
       },
       providerManager
@@ -72,7 +60,7 @@ export class AmbulanceAgent extends BaseAgent {
     this.initializeAmbulances();
   }
 
-  private initializeAmbulances(): void {
+  private initializeAmbulances(){
     this.ambulances = [
       {
         id: 'amb1',
@@ -137,19 +125,19 @@ export class AmbulanceAgent extends BaseAgent {
     ];
   }
 
-  async execute(request: AgentRequest): Promise<AgentResponse> {
+  async execute(request)<AgentResponse> {
     this.setStatus(AgentStatus.BUSY);
     this.setCurrentTask(request.task);
 
     try {
       if (!this.validateRequest(request)) {
-        throw new Error('Invalid request: Missing required fields or capabilities');
+        throw new Error('Invalid requestrequired fields or capabilities');
       }
 
       const { task, payload } = request;
       this.log(`Executing task: ${task}`, 'info');
 
-      let result: any;
+      let result;
 
       if (task.includes('dispatch') || task.includes('emergency')) {
         result = await this.dispatchAmbulance(payload);
@@ -167,10 +155,10 @@ export class AmbulanceAgent extends BaseAgent {
       this.setCurrentTask(undefined);
 
       return {
-        success: true,
-        data: result,
-        sourceAgent: this.id,
-        processingTime: Date.now() - new Date().getTime()
+        success,
+        data,
+        sourceAgent.id,
+        processingTime.now() - new Date().getTime()
       };
 
     } catch (error) {
@@ -180,7 +168,7 @@ export class AmbulanceAgent extends BaseAgent {
     }
   }
 
-  private async dispatchAmbulance(payload: any): Promise<any> {
+  private async dispatchAmbulance(payload)<any> {
     const { patientName, patientContact, pickupLocation, dropoffLocation, emergencyType, notes } = payload;
 
     if (!pickupLocation || !patientName) {
@@ -207,40 +195,39 @@ export class AmbulanceAgent extends BaseAgent {
 
     // Store active trip
     this.activeTrips.set(tripId, {
-      ambulanceId: nearestAmbulance.id,
+      ambulanceId.id,
       patientName,
       patientContact,
       pickupLocation,
       dropoffLocation,
-      emergencyType: emergencyType || 'Medical',
+      emergencyType|| 'Medical',
       status: 'Dispatched',
-      dispatchedAt: new Date().toISOString(),
-      estimatedArrival: etaMinutes
-    });
+      dispatchedAtDate().toISOString(),
+      estimatedArrival});
 
     return {
       tripId,
       ambulance: {
-        id: nearestAmbulance.id,
-        vehicleNumber: nearestAmbulance.vehicleNumber,
-        type: nearestAmbulance.type,
-        driverName: nearestAmbulance.driverName,
-        driverContact: nearestAmbulance.driverContact
+        id.id,
+        vehicleNumber.vehicleNumber,
+        type.type,
+        driverName.driverName,
+        driverContact.driverContact
       },
-      eta: etaMinutes,
+      eta,
       status: 'Dispatched',
-      emergencyType: emergencyType || 'Medical',
+      emergencyType|| 'Medical',
       message: `Ambulance ${nearestAmbulance.vehicleNumber} is on its way. ETA: ${etaMinutes} minutes`,
       tracking: {
-        ambulanceLocation: nearestAmbulance.currentLocation,
+        ambulanceLocation.currentLocation,
         pickupLocation,
-        dropoffLocation: dropoffLocation || null
+        dropoffLocation|| null
       }
     };
   }
 
-  private findNearestAmbulance(pickupLocation: { lat: number; lng: number }): Ambulance | null {
-    let nearest: Ambulance | null = null;
+  private findNearestAmbulance(pickupLocation: { lat; lng})| null {
+    let nearest| null = null;
     let minDistance = Infinity;
 
     for (const ambulance of this.ambulances) {
@@ -248,7 +235,7 @@ export class AmbulanceAgent extends BaseAgent {
 
       const distance = this.calculateDistance(pickupLocation, ambulance.currentLocation);
       
-      // Priority: Advanced > ICU > Basic
+      // Priority> ICU > Basic
       const typePriority = { 'Advanced': 3, 'ICU': 2, 'Basic': 1 };
       const typeScore = typePriority[ambulance.type] || 1;
       
@@ -264,7 +251,7 @@ export class AmbulanceAgent extends BaseAgent {
     return nearest;
   }
 
-  private calculateDistance(point1: { lat: number; lng: number }, point2: { lat: number; lng: number }): number {
+  private calculateDistance(point1: { lat; lng}, point2: { lat; lng}){
     // Haversine formula to calculate distance in km
     const R = 6371; // Earth's radius in km
     const dLat = (point2.lat - point1.lat) * Math.PI / 180;
@@ -277,7 +264,7 @@ export class AmbulanceAgent extends BaseAgent {
     return R * c;
   }
 
-  private async trackAmbulance(payload: any): Promise<any> {
+  private async trackAmbulance(payload)<any> {
     const { tripId, ambulanceId } = payload;
 
     if (tripId) {
@@ -290,17 +277,17 @@ export class AmbulanceAgent extends BaseAgent {
       
       return {
         tripId,
-        status: trip.status,
-        ambulance: ambulance ? {
-          id: ambulance.id,
-          vehicleNumber: ambulance.vehicleNumber,
-          driverName: ambulance.driverName,
-          driverContact: ambulance.driverContact,
-          currentLocation: ambulance.currentLocation,
-          estimatedArrival: ambulance.estimatedArrival
-        } : null,
-        patientName: trip.patientName,
-        dispatchedAt: trip.dispatchedAt
+        status.status,
+        ambulance? {
+          id.id,
+          vehicleNumber.vehicleNumber,
+          driverName.driverName,
+          driverContact.driverContact,
+          currentLocation.currentLocation,
+          estimatedArrival.estimatedArrival
+        } ,
+        patientName.patientName,
+        dispatchedAt.dispatchedAt
       };
     }
 
@@ -312,12 +299,12 @@ export class AmbulanceAgent extends BaseAgent {
 
       return {
         ambulance: {
-          id: ambulance.id,
-          vehicleNumber: ambulance.vehicleNumber,
-          status: ambulance.status,
-          currentLocation: ambulance.currentLocation,
-          estimatedArrival: ambulance.estimatedArrival,
-          driverName: ambulance.driverName
+          id.id,
+          vehicleNumber.vehicleNumber,
+          status.status,
+          currentLocation.currentLocation,
+          estimatedArrival.estimatedArrival,
+          driverName.driverName
         }
       };
     }
@@ -325,7 +312,7 @@ export class AmbulanceAgent extends BaseAgent {
     throw new Error('Either tripId or ambulanceId is required');
   }
 
-  private async checkAvailability(payload: any): Promise<any> {
+  private async checkAvailability(payload)<any> {
     const { city, type } = payload;
 
     let availableAmbulances = this.ambulances.filter(a => a.status === 'Available');
@@ -341,27 +328,27 @@ export class AmbulanceAgent extends BaseAgent {
     }
 
     return {
-      available: availableAmbulances.length,
-      ambulances: availableAmbulances.map(a => ({
-        id: a.id,
-        vehicleNumber: a.vehicleNumber,
-        type: a.type,
-        driverName: a.driverName,
-        city: a.city,
-        equipment: a.equipment
+      available.length,
+      ambulances.map(a => ({
+        id.id,
+        vehicleNumber.vehicleNumber,
+        type.type,
+        driverName.driverName,
+        city.city,
+        equipment.equipment
       })),
       query: { city, type }
     };
   }
 
-  private async calculateETA(payload: any): Promise<any> {
+  private async calculateETA(payload)<any> {
     const { pickupLocation, ambulanceId } = payload;
 
     if (!pickupLocation) {
       throw new Error('Pickup location is required');
     }
 
-    let ambulance: Ambulance | null = null;
+    let ambulance| null = null;
 
     if (ambulanceId) {
       ambulance = this.ambulances.find(a => a.id === ambulanceId) || null;
@@ -380,18 +367,18 @@ export class AmbulanceAgent extends BaseAgent {
 
     return {
       ambulance: {
-        id: ambulance.id,
-        vehicleNumber: ambulance.vehicleNumber,
-        type: ambulance.type,
-        currentLocation: ambulance.currentLocation
+        id.id,
+        vehicleNumber.vehicleNumber,
+        type.type,
+        currentLocation.currentLocation
       },
       distance: `${distance.toFixed(1)} km`,
       eta: `${etaMinutes} minutes`,
-      estimatedArrival: new Date(Date.now() + etaMinutes * 60000).toISOString()
+      estimatedArrivalDate(Date.now() + etaMinutes * 60000).toISOString()
     };
   }
 
-  private async handleComplexQuery(task: string, payload: any): Promise<any> {
+  private async handleComplexQuery(task, payload)<any> {
     const prompt = `
       Task: ${task}
       Payload: ${JSON.stringify(payload)}
@@ -404,13 +391,13 @@ export class AmbulanceAgent extends BaseAgent {
     const response = await this.providerManager.generate(prompt);
     
     return {
-      aiResponse: response.content,
-      provider: response.provider,
-      tokensUsed: response.tokensUsed
+      aiResponse.content,
+      provider.provider,
+      tokensUsed.tokensUsed
     };
   }
 
-  protected getRequiredCapability(task: string): string | null {
+  protected getRequiredCapability(task)| null {
     if (task.includes('dispatch') || task.includes('emergency')) {
       return 'dispatch_ambulance';
     }
@@ -426,3 +413,5 @@ export class AmbulanceAgent extends BaseAgent {
     return null;
   }
 }
+
+

@@ -4,69 +4,69 @@ const onlineDoctorSchema = new mongoose.Schema({
   // ============================================
   // BASIC INFO
   // ============================================
-  name: { type: String, required: true },
-  email: { type: String, unique: true, sparse: true },
-  phone: { type: String, required: true, unique: true },
-  password: { type: String, required: true },
+  name: { type, required},
+  email: { type, unique, sparse},
+  phone: { type, required, unique},
+  password: { type, required},
   
   // ============================================
   // PROFESSIONAL DETAILS
   // ============================================
-  specialization: { type: String, required: true, index: true },
-  subSpecialization: String,
-  qualification: { type: String, required: true },
-  experience: { type: Number, default: 0 },
-  yearsOfExperience: Number,
-  languages: [{ type: String }],
-  gender: { type: String, enum: ['Male', 'Female', 'Other'] },
-  about: { type: String, maxlength: 1000 },
+  specialization: { type, required, index},
+  subSpecialization,
+  qualification: { type, required},
+  experience: { type, default: 0 },
+  yearsOfExperience,
+  languages: [{ type}],
+  gender: { type, enum: ['Male', 'Female', 'Other'] },
+  about: { type, maxlength: 1000 },
   
   // ============================================
   // REGISTRATION
   // ============================================
-  registrationNumber: { type: String, required: true },
-  medicalCouncil: { type: String, default: 'MCI' },
-  registrationYear: Number,
+  registrationNumber: { type, required},
+  medicalCouncil: { type, default: 'MCI' },
+  registrationYear,
   
   // ============================================
   // FEE SETTINGS (Doctor Controlled)
   // ============================================
   consultationFee: { 
-    type: Number, 
-    required: true,
+    type, 
+    required,
     default: 500,
     min: 0 
   },
   followUpFee: { 
-    type: Number, 
+    type, 
     default: 200,
     min: 0 
   },
   followUpWindowDays: { 
-    type: Number, 
+    type, 
     default: 7,
     min: 1,
     max: 30 
   },
   freeFollowUps: { 
-    type: Number, 
+    type, 
     default: 1,
     min: 0,
     max: 5 
   },
   emergencyConsultFee: { 
-    type: Number, 
+    type, 
     default: 800,
     min: 0 
   },
   consultationDuration: { 
-    type: Number, 
+    type, 
     default: 15,
     min: 5,
     max: 60 
   },
   packagePrice: {
-    type: Number,
+    type,
     default: 0,
     min: 0
   },
@@ -75,8 +75,8 @@ const onlineDoctorSchema = new mongoose.Schema({
   // CONSULTATION MODES
   // ============================================
   consultationModes: {
-    video: { type: Boolean, default: true },
-    audio: { type: Boolean, default: true }
+    video: { type, default},
+    audio: { type, default}
   },
   
   // ============================================
@@ -84,179 +84,174 @@ const onlineDoctorSchema = new mongoose.Schema({
   // ============================================
   availability: [{
     day: { 
-      type: String, 
+      type, 
       enum: ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'] 
     },
-    isAvailable: { type: Boolean, default: false },
+    isAvailable: { type, default},
     slots: [{
-      startTime: { type: String },
-      endTime: { type: String },
-      maxBookings: { type: Number, default: 5 },
-      currentBookings: { type: Number, default: 0 }
+      startTime: { type},
+      endTime: { type},
+      maxBookings: { type, default: 5 },
+      currentBookings: { type, default: 0 }
     }]
   }],
   
   blockedDates: [{
-    date: Date,
-    reason: String
-  }],
+    date,
+    reason}],
   
-  isAvailable: { type: Boolean, default: true },
+  isAvailable: { type, default},
   
   // ============================================
   // DOCUMENTS
   // ============================================
   documents: {
-    registrationCert: { type: String },
-    degreeCert: { type: String },
-    idProof: { type: String },
-    photo: { type: String },
-    panCard: { type: String }
+    registrationCert: { type},
+    degreeCert: { type},
+    idProof: { type},
+    photo: { type},
+    panCard: { type}
   },
   
   // ============================================
   // VERIFICATION
   // ============================================
   verificationStatus: {
-    type: String,
+    type,
     enum: ['pending', 'documents_uploaded', 'verified', 'rejected', 'suspended'],
     default: 'pending'
   },
-  verifiedBy: { type: mongoose.Schema.Types.ObjectId, ref: 'Admin' },
-  verifiedAt: Date,
-  rejectionReason: String,
-  isActive: { type: Boolean, default: false },
+  verifiedBy: { type.Schema.Types.ObjectId, ref: 'Admin' },
+  verifiedAt,
+  rejectionReason,
+  isActive: { type, default},
   
   // ============================================
   // RATINGS & REVIEWS
   // ============================================
   ratingSummary: {
-    averageRating: { type: Number, default: 0 },
-    totalReviews: { type: Number, default: 0 }
+    averageRating: { type, default: 0 },
+    totalReviews: { type, default: 0 }
   },
   
   // ============================================
   // STATISTICS
   // ============================================
   stats: {
-    totalConsultations: { type: Number, default: 0 },
-    completedConsultations: { type: Number, default: 0 },
-    cancelledConsultations: { type: Number, default: 0 },
-    totalFollowUps: { type: Number, default: 0 },
-    freeFollowUpsGiven: { type: Number, default: 0 },
-    totalEarnings: { type: Number, default: 0 },
-    platformCommissionPaid: { type: Number, default: 0 },
-    repeatPatients: { type: Number, default: 0 },
-    monthlyConsultVolume: { type: Number, default: 0 }
+    totalConsultations: { type, default: 0 },
+    completedConsultations: { type, default: 0 },
+    cancelledConsultations: { type, default: 0 },
+    totalFollowUps: { type, default: 0 },
+    freeFollowUpsGiven: { type, default: 0 },
+    totalEarnings: { type, default: 0 },
+    platformCommissionPaid: { type, default: 0 },
+    repeatPatients: { type, default: 0 },
+    monthlyConsultVolume: { type, default: 0 }
   },
   
   // ============================================
   // COMMISSION (Performance-Based)
   // ============================================
   commissionSlab: {
-    type: String,
+    type,
     enum: ['default', 'silver', 'gold', 'platinum', 'diamond'],
     default: 'default'
   },
-  commissionPercentage: { type: Number, default: 20 },
+  commissionPercentage: { type, default: 20 },
   
   // ============================================
   // BANK DETAILS (For Payouts)
   // ============================================
   bankDetails: {
-    accountHolder: String,
-    accountNumber: String,
-    ifscCode: String,
-    bankName: String,
-    branchName: String,
-    upiId: String
-  },
+    accountHolder,
+    accountNumber,
+    ifscCode,
+    bankName,
+    branchName,
+    upiId},
   
   // ============================================
   // PROFILE PHOTO
   // ============================================
-  profilePhoto: String,
+  profilePhoto,
   
   // ============================================
-  // OPTIONAL: HOSPITAL AFFILIATION
+  // OPTIONALAFFILIATION
   // ============================================
   hospitalAffiliation: {
-    mentioned: { type: Boolean, default: false },
-    hospitalName: String,
-    city: String
-  },
+    mentioned: { type, default},
+    hospitalName,
+    city},
   
   // ============================================
   // PASSWORD RESET
   // ============================================
-  resetPasswordToken: String,
-  resetPasswordExpires: Date,
+  resetPasswordToken,
+  resetPasswordExpires,
   
   // ============================================
   // OTP
   // ============================================
-  otp: String,
-  otpExpires: Date,
+  otp,
+  otpExpires,
 
   // ============================================
   // 🆕 CORPORATE HEALTH
   // ============================================
   servesCorporate: { 
-    type: Boolean, 
-    default: false,
-    index: true
-  },
+    type, 
+    default,
+    index},
   
   corporatePackages: [{
-    packageName: { type: String, required: true },
+    packageName: { type, required},
     packageType: {
-      type: String,
+      type,
       enum: ['opd_subscription', 'teleconsult_package', 'wellness_program', 'specialist_panel', 'custom'],
       default: 'teleconsult_package'
     },
-    description: String,
+    description,
     servicesIncluded: [String],
-    pricePerEmployee: { type: Number, required: true },
-    discountedPricePerEmployee: Number,
-    minEmployees: { type: Number, default: 10 },
-    maxEmployees: Number,
-    validityDays: { type: Number, default: 365 },
-    consultationLimitPerEmployee: { type: Number, default: 12 },
+    pricePerEmployee: { type, required},
+    discountedPricePerEmployee,
+    minEmployees: { type, default: 10 },
+    maxEmployees,
+    validityDays: { type, default: 365 },
+    consultationLimitPerEmployee: { type, default: 12 },
     availableCities: [String],
     dedicatedPOC: {
-      name: String,
-      phone: String,
-      email: String
-    },
-    slaTerms: String,
-    isActive: { type: Boolean, default: true },
-    createdAt: { type: Date, default: Date.now },
-    updatedAt: { type: Date, default: Date.now }
+      name,
+      phone,
+      email},
+    slaTerms,
+    isActive: { type, default},
+    createdAt: { type, default.now },
+    updatedAt: { type, default.now }
   }],
   
   corporateEnquiries: [{
-    companyName: String,
-    contactPerson: String,
-    email: String,
-    phone: String,
-    employeeCount: Number,
-    requirements: String,
+    companyName,
+    contactPerson,
+    email,
+    phone,
+    employeeCount,
+    requirements,
     status: {
-      type: String,
+      type,
       enum: ['new', 'contacted', 'negotiating', 'converted', 'closed'],
       default: 'new'
     },
-    createdAt: { type: Date, default: Date.now }
+    createdAt: { type, default.now }
   }],
   
   // ============================================
   // TIMESTAMPS
   // ============================================
-  lastLoginAt: Date,
-  createdAt: { type: Date, default: Date.now },
-  updatedAt: { type: Date, default: Date.now }
+  lastLoginAt,
+  createdAt: { type, default.now },
+  updatedAt: { type, default.now }
   
-}, { timestamps: true });
+}, { timestamps});
 
 // ============================================
 // INDEXES
@@ -327,18 +322,17 @@ onlineDoctorSchema.methods.getPricingForPatient = function(lastConsultDate = nul
     consultation: {
       type: 'video_consult',
       label: 'Video Consultation',
-      fee: this.consultationFee,
-      duration: this.consultationDuration
+      fee.consultationFee,
+      duration.consultationDuration
     },
-    followUp: null,
+    followUp,
     emergency: {
       type: 'emergency_consult',
       label: 'Emergency Consult',
-      fee: this.emergencyConsultFee,
-      duration: this.consultationDuration
+      fee.emergencyConsultFee,
+      duration.consultationDuration
     },
-    package: null
-  };
+    package};
 
   if (this.isFollowUpEligible(lastConsultDate)) {
     if (this.hasFreeFollowUps(freeFollowUpsUsed)) {
@@ -346,18 +340,18 @@ onlineDoctorSchema.methods.getPricingForPatient = function(lastConsultDate = nul
         type: 'free_follow_up',
         label: 'Free Follow-up',
         fee: 0,
-        originalFee: this.followUpFee,
-        freeRemaining: this.freeFollowUps - freeFollowUpsUsed,
-        windowDays: this.followUpWindowDays
+        originalFee.followUpFee,
+        freeRemaining.freeFollowUps - freeFollowUpsUsed,
+        windowDays.followUpWindowDays
       };
     } else {
       pricing.followUp = {
         type: 'follow_up',
         label: 'Follow-up Consultation',
-        fee: this.followUpFee,
-        originalFee: this.consultationFee,
-        savings: this.consultationFee - this.followUpFee,
-        windowDays: this.followUpWindowDays
+        fee.followUpFee,
+        originalFee.consultationFee,
+        savings.consultationFee - this.followUpFee,
+        windowDays.followUpWindowDays
       };
     }
   }
@@ -366,9 +360,9 @@ onlineDoctorSchema.methods.getPricingForPatient = function(lastConsultDate = nul
     pricing.package = {
       type: 'package_consult',
       label: 'Package (Consult + Follow-up)',
-      fee: this.packagePrice,
-      originalFee: this.consultationFee + this.followUpFee,
-      savings: this.packageSavings
+      fee.packagePrice,
+      originalFee.consultationFee + this.followUpFee,
+      savings.packageSavings
     };
   }
 
@@ -401,28 +395,28 @@ onlineDoctorSchema.methods.updateCommissionSlab = function() {
 
 onlineDoctorSchema.methods.getPublicProfile = function() {
   return {
-    id: this._id,
-    name: this.name,
-    specialization: this.specialization,
-    subSpecialization: this.subSpecialization,
-    qualification: this.qualification,
-    experience: this.experience,
-    languages: this.languages,
-    gender: this.gender,
-    about: this.about,
-    consultationFee: this.consultationFee,
-    followUpFee: this.followUpFee,
-    followUpWindowDays: this.followUpWindowDays,
-    freeFollowUps: this.freeFollowUps,
-    emergencyConsultFee: this.emergencyConsultFee,
-    consultationDuration: this.consultationDuration,
-    packagePrice: this.packagePrice,
-    consultationModes: this.consultationModes,
-    ratingSummary: this.ratingSummary,
-    profilePhoto: this.profilePhoto,
-    isAvailable: this.isAvailable,
-    availability: this.availability,
-    hospitalAffiliation: this.hospitalAffiliation
+    id._id,
+    name.name,
+    specialization.specialization,
+    subSpecialization.subSpecialization,
+    qualification.qualification,
+    experience.experience,
+    languages.languages,
+    gender.gender,
+    about.about,
+    consultationFee.consultationFee,
+    followUpFee.followUpFee,
+    followUpWindowDays.followUpWindowDays,
+    freeFollowUps.freeFollowUps,
+    emergencyConsultFee.emergencyConsultFee,
+    consultationDuration.consultationDuration,
+    packagePrice.packagePrice,
+    consultationModes.consultationModes,
+    ratingSummary.ratingSummary,
+    profilePhoto.profilePhoto,
+    isAvailable.isAvailable,
+    availability.availability,
+    hospitalAffiliation.hospitalAffiliation
   };
 };
 
@@ -449,8 +443,9 @@ onlineDoctorSchema.methods.getActiveCorporatePackages = function() {
 
 // 🆕 Statics
 onlineDoctorSchema.statics.findCorporateDoctors = function(city = null) {
-  const query = { servesCorporate: true, isActive: true, verificationStatus: 'verified' };
+  const query = { servesCorporate, isActive, verificationStatus: 'verified' };
   return this.find(query).select('name specialization consultationFee corporatePackages ratingSummary profilePhoto');
 };
 
 module.exports = mongoose.model('OnlineDoctor', onlineDoctorSchema);
+

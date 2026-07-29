@@ -4,83 +4,46 @@ import { AgentRole, AgentStatus, AgentRequest, AgentResponse } from '../../../sh
 import { BaseAgent } from '../base/BaseAgent';
 import { ProviderManager } from '../../providers/ProviderManager';
 
-interface InsurancePolicy {
-  id: string;
-  provider: string;
-  name: string;
-  type: 'Individual' | 'Family' | 'Corporate' | 'SeniorCitizen';
-  coverageAmount: number;
-  premium: number;
-  cashlessHospitals: string[];
-  waitingPeriod: number; // months
-  preExistingCoverage: boolean;
-  maternityCoverage: boolean;
-  criticalIllnessCoverage: boolean;
-  roomRentLimit: number;
-  coPay: number; // percentage
-  networkHospitals: number;
-  rating: number;
-}
 
-interface ClaimRequest {
-  policyId: string;
-  patientName: string;
-  hospital: string;
-  diagnosis: string;
-  treatmentDate: string;
-  estimatedCost: number;
-  documents: string[];
-}
 
-interface ClaimStatus {
-  claimId: string;
-  policyId: string;
-  patientName: string;
-  hospital: string;
-  amount: number;
-  status: 'Pending' | 'Approved' | 'Rejected' | 'UnderReview';
-  decision: string;
-  processedAt: string;
-}
+
+
+
 
 export class InsuranceAgent extends BaseAgent {
-  private policies: InsurancePolicy[] = [];
-  private claims: Map<string, ClaimStatus> = new Map();
+  private policies[] = [];
+  private claims<string, ClaimStatus> = new Map();
 
-  constructor(providerManager: ProviderManager) {
+  constructor(providerManager) {
     super(
       {
         name: 'Insurance Agent',
-        role: AgentRole.INSURANCE,
+        role.INSURANCE,
         capabilities: [
           {
             name: 'compare_policies',
             description: 'Compare health insurance policies based on coverage and premium',
             priority: 1,
             estimatedLatency: 300,
-            requiresAuth: false
-          },
+            requiresAuth},
           {
             name: 'check_claim',
             description: 'Check claim eligibility and status',
             priority: 1,
             estimatedLatency: 200,
-            requiresAuth: true
-          },
+            requiresAuth},
           {
             name: 'find_cashless_hospitals',
             description: 'Find hospitals that accept cashless insurance',
             priority: 2,
             estimatedLatency: 150,
-            requiresAuth: false
-          },
+            requiresAuth},
           {
             name: 'estimate_premium',
             description: 'Estimate insurance premium based on age and coverage',
             priority: 2,
             estimatedLatency: 200,
-            requiresAuth: false
-          }
+            requiresAuth}
         ]
       },
       providerManager
@@ -89,7 +52,7 @@ export class InsuranceAgent extends BaseAgent {
     this.initializePolicies();
   }
 
-  private initializePolicies(): void {
+  private initializePolicies(){
     this.policies = [
       {
         id: 'pol1',
@@ -100,9 +63,9 @@ export class InsuranceAgent extends BaseAgent {
         premium: 12000,
         cashlessHospitals: ['Apollo Hospital', 'Fortis Hospital', 'Max Hospital'],
         waitingPeriod: 3,
-        preExistingCoverage: true,
-        maternityCoverage: true,
-        criticalIllnessCoverage: true,
+        preExistingCoverage,
+        maternityCoverage,
+        criticalIllnessCoverage,
         roomRentLimit: 5000,
         coPay: 10,
         networkHospitals: 4500,
@@ -117,9 +80,9 @@ export class InsuranceAgent extends BaseAgent {
         premium: 18000,
         cashlessHospitals: ['Apollo Hospital', 'AIIMS Delhi', 'Medanta Hospital'],
         waitingPeriod: 2,
-        preExistingCoverage: false,
-        maternityCoverage: false,
-        criticalIllnessCoverage: true,
+        preExistingCoverage,
+        maternityCoverage,
+        criticalIllnessCoverage,
         roomRentLimit: 8000,
         coPay: 5,
         networkHospitals: 6000,
@@ -134,9 +97,9 @@ export class InsuranceAgent extends BaseAgent {
         premium: 15000,
         cashlessHospitals: ['Fortis Hospital', 'Max Hospital', 'Medanta Hospital'],
         waitingPeriod: 3,
-        preExistingCoverage: true,
-        maternityCoverage: true,
-        criticalIllnessCoverage: false,
+        preExistingCoverage,
+        maternityCoverage,
+        criticalIllnessCoverage,
         roomRentLimit: 6000,
         coPay: 15,
         networkHospitals: 3800,
@@ -151,9 +114,9 @@ export class InsuranceAgent extends BaseAgent {
         premium: 25000,
         cashlessHospitals: ['Apollo Hospital', 'AIIMS Delhi'],
         waitingPeriod: 6,
-        preExistingCoverage: true,
-        maternityCoverage: false,
-        criticalIllnessCoverage: true,
+        preExistingCoverage,
+        maternityCoverage,
+        criticalIllnessCoverage,
         roomRentLimit: 4000,
         coPay: 20,
         networkHospitals: 2500,
@@ -168,9 +131,9 @@ export class InsuranceAgent extends BaseAgent {
         premium: 14000,
         cashlessHospitals: ['Fortis Hospital', 'Max Hospital'],
         waitingPeriod: 2,
-        preExistingCoverage: true,
-        maternityCoverage: false,
-        criticalIllnessCoverage: true,
+        preExistingCoverage,
+        maternityCoverage,
+        criticalIllnessCoverage,
         roomRentLimit: 7000,
         coPay: 10,
         networkHospitals: 5000,
@@ -179,19 +142,19 @@ export class InsuranceAgent extends BaseAgent {
     ];
   }
 
-  async execute(request: AgentRequest): Promise<AgentResponse> {
+  async execute(request)<AgentResponse> {
     this.setStatus(AgentStatus.BUSY);
     this.setCurrentTask(request.task);
 
     try {
       if (!this.validateRequest(request)) {
-        throw new Error('Invalid request: Missing required fields or capabilities');
+        throw new Error('Invalid requestrequired fields or capabilities');
       }
 
       const { task, payload } = request;
       this.log(`Executing task: ${task}`, 'info');
 
-      let result: any;
+      let result;
 
       if (task.includes('compare') || task.includes('policy')) {
         result = await this.comparePolicies(payload);
@@ -209,10 +172,10 @@ export class InsuranceAgent extends BaseAgent {
       this.setCurrentTask(undefined);
 
       return {
-        success: true,
-        data: result,
-        sourceAgent: this.id,
-        processingTime: Date.now() - new Date().getTime()
+        success,
+        data,
+        sourceAgent.id,
+        processingTime.now() - new Date().getTime()
       };
 
     } catch (error) {
@@ -222,7 +185,7 @@ export class InsuranceAgent extends BaseAgent {
     }
   }
 
-  private async comparePolicies(payload: any): Promise<any> {
+  private async comparePolicies(payload)<any> {
     const { type, coverageRange, maxPremium, minRating = 0 } = payload;
 
     let results = this.policies;
@@ -251,25 +214,24 @@ export class InsuranceAgent extends BaseAgent {
     // Calculate value score (coverage per premium)
     results = results.map(p => ({
       ...p,
-      valueScore: Math.round((p.coverageAmount / p.premium) * 100) / 100,
-      monthlyPremium: Math.round(p.premium / 12)
+      valueScore.round((p.coverageAmount / p.premium) * 100) / 100,
+      monthlyPremium.round(p.premium / 12)
     }));
 
     // Sort by value score
     results.sort((a, b) => b.valueScore - a.valueScore);
 
     return {
-      policies: results,
-      total: results.length,
+      policies,
+      total.length,
       query: { type, coverageRange, maxPremium, minRating },
-      recommendation: results.length > 0 ? {
-        bestOverall: results[0].name,
-        bestValue: results.reduce((a, b) => a.valueScore > b.valueScore ? a : b).name
-      } : null
-    };
+      recommendation.length > 0 ? {
+        bestOverall[0].name,
+        bestValue.reduce((a, b) => a.valueScore > b.valueScore ? a ).name
+      } };
   }
 
-  private async handleClaim(payload: any): Promise<any> {
+  private async handleClaim(payload)<any> {
     const { action, ...data } = payload;
 
     if (action === 'check') {
@@ -283,7 +245,7 @@ export class InsuranceAgent extends BaseAgent {
     throw new Error('Invalid claim action');
   }
 
-  private async checkClaim(payload: any): Promise<any> {
+  private async checkClaim(payload)<any> {
     const { policyId, diagnosis, estimatedCost } = payload;
 
     const policy = this.policies.find(p => p.id === policyId);
@@ -297,24 +259,24 @@ export class InsuranceAgent extends BaseAgent {
 
     return {
       policy: {
-        id: policy.id,
-        name: policy.name,
-        provider: policy.provider,
-        coverageAmount: policy.coverageAmount
+        id.id,
+        name.name,
+        provider.provider,
+        coverageAmount.coverageAmount
       },
       diagnosis,
       estimatedCost,
       isCovered,
       estimatedCoverage,
-      patientShare: isCovered ? Math.max(0, estimatedCost - estimatedCoverage) : estimatedCost,
-      waitingPeriod: policy.waitingPeriod,
-      preExistingCoverage: policy.preExistingCoverage,
-      coPay: policy.coPay,
-      requiresPreAuthorization: estimatedCost > 50000 || diagnosis.includes('surgery')
+      patientShare? Math.max(0, estimatedCost - estimatedCoverage) ,
+      waitingPeriod.waitingPeriod,
+      preExistingCoverage.preExistingCoverage,
+      coPay.coPay,
+      requiresPreAuthorization> 50000 || diagnosis.includes('surgery')
     };
   }
 
-  private isTreatmentCovered(diagnosis: string, policy: InsurancePolicy): boolean {
+  private isTreatmentCovered(diagnosis, policy){
     // Check if diagnosis includes critical illness
     const criticalIllnessKeywords = ['cancer', 'heart', 'stroke', 'kidney', 'liver'];
     const isCritical = criticalIllnessKeywords.some(k => 
@@ -340,7 +302,7 @@ export class InsuranceAgent extends BaseAgent {
     return true;
   }
 
-  private async submitClaim(payload: any): Promise<any> {
+  private async submitClaim(payload)<any> {
     const { policyId, patientName, hospital, diagnosis, treatmentDate, estimatedCost, documents } = payload;
 
     const policy = this.policies.find(p => p.id === policyId);
@@ -356,15 +318,15 @@ export class InsuranceAgent extends BaseAgent {
     // Generate claim ID
     const claimId = `CLM${Date.now()}`;
 
-    const claimStatus: ClaimStatus = {
+    const claimStatus= {
       claimId,
       policyId,
       patientName,
       hospital,
-      amount: estimatedCost,
+      amount,
       status: 'Pending',
       decision: 'Under review',
-      processedAt: new Date().toISOString()
+      processedAtDate().toISOString()
     };
 
     this.claims.set(claimId, claimStatus);
@@ -374,24 +336,24 @@ export class InsuranceAgent extends BaseAgent {
       status: 'Submitted',
       isCashless,
       policy: {
-        id: policy.id,
-        name: policy.name,
-        provider: policy.provider
+        id.id,
+        name.name,
+        provider.provider
       },
       patient: {
-        name: patientName,
+        name,
         hospital
       },
       diagnosis,
       estimatedCost,
-      nextSteps: isCashless ? 
+      nextSteps? 
         'Hospital will handle claim processing. Please carry your policy document.' :
         'Pay at hospital and submit reimbursement claim with all bills.',
-      expectedProcessingTime: isCashless ? '24-48 hours' : '7-10 days'
+      expectedProcessingTime? '24-48 hours' : '7-10 days'
     };
   }
 
-  private async getClaimStatus(payload: any): Promise<any> {
+  private async getClaimStatus(payload)<any> {
     const { claimId } = payload;
 
     if (!claimId) {
@@ -406,10 +368,10 @@ export class InsuranceAgent extends BaseAgent {
     return claim;
   }
 
-  private async findCashlessHospitals(payload: any): Promise<any> {
+  private async findCashlessHospitals(payload)<any> {
     const { city, policyId } = payload;
 
-    let policy: InsurancePolicy | null = null;
+    let policy| null = null;
     if (policyId) {
       policy = this.policies.find(p => p.id === policyId) || null;
       if (!policy) {
@@ -427,18 +389,18 @@ export class InsuranceAgent extends BaseAgent {
     ];
 
     return {
-      hospitals: cashlessHospitals.map(h => ({
-        name: h,
+      hospitals.map(h => ({
+        name,
         address: `${h}, ${city || 'All Cities'}`,
-        cashless: true,
-        network: policy ? `${policy.provider} Network` : 'Multiple Networks'
+        cashless,
+        network? `${policy.provider} Network` : 'Multiple Networks'
       })),
-      total: cashlessHospitals.length,
+      total.length,
       query: { city, policyId }
     };
   }
 
-  private async estimatePremium(payload: any): Promise<any> {
+  private async estimatePremium(payload)<any> {
     const { age, coverage, type = 'Individual', smoker = false } = payload;
 
     if (!age || !coverage) {
@@ -476,16 +438,15 @@ export class InsuranceAgent extends BaseAgent {
 
     return {
       estimatedPremium: {
-        annual: annualPremium,
-        monthly: monthlyPremium
-      },
+        annual,
+        monthly},
       factors: {
         age,
         coverage,
         type,
         smoker
       },
-      recommendedPolicies: recommended.slice(0, 3),
+      recommendedPolicies.slice(0, 3),
       tips: [
         'Consider increasing coverage for better protection',
         'Check for family floater plans if adding family members',
@@ -494,7 +455,7 @@ export class InsuranceAgent extends BaseAgent {
     };
   }
 
-  private async handleComplexQuery(task: string, payload: any): Promise<any> {
+  private async handleComplexQuery(task, payload)<any> {
     const prompt = `
       Task: ${task}
       Payload: ${JSON.stringify(payload)}
@@ -507,13 +468,13 @@ export class InsuranceAgent extends BaseAgent {
     const response = await this.providerManager.generate(prompt);
     
     return {
-      aiResponse: response.content,
-      provider: response.provider,
-      tokensUsed: response.tokensUsed
+      aiResponse.content,
+      provider.provider,
+      tokensUsed.tokensUsed
     };
   }
 
-  protected getRequiredCapability(task: string): string | null {
+  protected getRequiredCapability(task)| null {
     if (task.includes('compare') || task.includes('policy')) {
       return 'compare_policies';
     }
@@ -529,3 +490,5 @@ export class InsuranceAgent extends BaseAgent {
     return null;
   }
 }
+
+

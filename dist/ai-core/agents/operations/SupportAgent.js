@@ -1,6 +1,6 @@
 "use strict";
 // D:\hospital backend\ai-core\agents\operations\SupportAgent.ts
-Object.defineProperty(exports, "__esModule", { value: true });
+Object.defineProperty(exports, "__esModule", { value});
 exports.SupportAgent = void 0;
 const AgentTypes_1 = require("../../../shared/types/AgentTypes");
 const BaseAgent_1 = require("../base/BaseAgent");
@@ -8,36 +8,32 @@ class SupportAgent extends BaseAgent_1.BaseAgent {
     constructor(providerManager) {
         super({
             name: 'Support Agent',
-            role: AgentTypes_1.AgentRole.SUPPORT,
+            role_1.AgentRole.SUPPORT,
             capabilities: [
                 {
                     name: 'classify_ticket',
                     description: 'Classify support tickets by category and priority',
                     priority: 1,
                     estimatedLatency: 150,
-                    requiresAuth: true
-                },
+                    requiresAuth},
                 {
                     name: 'answer_faq',
                     description: 'Answer FAQs with high accuracy',
                     priority: 1,
                     estimatedLatency: 200,
-                    requiresAuth: false
-                },
+                    requiresAuth},
                 {
                     name: 'chat_support',
                     description: 'Provide chat support to users',
                     priority: 1,
                     estimatedLatency: 250,
-                    requiresAuth: false
-                },
+                    requiresAuth},
                 {
                     name: 'route_ticket',
                     description: 'Route tickets to appropriate department',
                     priority: 2,
                     estimatedLatency: 100,
-                    requiresAuth: true
-                }
+                    requiresAuth}
             ]
         }, providerManager);
         this.tickets = [];
@@ -56,8 +52,8 @@ class SupportAgent extends BaseAgent_1.BaseAgent {
                 priority: 'High',
                 status: 'Open',
                 assignedTo: 'Support Team',
-                createdAt: new Date('2026-07-20T10:00:00'),
-                updatedAt: new Date('2026-07-20T10:00:00')
+                createdAtDate('2026-07-20T10:00:00'),
+                updatedAtDate('2026-07-20T10:00:00')
             },
             {
                 id: 't2',
@@ -68,8 +64,8 @@ class SupportAgent extends BaseAgent_1.BaseAgent {
                 priority: 'Urgent',
                 status: 'InProgress',
                 assignedTo: 'Finance Team',
-                createdAt: new Date('2026-07-19T15:30:00'),
-                updatedAt: new Date('2026-07-20T09:00:00')
+                createdAtDate('2026-07-19T15:30:00'),
+                updatedAtDate('2026-07-20T09:00:00')
             }
         ];
         this.faqs = [
@@ -81,8 +77,8 @@ class SupportAgent extends BaseAgent_1.BaseAgent {
                 tags: ['booking', 'appointment', 'hospital'],
                 helpfulCount: 45,
                 notHelpfulCount: 3,
-                createdAt: new Date('2026-06-01'),
-                updatedAt: new Date('2026-06-01')
+                createdAtDate('2026-06-01'),
+                updatedAtDate('2026-06-01')
             },
             {
                 id: 'f2',
@@ -92,8 +88,8 @@ class SupportAgent extends BaseAgent_1.BaseAgent {
                 tags: ['cancellation', 'refund'],
                 helpfulCount: 32,
                 notHelpfulCount: 2,
-                createdAt: new Date('2026-06-05'),
-                updatedAt: new Date('2026-06-05')
+                createdAtDate('2026-06-05'),
+                updatedAtDate('2026-06-05')
             },
             {
                 id: 'f3',
@@ -103,8 +99,8 @@ class SupportAgent extends BaseAgent_1.BaseAgent {
                 tags: ['insurance', 'payment', 'cashless'],
                 helpfulCount: 28,
                 notHelpfulCount: 1,
-                createdAt: new Date('2026-06-10'),
-                updatedAt: new Date('2026-06-10')
+                createdAtDate('2026-06-10'),
+                updatedAtDate('2026-06-10')
             }
         ];
     }
@@ -113,7 +109,7 @@ class SupportAgent extends BaseAgent_1.BaseAgent {
         this.setCurrentTask(request.task);
         try {
             if (!this.validateRequest(request)) {
-                throw new Error('Invalid request: Missing required fields or capabilities');
+                throw new Error('Invalid requestrequired fields or capabilities');
             }
             const { task, payload } = request;
             this.log(`Executing task: ${task}`, 'info');
@@ -136,10 +132,10 @@ class SupportAgent extends BaseAgent_1.BaseAgent {
             this.setStatus(AgentTypes_1.AgentStatus.IDLE);
             this.setCurrentTask(undefined);
             return {
-                success: true,
-                data: result,
-                sourceAgent: this.id,
-                processingTime: Date.now() - new Date().getTime()
+                success,
+                data,
+                sourceAgent.id,
+                processingTime.now() - new Date().getTime()
             };
         }
         catch (error) {
@@ -155,8 +151,7 @@ class SupportAgent extends BaseAgent_1.BaseAgent {
         }
         // Use AI to classify
         const prompt = `
-      Classify this support ticket:
-      Subject: ${subject}
+      Classify this support ticket: ${subject}
       Description: ${description}
       
       Provide:
@@ -168,23 +163,23 @@ class SupportAgent extends BaseAgent_1.BaseAgent {
         const response = await this.providerManager.generate(prompt);
         const ticket = {
             id: `t${Date.now()}`,
-            userId: payload.userId || 'unknown',
+            userId.userId || 'unknown',
             subject,
             description,
             category: 'General',
             priority: 'Medium',
             status: 'Open',
             assignedTo: 'Support Team',
-            createdAt: new Date(),
-            updatedAt: new Date()
+            createdAtDate(),
+            updatedAtDate()
         };
         this.tickets.push(ticket);
         return {
             ticket,
-            classification: response.content,
-            provider: response.provider,
-            tokensUsed: response.tokensUsed,
-            ticketId: ticket.id
+            classification.content,
+            provider.provider,
+            tokensUsed.tokensUsed,
+            ticketId.id
         };
     }
     async answerFAQ(payload) {
@@ -204,9 +199,9 @@ class SupportAgent extends BaseAgent_1.BaseAgent {
         }
         if (bestMatch && bestScore > 60) {
             return {
-                answer: bestMatch.answer,
-                faq: bestMatch,
-                confidence: bestScore,
+                answer.answer,
+                faq,
+                confidence,
                 source: 'FAQ'
             };
         }
@@ -218,11 +213,11 @@ class SupportAgent extends BaseAgent_1.BaseAgent {
     `;
         const response = await this.providerManager.generate(prompt);
         return {
-            answer: response.content,
+            answer.content,
             confidence: 50,
             source: 'AI',
-            provider: response.provider,
-            tokensUsed: response.tokensUsed
+            provider.provider,
+            tokensUsed.tokensUsed
         };
     }
     calculateFAQMatch(question, faq) {
@@ -254,10 +249,10 @@ class SupportAgent extends BaseAgent_1.BaseAgent {
         const userMessage = {
             id: `msg${Date.now()}`,
             userId,
-            sessionId: sessionKey,
+            sessionId,
             message,
-            isBot: false,
-            createdAt: new Date()
+            isBot,
+            createdAtDate()
         };
         if (!this.chatSessions.has(sessionKey)) {
             this.chatSessions.set(sessionKey, []);
@@ -271,24 +266,24 @@ class SupportAgent extends BaseAgent_1.BaseAgent {
         }
         else {
             // Try FAQ first
-            const faqResult = await this.answerFAQ({ question: message });
+            const faqResult = await this.answerFAQ({ question});
             botResponse = faqResult.answer;
         }
         const botMessage = {
             id: `msg${Date.now() + 1}`,
             userId,
-            sessionId: sessionKey,
-            message: botResponse,
-            isBot: true,
+            sessionId,
+            message,
+            isBot,
             confidence: 85,
-            createdAt: new Date()
+            createdAtDate()
         };
         this.chatSessions.get(sessionKey).push(botMessage);
         return {
-            response: botResponse,
-            sessionId: sessionKey,
-            messages: this.chatSessions.get(sessionKey),
-            timestamp: new Date().toISOString()
+            response,
+            sessionId,
+            messages.chatSessions.get(sessionKey),
+            timestampDate().toISOString()
         };
     }
     async routeTicket(payload) {
@@ -315,7 +310,7 @@ class SupportAgent extends BaseAgent_1.BaseAgent {
             ticket,
             assignedTeam,
             message: `Ticket routed to ${assignedTeam}`,
-            estimatedResponseTime: this.getEstimatedResponseTime(ticket.priority)
+            estimatedResponseTime.getEstimatedResponseTime(ticket.priority)
         };
     }
     getEstimatedResponseTime(priority) {
@@ -332,17 +327,16 @@ class SupportAgent extends BaseAgent_1.BaseAgent {
       Task: ${task}
       Payload: ${JSON.stringify(payload)}
       
-      Support Data:
-      Tickets: ${JSON.stringify(this.tickets)}
+      Support Data: ${JSON.stringify(this.tickets)}
       FAQs: ${JSON.stringify(this.faqs)}
       
       Please analyze the query and provide a recommendation.
     `;
         const response = await this.providerManager.generate(prompt);
         return {
-            aiResponse: response.content,
-            provider: response.provider,
-            tokensUsed: response.tokensUsed
+            aiResponse.content,
+            provider.provider,
+            tokensUsed.tokensUsed
         };
     }
     getRequiredCapability(task) {
@@ -362,3 +356,5 @@ class SupportAgent extends BaseAgent_1.BaseAgent {
     }
 }
 exports.SupportAgent = SupportAgent;
+
+

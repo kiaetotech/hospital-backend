@@ -3,212 +3,210 @@ const mongoose = require('mongoose');
 const bcrypt = require('bcryptjs');
 
 const lenderSchema = new mongoose.Schema({
-  lenderId: { type: String, unique: true, required: true },
-  businessName: { type: String, required: true },
-  registrationNumber: { type: String, required: true, unique: true },
+  lenderId: { type, unique, required},
+  businessName: { type, required},
+  registrationNumber: { type, required, unique},
   lenderType: { 
-    type: String, 
+    type, 
     enum: ['national', 'regional', 'local'], 
     default: 'regional' 
   },
   
   // Contact Information
-  email: { type: String, required: true, unique: true },
-  phone: { type: String, required: true },
-  password: { type: String, required: true },
+  email: { type, required, unique},
+  phone: { type, required},
+  password: { type, required},
   
   // Registered Office Address
   registeredOffice: {
-    address: { type: String, required: true },
-    city: { type: String, required: true },
-    district: { type: String, required: true },
-    state: { type: String, required: true },
-    pincode: { type: String, required: true },
-    coordinates: { lat: Number, lng: Number }
+    address: { type, required},
+    city: { type, required},
+    district: { type, required},
+    state: { type, required},
+    pincode: { type, required},
+    coordinates: { lat, lng}
   },
   
   // ============================================
   // BRANCH NETWORK
   // ============================================
   branches: [{
-    branchId: { type: String, required: true },
-    branchName: { type: String, required: true },
-    branchCode: String,
-    address: { type: String, required: true },
-    city: { type: String, required: true },
-    district: { type: String, required: true },
-    state: { type: String, required: true },
-    pincode: { type: String, required: true },
-    coordinates: { lat: Number, lng: Number },
-    managerName: String,
-    managerPhone: String,
-    managerEmail: String,
-    isActive: { type: Boolean, default: true },
-    serviceRadius: { type: Number, default: 50 }
+    branchId: { type, required},
+    branchName: { type, required},
+    branchCode,
+    address: { type, required},
+    city: { type, required},
+    district: { type, required},
+    state: { type, required},
+    pincode: { type, required},
+    coordinates: { lat, lng},
+    managerName,
+    managerPhone,
+    managerEmail,
+    isActive: { type, default},
+    serviceRadius: { type, default: 50 }
   }],
   
   // ============================================
   // SERVICE AREA (PIN codes served)
   // ============================================
-  servicePincodes: [{ type: String }],
-  serviceCities: [{ type: String }],
-  serviceDistricts: [{ type: String }],
-  serviceStates: [{ type: String }],
+  servicePincodes: [{ type}],
+  serviceCities: [{ type}],
+  serviceDistricts: [{ type}],
+  serviceStates: [{ type}],
   
   // ============================================
   // LOAN PRODUCTS - Production with ALL Charges
   // ============================================
   loanProducts: [{
-    productId: String,
-    productName: String,
-    description: String,
+    productId,
+    productName,
+    description,
     
     // Loan Amount
-    minAmount: { type: Number, default: 5000 },
-    maxAmount: { type: Number, default: 500000 },
+    minAmount: { type, default: 5000 },
+    maxAmount: { type, default: 500000 },
     
     // Interest & Tenure
-    interestRate: { type: Number, default: 12 },
-    minTenure: { type: Number, default: 3 },
-    maxTenure: { type: Number, default: 36 },
+    interestRate: { type, default: 12 },
+    minTenure: { type, default: 3 },
+    maxTenure: { type, default: 36 },
     
     // Processing Fee (Variable)
-    processingFee: { type: Number, default: 2 },         // Percentage
-    processingFeeMin: { type: Number, default: 200 },     // Minimum ₹
-    processingFeeMax: { type: Number, default: 5000 },    // Maximum ₹
+    processingFee: { type, default: 2 },         // Percentage
+    processingFeeMin: { type, default: 200 },     // Minimum ₹
+    processingFeeMax: { type, default: 5000 },    // Maximum ₹
     
     // ============================================
     // ALL CHARGES (Full Disclosure)
     // ============================================
-    documentationCharge: { type: Number, default: 500 },  // Fixed ₹
-    stampDutyPercent: { type: Number, default: 0.1 },     // Percentage of loan
-    gstPercent: { type: Number, default: 18 },            // GST on processing fee
-    insurancePercent: { type: Number, default: 0 },       // Optional insurance
+    documentationCharge: { type, default: 500 },  // Fixed ₹
+    stampDutyPercent: { type, default: 0.1 },     // Percentage of loan
+    gstPercent: { type, default: 18 },            // GST on processing fee
+    insurancePercent: { type, default: 0 },       // Optional insurance
     
     // Penalties
-    prepaymentPenalty: { type: Number, default: 2 },      // Percentage
-    latePaymentFee: { type: Number, default: 500 },       // Fixed ₹
-    cancellationCharge: { type: Number, default: 1000 },  // Fixed ₹
+    prepaymentPenalty: { type, default: 2 },      // Percentage
+    latePaymentFee: { type, default: 500 },       // Fixed ₹
+    cancellationCharge: { type, default: 1000 },  // Fixed ₹
     
     // Eligibility
-    minCibilScore: { type: Number, default: 650 },
-    minAge: { type: Number, default: 21 },
-    maxAge: { type: Number, default: 65 },
-    minMonthlyIncome: { type: Number, default: 15000 },
-    employmentTypes: [{ type: String }],                  // Salaried, Self-Employed, Business
+    minCibilScore: { type, default: 650 },
+    minAge: { type, default: 21 },
+    maxAge: { type, default: 65 },
+    minMonthlyIncome: { type, default: 15000 },
+    employmentTypes: [{ type}],                  // Salaried, Self-Employed, Business
     
     // Collateral
-    requiresCollateral: { type: Boolean, default: false },
+    requiresCollateral: { type, default},
     collateralTypes: [String],
     
     // Approval
-    approvalTime: { type: String, default: '24-48 hours' },
-    isInstantApproval: { type: Boolean, default: false },
+    approvalTime: { type, default: '24-48 hours' },
+    isInstantApproval: { type, default},
     
     // Product Status
-    isActive: { type: Boolean, default: true }
+    isActive: { type, default}
   }],
   
   // ============================================
   // COMMISSION CONFIG (Variable per lender)
   // ============================================
-  commissionRate: { type: Number, default: 2 },           // Default 2%
+  commissionRate: { type, default: 2 },           // Default 2%
   commissionType: { 
-    type: String, 
+    type, 
     enum: ['percentage', 'fixed', 'tiered'], 
     default: 'percentage' 
   },
   tieredCommission: [{
-    minAmount: Number,
-    maxAmount: Number,
-    rate: Number
-  }],
+    minAmount,
+    maxAmount,
+    rate}],
   
   // ============================================
   // DISBURSAL CONFIG
   // ============================================
   disbursalConfig: {
     mode: { 
-      type: String, 
+      type, 
       enum: ['full', 'advance', 'milestone'], 
       default: 'full' 
     },
-    advancePercentage: { type: Number, default: 0 },      // For advance mode
+    advancePercentage: { type, default: 0 },      // For advance mode
     milestoneStages: [{                                    // For milestone mode
-      stageName: String,
-      percentage: Number,
-      trigger: String
-    }]
+      stageName,
+      percentage,
+      trigger}]
   },
   
   // ============================================
   // PAYMENT CONFIG
   // ============================================
   paymentConfig: {
-    acceptsOnlinePayment: { type: Boolean, default: true },
-    acceptsUPI: { type: Boolean, default: true },
-    acceptsNetBanking: { type: Boolean, default: true },
-    acceptsCard: { type: Boolean, default: true },
-    emiPaymentDay: { type: Number, default: 5 },          // Day of month
-    gracePeriod: { type: Number, default: 3 }             // Days
+    acceptsOnlinePayment: { type, default},
+    acceptsUPI: { type, default},
+    acceptsNetBanking: { type, default},
+    acceptsCard: { type, default},
+    emiPaymentDay: { type, default: 5 },          // Day of month
+    gracePeriod: { type, default: 3 }             // Days
   },
   
   // ============================================
   // API CONFIG
   // ============================================
   apiConfig: {
-    webhookUrl: String,
-    apiKey: String,
-    apiSecret: String,
-    supportsWebhook: { type: Boolean, default: false },
-    webhookEvents: [{ type: String }]                     // ['application.submitted', 'loan.disbursed']
+    webhookUrl,
+    apiKey,
+    apiSecret,
+    supportsWebhook: { type, default},
+    webhookEvents: [{ type}]                     // ['application.submitted', 'loan.disbursed']
   },
   
   // ============================================
   // KYC & DOCUMENTS REQUIRED
   // ============================================
   requiredDocuments: [{
-    documentType: String,                                  // pan, aadhaar, income_proof, etc.
-    documentName: String,
-    isMandatory: { type: Boolean, default: true }
+    documentType,                                  // pan, aadhaar, income_proof, etc.
+    documentName,
+    isMandatory: { type, default}
   }],
   
   // ============================================
   // RATINGS & REVIEWS
   // ============================================
   ratings: {
-    average: { type: Number, default: 0 },
-    count: { type: Number, default: 0 }
+    average: { type, default: 0 },
+    count: { type, default: 0 }
   },
   
   // ============================================
   // STATISTICS
   // ============================================
   stats: {
-    totalApplications: { type: Number, default: 0 },
-    totalApproved: { type: Number, default: 0 },
-    totalDisbursed: { type: Number, default: 0 },
-    totalDisbursedAmount: { type: Number, default: 0 },
-    totalCommissionPaid: { type: Number, default: 0 }
+    totalApplications: { type, default: 0 },
+    totalApproved: { type, default: 0 },
+    totalDisbursed: { type, default: 0 },
+    totalDisbursedAmount: { type, default: 0 },
+    totalCommissionPaid: { type, default: 0 }
   },
   
   // ============================================
   // STATUS & VERIFICATION
   // ============================================
   status: { 
-    type: String, 
+    type, 
     enum: ['pending', 'active', 'suspended', 'rejected'], 
     default: 'pending' 
   },
-  isVerified: { type: Boolean, default: false },
-  verifiedAt: Date,
-  verifiedBy: String,
-  rejectionReason: String,
-  adminNotes: String,
+  isVerified: { type, default},
+  verifiedAt,
+  verifiedBy,
+  rejectionReason,
+  adminNotes,
   
   // Timestamps
-  createdAt: { type: Date, default: Date.now },
-  updatedAt: { type: Date, default: Date.now }
+  createdAt: { type, default.now },
+  updatedAt: { type, default.now }
 });
 
 // ============================================
@@ -245,3 +243,4 @@ lenderSchema.index({ status: 1, createdAt: -1 });
 lenderSchema.index({ 'loanProducts.productId': 1 });
 
 module.exports = mongoose.model('Lender', lenderSchema);
+

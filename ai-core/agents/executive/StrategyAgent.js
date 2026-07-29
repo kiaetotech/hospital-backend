@@ -4,89 +4,49 @@ import { AgentRole, AgentStatus, AgentRequest, AgentResponse } from '../../../sh
 import { BaseAgent } from '../base/BaseAgent';
 import { ProviderManager } from '../../providers/ProviderManager';
 
-interface StrategyInsight {
-  id: string;
-  title: string;
-  description: string;
-  type: 'Opportunity' | 'Threat' | 'Strength' | 'Weakness' | 'Recommendation';
-  priority: 'Low' | 'Medium' | 'High' | 'Critical';
-  impact: number; // 0-100
-  confidence: number; // 0-100
-  category: 'Revenue' | 'Growth' | 'Operations' | 'Customer' | 'Technology' | 'Competition';
-  suggestedAction: string;
-  metrics: Record<string, any>;
-  generatedAt: Date;
-  expiresAt?: Date;
-  status: 'Pending' | 'InReview' | 'Approved' | 'Implemented' | 'Rejected';
-}
 
-interface MarketTrend {
-  id: string;
-  name: string;
-  description: string;
-  sector: string;
-  direction: 'Up' | 'Down' | 'Stable';
-  intensity: number; // 0-100
-  timeframe: string;
-  impactedAreas: string[];
-  confidence: number;
-}
 
-interface CompetitiveAnalysis {
-  id: string;
-  competitorName: string;
-  strengthScore: number;
-  weaknessScore: number;
-  marketShare: number;
-  offerings: string[];
-  strengths: string[];
-  weaknesses: string[];
-  opportunities: string[];
-  threats: string[];
-  analyzedAt: Date;
-}
+
+
+
 
 export class StrategyAgent extends BaseAgent {
-  private insights: StrategyInsight[] = [];
-  private marketTrends: MarketTrend[] = [];
-  private competitiveAnalysis: CompetitiveAnalysis[] = [];
-  private analysisInterval: NodeJS.Timeout | null = null;
-  private isRunning: boolean = false;
+  private insights[] = [];
+  private marketTrends[] = [];
+  private competitiveAnalysis[] = [];
+  private analysisInterval.Timeout | null = null;
+  private isRunning= false;
 
-  constructor(providerManager: ProviderManager) {
+  constructor(providerManager) {
     super(
       {
         name: 'Strategy Agent',
-        role: AgentRole.STRATEGY,
+        role.STRATEGY,
         capabilities: [
           {
             name: 'analyze_market',
             description: 'Analyze market trends and opportunities',
             priority: 1,
             estimatedLatency: 500,
-            requiresAuth: true
-          },
+            requiresAuth},
           {
             name: 'competitive_analysis',
             description: 'Perform competitive analysis',
             priority: 1,
             estimatedLatency: 400,
-            requiresAuth: true
-          },
+            requiresAuth},
           {
             name: 'generate_insights',
             description: 'Generate strategic insights and recommendations',
             priority: 1,
             estimatedLatency: 300,
-            requiresAuth: true
-          },
+            requiresAuth},
           {
             name: 'strategic_forecast',
             description: 'Forecast business trends and opportunities',
             priority: 2,
             estimatedLatency: 600,
-            requiresAuth: true
-          }
+            requiresAuth}
         ]
       },
       providerManager
@@ -96,7 +56,7 @@ export class StrategyAgent extends BaseAgent {
     this.startPeriodicAnalysis();
   }
 
-  private initializeData(): void {
+  private initializeData(){
     this.insights = [
       {
         id: 'ins1',
@@ -109,7 +69,7 @@ export class StrategyAgent extends BaseAgent {
         category: 'Growth',
         suggestedAction: 'Launch targeted hospital onboarding campaign in 5 tier-2 cities',
         metrics: { potentialRevenue: 5000000, estimatedCost: 1000000 },
-        generatedAt: new Date(),
+        generatedAtDate(),
         status: 'Pending'
       },
       {
@@ -123,7 +83,7 @@ export class StrategyAgent extends BaseAgent {
         category: 'Competition',
         suggestedAction: 'Accelerate feature development and user acquisition',
         metrics: { competitorName: 'HealthPlus', estimatedLaunch: 'Q4 2026' },
-        generatedAt: new Date(),
+        generatedAtDate(),
         status: 'InReview'
       }
     ];
@@ -165,12 +125,12 @@ export class StrategyAgent extends BaseAgent {
         weaknesses: ['Limited Wellness Offerings', 'Higher Pricing'],
         opportunities: ['Wellness Integration', 'Insurance Partnerships'],
         threats: ['New Entrants', 'Regulatory Changes'],
-        analyzedAt: new Date()
+        analyzedAtDate()
       }
     ];
   }
 
-  private startPeriodicAnalysis(): void {
+  private startPeriodicAnalysis(){
     if (this.isRunning) return;
     this.isRunning = true;
 
@@ -179,7 +139,7 @@ export class StrategyAgent extends BaseAgent {
     }, 24 * 60 * 60 * 1000); // Daily
   }
 
-  private async runPeriodicAnalysis(): Promise<void> {
+  private async runPeriodicAnalysis()<void> {
     this.log('Running periodic strategy analysis', 'info');
 
     try {
@@ -201,19 +161,19 @@ export class StrategyAgent extends BaseAgent {
     }
   }
 
-  async execute(request: AgentRequest): Promise<AgentResponse> {
+  async execute(request)<AgentResponse> {
     this.setStatus(AgentStatus.BUSY);
     this.setCurrentTask(request.task);
 
     try {
       if (!this.validateRequest(request)) {
-        throw new Error('Invalid request: Missing required fields or capabilities');
+        throw new Error('Invalid requestrequired fields or capabilities');
       }
 
       const { task, payload } = request;
       this.log(`Executing strategy task: ${task}`, 'info');
 
-      let result: any;
+      let result;
 
       if (task.includes('market')) {
         result = await this.analyzeMarket(payload);
@@ -231,10 +191,10 @@ export class StrategyAgent extends BaseAgent {
       this.setCurrentTask(undefined);
 
       return {
-        success: true,
-        data: result,
-        sourceAgent: this.id,
-        processingTime: Date.now() - new Date().getTime()
+        success,
+        data,
+        sourceAgent.id,
+        processingTime.now() - new Date().getTime()
       };
 
     } catch (error) {
@@ -244,7 +204,7 @@ export class StrategyAgent extends BaseAgent {
     }
   }
 
-  private async analyzeMarket(payload: any): Promise<any> {
+  private async analyzeMarket(payload)<any> {
     const { sector, timeframe, limit = 10 } = payload;
 
     let results = this.marketTrends;
@@ -274,16 +234,16 @@ export class StrategyAgent extends BaseAgent {
     const response = await this.providerManager.generate(prompt);
 
     return {
-      trends: results.slice(0, limit),
-      total: results.length,
-      aiAnalysis: response.content,
-      provider: response.provider,
-      tokensUsed: response.tokensUsed,
-      timestamp: new Date().toISOString()
+      trends.slice(0, limit),
+      total.length,
+      aiAnalysis.content,
+      provider.provider,
+      tokensUsed.tokensUsed,
+      timestampDate().toISOString()
     };
   }
 
-  private async competitiveAnalysis(payload: any): Promise<any> {
+  private async competitiveAnalysis(payload)<any> {
     const { competitorName } = payload;
 
     let results = this.competitiveAnalysis;
@@ -307,16 +267,16 @@ export class StrategyAgent extends BaseAgent {
     const response = await this.providerManager.generate(prompt);
 
     return {
-      competitors: results,
-      total: results.length,
-      aiAnalysis: response.content,
-      provider: response.provider,
-      tokensUsed: response.tokensUsed,
-      timestamp: new Date().toISOString()
+      competitors,
+      total.length,
+      aiAnalysis.content,
+      provider.provider,
+      tokensUsed.tokensUsed,
+      timestampDate().toISOString()
     };
   }
 
-  private async generateInsights(payload: any): Promise<any> {
+  private async generateInsights(payload)<any> {
     const { scope, focus, limit = 10 } = payload;
 
     let results = this.insights;
@@ -336,8 +296,7 @@ export class StrategyAgent extends BaseAgent {
     // Use AI to generate new insights
     if (payload.generateNew) {
       const prompt = `
-        Generate strategic insights for a healthcare platform:
-        Current Insights: ${JSON.stringify(results.slice(0, 3))}
+        Generate strategic insights for a healthcare platformInsights: ${JSON.stringify(results.slice(0, 3))}
         Market Trends: ${JSON.stringify(this.marketTrends.slice(0, 3))}
         Competitors: ${JSON.stringify(this.competitiveAnalysis.slice(0, 3))}
         
@@ -353,34 +312,33 @@ export class StrategyAgent extends BaseAgent {
       const response = await this.providerManager.generate(prompt);
 
       return {
-        insights: results.slice(0, limit),
-        total: results.length,
-        newInsights: response.content,
-        provider: response.provider,
-        tokensUsed: response.tokensUsed,
-        timestamp: new Date().toISOString()
+        insights.slice(0, limit),
+        total.length,
+        newInsights.content,
+        provider.provider,
+        tokensUsed.tokensUsed,
+        timestampDate().toISOString()
       };
     }
 
     return {
-      insights: results.slice(0, limit),
-      total: results.length,
+      insights.slice(0, limit),
+      total.length,
       summary: {
-        opportunities: results.filter(i => i.type === 'Opportunity').length,
-        threats: results.filter(i => i.type === 'Threat').length,
-        highPriority: results.filter(i => i.priority === 'High' || i.priority === 'Critical').length
+        opportunities.filter(i => i.type === 'Opportunity').length,
+        threats.filter(i => i.type === 'Threat').length,
+        highPriority.filter(i => i.priority === 'High' || i.priority === 'Critical').length
       },
-      timestamp: new Date().toISOString()
+      timestampDate().toISOString()
     };
   }
 
-  private async strategicForecast(payload: any): Promise<any> {
+  private async strategicForecast(payload)<any> {
     const { horizon, metrics } = payload;
 
     // Use AI for forecasting
     const prompt = `
-      Generate a strategic forecast for the healthcare platform:
-      Horizon: ${horizon || '12 months'}
+      Generate a strategic forecast for the healthcare platform: ${horizon || '12 months'}
       
       Current Insights: ${JSON.stringify(this.insights.slice(0, 5))}
       Market Trends: ${JSON.stringify(this.marketTrends.slice(0, 5))}
@@ -398,15 +356,15 @@ export class StrategyAgent extends BaseAgent {
     const response = await this.providerManager.generate(prompt);
 
     return {
-      forecast: response.content,
-      horizon: horizon || '12 months',
-      provider: response.provider,
-      tokensUsed: response.tokensUsed,
-      generatedAt: new Date().toISOString()
+      forecast.content,
+      horizon|| '12 months',
+      provider.provider,
+      tokensUsed.tokensUsed,
+      generatedAtDate().toISOString()
     };
   }
 
-  private async handleComplexQuery(task: string, payload: any): Promise<any> {
+  private async handleComplexQuery(task, payload)<any> {
     const prompt = `
       Task: ${task}
       Payload: ${JSON.stringify(payload)}
@@ -421,13 +379,13 @@ export class StrategyAgent extends BaseAgent {
     const response = await this.providerManager.generate(prompt);
     
     return {
-      aiResponse: response.content,
-      provider: response.provider,
-      tokensUsed: response.tokensUsed
+      aiResponse.content,
+      provider.provider,
+      tokensUsed.tokensUsed
     };
   }
 
-  protected getRequiredCapability(task: string): string | null {
+  protected getRequiredCapability(task)| null {
     if (task.includes('market')) {
       return 'analyze_market';
     }
@@ -446,7 +404,7 @@ export class StrategyAgent extends BaseAgent {
   /**
    * Stop periodic analysis
    */
-  stopPeriodicAnalysis(): void {
+  stopPeriodicAnalysis(){
     if (this.analysisInterval) {
       clearInterval(this.analysisInterval);
       this.analysisInterval = null;
@@ -455,3 +413,5 @@ export class StrategyAgent extends BaseAgent {
     this.log('Periodic analysis stopped', 'info');
   }
 }
+
+

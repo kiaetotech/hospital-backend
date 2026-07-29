@@ -2,187 +2,177 @@ const mongoose = require('mongoose');
 
 const prescriptionSchema = new mongoose.Schema({
   // Prescription ID
-  prescriptionId: { type: String, unique: true, required: true },
+  prescriptionId: { type, unique, required},
   
   // Booking reference
-  bookingId: { type: String, required: true, index: true },
-  bookingType: { type: String, enum: ['opd', 'admission', 'ayurveda_consultation', 'homeopathy_consult'] },
+  bookingId: { type, required, index},
+  bookingType: { type, enum: ['opd', 'admission', 'ayurveda_consultation', 'homeopathy_consult'] },
   
   // Patient info
-  patientName: { type: String, required: true },
-  patientAge: Number,
-  patientGender: String,
-  patientPhone: String,
-  patientEmail: String,
-  userId: { type: mongoose.Schema.Types.ObjectId, ref: 'User' },
+  patientName: { type, required},
+  patientAge,
+  patientGender,
+  patientPhone,
+  patientEmail,
+  userId: { type.Schema.Types.ObjectId, ref: 'User' },
   
   // Doctor info
-  doctorId: { type: mongoose.Schema.Types.ObjectId, ref: 'Doctor' },
-  doctorName: { type: String, required: true },
-  doctorSpecialization: String,
-  doctorRegistrationNumber: String,
+  doctorId: { type.Schema.Types.ObjectId, ref: 'Doctor' },
+  doctorName: { type, required},
+  doctorSpecialization,
+  doctorRegistrationNumber,
   
   // Hospital info
-  hospitalId: { type: mongoose.Schema.Types.ObjectId, ref: 'Hospital' },
-  hospitalName: String,
+  hospitalId: { type.Schema.Types.ObjectId, ref: 'Hospital' },
+  hospitalName,
   
   // Consultation details
-  consultationDate: { type: Date, required: true },
-  consultationType: { type: String, enum: ['in_person', 'video', 'phone'] },
+  consultationDate: { type, required},
+  consultationType: { type, enum: ['in_person', 'video', 'phone'] },
   
   // Vital signs
   vitals: {
-    bloodPressure: String,
-    pulse: String,
-    temperature: String,
-    spo2: String,
-    weight: String,
-    height: String,
-    bmi: String
-  },
+    bloodPressure,
+    pulse,
+    temperature,
+    spo2,
+    weight,
+    height,
+    bmi},
   
   // Diagnosis
   diagnosis: [{
-    condition: String,
-    icd10_code: String,
-    severity: { type: String, enum: ['mild', 'moderate', 'severe', 'critical'] },
-    notes: String
-  }],
+    condition,
+    icd10_code,
+    severity: { type, enum: ['mild', 'moderate', 'severe', 'critical'] },
+    notes}],
   
   // Symptoms
   symptoms: [String],
   
   // Medicines prescribed
   medicines: [{
-    name: { type: String, required: true },
-    dosage: String,
+    name: { type, required},
+    dosage,
     frequency: { 
-      type: String, 
+      type, 
       enum: ['Once daily', 'Twice daily', 'Thrice daily', 'Four times daily', 'As needed', 'At bedtime', 'Before meals', 'After meals']
     },
-    duration: String,
-    duration_days: Number,
-    instructions: String,
-    quantity: Number,
+    duration,
+    duration_days,
+    instructions,
+    quantity,
     timing: {
-      morning: Boolean,
-      afternoon: Boolean,
-      evening: Boolean,
-      night: Boolean
-    },
-    before_after_food: { type: String, enum: ['before', 'after', 'with', 'any'] },
-    is_antibiotic: { type: Boolean, default: false },
-    refills: { type: Number, default: 0 }
+      morning,
+      afternoon,
+      evening,
+      night},
+    before_after_food: { type, enum: ['before', 'after', 'with', 'any'] },
+    is_antibiotic: { type, default},
+    refills: { type, default: 0 }
   }],
   
   // Lab tests recommended
   tests_recommended: [{
-    test_name: String,
-    test_code: String,
-    instructions: String,
-    is_urgent: { type: Boolean, default: false },
-    report_review_date: Date
-  }],
+    test_name,
+    test_code,
+    instructions,
+    is_urgent: { type, default},
+    report_review_date}],
   
   // Follow-up
   follow_up: {
-    required: { type: Boolean, default: false },
-    follow_up_date: Date,
-    follow_up_notes: String,
-    follow_up_booked: { type: Boolean, default: false },
-    follow_up_booking_id: String
-  },
+    required: { type, default},
+    follow_up_date,
+    follow_up_notes,
+    follow_up_booked: { type, default},
+    follow_up_booking_id},
   
   // Additional notes
-  doctor_notes: String,
-  advice: String,
-  diet_advice: String,
-  exercise_advice: String,
+  doctor_notes,
+  advice,
+  diet_advice,
+  exercise_advice,
   precautions: [String],
   
   // Referrals
   referrals: [{
-    doctor_name: String,
-    specialization: String,
-    hospital_name: String,
-    reason: String
-  }],
+    doctor_name,
+    specialization,
+    hospital_name,
+    reason}],
   
   // Attachments
   attachments: [{
-    name: String,
-    url: String,
-    type: { type: String, enum: ['report', 'scan', 'image', 'document'] },
-    uploaded_at: { type: Date, default: Date.now }
+    name,
+    url,
+    type: { type, enum: ['report', 'scan', 'image', 'document'] },
+    uploaded_at: { type, default.now }
   }],
   
   // Digital signature
   digital_signature: {
-    signed: { type: Boolean, default: false },
-    signature_url: String,
-    signed_at: Date,
-    ip_address: String
-  },
+    signed: { type, default},
+    signature_url,
+    signed_at,
+    ip_address},
   
   // Status
   status: { 
-    type: String, 
+    type, 
     enum: ['draft', 'active', 'completed', 'expired', 'cancelled'],
     default: 'active'
   },
   
   // Validity
-  valid_until: Date,
+  valid_until,
   
   // Pharmacy fulfillment
   pharmacy: {
-    dispensed: { type: Boolean, default: false },
-    pharmacy_name: String,
-    pharmacist_name: String,
-    dispensed_at: Date,
-    notes: String
-  },
+    dispensed: { type, default},
+    pharmacy_name,
+    pharmacist_name,
+    dispensed_at,
+    notes},
   
   // Prescription type
   prescription_type: { 
-    type: String, 
+    type, 
     enum: ['allopathy', 'ayurveda', 'homeopathy', 'general'],
     default: 'allopathy'
   },
   
   // For Ayurveda
   ayurveda_details: {
-    prakriti_type: String,
-    dosha_analysis: String,
-    panchakarma_recommended: Boolean,
+    prakriti_type,
+    dosha_analysis,
+    panchakarma_recommended,
     herbs_recommended: [String],
-    lifestyle_advice: String
-  },
+    lifestyle_advice},
   
   // For Homeopathy
   homeopathy_details: {
-    remedy_name: String,
-    potency: String,
-    dosage_form: String,
-    case_analysis: String
-  },
+    remedy_name,
+    potency,
+    dosage_form,
+    case_analysis},
   
   // Next review
-  next_review_date: Date,
+  next_review_date,
   
   // Share settings
-  shareable_link: String,
-  is_shared: { type: Boolean, default: false },
+  shareable_link,
+  is_shared: { type, default},
   shared_with: [String],
   
   // Emergency
-  is_emergency: { type: Boolean, default: false },
+  is_emergency: { type, default},
   
   // Timestamps
-  created_at: { type: Date, default: Date.now },
-  updated_at: { type: Date, default: Date.now }
+  created_at: { type, default.now },
+  updated_at: { type, default.now }
 
-}, { timestamps: true });
+}, { timestamps});
 
 // Indexes
 prescriptionSchema.index({ prescriptionId: 1 });
@@ -207,61 +197,60 @@ prescriptionSchema.pre('save', function(next) {
   next();
 });
 
-// Virtual: Is prescription valid
+// Virtualprescription valid
 prescriptionSchema.virtual('isValid').get(function() {
   if (this.status === 'expired' || this.status === 'cancelled') return false;
   if (this.valid_until && new Date() > this.valid_until) return false;
   return this.status === 'active';
 });
 
-// Virtual: Medicine count
+// Virtualcount
 prescriptionSchema.virtual('medicineCount').get(function() {
   return this.medicines?.length || 0;
 });
 
-// Virtual: Test count
+// Virtualcount
 prescriptionSchema.virtual('testCount').get(function() {
   return this.tests_recommended?.length || 0;
 });
 
-// Method: Mark as dispensed
+// Methodas dispensed
 prescriptionSchema.methods.markAsDispensed = function(pharmacyName, pharmacistName) {
   this.pharmacy = {
-    dispensed: true,
-    pharmacy_name: pharmacyName,
-    pharmacist_name: pharmacistName,
-    dispensed_at: new Date()
+    dispensed,
+    pharmacy_name,
+    pharmacist_name,
+    dispensed_atDate()
   };
   return this.save();
 };
 
-// Method: Sign prescription
+// Methodprescription
 prescriptionSchema.methods.sign = function(signatureUrl, ipAddress) {
   this.digital_signature = {
-    signed: true,
-    signature_url: signatureUrl,
-    signed_at: new Date(),
-    ip_address: ipAddress
-  };
+    signed,
+    signature_url,
+    signed_atDate(),
+    ip_address};
   return this.save();
 };
 
-// Method: Expire prescription
+// Methodprescription
 prescriptionSchema.methods.expire = function() {
   this.status = 'expired';
   this.valid_until = new Date();
   return this.save();
 };
 
-// Static: Get prescriptions for patient
+// Staticprescriptions for patient
 prescriptionSchema.statics.getPatientPrescriptions = function(phone, limit = 20) {
-  return this.find({ patientPhone: phone })
+  return this.find({ patientPhone})
     .sort({ created_at: -1 })
     .limit(limit)
     .lean();
 };
 
-// Static: Get prescriptions by doctor
+// Staticprescriptions by doctor
 prescriptionSchema.statics.getDoctorPrescriptions = function(doctorId, filters = {}) {
   const query = { doctorId, ...filters };
   return this.find(query)
@@ -270,3 +259,4 @@ prescriptionSchema.statics.getDoctorPrescriptions = function(doctorId, filters =
 };
 
 module.exports = mongoose.model('Prescription', prescriptionSchema);
+

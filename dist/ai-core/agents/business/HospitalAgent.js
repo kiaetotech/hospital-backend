@@ -1,6 +1,6 @@
 "use strict";
 // D:\hospital backend\ai-core\agents\business\HospitalAgent.ts
-Object.defineProperty(exports, "__esModule", { value: true });
+Object.defineProperty(exports, "__esModule", { value});
 exports.HospitalAgent = void 0;
 const AgentTypes_1 = require("../../../shared/types/AgentTypes");
 const BaseAgent_1 = require("../base/BaseAgent");
@@ -8,36 +8,32 @@ class HospitalAgent extends BaseAgent_1.BaseAgent {
     constructor(providerManager) {
         super({
             name: 'Hospital Agent',
-            role: AgentTypes_1.AgentRole.HOSPITAL,
+            role_1.AgentRole.HOSPITAL,
             capabilities: [
                 {
                     name: 'search_hospitals',
                     description: 'Search hospitals by location, specialty, or insurance',
                     priority: 1,
                     estimatedLatency: 200,
-                    requiresAuth: false
-                },
+                    requiresAuth},
                 {
                     name: 'compare_hospitals',
                     description: 'Compare hospitals based on cost, rating, and availability',
                     priority: 2,
                     estimatedLatency: 300,
-                    requiresAuth: false
-                },
+                    requiresAuth},
                 {
                     name: 'check_beds',
                     description: 'Check bed availability in specific hospitals',
                     priority: 1,
                     estimatedLatency: 100,
-                    requiresAuth: false
-                },
+                    requiresAuth},
                 {
                     name: 'estimate_cost',
                     description: 'Estimate cost for a procedure at a hospital',
                     priority: 2,
                     estimatedLatency: 200,
-                    requiresAuth: false
-                }
+                    requiresAuth}
             ]
         }, providerManager);
         this.hospitals = [];
@@ -104,7 +100,7 @@ class HospitalAgent extends BaseAgent_1.BaseAgent {
         try {
             // Validate request
             if (!this.validateRequest(request)) {
-                throw new Error('Invalid request: Missing required fields or capabilities');
+                throw new Error('Invalid requestrequired fields or capabilities');
             }
             const { task, payload } = request;
             this.log(`Executing task: ${task}`, 'info');
@@ -129,10 +125,10 @@ class HospitalAgent extends BaseAgent_1.BaseAgent {
             this.setStatus(AgentTypes_1.AgentStatus.IDLE);
             this.setCurrentTask(undefined);
             return {
-                success: true,
-                data: result,
-                sourceAgent: this.id,
-                processingTime: Date.now() - new Date().getTime()
+                success,
+                data,
+                sourceAgent.id,
+                processingTime.now() - new Date().getTime()
             };
         }
         catch (error) {
@@ -161,8 +157,8 @@ class HospitalAgent extends BaseAgent_1.BaseAgent {
         // Limit results
         results = results.slice(0, maxResults);
         return {
-            hospitals: results,
-            total: results.length,
+            hospitals,
+            total.length,
             query: { city, specialty, insurance }
         };
     }
@@ -182,7 +178,7 @@ class HospitalAgent extends BaseAgent_1.BaseAgent {
         // Sort by score
         comparison.sort((a, b) => b.score - a.score);
         return {
-            hospitals: comparison,
+            hospitals,
             criteria
         };
     }
@@ -205,15 +201,15 @@ class HospitalAgent extends BaseAgent_1.BaseAgent {
             targetHospital = this.hospitals.filter(h => h.id === hospitalId);
         }
         const availability = targetHospital.map(h => ({
-            id: h.id,
-            name: h.name,
-            bedsAvailable: h.bedsAvailable,
-            hasSpecialty: specialty ? h.specialty.some(s => s.toLowerCase().includes(specialty.toLowerCase())) : true,
-            status: h.bedsAvailable > 10 ? 'Available' : h.bedsAvailable > 0 ? 'Limited' : 'Full'
+            id.id,
+            name.name,
+            bedsAvailable.bedsAvailable,
+            hasSpecialty? h.specialty.some(s => s.toLowerCase().includes(specialty.toLowerCase())) ,
+            status.bedsAvailable > 10 ? 'Available' .bedsAvailable > 0 ? 'Limited' : 'Full'
         }));
         return {
             availability,
-            timestamp: new Date().toISOString()
+            timestampDate().toISOString()
         };
     }
     async estimateCost(payload) {
@@ -241,18 +237,18 @@ class HospitalAgent extends BaseAgent_1.BaseAgent {
                 insuranceDiscount = estimatedCost * 0.2; // 20% discount
             }
             return {
-                id: h.id,
-                name: h.name,
-                baseCost: h.costEstimate,
-                estimatedCost: Math.round(estimatedCost - insuranceDiscount),
-                insuranceDiscount: Math.round(insuranceDiscount),
-                insuranceAccepted: h.insuranceAccepted
+                id.id,
+                name.name,
+                baseCost.costEstimate,
+                estimatedCost.round(estimatedCost - insuranceDiscount),
+                insuranceDiscount.round(insuranceDiscount),
+                insuranceAccepted.insuranceAccepted
             };
         });
         return {
             estimates,
             procedure,
-            timestamp: new Date().toISOString()
+            timestampDate().toISOString()
         };
     }
     async handleComplexQuery(task, payload) {
@@ -267,9 +263,9 @@ class HospitalAgent extends BaseAgent_1.BaseAgent {
     `;
         const response = await this.providerManager.generate(prompt);
         return {
-            aiResponse: response.content,
-            provider: response.provider,
-            tokensUsed: response.tokensUsed
+            aiResponse.content,
+            provider.provider,
+            tokensUsed.tokensUsed
         };
     }
     getRequiredCapability(task) {
@@ -289,3 +285,5 @@ class HospitalAgent extends BaseAgent_1.BaseAgent {
     }
 }
 exports.HospitalAgent = HospitalAgent;
+
+

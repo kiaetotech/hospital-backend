@@ -1,6 +1,6 @@
 const mongoose = require('mongoose');
 
-const DB_URI = 'mongodb+srv://kiaetotech:YOUR_PASSWORD@cluster0.4vjxrfm.mongodb.net/';
+const DB_URI = 'mongodb+srv://kiaetotech_PASSWORD@cluster0.4vjxrfm.mongodb.net/';
 
 async function test() {
   try {
@@ -15,3 +15,4 @@ async function test() {
 }
 
 test();
+

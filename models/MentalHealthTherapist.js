@@ -3,7 +3,7 @@ const mongoose = require('mongoose');
 const mentalHealthTherapistSchema = new mongoose.Schema({
   // User Reference
   userId: {
-    type: mongoose.Schema.Types.ObjectId,
+    type.Schema.Types.ObjectId,
     ref: 'User'
   },
   
@@ -11,30 +11,27 @@ const mentalHealthTherapistSchema = new mongoose.Schema({
   // PERSONAL INFORMATION
   // ============================================
   name: {
-    type: String,
+    type,
     required: [true, 'Name is required'],
-    trim: true
-  },
+    trim},
   phone: {
-    type: String,
+    type,
     required: [true, 'Phone number is required'],
-    unique: true,
-    trim: true
-  },
+    unique,
+    trim},
   email: {
-    type: String,
+    type,
     required: [true, 'Email is required'],
-    unique: true,
-    lowercase: true,
-    trim: true
-  },
+    unique,
+    lowercase,
+    trim},
   password: {
-    type: String,
+    type,
     required: [true, 'Password is required'],
     minlength: 6
   },
   profileImage: {
-    type: String,
+    type,
     default: ''
   },
   
@@ -42,35 +39,31 @@ const mentalHealthTherapistSchema = new mongoose.Schema({
   // LOCATION
   // ============================================
   city: {
-    type: String,
+    type,
     required: [true, 'City is required'],
-    trim: true
-  },
+    trim},
   state: {
-    type: String,
+    type,
     required: [true, 'State is required'],
-    trim: true
-  },
+    trim},
   address: {
-    street: String,
-    pincode: String,
+    street,
+    pincode,
     coordinates: {
-      lat: Number,
-      lng: Number
-    }
+      lat,
+      lng}
   },
   
   // ============================================
   // PROFESSIONAL DETAILS
   // ============================================
   licenseNumber: {
-    type: String,
+    type,
     required: [true, 'License number is required'],
-    unique: true,
-    trim: true
-  },
+    unique,
+    trim},
   licenseCouncil: {
-    type: String,
+    type,
     default: ''
   },
   specializations: {
@@ -79,17 +72,17 @@ const mentalHealthTherapistSchema = new mongoose.Schema({
     default: []
   },
   experience: {
-    type: Number,
+    type,
     required: [true, 'Years of experience is required'],
     min: 0,
     default: 0
   },
   education: {
-    type: String,
+    type,
     default: ''
   },
   about: {
-    type: String,
+    type,
     default: ''
   },
   languages: {
@@ -101,35 +94,35 @@ const mentalHealthTherapistSchema = new mongoose.Schema({
   // ✅ FIXED PRICING - CORRECT STRUCTURE
   // ============================================
   consultationFee: {
-    type: Number,
+    type,
     required: [true, 'Consultation fee is required'],
     min: 0,
     default: 500
   },
   pricing: {
     consultation: {
-      type: Number,
+      type,
       required: [true, 'Pricing consultation is required'],
       default: 500
     },
     videoTherapy: {
-      type: Number,
+      type,
       default: 500
     },
     audioTherapy: {
-      type: Number,
+      type,
       default: 400
     },
     textTherapy: {
-      type: Number,
+      type,
       default: 300
     },
     emergency: {
-      type: Number,
+      type,
       default: 800
     },
     packageDiscount: {
-      type: Number,
+      type,
       default: 10
     }
   },
@@ -138,41 +131,41 @@ const mentalHealthTherapistSchema = new mongoose.Schema({
   // CONSULTATION TYPES
   // ============================================
   consultationTypes: {
-    video: { type: Boolean, default: true },
-    audio: { type: Boolean, default: true },
-    text: { type: Boolean, default: true },
-    anonymous: { type: Boolean, default: true },
-    emergency: { type: Boolean, default: false }
+    video: { type, default},
+    audio: { type, default},
+    text: { type, default},
+    anonymous: { type, default},
+    emergency: { type, default}
   },
   
   // ============================================
   // AVAILABILITY
   // ============================================
   availability: {
-    monday: { start: String, end: String, isAvailable: { type: Boolean, default: true } },
-    tuesday: { start: String, end: String, isAvailable: { type: Boolean, default: true } },
-    wednesday: { start: String, end: String, isAvailable: { type: Boolean, default: true } },
-    thursday: { start: String, end: String, isAvailable: { type: Boolean, default: true } },
-    friday: { start: String, end: String, isAvailable: { type: Boolean, default: true } },
-    saturday: { start: String, end: String, isAvailable: { type: Boolean, default: false } },
-    sunday: { start: String, end: String, isAvailable: { type: Boolean, default: false } }
+    monday: { start, end, isAvailable: { type, default} },
+    tuesday: { start, end, isAvailable: { type, default} },
+    wednesday: { start, end, isAvailable: { type, default} },
+    thursday: { start, end, isAvailable: { type, default} },
+    friday: { start, end, isAvailable: { type, default} },
+    saturday: { start, end, isAvailable: { type, default} },
+    sunday: { start, end, isAvailable: { type, default} }
   },
   
   // ============================================
   // RATINGS
   // ============================================
   rating: {
-    type: Number,
+    type,
     min: 0,
     max: 5,
     default: 0
   },
   totalReviews: {
-    type: Number,
+    type,
     default: 0
   },
   totalSessions: {
-    type: Number,
+    type,
     default: 0
   },
   
@@ -180,78 +173,75 @@ const mentalHealthTherapistSchema = new mongoose.Schema({
   // VERIFICATION
   // ============================================
   verificationStatus: {
-    type: String,
+    type,
     enum: ['pending', 'approved', 'rejected'],
     default: 'pending'
   },
   isActive: {
-    type: Boolean,
-    default: true
-  },
+    type,
+    default},
 
   // ============================================
   // 🆕 CORPORATE HEALTH
   // ============================================
   servesCorporate: { 
-    type: Boolean, 
-    default: false,
-    index: true
-  },
+    type, 
+    default,
+    index},
   
   corporatePackages: [{
-    packageName: { type: String, required: true },
+    packageName: { type, required},
     packageType: {
-      type: String,
+      type,
       enum: ['employee_assistance_program', 'group_therapy', 'wellness_workshop', 'stress_management', 'crisis_support', 'custom'],
       default: 'employee_assistance_program'
     },
-    description: String,
+    description,
     servicesIncluded: [String],
-    pricePerEmployee: { type: Number, required: true },
-    discountedPricePerEmployee: Number,
-    minEmployees: { type: Number, default: 10 },
-    maxEmployees: Number,
-    validityDays: { type: Number, default: 365 },
-    sessionsPerEmployee: { type: Number, default: 4 },
-    sessionDurationMinutes: { type: Number, default: 50 },
+    pricePerEmployee: { type, required},
+    discountedPricePerEmployee,
+    minEmployees: { type, default: 10 },
+    maxEmployees,
+    validityDays: { type, default: 365 },
+    sessionsPerEmployee: { type, default: 4 },
+    sessionDurationMinutes: { type, default: 50 },
     availableCities: [String],
     dedicatedPOC: {
-      name: String,
-      phone: String,
-      email: String
-    },
-    anonymityGuaranteed: { type: Boolean, default: true },
-    slaTerms: String,
-    isActive: { type: Boolean, default: true },
-    createdAt: { type: Date, default: Date.now },
-    updatedAt: { type: Date, default: Date.now }
+      name,
+      phone,
+      email},
+    anonymityGuaranteed: { type, default},
+    slaTerms,
+    isActive: { type, default},
+    createdAt: { type, default.now },
+    updatedAt: { type, default.now }
   }],
   
   corporateEnquiries: [{
-    companyName: String,
-    contactPerson: String,
-    email: String,
-    phone: String,
-    employeeCount: Number,
-    requirements: String,
+    companyName,
+    contactPerson,
+    email,
+    phone,
+    employeeCount,
+    requirements,
     status: {
-      type: String,
+      type,
       enum: ['new', 'contacted', 'negotiating', 'converted', 'closed'],
       default: 'new'
     },
-    createdAt: { type: Date, default: Date.now }
+    createdAt: { type, default.now }
   }],
   
   // ============================================
   // TIMESTAMPS
   // ============================================
   createdAt: {
-    type: Date,
-    default: Date.now
+    type,
+    default.now
   },
   updatedAt: {
-    type: Date,
-    default: Date.now
+    type,
+    default.now
   }
 });
 
@@ -296,21 +286,21 @@ mentalHealthTherapistSchema.statics = {
   async findBySpecialization(specialization) {
     return this.find({
       specializations: { $in: [specialization] },
-      isActive: true,
+      isActive,
       verificationStatus: 'approved'
     }).sort({ rating: -1 });
   },
   
   async findVerified(limit = 20) {
     return this.find({
-      isActive: true,
+      isActive,
       verificationStatus: 'approved'
     }).sort({ rating: -1 }).limit(limit);
   },
   
   async updateRating(therapistId) {
     const result = await this.aggregate([
-      { $match: { _id: mongoose.Types.ObjectId(therapistId) } },
+      { $match: { _id.Types.ObjectId(therapistId) } },
       {
         $lookup: {
           from: 'reviews',
@@ -329,17 +319,17 @@ mentalHealthTherapistSchema.statics = {
     
     if (result.length > 0) {
       await this.findByIdAndUpdate(therapistId, {
-        rating: result[0].avgRating || 0,
-        totalReviews: result[0].totalReviews || 0
+        rating[0].avgRating || 0,
+        totalReviews[0].totalReviews || 0
       });
     }
   },
 
   // 🆕 Find corporate therapists
   async findCorporateTherapists(city = null) {
-    const query = { servesCorporate: true, isActive: true, verificationStatus: 'approved' };
+    const query = { servesCorporate, isActive, verificationStatus: 'approved' };
     if (city) {
-      query.city = { $regex: new RegExp(city, 'i') };
+      query.city = { $regexRegExp(city, 'i') };
     }
     return this.find(query).select('name city specializations rating corporatePackages profileImage');
   }
@@ -383,3 +373,4 @@ mentalHealthTherapistSchema.methods = {
 };
 
 module.exports = mongoose.model('MentalHealthTherapist', mentalHealthTherapistSchema);
+

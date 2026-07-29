@@ -1,29 +1,29 @@
 const mongoose = require('mongoose');
 
 const CorporateHRSchema = new mongoose.Schema({
-  companyId: { type: mongoose.Schema.Types.ObjectId, ref: 'CorporatePlan', required: true },
-  name: { type: String, required: true },
-  email: { type: String, required: true, unique: true },
-  password: { type: String, required: true },
-  phone: { type: String },
+  companyId: { type.Schema.Types.ObjectId, ref: 'CorporatePlan', required},
+  name: { type, required},
+  email: { type, required, unique},
+  password: { type, required},
+  phone: { type},
   role: { 
-    type: String, 
+    type, 
     enum: ['hr_admin', 'hr_manager', 'hr_viewer'], 
     default: 'hr_admin' 
   },
   permissions: {
-    addEmployees: { type: Boolean, default: true },
-    removeEmployees: { type: Boolean, default: true },
-    viewClaims: { type: Boolean, default: true },
-    viewReports: { type: Boolean, default: true },
-    managePayments: { type: Boolean, default: true }
+    addEmployees: { type, default},
+    removeEmployees: { type, default},
+    viewClaims: { type, default},
+    viewReports: { type, default},
+    managePayments: { type, default}
   },
-  isActive: { type: Boolean, default: true },
-  lastLogin: { type: Date },
-  createdAt: { type: Date, default: Date.now },
-  updatedAt: { type: Date, default: Date.now }
+  isActive: { type, default},
+  lastLogin: { type},
+  createdAt: { type, default.now },
+  updatedAt: { type, default.now }
 }, {
-  timestamps: true
-});
+  timestamps});
 
 module.exports = mongoose.model('CorporateHR', CorporateHRSchema);
+

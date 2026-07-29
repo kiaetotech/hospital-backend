@@ -7,7 +7,7 @@ const Hospital = require('../models/Hospital');
 const DiagnosticsProvider = require('../models/DiagnosticsProvider');
 const router = express.Router();
 
-const upload = multer({ storage: multer.memoryStorage() });
+const upload = multer({ storage.memoryStorage() });
 
 // ============================================
 // UPLOAD MASTER TESTS LIST (Admin)
@@ -22,20 +22,20 @@ router.post('/tests', upload.single('file'), async (req, res) => {
     let count = 0;
     for (const row of data) {
       await Test.findOneAndUpdate(
-        { testName: row.testName },
+        { testName.testName },
         {
-          testName: row.testName,
-          category: row.category || 'Uncategorized',
-          subCategory: row.subCategory || '',
-          description: row.description || ''
+          testName.testName,
+          category.category || 'Uncategorized',
+          subCategory.subCategory || '',
+          description.description || ''
         },
-        { upsert: true }
+        { upsert}
       );
       count++;
     }
-    res.json({ success: true, count, message: `${count} tests uploaded` });
+    res.json({ success, count, message: `${count} tests uploaded` });
   } catch (error) {
-    res.status(500).json({ error: error.message });
+    res.status(500).json({ error.message });
   }
 });
 
@@ -53,29 +53,29 @@ router.post('/prices', global.authenticateToken, upload.single('file'), async (r
     let count = 0;
     for (const row of data) {
       await Test.findOneAndUpdate(
-        { testName: row.testName },
+        { testName.testName },
         { 
-          testName: row.testName, 
-          category: row.category || 'Lab Tests',
-          subCategory: row.subCategory || ''
+          testName.testName, 
+          category.category || 'Lab Tests',
+          subCategory.subCategory || ''
         },
-        { upsert: true }
+        { upsert}
       );
       
       await ProviderPrice.findOneAndUpdate(
-        { providerId: req.user.id, testName: row.testName },
+        { providerId.user.id, testName.testName },
         {
-          providerId: req.user.id,
-          providerName: req.user.providerName || req.user.name || 'Provider',
-          testName: row.testName,
-          price: row.price,
-          discountedPrice: row.discountedPrice || row.price,
-          homeCollectionAvailable: row.homeCollectionAvailable === 'Yes' || row.homeCollectionAvailable === true,
-          reportTimeHours: row.reportTimeHours || 24,
-          city: row.city || 'All',
-          rating: row.rating || 4.0
+          providerId.user.id,
+          providerName.user.providerName || req.user.name || 'Provider',
+          testName.testName,
+          price.price,
+          discountedPrice.discountedPrice || row.price,
+          homeCollectionAvailable.homeCollectionAvailable === 'Yes' || row.homeCollectionAvailable === true,
+          reportTimeHours.reportTimeHours || 24,
+          city.city || 'All',
+          rating.rating || 4.0
         },
-        { upsert: true }
+        { upsert}
       );
       count++;
     }
@@ -88,7 +88,7 @@ router.post('/prices', global.authenticateToken, upload.single('file'), async (r
       await Hospital.findByIdAndUpdate(providerId, {
         $push: {
           upload_history: {
-            filename: req.file.originalname,
+            filename.file.originalname,
             type: 'lab_prices',
             status: 'completed'
           }
@@ -98,7 +98,7 @@ router.post('/prices', global.authenticateToken, upload.single('file'), async (r
       await DiagnosticsProvider.findByIdAndUpdate(providerId, {
         $push: {
           upload_history: {
-            filename: req.file.originalname,
+            filename.file.originalname,
             type: 'lab_prices',
             status: 'completed'
           }
@@ -106,9 +106,9 @@ router.post('/prices', global.authenticateToken, upload.single('file'), async (r
       });
     }
     
-    res.json({ success: true, count, message: `${count} prices uploaded` });
+    res.json({ success, count, message: `${count} prices uploaded` });
   } catch (error) {
-    res.status(500).json({ error: error.message });
+    res.status(500).json({ error.message });
   }
 });
 
@@ -117,10 +117,10 @@ router.post('/prices', global.authenticateToken, upload.single('file'), async (r
 // ============================================
 router.get('/my-prices', global.authenticateToken, async (req, res) => {
   try {
-    const prices = await ProviderPrice.find({ providerId: req.user.id, isActive: true });
+    const prices = await ProviderPrice.find({ providerId.user.id, isActive});
     res.json(prices);
   } catch (error) {
-    res.status(500).json({ error: error.message });
+    res.status(500).json({ error.message });
   }
 });
 
@@ -129,16 +129,16 @@ router.get('/my-prices', global.authenticateToken, async (req, res) => {
 // ============================================
 router.get('/prices', async (req, res) => {
   try {
-    const prices = await ProviderPrice.find({ isActive: true });
+    const prices = await ProviderPrice.find({ isActive});
     res.json(prices);
   } catch (error) {
-    res.status(500).json({ error: error.message });
+    res.status(500).json({ error.message });
   }
 });
 
 // ============================================
 // GENERAL FILE UPLOAD (Images, Documents)
-// Used by: Hospitals, Diagnostics, Ambulance, Caregivers, All Providers
+// Used by, Diagnostics, Ambulance, Caregivers, All Providers
 // ============================================
 router.post('/file', global.authenticateToken, upload.single('file'), async (req, res) => {
   try {
@@ -153,23 +153,24 @@ router.post('/file', global.authenticateToken, upload.single('file'), async (req
     const role = req.user.role;
     
     const historyEntry = {
-      filename: req.file.originalname,
-      type: req.body.type || 'document',
+      filename.file.originalname,
+      type.body.type || 'document',
       status: 'completed'
     };
     
     if (role === 'hospital') {
-      await Hospital.findByIdAndUpdate(providerId, { $push: { upload_history: historyEntry } });
+      await Hospital.findByIdAndUpdate(providerId, { $push: { upload_history} });
     } else if (role === 'diagnostics') {
       try {
-        await DiagnosticsProvider.findByIdAndUpdate(providerId, { $push: { upload_history: historyEntry } });
+        await DiagnosticsProvider.findByIdAndUpdate(providerId, { $push: { upload_history} });
       } catch(e) {}
     }
     
-    res.json({ success: true, url: result.secure_url });
+    res.json({ success, url.secure_url });
   } catch (error) {
-    res.status(500).json({ success: false, message: error.message });
+    res.status(500).json({ success, message.message });
   }
 });
 
 module.exports = router;
+

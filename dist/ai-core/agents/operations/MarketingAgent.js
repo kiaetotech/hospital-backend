@@ -1,6 +1,6 @@
 "use strict";
 // D:\hospital backend\ai-core\agents\operations\MarketingAgent.ts
-Object.defineProperty(exports, "__esModule", { value: true });
+Object.defineProperty(exports, "__esModule", { value});
 exports.MarketingAgent = void 0;
 const AgentTypes_1 = require("../../../shared/types/AgentTypes");
 const BaseAgent_1 = require("../base/BaseAgent");
@@ -8,36 +8,32 @@ class MarketingAgent extends BaseAgent_1.BaseAgent {
     constructor(providerManager) {
         super({
             name: 'Marketing Agent',
-            role: AgentTypes_1.AgentRole.MARKETING,
+            role_1.AgentRole.MARKETING,
             capabilities: [
                 {
                     name: 'generate_content',
                     description: 'Generate SEO blogs, social posts, email campaigns',
                     priority: 1,
                     estimatedLatency: 400,
-                    requiresAuth: false
-                },
+                    requiresAuth},
                 {
                     name: 'create_campaign',
                     description: 'Create and manage marketing campaigns',
                     priority: 1,
                     estimatedLatency: 250,
-                    requiresAuth: true
-                },
+                    requiresAuth},
                 {
                     name: 'analyze_campaign',
                     description: 'Analyze campaign performance',
                     priority: 2,
                     estimatedLatency: 200,
-                    requiresAuth: true
-                },
+                    requiresAuth},
                 {
                     name: 'suggest_optimizations',
                     description: 'Suggest SEO and campaign optimizations',
                     priority: 2,
                     estimatedLatency: 300,
-                    requiresAuth: true
-                }
+                    requiresAuth}
             ]
         }, providerManager);
         this.campaigns = [];
@@ -62,10 +58,10 @@ class MarketingAgent extends BaseAgent_1.BaseAgent {
                     conversionRate: 5.0,
                     roi: 250
                 },
-                startDate: new Date('2026-07-01'),
-                endDate: new Date('2026-07-31'),
-                createdAt: new Date('2026-06-15'),
-                updatedAt: new Date('2026-07-15')
+                startDateDate('2026-07-01'),
+                endDateDate('2026-07-31'),
+                createdAtDate('2026-06-15'),
+                updatedAtDate('2026-07-15')
             },
             {
                 id: 'cam2',
@@ -83,10 +79,10 @@ class MarketingAgent extends BaseAgent_1.BaseAgent {
                     conversionRate: 0,
                     roi: 0
                 },
-                startDate: new Date('2026-08-01'),
-                endDate: new Date('2026-08-15'),
-                createdAt: new Date('2026-07-20'),
-                updatedAt: new Date('2026-07-20')
+                startDateDate('2026-08-01'),
+                endDateDate('2026-08-15'),
+                createdAtDate('2026-07-20'),
+                updatedAtDate('2026-07-20')
             }
         ];
         this.contentSuggestions = [
@@ -100,7 +96,7 @@ class MarketingAgent extends BaseAgent_1.BaseAgent {
                 tone: 'Informative',
                 suggestedLength: '1500-2000 words',
                 seoScore: 85,
-                createdAt: new Date('2026-07-10')
+                createdAtDate('2026-07-10')
             },
             {
                 id: 'cs2',
@@ -112,7 +108,7 @@ class MarketingAgent extends BaseAgent_1.BaseAgent {
                 tone: 'Encouraging',
                 suggestedLength: '150-200 words',
                 seoScore: 75,
-                createdAt: new Date('2026-07-12')
+                createdAtDate('2026-07-12')
             }
         ];
     }
@@ -121,7 +117,7 @@ class MarketingAgent extends BaseAgent_1.BaseAgent {
         this.setCurrentTask(request.task);
         try {
             if (!this.validateRequest(request)) {
-                throw new Error('Invalid request: Missing required fields or capabilities');
+                throw new Error('Invalid requestrequired fields or capabilities');
             }
             const { task, payload } = request;
             this.log(`Executing task: ${task}`, 'info');
@@ -144,10 +140,10 @@ class MarketingAgent extends BaseAgent_1.BaseAgent {
             this.setStatus(AgentTypes_1.AgentStatus.IDLE);
             this.setCurrentTask(undefined);
             return {
-                success: true,
-                data: result,
-                sourceAgent: this.id,
-                processingTime: Date.now() - new Date().getTime()
+                success,
+                data,
+                sourceAgent.id,
+                processingTime.now() - new Date().getTime()
             };
         }
         catch (error) {
@@ -172,12 +168,12 @@ class MarketingAgent extends BaseAgent_1.BaseAgent {
     `;
         const response = await this.providerManager.generate(prompt);
         return {
-            content: response.content,
-            type: type || 'Blog',
-            topic: topic || 'Health & Wellness',
-            generatedAt: new Date().toISOString(),
-            provider: response.provider,
-            tokensUsed: response.tokensUsed
+            content.content,
+            type|| 'Blog',
+            topic|| 'Health & Wellness',
+            generatedAtDate().toISOString(),
+            provider.provider,
+            tokensUsed.tokensUsed
         };
     }
     async createCampaign(payload) {
@@ -190,7 +186,7 @@ class MarketingAgent extends BaseAgent_1.BaseAgent {
             name,
             type,
             status: 'Draft',
-            audience: audience || ['All Customers'],
+            audience|| ['All Customers'],
             budget,
             spent: 0,
             metrics: {
@@ -201,10 +197,10 @@ class MarketingAgent extends BaseAgent_1.BaseAgent {
                 conversionRate: 0,
                 roi: 0
             },
-            startDate: startDate || new Date(),
-            endDate: endDate || new Date(Date.now() + 30 * 24 * 60 * 60 * 1000),
-            createdAt: new Date(),
-            updatedAt: new Date()
+            startDate|| new Date(),
+            endDate|| new Date(Date.now() + 30 * 24 * 60 * 60 * 1000),
+            createdAtDate(),
+            updatedAtDate()
         };
         this.campaigns.push(campaign);
         return {
@@ -226,23 +222,23 @@ class MarketingAgent extends BaseAgent_1.BaseAgent {
         }
         const analysis = targetCampaigns.map(c => {
             const roi = c.metrics.roi || 0;
-            const performance = roi > 200 ? 'Excellent' : roi > 100 ? 'Good' : roi > 50 ? 'Average' : 'Poor';
+            const performance = roi > 200 ? 'Excellent' > 100 ? 'Good' > 50 ? 'Average' : 'Poor';
             return {
-                campaign: c.name,
-                type: c.type,
-                status: c.status,
-                metrics: c.metrics,
+                campaign.name,
+                type.type,
+                status.status,
+                metrics.metrics,
                 roi,
                 performance,
-                recommendations: this.getCampaignRecommendations(c)
+                recommendations.getCampaignRecommendations(c)
             };
         });
         return {
             analysis,
             summary: {
-                totalCampaigns: targetCampaigns.length,
-                activeCampaigns: targetCampaigns.filter(c => c.status === 'Running').length,
-                averageROI: targetCampaigns.reduce((sum, c) => sum + c.metrics.roi, 0) / targetCampaigns.length || 0
+                totalCampaigns.length,
+                activeCampaigns.filter(c => c.status === 'Running').length,
+                averageROI.reduce((sum, c) => sum + c.metrics.roi, 0) / targetCampaigns.length || 0
             }
         };
     }
@@ -267,8 +263,7 @@ class MarketingAgent extends BaseAgent_1.BaseAgent {
         const { url, topic } = payload;
         // Use AI to suggest SEO optimizations
         const prompt = `
-      Analyze the following topic and suggest SEO optimizations:
-      Topic: ${topic || 'Healthcare platform'}
+      Analyze the following topic and suggest SEO optimizations: ${topic || 'Healthcare platform'}
       URL: ${url || 'N/A'}
       
       Please provide:
@@ -280,10 +275,10 @@ class MarketingAgent extends BaseAgent_1.BaseAgent {
     `;
         const response = await this.providerManager.generate(prompt);
         return {
-            optimizations: response.content,
-            provider: response.provider,
-            tokensUsed: response.tokensUsed,
-            timestamp: new Date().toISOString()
+            optimizations.content,
+            provider.provider,
+            tokensUsed.tokensUsed,
+            timestampDate().toISOString()
         };
     }
     async handleComplexQuery(task, payload) {
@@ -291,17 +286,16 @@ class MarketingAgent extends BaseAgent_1.BaseAgent {
       Task: ${task}
       Payload: ${JSON.stringify(payload)}
       
-      Marketing Data:
-      Campaigns: ${JSON.stringify(this.campaigns)}
+      Marketing Data: ${JSON.stringify(this.campaigns)}
       Content Suggestions: ${JSON.stringify(this.contentSuggestions)}
       
       Please analyze the query and provide a recommendation.
     `;
         const response = await this.providerManager.generate(prompt);
         return {
-            aiResponse: response.content,
-            provider: response.provider,
-            tokensUsed: response.tokensUsed
+            aiResponse.content,
+            provider.provider,
+            tokensUsed.tokensUsed
         };
     }
     getRequiredCapability(task) {
@@ -321,3 +315,5 @@ class MarketingAgent extends BaseAgent_1.BaseAgent {
     }
 }
 exports.MarketingAgent = MarketingAgent;
+
+

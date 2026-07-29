@@ -7,7 +7,7 @@ const Booking = require('../models/Booking');
 const Transaction = require('../models/Transaction');
 
 // ============================================
-// YOUR EXISTING ROUTE: Receive status update from lender's system
+// YOUR EXISTING ROUTEstatus update from lender's system
 // ============================================
 
 router.post('/lender-status', async (req, res) => {
@@ -15,7 +15,7 @@ router.post('/lender-status', async (req, res) => {
     const { apiKey, applicationId, status, amount, referenceId, signature } = req.body;
     
     // Find lender by API key
-    const lender = await Lender.findOne({ 'apiConfig.apiKey': apiKey });
+    const lender = await Lender.findOne({ 'apiConfig.apiKey'});
     if (!lender) {
       return res.status(401).json({ error: 'Invalid API key' });
     }
@@ -47,7 +47,7 @@ router.post('/lender-status', async (req, res) => {
     
     await application.save();
     
-    res.json({ success: true });
+    res.json({ success});
   } catch (error) {
     console.error('Lender webhook error:', error);
     res.status(500).json({ error: 'Webhook processing failed' });
@@ -55,7 +55,7 @@ router.post('/lender-status', async (req, res) => {
 });
 
 // ============================================
-// YOUR EXISTING ROUTE: Razorpay webhook (for payment confirmation)
+// YOUR EXISTING ROUTEwebhook (for payment confirmation)
 // ============================================
 
 router.post('/razorpay', async (req, res) => {
@@ -91,7 +91,7 @@ router.post('/razorpay', async (req, res) => {
       console.log(`✅ Payment captured: ${paymentId} for order: ${orderId}`);
       
       // 1. Update Transaction
-      const transaction = await Transaction.findOne({ orderId: orderId });
+      const transaction = await Transaction.findOne({ orderId});
       if (transaction) {
         transaction.paymentId = paymentId;
         transaction.status = 'completed';
@@ -104,7 +104,7 @@ router.post('/razorpay', async (req, res) => {
       }
       
       // 2. Update Booking (if exists)
-      const booking = await Booking.findOne({ orderId: orderId });
+      const booking = await Booking.findOne({ orderId});
       if (booking) {
         booking.paymentStatus = 'paid';
         booking.paymentId = paymentId;
@@ -118,7 +118,7 @@ router.post('/razorpay', async (req, res) => {
       // 3. Update Loan Application (if exists)
       const applicationId = notes.applicationId || notes.loanApplicationId;
       if (applicationId) {
-        const loanApp = await LoanApplication.findOne({ applicationId: applicationId });
+        const loanApp = await LoanApplication.findOne({ applicationId});
         if (loanApp) {
           loanApp.paymentStatus = 'paid';
           loanApp.paymentId = paymentId;
@@ -145,7 +145,7 @@ router.post('/razorpay', async (req, res) => {
       console.log(`❌ Payment failed: ${payment.id} for order: ${orderId}`);
       
       // Update Transaction
-      const transaction = await Transaction.findOne({ orderId: orderId });
+      const transaction = await Transaction.findOne({ orderId});
       if (transaction) {
         transaction.status = 'failed';
         transaction.failureReason = errorDescription;
@@ -155,7 +155,7 @@ router.post('/razorpay', async (req, res) => {
       }
       
       // Update Booking
-      const booking = await Booking.findOne({ orderId: orderId });
+      const booking = await Booking.findOne({ orderId});
       if (booking) {
         booking.paymentStatus = 'failed';
         await booking.save();
@@ -175,7 +175,7 @@ router.post('/razorpay', async (req, res) => {
       console.log(`💰 Refund processed: ${refundId} for payment: ${paymentId}`);
       
       // Update Transaction
-      const transaction = await Transaction.findOne({ paymentId: paymentId });
+      const transaction = await Transaction.findOne({ paymentId});
       if (transaction) {
         transaction.status = 'refunded';
         transaction.refundId = refundId;
@@ -186,7 +186,7 @@ router.post('/razorpay', async (req, res) => {
       }
       
       // Update Booking
-      const booking = await Booking.findOne({ paymentId: paymentId });
+      const booking = await Booking.findOne({ paymentId});
       if (booking) {
         booking.paymentStatus = 'refunded';
         booking.refundId = refundId;
@@ -208,7 +208,7 @@ router.post('/razorpay', async (req, res) => {
       console.log(`📦 Order paid: ${orderId}`);
       
       // Update Transaction
-      const transaction = await Transaction.findOne({ orderId: orderId });
+      const transaction = await Transaction.findOne({ orderId});
       if (transaction) {
         transaction.status = 'completed';
         transaction.paidAt = new Date();
@@ -218,7 +218,7 @@ router.post('/razorpay', async (req, res) => {
       }
     }
     
-    res.json({ received: true });
+    res.json({ received});
   } catch (error) {
     console.error('Razorpay webhook error:', error);
     res.status(500).json({ error: 'Webhook failed: ' + error.message });
@@ -226,20 +226,20 @@ router.post('/razorpay', async (req, res) => {
 });
 
 // ============================================
-// NEW ROUTE: Test webhook endpoint
+// NEW ROUTEwebhook endpoint
 // ============================================
 
 router.post('/test', async (req, res) => {
   try {
     console.log('Test webhook received:', req.body);
-    res.json({ received: true, message: 'Test webhook working' });
+    res.json({ received, message: 'Test webhook working' });
   } catch (error) {
-    res.status(500).json({ error: error.message });
+    res.status(500).json({ error.message });
   }
 });
 
 // ============================================
-// NEW ROUTE: Payment status webhook (for any payment gateway)
+// NEW ROUTEstatus webhook (for any payment gateway)
 // ============================================
 
 router.post('/payment-status', async (req, res) => {
@@ -252,7 +252,7 @@ router.post('/payment-status', async (req, res) => {
     }
     
     // Update Transaction
-    const transaction = await Transaction.findOne({ orderId: orderId });
+    const transaction = await Transaction.findOne({ orderId});
     if (transaction) {
       if (status === 'success' || status === 'captured') {
         transaction.status = 'completed';
@@ -274,7 +274,7 @@ router.post('/payment-status', async (req, res) => {
     }
     
     // Update Booking
-    const booking = await Booking.findOne({ orderId: orderId });
+    const booking = await Booking.findOne({ orderId});
     if (booking) {
       if (status === 'success' || status === 'captured') {
         booking.paymentStatus = 'paid';
@@ -292,7 +292,7 @@ router.post('/payment-status', async (req, res) => {
       await booking.save();
     }
     
-    res.json({ success: true });
+    res.json({ success});
   } catch (error) {
     console.error('Payment status webhook error:', error);
     res.status(500).json({ error: 'Webhook failed: ' + error.message });
@@ -300,3 +300,4 @@ router.post('/payment-status', async (req, res) => {
 });
 
 module.exports = router;
+

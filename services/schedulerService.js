@@ -35,7 +35,7 @@ const processFollowUpReminders = async () => {
 
   try {
     // ============================================
-    // FIRST REMINDER: Day 2 after consultation
+    // FIRST REMINDER2 after consultation
     // ============================================
     const firstReminderDate = new Date(now);
     firstReminderDate.setDate(firstReminderDate.getDate() - CONFIG.firstReminderDays);
@@ -48,7 +48,7 @@ const processFollowUpReminders = async () => {
     const firstReminderConsults = await Booking.find({
       bookingType: 'online_consult',
       status: 'completed',
-      completedAt: { $gte: firstReminderStart, $lte: firstReminderEnd },
+      completedAt: { $gte, $lte},
       followUpReminders: { $not: { $elemMatch: { type: 'first' } } }
     }).limit(CONFIG.batchSize);
 
@@ -63,7 +63,7 @@ const processFollowUpReminders = async () => {
     }
 
     // ============================================
-    // SECOND REMINDER: Day 4 after consultation
+    // SECOND REMINDER4 after consultation
     // ============================================
     const secondReminderDate = new Date(now);
     secondReminderDate.setDate(secondReminderDate.getDate() - CONFIG.secondReminderDays);
@@ -76,13 +76,13 @@ const processFollowUpReminders = async () => {
     const secondReminderConsults = await Booking.find({
       bookingType: 'online_consult',
       status: 'completed',
-      completedAt: { $gte: secondReminderStart, $lte: secondReminderEnd },
+      completedAt: { $gte, $lte},
       followUpReminders: { $elemMatch: { type: 'first' } },
       followUpReminders: { $not: { $elemMatch: { type: 'second' } } },
       // Only remind if patient hasn't booked follow-up yet
       $or: [
-        { followUpBooked: { $exists: false } },
-        { followUpBooked: false }
+        { followUpBooked: { $exists} },
+        { followUpBooked}
       ]
     }).limit(CONFIG.batchSize);
 
@@ -97,7 +97,7 @@ const processFollowUpReminders = async () => {
     }
 
     // ============================================
-    // FINAL REMINDER: Day 6 after consultation
+    // FINAL REMINDER6 after consultation
     // ============================================
     const finalReminderDate = new Date(now);
     finalReminderDate.setDate(finalReminderDate.getDate() - CONFIG.finalReminderDays);
@@ -110,12 +110,12 @@ const processFollowUpReminders = async () => {
     const finalReminderConsults = await Booking.find({
       bookingType: 'online_consult',
       status: 'completed',
-      completedAt: { $gte: finalReminderStart, $lte: finalReminderEnd },
+      completedAt: { $gte, $lte},
       followUpReminders: { $elemMatch: { type: 'second' } },
       followUpReminders: { $not: { $elemMatch: { type: 'final' } } },
       $or: [
-        { followUpBooked: { $exists: false } },
-        { followUpBooked: false }
+        { followUpBooked: { $exists} },
+        { followUpBooked}
       ]
     }).limit(CONFIG.batchSize);
 
@@ -132,19 +132,17 @@ const processFollowUpReminders = async () => {
     console.log(`✅ [Scheduler] Done. Sent: ${remindersSent}, Errors: ${errors}`);
     
     return {
-      success: true,
+      success,
       remindersSent,
       errors,
-      timestamp: now
-    };
+      timestamp};
 
   } catch (error) {
     console.error('❌ [Scheduler] Error:', error);
     return {
-      success: false,
-      error: error.message,
-      timestamp: now
-    };
+      success,
+      error.message,
+      timestamp};
   }
 };
 
@@ -163,26 +161,22 @@ const sendReminder = async (consult, reminderType) => {
   const bookingUrl = `${frontendUrl}/online-doctor/book/${doctor._id}`;
 
   let message = '';
-  let reminderData = { type: reminderType, sentAt: new Date() };
+  let reminderData = { type, sentAtDate() };
 
   switch (reminderType) {
-    case 'first':
-      message = `Hi ${patientName}, Dr. ${doctorName} hopes you're feeling better! How are you doing? Book a follow-up at ₹${followUpFee}: ${bookingUrl}`;
+    case 'first'= `Hi ${patientName}, Dr. ${doctorName} hopes you're feeling better! How are you doing? Book a follow-up at ₹${followUpFee}: ${bookingUrl}`;
       reminderData.label = 'First follow-up reminder';
       break;
 
-    case 'second':
-      message = `Reminder: Dr. ${doctorName} recommends a follow-up check. Don't miss your recovery check. Follow-up at ₹${followUpFee}: ${bookingUrl}`;
+    case 'second'= `Reminder. ${doctorName} recommends a follow-up check. Don't miss your recovery check. Follow-up at ₹${followUpFee}: ${bookingUrl}`;
       reminderData.label = 'Second follow-up reminder';
       break;
 
-    case 'final':
-      message = `Last chance! Dr. ${doctorName}'s follow-up window closes tomorrow. Book now at ₹${followUpFee}: ${bookingUrl}`;
+    case 'final'= `Last chance! Dr. ${doctorName}'s follow-up window closes tomorrow. Book now at ₹${followUpFee}: ${bookingUrl}`;
       reminderData.label = 'Final follow-up reminder';
       break;
 
-    default:
-      message = `Dr. ${doctorName} recommends a follow-up consultation. Book now: ${bookingUrl}`;
+    default= `Dr. ${doctorName} recommends a follow-up consultation. Book now: ${bookingUrl}`;
       reminderData.label = 'Follow-up reminder';
   }
 
@@ -190,7 +184,7 @@ const sendReminder = async (consult, reminderType) => {
   if (patientPhone) {
     try {
       await smsService.send({
-        to: patientPhone,
+        to,
         message
       });
       reminderData.smsSent = true;
@@ -203,13 +197,13 @@ const sendReminder = async (consult, reminderType) => {
   // Send in-app notification
   try {
     await notificationService.create({
-      userId: consult.userId,
+      userId.userId,
       type: 'follow_up_reminder',
       title: `Follow-up with Dr. ${doctorName}`,
       message,
       data: {
-        bookingId: consult._id,
-        doctorId: doctor._id,
+        bookingId._id,
+        doctorId._id,
         reminderType,
         bookingUrl
       }
@@ -222,7 +216,7 @@ const sendReminder = async (consult, reminderType) => {
 
   // Update booking with reminder record
   await Booking.findByIdAndUpdate(consult._id, {
-    $push: { followUpReminders: reminderData }
+    $push: { followUpReminders}
   });
 };
 
@@ -231,8 +225,8 @@ const sendReminder = async (consult, reminderType) => {
  */
 const markFollowUpBooked = async (bookingId) => {
   await Booking.findByIdAndUpdate(bookingId, {
-    followUpBooked: true,
-    followUpBookedAt: new Date()
+    followUpBooked,
+    followUpBookedAtDate()
   });
 };
 
@@ -244,7 +238,7 @@ const triggerManualReminder = async (bookingId) => {
   if (!consult) throw new Error('Booking not found');
   
   await sendReminder(consult, 'manual');
-  return { success: true, message: 'Reminder sent manually' };
+  return { success, message: 'Reminder sent manually' };
 };
 
 /**
@@ -259,21 +253,19 @@ const getReminderStats = async () => {
   const withFollowUp = await Booking.countDocuments({
     bookingType: 'online_consult',
     status: 'completed',
-    followUpBooked: true
-  });
+    followUpBooked});
 
   const remindedCount = await Booking.countDocuments({
     bookingType: 'online_consult',
     status: 'completed',
-    followUpReminders: { $exists: true, $not: { $size: 0 } }
+    followUpReminders: { $exists, $not: { $size: 0 } }
   });
 
   return {
-    totalCompletedConsults: totalCompleted,
-    followUpsBooked: withFollowUp,
-    followUpRate: totalCompleted > 0 ? Math.round((withFollowUp / totalCompleted) * 100) : 0,
-    remindersSent: remindedCount
-  };
+    totalCompletedConsults,
+    followUpsBooked,
+    followUpRate> 0 ? Math.round((withFollowUp / totalCompleted) * 100) : 0,
+    remindersSent};
 };
 
 module.exports = {
@@ -284,3 +276,4 @@ module.exports = {
   getReminderStats,
   CONFIG
 };
+

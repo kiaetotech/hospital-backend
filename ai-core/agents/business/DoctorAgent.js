@@ -4,57 +4,41 @@ import { AgentRole, AgentStatus, AgentRequest, AgentResponse } from '../../../sh
 import { BaseAgent } from '../base/BaseAgent';
 import { ProviderManager } from '../../providers/ProviderManager';
 
-interface Doctor {
-  id: string;
-  name: string;
-  specialty: string;
-  hospital: string;
-  city: string;
-  experience: number; // years
-  rating: number;
-  consultationFee: number;
-  availableSlots: string[];
-  onlineAvailable: boolean;
-  languages: string[];
-}
+
 
 export class DoctorAgent extends BaseAgent {
-  private doctors: Doctor[] = [];
+  private doctors[] = [];
 
-  constructor(providerManager: ProviderManager) {
+  constructor(providerManager) {
     super(
       {
         name: 'Doctor Agent',
-        role: AgentRole.DOCTOR,
+        role.DOCTOR,
         capabilities: [
           {
             name: 'find_doctor',
             description: 'Find doctors by specialty, location, or availability',
             priority: 1,
             estimatedLatency: 200,
-            requiresAuth: false
-          },
+            requiresAuth},
           {
             name: 'book_consultation',
             description: 'Book a consultation with a doctor',
             priority: 1,
             estimatedLatency: 300,
-            requiresAuth: true
-          },
+            requiresAuth},
           {
             name: 'check_availability',
             description: 'Check doctor availability for online or in-person consultation',
             priority: 1,
             estimatedLatency: 150,
-            requiresAuth: false
-          },
+            requiresAuth},
           {
             name: 'get_doctor_profile',
             description: 'Get detailed doctor profile including experience and ratings',
             priority: 2,
             estimatedLatency: 100,
-            requiresAuth: false
-          }
+            requiresAuth}
         ]
       },
       providerManager
@@ -64,7 +48,7 @@ export class DoctorAgent extends BaseAgent {
     this.initializeDoctors();
   }
 
-  private initializeDoctors(): void {
+  private initializeDoctors(){
     this.doctors = [
       {
         id: 'd1',
@@ -76,7 +60,7 @@ export class DoctorAgent extends BaseAgent {
         rating: 4.9,
         consultationFee: 800,
         availableSlots: ['10:00 AM', '11:30 AM', '2:00 PM', '4:30 PM'],
-        onlineAvailable: true,
+        onlineAvailable,
         languages: ['English', 'Hindi', 'Marathi']
       },
       {
@@ -89,7 +73,7 @@ export class DoctorAgent extends BaseAgent {
         rating: 4.7,
         consultationFee: 700,
         availableSlots: ['9:00 AM', '1:00 PM', '3:30 PM', '5:00 PM'],
-        onlineAvailable: true,
+        onlineAvailable,
         languages: ['English', 'Hindi']
       },
       {
@@ -102,7 +86,7 @@ export class DoctorAgent extends BaseAgent {
         rating: 4.9,
         consultationFee: 1200,
         availableSlots: ['10:30 AM', '12:00 PM', '3:00 PM'],
-        onlineAvailable: false,
+        onlineAvailable,
         languages: ['English', 'Hindi', 'Gujarati']
       },
       {
@@ -115,7 +99,7 @@ export class DoctorAgent extends BaseAgent {
         rating: 4.8,
         consultationFee: 1500,
         availableSlots: ['9:30 AM', '11:00 AM', '2:30 PM', '5:30 PM'],
-        onlineAvailable: true,
+        onlineAvailable,
         languages: ['English', 'Hindi']
       },
       {
@@ -128,7 +112,7 @@ export class DoctorAgent extends BaseAgent {
         rating: 4.6,
         consultationFee: 600,
         availableSlots: ['8:30 AM', '10:00 AM', '1:30 PM', '4:00 PM'],
-        onlineAvailable: true,
+        onlineAvailable,
         languages: ['English', 'Tamil', 'Hindi']
       },
       {
@@ -141,25 +125,25 @@ export class DoctorAgent extends BaseAgent {
         rating: 4.5,
         consultationFee: 500,
         availableSlots: ['9:00 AM', '11:30 AM', '2:00 PM'],
-        onlineAvailable: true,
+        onlineAvailable,
         languages: ['English', 'Hindi']
       }
     ];
   }
 
-  async execute(request: AgentRequest): Promise<AgentResponse> {
+  async execute(request)<AgentResponse> {
     this.setStatus(AgentStatus.BUSY);
     this.setCurrentTask(request.task);
 
     try {
       if (!this.validateRequest(request)) {
-        throw new Error('Invalid request: Missing required fields or capabilities');
+        throw new Error('Invalid requestrequired fields or capabilities');
       }
 
       const { task, payload } = request;
       this.log(`Executing task: ${task}`, 'info');
 
-      let result: any;
+      let result;
 
       // Route to appropriate handler
       if (task.includes('find') || task.includes('search')) {
@@ -179,10 +163,10 @@ export class DoctorAgent extends BaseAgent {
       this.setCurrentTask(undefined);
 
       return {
-        success: true,
-        data: result,
-        sourceAgent: this.id,
-        processingTime: Date.now() - new Date().getTime()
+        success,
+        data,
+        sourceAgent.id,
+        processingTime.now() - new Date().getTime()
       };
 
     } catch (error) {
@@ -192,7 +176,7 @@ export class DoctorAgent extends BaseAgent {
     }
   }
 
-  private async findDoctors(payload: any): Promise<any> {
+  private async findDoctors(payload)<any> {
     const { specialty, city, hospital, maxResults = 10, onlineOnly = false } = payload;
 
     let results = this.doctors;
@@ -230,13 +214,13 @@ export class DoctorAgent extends BaseAgent {
     results = results.slice(0, maxResults);
 
     return {
-      doctors: results,
-      total: results.length,
+      doctors,
+      total.length,
       query: { specialty, city, hospital, onlineOnly }
     };
   }
 
-  private async bookConsultation(payload: any): Promise<any> {
+  private async bookConsultation(payload)<any> {
     const { doctorId, patientName, patientContact, slot, type = 'online' } = payload;
 
     const doctor = this.doctors.find(d => d.id === doctorId);
@@ -263,25 +247,24 @@ export class DoctorAgent extends BaseAgent {
     return {
       bookingId,
       doctor: {
-        id: doctor.id,
-        name: doctor.name,
-        specialty: doctor.specialty,
-        hospital: doctor.hospital
+        id.id,
+        name.name,
+        specialty.specialty,
+        hospital.hospital
       },
       patient: {
-        name: patientName,
-        contact: patientContact
-      },
+        name,
+        contact},
       slot,
       type,
-      consultationFee: doctor.consultationFee,
+      consultationFee.consultationFee,
       status: 'Confirmed',
-      timestamp: new Date().toISOString(),
+      timestampDate().toISOString(),
       instructions: 'Please arrive 15 minutes before the scheduled time. Carry your medical reports.'
     };
   }
 
-  private async checkDoctorAvailability(payload: any): Promise<any> {
+  private async checkDoctorAvailability(payload)<any> {
     const { doctorId, date } = payload;
 
     let targetDoctors = this.doctors;
@@ -290,21 +273,21 @@ export class DoctorAgent extends BaseAgent {
     }
 
     const availability = targetDoctors.map(d => ({
-      id: d.id,
-      name: d.name,
-      specialty: d.specialty,
-      onlineAvailable: d.onlineAvailable,
-      availableSlots: d.availableSlots,
-      date: date || new Date().toISOString().split('T')[0]
+      id.id,
+      name.name,
+      specialty.specialty,
+      onlineAvailable.onlineAvailable,
+      availableSlots.availableSlots,
+      date|| new Date().toISOString().split('T')[0]
     }));
 
     return {
       availability,
-      timestamp: new Date().toISOString()
+      timestampDate().toISOString()
     };
   }
 
-  private async getDoctorProfile(payload: any): Promise<any> {
+  private async getDoctorProfile(payload)<any> {
     const { doctorId } = payload;
 
     const doctor = this.doctors.find(d => d.id === doctorId);
@@ -317,12 +300,12 @@ export class DoctorAgent extends BaseAgent {
         ...doctor,
         consultationFee: `₹${doctor.consultationFee}`,
         experience: `${doctor.experience} years`,
-        availableSlotsCount: doctor.availableSlots.length
+        availableSlotsCount.availableSlots.length
       }
     };
   }
 
-  private async handleComplexQuery(task: string, payload: any): Promise<any> {
+  private async handleComplexQuery(task, payload)<any> {
     const prompt = `
       Task: ${task}
       Payload: ${JSON.stringify(payload)}
@@ -335,13 +318,13 @@ export class DoctorAgent extends BaseAgent {
     const response = await this.providerManager.generate(prompt);
     
     return {
-      aiResponse: response.content,
-      provider: response.provider,
-      tokensUsed: response.tokensUsed
+      aiResponse.content,
+      provider.provider,
+      tokensUsed.tokensUsed
     };
   }
 
-  protected getRequiredCapability(task: string): string | null {
+  protected getRequiredCapability(task)| null {
     if (task.includes('find') || task.includes('search')) {
       return 'find_doctor';
     }
@@ -357,3 +340,5 @@ export class DoctorAgent extends BaseAgent {
     return null;
   }
 }
+
+

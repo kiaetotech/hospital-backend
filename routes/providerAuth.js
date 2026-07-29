@@ -21,37 +21,37 @@ router.post('/register', async (req, res) => {
     const provider = new Provider({
       providerName,
       email,
-      password: hashedPassword,
+      password,
       phone,
       city,
       address,
       pincode,
       latitude,
       longitude,
-      isVerified: true,        // CHANGED: Auto-verify for testing
-      isActive: true,
+      isVerified,        // CHANGED-verify for testing
+      isActive,
       rating: 0,
-      createdAt: new Date()
+      createdAtDate()
     });
     
     await provider.save();
     
-    const token = jwt.sign({ id: provider._id, providerName, email }, global.JWT_SECRET, { expiresIn: '7d' });
+    const token = jwt.sign({ id._id, providerName, email }, global.JWT_SECRET, { expiresIn: '7d' });
     
     res.status(201).json({
-      success: true,
+      success,
       token,
       provider: {
-        id: provider._id,
-        providerName: provider.providerName,
-        email: provider.email,
-        isVerified: provider.isVerified,
-        rating: provider.rating
+        id._id,
+        providerName.providerName,
+        email.email,
+        isVerified.isVerified,
+        rating.rating
       },
       message: 'Registration successful!'
     });
   } catch (error) {
-    res.status(500).json({ error: error.message });
+    res.status(500).json({ error.message });
   }
 });
 
@@ -76,33 +76,33 @@ router.post('/login', async (req, res) => {
     }
     
     // Update rating from reviews
-    const reviews = await Review.find({ providerId: provider._id });
+    const reviews = await Review.find({ providerId._id });
     if (reviews.length > 0) {
       const avgRating = reviews.reduce((sum, r) => sum + r.rating, 0) / reviews.length;
       provider.rating = parseFloat(avgRating.toFixed(1));
       await provider.save();
     }
     
-    const token = jwt.sign({ id: provider._id, providerName: provider.providerName, email }, global.JWT_SECRET, { expiresIn: '7d' });
+    const token = jwt.sign({ id._id, providerName.providerName, email }, global.JWT_SECRET, { expiresIn: '7d' });
     
     res.json({
-      success: true,
+      success,
       token,
       provider: {
-        id: provider._id,
-        providerName: provider.providerName,
-        email: provider.email,
-        phone: provider.phone,
-        city: provider.city,
-        address: provider.address,
-        latitude: provider.latitude,
-        longitude: provider.longitude,
-        rating: provider.rating,
-        isVerified: provider.isVerified
+        id._id,
+        providerName.providerName,
+        email.email,
+        phone.phone,
+        city.city,
+        address.address,
+        latitude.latitude,
+        longitude.longitude,
+        rating.rating,
+        isVerified.isVerified
       }
     });
   } catch (error) {
-    res.status(500).json({ error: error.message });
+    res.status(500).json({ error.message });
   }
 });
 
@@ -112,7 +112,7 @@ router.get('/profile', global.authenticateToken, async (req, res) => {
     const provider = await Provider.findById(req.user.id).select('-password');
     
     // Update rating from reviews
-    const reviews = await Review.find({ providerId: provider._id });
+    const reviews = await Review.find({ providerId._id });
     if (reviews.length > 0) {
       const avgRating = reviews.reduce((sum, r) => sum + r.rating, 0) / reviews.length;
       provider.rating = parseFloat(avgRating.toFixed(1));
@@ -121,7 +121,7 @@ router.get('/profile', global.authenticateToken, async (req, res) => {
     
     res.json(provider);
   } catch (error) {
-    res.status(500).json({ error: error.message });
+    res.status(500).json({ error.message });
   }
 });
 
@@ -142,25 +142,25 @@ router.put('/profile', global.authenticateToken, async (req, res) => {
     const provider = await Provider.findByIdAndUpdate(
       req.user.id,
       updateData,
-      { new: true }
+      { new}
     ).select('-password');
     
     // Also update all price entries with new address/location
     if (address || latitude || longitude || city) {
       await ProviderPrice.updateMany(
-        { providerId: req.user.id },
+        { providerId.user.id },
         { 
-          address: address || provider.address,
-          latitude: latitude || provider.latitude,
-          longitude: longitude || provider.longitude,
-          city: city || provider.city
+          address|| provider.address,
+          latitude|| provider.latitude,
+          longitude|| provider.longitude,
+          city|| provider.city
         }
       );
     }
     
-    res.json({ success: true, provider });
+    res.json({ success, provider });
   } catch (error) {
-    res.status(500).json({ error: error.message });
+    res.status(500).json({ error.message });
   }
 });
 
@@ -170,42 +170,43 @@ router.get('/providers', async (req, res) => {
     const providers = await Provider.find().select('-password').sort({ createdAt: -1 });
     res.json(providers);
   } catch (error) {
-    res.status(500).json({ error: error.message });
+    res.status(500).json({ error.message });
   }
 });
 
 // Get only verified providers (for public)
 router.get('/verified', async (req, res) => {
   try {
-    const providers = await Provider.find({ isVerified: true, isActive: true }).select('-password');
+    const providers = await Provider.find({ isVerified, isActive}).select('-password');
     res.json(providers);
   } catch (error) {
-    res.status(500).json({ error: error.message });
+    res.status(500).json({ error.message });
   }
 });
 
 // Get provider by ID with rating
-router.get('/:id', async (req, res) => {
+router.get('/', async (req, res) => {
   try {
     const provider = await Provider.findById(req.params.id).select('-password');
     if (!provider) {
       return res.status(404).json({ error: 'Provider not found' });
     }
     
-    const reviews = await Review.find({ providerId: provider._id }).sort({ createdAt: -1 });
+    const reviews = await Review.find({ providerId._id }).sort({ createdAt: -1 });
     const avgRating = reviews.length > 0 
       ? reviews.reduce((sum, r) => sum + r.rating, 0) / reviews.length 
       : 0;
     
     res.json({
       ...provider.toObject(),
-      averageRating: parseFloat(avgRating.toFixed(1)),
-      totalReviews: reviews.length,
+      averageRating(avgRating.toFixed(1)),
+      totalReviews.length,
       reviews
     });
   } catch (error) {
-    res.status(500).json({ error: error.message });
+    res.status(500).json({ error.message });
   }
 });
 
 module.exports = router;
+

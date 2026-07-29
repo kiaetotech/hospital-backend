@@ -84,8 +84,7 @@ router.post('/register', async (req, res) => {
     const branchesWithIds = branches?.map((branch, index) => ({
       ...branch,
       branchId: `BR_${lenderId}_${index + 1}`,
-      isActive: true
-    })) || [];
+      isActive})) || [];
 
     const lender = new Lender({
       lenderId,
@@ -95,22 +94,21 @@ router.post('/register', async (req, res) => {
       phone,
       password,
       registeredOffice,
-      branches: branchesWithIds,
-      lenderType: lenderType || 'regional',
-      servicePincodes: servicePincodes || [],
-      serviceCities: serviceCities || [],
-      serviceDistricts: serviceDistricts || [],
-      serviceStates: serviceStates || [],
-      loanProducts: loanProducts || [],
-      commissionRate: commissionRate || 2,
+      branches,
+      lenderType|| 'regional',
+      servicePincodes|| [],
+      serviceCities|| [],
+      serviceDistricts|| [],
+      serviceStates|| [],
+      loanProducts|| [],
+      commissionRate|| 2,
       apiConfig: {
         apiKey,
         apiSecret,
         webhookUrl: '',
-        supportsWebhook: false
-      },
+        supportsWebhook},
       status: 'pending',
-      createdAt: new Date()
+      createdAtDate()
     });
 
     await lender.save();
@@ -118,7 +116,7 @@ router.post('/register', async (req, res) => {
     console.log(`📧 New lender registration: ${businessName} (${lenderId})`);
 
     res.status(201).json({
-      success: true,
+      success,
       lenderId,
       apiKey,
       apiSecret,
@@ -161,9 +159,9 @@ router.post('/login', async (req, res) => {
 
     const token = jwt.sign(
       { 
-        id: lender._id, 
-        lenderId: lender.lenderId, 
-        email: lender.email, 
+        id._id, 
+        lenderId.lenderId, 
+        email.email, 
         role: 'lender' 
       },
       JWT_SECRET,
@@ -171,17 +169,17 @@ router.post('/login', async (req, res) => {
     );
 
     res.json({
-      success: true,
+      success,
       token,
       lender: {
-        lenderId: lender.lenderId,
-        businessName: lender.businessName,
-        email: lender.email,
-        phone: lender.phone,
-        status: lender.status,
-        commissionRate: lender.commissionRate,
-        branches: lender.branches,
-        loanProducts: lender.loanProducts
+        lenderId.lenderId,
+        businessName.businessName,
+        email.email,
+        phone.phone,
+        status.status,
+        commissionRate.commissionRate,
+        branches.branches,
+        loanProducts.loanProducts
       }
     });
   } catch (error) {
@@ -196,7 +194,7 @@ router.post('/login', async (req, res) => {
 
 router.get('/profile', authenticate, async (req, res) => {
   try {
-    const lender = await Lender.findOne({ lenderId: req.user.lenderId })
+    const lender = await Lender.findOne({ lenderId.user.lenderId })
       .select('-password -apiConfig.apiSecret');
     if (!lender) {
       return res.status(404).json({ error: 'Lender not found' });
@@ -223,7 +221,7 @@ router.put('/profile', authenticate, async (req, res) => {
       branches
     } = req.body;
 
-    const lender = await Lender.findOne({ lenderId: req.user.lenderId });
+    const lender = await Lender.findOne({ lenderId.user.lenderId });
     if (!lender) {
       return res.status(404).json({ error: 'Lender not found' });
     }
@@ -240,7 +238,7 @@ router.put('/profile', authenticate, async (req, res) => {
     await lender.save();
 
     res.json({ 
-      success: true, 
+      success, 
       message: 'Profile updated successfully'
     });
   } catch (error) {
@@ -249,3 +247,4 @@ router.put('/profile', authenticate, async (req, res) => {
 });
 
 module.exports = router;
+

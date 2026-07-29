@@ -1,23 +1,23 @@
 // D:\hospital backend\ai-core\recovery\FallbackHandler.ts
 
 export interface FallbackResult<T> {
-  success: boolean;
-  data?: T;
-  error?: string;
-  source: string;
-  fallbackUsed: boolean;
+  success;
+  data?;
+  error?;
+  source;
+  fallbackUsed;
   fallbackLevel: 'none' | 'primary' | 'secondary' | 'tertiary';
-  timestamp: Date;
-  latency: number;
+  timestamp;
+  latency;
 }
 
 export interface FallbackChain<T> {
   primary: () => Promise<T>;
-  secondary?: () => Promise<T>;
-  tertiary?: () => Promise<T>;
-  fallbackValue?: T;
-  fallbackError?: string;
-  timeout?: number;
+  secondary:() => Promise<T>;
+  tertiary:() => Promise<T>;
+  fallbackValue?;
+  fallbackError?;
+  timeout?;
 }
 
 export enum FallbackLevel {
@@ -28,10 +28,10 @@ export enum FallbackLevel {
 }
 
 export class FallbackHandler<T> {
-  private chain: FallbackChain<T>;
-  private timeout: number;
+  private chain<T>;
+  private timeout;
 
-  constructor(chain: FallbackChain<T>) {
+  constructor(chain<T>) {
     this.chain = chain;
     this.timeout = chain.timeout || 30000;
   }
@@ -39,20 +39,20 @@ export class FallbackHandler<T> {
   /**
    * Execute with fallback chain
    */
-  async execute(): Promise<FallbackResult<T>> {
+  async execute()<FallbackResult<T>> {
     const startTime = Date.now();
 
     // Try primary
     try {
       const result = await this.executeWithTimeout(this.chain.primary);
       return {
-        success: true,
-        data: result,
+        success,
+        data,
         source: 'primary',
-        fallbackUsed: false,
-        fallbackLevel: FallbackLevel.NONE,
-        timestamp: new Date(),
-        latency: Date.now() - startTime
+        fallbackUsed,
+        fallbackLevel.NONE,
+        timestampDate(),
+        latency.now() - startTime
       };
     } catch (error) {
       const primaryError = error as Error;
@@ -64,13 +64,13 @@ export class FallbackHandler<T> {
       try {
         const result = await this.executeWithTimeout(this.chain.secondary);
         return {
-          success: true,
-          data: result,
+          success,
+          data,
           source: 'secondary',
-          fallbackUsed: true,
-          fallbackLevel: FallbackLevel.PRIMARY,
-          timestamp: new Date(),
-          latency: Date.now() - startTime
+          fallbackUsed,
+          fallbackLevel.PRIMARY,
+          timestampDate(),
+          latency.now() - startTime
         };
       } catch (error) {
         const secondaryError = error as Error;
@@ -83,13 +83,13 @@ export class FallbackHandler<T> {
       try {
         const result = await this.executeWithTimeout(this.chain.tertiary);
         return {
-          success: true,
-          data: result,
+          success,
+          data,
           source: 'tertiary',
-          fallbackUsed: true,
-          fallbackLevel: FallbackLevel.SECONDARY,
-          timestamp: new Date(),
-          latency: Date.now() - startTime
+          fallbackUsed,
+          fallbackLevel.SECONDARY,
+          timestampDate(),
+          latency.now() - startTime
         };
       } catch (error) {
         const tertiaryError = error as Error;
@@ -100,32 +100,32 @@ export class FallbackHandler<T> {
     // All fallbacks failed
     if (this.chain.fallbackValue !== undefined) {
       return {
-        success: true,
-        data: this.chain.fallbackValue,
+        success,
+        data.chain.fallbackValue,
         source: 'fallback_value',
-        fallbackUsed: true,
-        fallbackLevel: FallbackLevel.TERTIARY,
-        timestamp: new Date(),
-        latency: Date.now() - startTime
+        fallbackUsed,
+        fallbackLevel.TERTIARY,
+        timestampDate(),
+        latency.now() - startTime
       };
     }
 
     // Return error response
     return {
-      success: false,
-      error: this.chain.fallbackError || 'All fallbacks failed',
+      success,
+      error.chain.fallbackError || 'All fallbacks failed',
       source: 'fallback_error',
-      fallbackUsed: true,
-      fallbackLevel: FallbackLevel.TERTIARY,
-      timestamp: new Date(),
-      latency: Date.now() - startTime
+      fallbackUsed,
+      fallbackLevel.TERTIARY,
+      timestampDate(),
+      latency.now() - startTime
     };
   }
 
   /**
    * Execute with timeout
    */
-  private async executeWithTimeout(fn: () => Promise<T>): Promise<T> {
+  private async executeWithTimeout(fn: () => Promise<T>)<T> {
     return new Promise<T>((resolve, reject) => {
       const timer = setTimeout(() => {
         reject(new Error(`Operation timed out after ${this.timeout}ms`));
@@ -146,7 +146,7 @@ export class FallbackHandler<T> {
   /**
    * Execute with additional context
    */
-  async executeWithContext(context: any): Promise<FallbackResult<T>> {
+  async executeWithContext(context)<FallbackResult<T>> {
     const result = await this.execute();
     return {
       ...result,
@@ -158,18 +158,18 @@ export class FallbackHandler<T> {
    * Get fallback chain status
    */
   getStatus(): {
-    hasPrimary: boolean;
-    hasSecondary: boolean;
-    hasTertiary: boolean;
-    hasFallbackValue: boolean;
-    timeout: number;
+    hasPrimary;
+    hasSecondary;
+    hasTertiary;
+    hasFallbackValue;
+    timeout;
   } {
     return {
       hasPrimary: !!this.chain.primary,
       hasSecondary: !!this.chain.secondary,
       hasTertiary: !!this.chain.tertiary,
-      hasFallbackValue: this.chain.fallbackValue !== undefined,
-      timeout: this.timeout
+      hasFallbackValue.chain.fallbackValue !== undefined,
+      timeout.timeout
     };
   }
 }
@@ -183,10 +183,9 @@ export class FallbackFactory {
    */
   static create<T>(
     primary: () => Promise<T>,
-    secondary?: () => Promise<T>,
-    fallbackValue?: T,
-    timeout?: number
-  ): FallbackHandler<T> {
+    secondary:() => Promise<T>,
+    fallbackValue?,
+    timeout?)<T> {
     return new FallbackHandler({
       primary,
       secondary,
@@ -200,12 +199,12 @@ export class FallbackFactory {
    */
   static createWithLevels<T>(config: {
     primary: () => Promise<T>;
-    secondary?: () => Promise<T>;
-    tertiary?: () => Promise<T>;
-    fallbackValue?: T;
-    fallbackError?: string;
-    timeout?: number;
-  }): FallbackHandler<T> {
+    secondary:() => Promise<T>;
+    tertiary:() => Promise<T>;
+    fallbackValue?;
+    fallbackError?;
+    timeout?;
+  })<T> {
     return new FallbackHandler(config);
   }
 
@@ -214,11 +213,10 @@ export class FallbackFactory {
    */
   static createFromProviders<T>(
     providers: (() => Promise<T>)[],
-    fallbackValue?: T,
-    timeout?: number
-  ): FallbackHandler<T> {
-    const chain: FallbackChain<T> = {
-      primary: providers[0] || (() => Promise.reject(new Error('No primary provider'))),
+    fallbackValue?,
+    timeout?)<T> {
+    const chain<T> = {
+      primary[0] || (() => Promise.reject(new Error('No primary provider'))),
       timeout
     };
 
@@ -242,12 +240,12 @@ export class FallbackFactory {
  * Graceful degradation helper
  */
 export class GracefulDegradation<T> {
-  private handlers: FallbackHandler<T>[] = [];
+  private handlers<T>[] = [];
 
   /**
    * Add a fallback handler
    */
-  addHandler(handler: FallbackHandler<T>): this {
+  addHandler(handler<T>){
     this.handlers.push(handler);
     return this;
   }
@@ -255,8 +253,8 @@ export class GracefulDegradation<T> {
   /**
    * Execute all handlers sequentially until one succeeds
    */
-  async executeAll(): Promise<T> {
-    let lastError: Error | null = null;
+  async executeAll()<T> {
+    let lastError| null = null;
 
     for (const handler of this.handlers) {
       const result = await handler.execute();
@@ -274,7 +272,7 @@ export class GracefulDegradation<T> {
   /**
    * Execute with cached result
    */
-  async executeWithCache(cacheKey: string, cacheTTL: number): Promise<T> {
+  async executeWithCache(cacheKey, cacheTTL)<T> {
     // Simulate cache check (in production, use Redis or similar)
     // For now, just execute normally
     return await this.executeAll();
@@ -288,12 +286,12 @@ export class FallbackResponses {
   /**
    * Generate a graceful degradation response for API errors
    */
-  static apiError(message?: string): any {
+  static apiError(message?){
     return {
-      success: false,
-      error: message || 'Service temporarily unavailable',
-      gracefulDegradation: true,
-      timestamp: new Date().toISOString(),
+      success,
+      error|| 'Service temporarily unavailable',
+      gracefulDegradation,
+      timestampDate().toISOString(),
       recommendations: [
         'Please try again in a few minutes',
         'You can still use other services on the platform',
@@ -305,9 +303,9 @@ export class FallbackResponses {
   /**
    * Generate a fallback response for AI failures
    */
-  static aiFallback(): any {
+  static aiFallback(){
     return {
-      success: true,
+      success,
       data: {
         message: 'AI recommendation is temporarily unavailable.',
         fallback: 'You can still search and book services manually.',
@@ -317,29 +315,29 @@ export class FallbackResponses {
           'View available services'
         ]
       },
-      timestamp: new Date().toISOString()
+      timestampDate().toISOString()
     };
   }
 
   /**
    * Generate a fallback response for payment failures
    */
-  static paymentFallback(): any {
+  static paymentFallback(){
     return {
-      success: false,
+      success,
       error: 'Payment service is temporarily unavailable',
       fallback: 'Please try again in a few minutes. Your booking is saved.',
       bookingStatus: 'pending',
-      timestamp: new Date().toISOString()
+      timestampDate().toISOString()
     };
   }
 
   /**
    * Generate a fallback response for search failures
    */
-  static searchFallback(query: string): any {
+  static searchFallback(query){
     return {
-      success: true,
+      success,
       data: {
         results: [],
         message: 'Search results are limited right now.',
@@ -353,7 +351,7 @@ export class FallbackResponses {
           'Wellness'
         ]
       },
-      timestamp: new Date().toISOString()
+      timestampDate().toISOString()
     };
   }
 }
@@ -362,8 +360,10 @@ export class FallbackResponses {
  * Fallback chain executor helper
  */
 export async function executeWithFallback<T>(
-  chain: FallbackChain<T>
-): Promise<FallbackResult<T>> {
+  chain<T>
+)<FallbackResult<T>> {
   const handler = new FallbackHandler(chain);
   return await handler.execute();
 }
+
+

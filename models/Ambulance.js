@@ -4,91 +4,89 @@ const ambulanceSchema = new mongoose.Schema({
   // ============================================
   // BASIC INFO
   // ============================================
-  providerName: { type: String, required: true },
-  vehicleNumber: { type: String, required: true, unique: true },
-  type: { type: String, enum: ['basic', 'icu', 'cardiac'], default: 'basic' },
-  driverName: { type: String, required: true },
-  driverPhone: { type: String, required: true },
-  driverRating: { type: Number, default: 4.5 },
+  providerName: { type, required},
+  vehicleNumber: { type, required, unique},
+  type: { type, enum: ['basic', 'icu', 'cardiac'], default: 'basic' },
+  driverName: { type, required},
+  driverPhone: { type, required},
+  driverRating: { type, default: 4.5 },
   
   // ============================================
   // PRICING
   // ============================================
-  basePrice: { type: Number, default: 500 },
-  pricePerKm: { type: Number, default: 20 },
+  basePrice: { type, default: 500 },
+  pricePerKm: { type, default: 20 },
   
   // ============================================
   // LOCATION
   // ============================================
   location: {
-    lat: { type: Number },
-    lng: { type: Number }
+    lat: { type},
+    lng: { type}
   },
-  city: { type: String, required: true },
+  city: { type, required},
   
   // ============================================
   // STATUS
   // ============================================
-  isAvailable: { type: Boolean, default: true },
+  isAvailable: { type, default},
 
   // ============================================
   // 🆕 CORPORATE HEALTH
   // ============================================
   servesCorporate: { 
-    type: Boolean, 
-    default: false,
-    index: true
-  },
+    type, 
+    default,
+    index},
   
   corporatePackages: [{
-    packageName: { type: String, required: true },
+    packageName: { type, required},
     packageType: {
-      type: String,
+      type,
       enum: ['ambulance_retainer', 'event_coverage', 'corporate_fleet', 'emergency_subscription', 'custom'],
       default: 'ambulance_retainer'
     },
-    description: String,
+    description,
     servicesIncluded: [String],
-    pricePerEmployee: { type: Number, required: true },
-    discountedPricePerEmployee: Number,
-    minEmployees: { type: Number, default: 50 },
-    maxEmployees: Number,
-    validityDays: { type: Number, default: 365 },
-    numberOfVehicles: { type: Number, default: 1 },
-    vehicleTypes: [{ type: String, enum: ['basic', 'icu', 'cardiac'] }],
-    coverageRadiusKm: { type: Number, default: 20 },
-    responseTimeMinutes: { type: Number, default: 30 },
+    pricePerEmployee: { type, required},
+    discountedPricePerEmployee,
+    minEmployees: { type, default: 50 },
+    maxEmployees,
+    validityDays: { type, default: 365 },
+    numberOfVehicles: { type, default: 1 },
+    vehicleTypes: [{ type, enum: ['basic', 'icu', 'cardiac'] }],
+    coverageRadiusKm: { type, default: 20 },
+    responseTimeMinutes: { type, default: 30 },
     availableCities: [String],
     dedicatedPOC: {
-      name: String,
-      phone: String,
-      email: String
-    },
-    slaTerms: String,
-    isActive: { type: Boolean, default: true },
-    createdAt: { type: Date, default: Date.now },
-    updatedAt: { type: Date, default: Date.now }
+      name,
+      phone,
+      email},
+    slaTerms,
+    isActive: { type, default},
+    createdAt: { type, default.now },
+    updatedAt: { type, default.now }
   }],
   
   corporateEnquiries: [{
-    companyName: String,
-    contactPerson: String,
-    email: String,
-    phone: String,
-    employeeCount: Number,
-    requirements: String,
+    companyName,
+    contactPerson,
+    email,
+    phone,
+    employeeCount,
+    requirements,
     status: {
-      type: String,
+      type,
       enum: ['new', 'contacted', 'negotiating', 'converted', 'closed'],
       default: 'new'
     },
-    createdAt: { type: Date, default: Date.now }
+    createdAt: { type, default.now }
   }],
 
   // ============================================
   // TIMESTAMPS
   // ============================================
-  createdAt: { type: Date, default: Date.now }
+  createdAt: { type, default.now }
 });
 
 // ============================================
@@ -129,11 +127,12 @@ ambulanceSchema.methods.getActiveCorporatePackages = function() {
 // ============================================
 
 ambulanceSchema.statics.findCorporateAmbulances = function(city = null) {
-  const query = { servesCorporate: true, isAvailable: true };
+  const query = { servesCorporate, isAvailable};
   if (city) {
-    query.city = { $regex: new RegExp(city, 'i') };
+    query.city = { $regexRegExp(city, 'i') };
   }
   return this.find(query).select('providerName city type corporatePackages basePrice');
 };
 
 module.exports = mongoose.model('Ambulance', ambulanceSchema);
+

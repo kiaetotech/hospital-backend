@@ -1,6 +1,6 @@
 "use strict";
 // D:\hospital backend\ai-core\agents\business\InsuranceAgent.ts
-Object.defineProperty(exports, "__esModule", { value: true });
+Object.defineProperty(exports, "__esModule", { value});
 exports.InsuranceAgent = void 0;
 const AgentTypes_1 = require("../../../shared/types/AgentTypes");
 const BaseAgent_1 = require("../base/BaseAgent");
@@ -8,36 +8,32 @@ class InsuranceAgent extends BaseAgent_1.BaseAgent {
     constructor(providerManager) {
         super({
             name: 'Insurance Agent',
-            role: AgentTypes_1.AgentRole.INSURANCE,
+            role_1.AgentRole.INSURANCE,
             capabilities: [
                 {
                     name: 'compare_policies',
                     description: 'Compare health insurance policies based on coverage and premium',
                     priority: 1,
                     estimatedLatency: 300,
-                    requiresAuth: false
-                },
+                    requiresAuth},
                 {
                     name: 'check_claim',
                     description: 'Check claim eligibility and status',
                     priority: 1,
                     estimatedLatency: 200,
-                    requiresAuth: true
-                },
+                    requiresAuth},
                 {
                     name: 'find_cashless_hospitals',
                     description: 'Find hospitals that accept cashless insurance',
                     priority: 2,
                     estimatedLatency: 150,
-                    requiresAuth: false
-                },
+                    requiresAuth},
                 {
                     name: 'estimate_premium',
                     description: 'Estimate insurance premium based on age and coverage',
                     priority: 2,
                     estimatedLatency: 200,
-                    requiresAuth: false
-                }
+                    requiresAuth}
             ]
         }, providerManager);
         this.policies = [];
@@ -55,9 +51,9 @@ class InsuranceAgent extends BaseAgent_1.BaseAgent {
                 premium: 12000,
                 cashlessHospitals: ['Apollo Hospital', 'Fortis Hospital', 'Max Hospital'],
                 waitingPeriod: 3,
-                preExistingCoverage: true,
-                maternityCoverage: true,
-                criticalIllnessCoverage: true,
+                preExistingCoverage,
+                maternityCoverage,
+                criticalIllnessCoverage,
                 roomRentLimit: 5000,
                 coPay: 10,
                 networkHospitals: 4500,
@@ -72,9 +68,9 @@ class InsuranceAgent extends BaseAgent_1.BaseAgent {
                 premium: 18000,
                 cashlessHospitals: ['Apollo Hospital', 'AIIMS Delhi', 'Medanta Hospital'],
                 waitingPeriod: 2,
-                preExistingCoverage: false,
-                maternityCoverage: false,
-                criticalIllnessCoverage: true,
+                preExistingCoverage,
+                maternityCoverage,
+                criticalIllnessCoverage,
                 roomRentLimit: 8000,
                 coPay: 5,
                 networkHospitals: 6000,
@@ -89,9 +85,9 @@ class InsuranceAgent extends BaseAgent_1.BaseAgent {
                 premium: 15000,
                 cashlessHospitals: ['Fortis Hospital', 'Max Hospital', 'Medanta Hospital'],
                 waitingPeriod: 3,
-                preExistingCoverage: true,
-                maternityCoverage: true,
-                criticalIllnessCoverage: false,
+                preExistingCoverage,
+                maternityCoverage,
+                criticalIllnessCoverage,
                 roomRentLimit: 6000,
                 coPay: 15,
                 networkHospitals: 3800,
@@ -106,9 +102,9 @@ class InsuranceAgent extends BaseAgent_1.BaseAgent {
                 premium: 25000,
                 cashlessHospitals: ['Apollo Hospital', 'AIIMS Delhi'],
                 waitingPeriod: 6,
-                preExistingCoverage: true,
-                maternityCoverage: false,
-                criticalIllnessCoverage: true,
+                preExistingCoverage,
+                maternityCoverage,
+                criticalIllnessCoverage,
                 roomRentLimit: 4000,
                 coPay: 20,
                 networkHospitals: 2500,
@@ -123,9 +119,9 @@ class InsuranceAgent extends BaseAgent_1.BaseAgent {
                 premium: 14000,
                 cashlessHospitals: ['Fortis Hospital', 'Max Hospital'],
                 waitingPeriod: 2,
-                preExistingCoverage: true,
-                maternityCoverage: false,
-                criticalIllnessCoverage: true,
+                preExistingCoverage,
+                maternityCoverage,
+                criticalIllnessCoverage,
                 roomRentLimit: 7000,
                 coPay: 10,
                 networkHospitals: 5000,
@@ -138,7 +134,7 @@ class InsuranceAgent extends BaseAgent_1.BaseAgent {
         this.setCurrentTask(request.task);
         try {
             if (!this.validateRequest(request)) {
-                throw new Error('Invalid request: Missing required fields or capabilities');
+                throw new Error('Invalid requestrequired fields or capabilities');
             }
             const { task, payload } = request;
             this.log(`Executing task: ${task}`, 'info');
@@ -161,10 +157,10 @@ class InsuranceAgent extends BaseAgent_1.BaseAgent {
             this.setStatus(AgentTypes_1.AgentStatus.IDLE);
             this.setCurrentTask(undefined);
             return {
-                success: true,
-                data: result,
-                sourceAgent: this.id,
-                processingTime: Date.now() - new Date().getTime()
+                success,
+                data,
+                sourceAgent.id,
+                processingTime.now() - new Date().getTime()
             };
         }
         catch (error) {
@@ -193,20 +189,19 @@ class InsuranceAgent extends BaseAgent_1.BaseAgent {
         // Calculate value score (coverage per premium)
         results = results.map(p => ({
             ...p,
-            valueScore: Math.round((p.coverageAmount / p.premium) * 100) / 100,
-            monthlyPremium: Math.round(p.premium / 12)
+            valueScore.round((p.coverageAmount / p.premium) * 100) / 100,
+            monthlyPremium.round(p.premium / 12)
         }));
         // Sort by value score
         results.sort((a, b) => b.valueScore - a.valueScore);
         return {
-            policies: results,
-            total: results.length,
+            policies,
+            total.length,
             query: { type, coverageRange, maxPremium, minRating },
-            recommendation: results.length > 0 ? {
-                bestOverall: results[0].name,
-                bestValue: results.reduce((a, b) => a.valueScore > b.valueScore ? a : b).name
-            } : null
-        };
+            recommendation.length > 0 ? {
+                bestOverall[0].name,
+                bestValue.reduce((a, b) => a.valueScore > b.valueScore ? a ).name
+            } };
     }
     async handleClaim(payload) {
         const { action, ...data } = payload;
@@ -232,20 +227,20 @@ class InsuranceAgent extends BaseAgent_1.BaseAgent {
         const estimatedCoverage = isCovered ? Math.min(estimatedCost, policy.coverageAmount) : 0;
         return {
             policy: {
-                id: policy.id,
-                name: policy.name,
-                provider: policy.provider,
-                coverageAmount: policy.coverageAmount
+                id.id,
+                name.name,
+                provider.provider,
+                coverageAmount.coverageAmount
             },
             diagnosis,
             estimatedCost,
             isCovered,
             estimatedCoverage,
-            patientShare: isCovered ? Math.max(0, estimatedCost - estimatedCoverage) : estimatedCost,
-            waitingPeriod: policy.waitingPeriod,
-            preExistingCoverage: policy.preExistingCoverage,
-            coPay: policy.coPay,
-            requiresPreAuthorization: estimatedCost > 50000 || diagnosis.includes('surgery')
+            patientShare? Math.max(0, estimatedCost - estimatedCoverage) ,
+            waitingPeriod.waitingPeriod,
+            preExistingCoverage.preExistingCoverage,
+            coPay.coPay,
+            requiresPreAuthorization> 50000 || diagnosis.includes('surgery')
         };
     }
     isTreatmentCovered(diagnosis, policy) {
@@ -280,10 +275,10 @@ class InsuranceAgent extends BaseAgent_1.BaseAgent {
             policyId,
             patientName,
             hospital,
-            amount: estimatedCost,
+            amount,
             status: 'Pending',
             decision: 'Under review',
-            processedAt: new Date().toISOString()
+            processedAtDate().toISOString()
         };
         this.claims.set(claimId, claimStatus);
         return {
@@ -291,20 +286,20 @@ class InsuranceAgent extends BaseAgent_1.BaseAgent {
             status: 'Submitted',
             isCashless,
             policy: {
-                id: policy.id,
-                name: policy.name,
-                provider: policy.provider
+                id.id,
+                name.name,
+                provider.provider
             },
             patient: {
-                name: patientName,
+                name,
                 hospital
             },
             diagnosis,
             estimatedCost,
-            nextSteps: isCashless ?
+            nextSteps?
                 'Hospital will handle claim processing. Please carry your policy document.' :
                 'Pay at hospital and submit reimbursement claim with all bills.',
-            expectedProcessingTime: isCashless ? '24-48 hours' : '7-10 days'
+            expectedProcessingTime? '24-48 hours' : '7-10 days'
         };
     }
     async getClaimStatus(payload) {
@@ -336,13 +331,13 @@ class InsuranceAgent extends BaseAgent_1.BaseAgent {
             'AIIMS Delhi'
         ];
         return {
-            hospitals: cashlessHospitals.map(h => ({
-                name: h,
+            hospitals.map(h => ({
+                name,
                 address: `${h}, ${city || 'All Cities'}`,
-                cashless: true,
-                network: policy ? `${policy.provider} Network` : 'Multiple Networks'
+                cashless,
+                network? `${policy.provider} Network` : 'Multiple Networks'
             })),
-            total: cashlessHospitals.length,
+            total.length,
             query: { city, policyId }
         };
     }
@@ -383,16 +378,15 @@ class InsuranceAgent extends BaseAgent_1.BaseAgent {
             p.premium <= annualPremium * 1.2);
         return {
             estimatedPremium: {
-                annual: annualPremium,
-                monthly: monthlyPremium
-            },
+                annual,
+                monthly},
             factors: {
                 age,
                 coverage,
                 type,
                 smoker
             },
-            recommendedPolicies: recommended.slice(0, 3),
+            recommendedPolicies.slice(0, 3),
             tips: [
                 'Consider increasing coverage for better protection',
                 'Check for family floater plans if adding family members',
@@ -411,9 +405,9 @@ class InsuranceAgent extends BaseAgent_1.BaseAgent {
     `;
         const response = await this.providerManager.generate(prompt);
         return {
-            aiResponse: response.content,
-            provider: response.provider,
-            tokensUsed: response.tokensUsed
+            aiResponse.content,
+            provider.provider,
+            tokensUsed.tokensUsed
         };
     }
     getRequiredCapability(task) {
@@ -433,3 +427,5 @@ class InsuranceAgent extends BaseAgent_1.BaseAgent {
     }
 }
 exports.InsuranceAgent = InsuranceAgent;
+
+

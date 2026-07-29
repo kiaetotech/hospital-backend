@@ -4,89 +4,56 @@ import { AgentRole, AgentStatus, AgentRequest, AgentResponse } from '../../../sh
 import { BaseAgent } from '../base/BaseAgent';
 import { ProviderManager } from '../../providers/ProviderManager';
 
-interface Notification {
-  id: string;
-  userId: string;
-  type: 'Email' | 'SMS' | 'Push' | 'WhatsApp' | 'InApp';
-  title: string;
-  body: string;
-  data?: Record<string, any>;
-  priority: 'Low' | 'Medium' | 'High';
-  status: 'Pending' | 'Sent' | 'Failed' | 'Delivered';
-  channel: string;
-  sentAt?: Date;
-  deliveredAt?: Date;
-  retryCount: number;
-  createdAt: Date;
-}
 
-interface NotificationChannel {
-  name: string;
-  enabled: boolean;
-  rateLimit: number;
-  costPerMessage: number;
-  quotaRemaining: number;
-  quotaReset: Date;
-}
 
-interface UserNotificationPreferences {
-  userId: string;
-  channels: {
-    email: boolean;
-    sms: boolean;
-    push: boolean;
-    whatsapp: boolean;
-    inApp: boolean;
-  };
+
+
+;
   preferences: {
-    marketing: boolean;
-    transactional: boolean;
-    reminders: boolean;
-    alerts: boolean;
+    marketing;
+    transactional;
+    reminders;
+    alerts;
   };
-  language: string;
-  timezone: string;
+  language;
+  timezone;
 }
 
 export class NotificationAgent extends BaseAgent {
-  private notifications: Map<string, Notification[]> = new Map();
-  private channels: Map<string, NotificationChannel> = new Map();
-  private userPreferences: Map<string, UserNotificationPreferences> = new Map();
+  private notifications<string, Notification[]> = new Map();
+  private channels<string, NotificationChannel> = new Map();
+  private userPreferences<string, UserNotificationPreferences> = new Map();
 
-  constructor(providerManager: ProviderManager) {
+  constructor(providerManager) {
     super(
       {
         name: 'Notification Agent',
-        role: AgentRole.NOTIFICATION,
+        role.NOTIFICATION,
         capabilities: [
           {
             name: 'send_notification',
             description: 'Send notification via optimal channel',
             priority: 1,
             estimatedLatency: 300,
-            requiresAuth: true
-          },
+            requiresAuth},
           {
             name: 'get_preferences',
             description: 'Get user notification preferences',
             priority: 2,
             estimatedLatency: 150,
-            requiresAuth: true
-          },
+            requiresAuth},
           {
             name: 'update_preferences',
             description: 'Update user notification preferences',
             priority: 2,
             estimatedLatency: 150,
-            requiresAuth: true
-          },
+            requiresAuth},
           {
             name: 'get_history',
             description: 'Get notification history',
             priority: 2,
             estimatedLatency: 100,
-            requiresAuth: true
-          }
+            requiresAuth}
         ]
       },
       providerManager
@@ -96,87 +63,85 @@ export class NotificationAgent extends BaseAgent {
     this.initializeUserPreferences();
   }
 
-  private initializeChannels(): void {
+  private initializeChannels(){
     this.channels.set('email', {
       name: 'email',
-      enabled: true,
+      enabled,
       rateLimit: 1000,
       costPerMessage: 0.001,
       quotaRemaining: 5000,
-      quotaReset: new Date(Date.now() + 24 * 60 * 60 * 1000)
+      quotaResetDate(Date.now() + 24 * 60 * 60 * 1000)
     });
 
     this.channels.set('sms', {
       name: 'sms',
-      enabled: true,
+      enabled,
       rateLimit: 100,
       costPerMessage: 0.05,
       quotaRemaining: 500,
-      quotaReset: new Date(Date.now() + 24 * 60 * 60 * 1000)
+      quotaResetDate(Date.now() + 24 * 60 * 60 * 1000)
     });
 
     this.channels.set('push', {
       name: 'push',
-      enabled: true,
+      enabled,
       rateLimit: 10000,
       costPerMessage: 0,
       quotaRemaining: 10000,
-      quotaReset: new Date(Date.now() + 24 * 60 * 60 * 1000)
+      quotaResetDate(Date.now() + 24 * 60 * 60 * 1000)
     });
 
     this.channels.set('whatsapp', {
       name: 'whatsapp',
-      enabled: true,
+      enabled,
       rateLimit: 50,
       costPerMessage: 0.01,
       quotaRemaining: 250,
-      quotaReset: new Date(Date.now() + 24 * 60 * 60 * 1000)
+      quotaResetDate(Date.now() + 24 * 60 * 60 * 1000)
     });
 
     this.channels.set('inApp', {
       name: 'inApp',
-      enabled: true,
+      enabled,
       rateLimit: 100000,
       costPerMessage: 0,
       quotaRemaining: 100000,
-      quotaReset: new Date(Date.now() + 24 * 60 * 60 * 1000)
+      quotaResetDate(Date.now() + 24 * 60 * 60 * 1000)
     });
   }
 
-  private initializeUserPreferences(): void {
+  private initializeUserPreferences(){
     this.userPreferences.set('user1', {
       userId: 'user1',
       channels: {
-        email: true,
-        sms: true,
-        push: true,
-        whatsapp: false,
-        inApp: true
-      },
+        email,
+        sms,
+        push,
+        whatsapp,
+        inApp},
       preferences: {
-        marketing: false,
-        transactional: true,
-        reminders: true,
-        alerts: true
-      },
+        marketing,
+        transactional,
+        reminders,
+        alerts},
       language: 'en',
       timezone: 'Asia/Kolkata'
     });
   }
 
-  async execute(request: AgentRequest): Promise<AgentResponse> {
+  async execute(request)<AgentResponse> {
     this.setStatus(AgentStatus.BUSY);
     this.setCurrentTask(request.task);
 
     try {
       if (!this.validateRequest(request)) {
-        throw new Error('Invalid request: Missing required fields or capabilities');
+        throw new Error('Invalid requestrequired fields or capabilities');
       }
 
       const { task, payload } = request;
       this.log(`Executing task: ${task}`, 'info');
 
-      let result: any;
+      let result;
 
       if (task.includes('send')) {
         result = await this.sendNotification(payload);
@@ -192,10 +157,10 @@ export class NotificationAgent extends BaseAgent {
       this.setCurrentTask(undefined);
 
       return {
-        success: true,
-        data: result,
-        sourceAgent: this.id,
-        processingTime: Date.now() - new Date().getTime()
+        success,
+        data,
+        sourceAgent.id,
+        processingTime.now() - new Date().getTime()
       };
 
     } catch (error) {
@@ -205,7 +170,7 @@ export class NotificationAgent extends BaseAgent {
     }
   }
 
-  private async sendNotification(payload: any): Promise<any> {
+  private async sendNotification(payload)<any> {
     const { userId, title, body, priority = 'Medium', type, data } = payload;
 
     if (!userId || !title || !body) {
@@ -215,8 +180,8 @@ export class NotificationAgent extends BaseAgent {
     // Get user preferences
     const preferences = this.userPreferences.get(userId) || {
       userId,
-      channels: { email: true, sms: false, push: true, whatsapp: false, inApp: true },
-      preferences: { marketing: true, transactional: true, reminders: true, alerts: true },
+      channels: { email, sms, push, whatsapp, inApp},
+      preferences: { marketing, transactional, reminders, alerts},
       language: 'en',
       timezone: 'Asia/Kolkata'
     };
@@ -235,18 +200,18 @@ export class NotificationAgent extends BaseAgent {
     }
 
     // Create notification
-    const notification: Notification = {
+    const notification= {
       id: `notif${Date.now()}`,
       userId,
-      type: this.getNotificationType(channel),
+      type.getNotificationType(channel),
       title,
       body,
-      data: data || {},
+      data|| {},
       priority,
       status: 'Pending',
       channel,
       retryCount: 0,
-      createdAt: new Date()
+      createdAtDate()
     };
 
     // Store notification
@@ -267,19 +232,18 @@ export class NotificationAgent extends BaseAgent {
     }
 
     return {
-      notificationId: notification.id,
-      status: notification.status,
+      notificationId.id,
+      status.status,
       channel,
-      timestamp: new Date().toISOString(),
-      channelQuotaRemaining: channelConfig.quotaRemaining
+      timestampDate().toISOString(),
+      channelQuotaRemaining.quotaRemaining
     };
   }
 
   private selectOptimalChannel(
-    priority: string,
-    preferences: UserNotificationPreferences,
-    type?: string
-  ): string | null {
+    priority,
+    preferences,
+    type?)| null {
     const channels = ['inApp', 'push', 'email', 'whatsapp', 'sms'];
 
     // Filter enabled channels
@@ -306,11 +270,11 @@ export class NotificationAgent extends BaseAgent {
     }
 
     // Fallback to first available
-    return enabledChannels.length > 0 ? enabledChannels[0] : null;
+    return enabledChannels.length > 0 ? enabledChannels[0] ;
   }
 
-  private getNotificationType(channel: string): Notification['type'] {
-    const map: Record<string, Notification['type']> = {
+  private getNotificationType(channel)['type'] {
+    const map= {
       'email': 'Email',
       'sms': 'SMS',
       'push': 'Push',
@@ -320,7 +284,7 @@ export class NotificationAgent extends BaseAgent {
     return map[channel] || 'InApp';
   }
 
-  private async sendViaChannel(channel: string, notification: Notification): Promise<boolean> {
+  private async sendViaChannel(channel, notification)<boolean> {
     // Simulate channel sending
     console.log(`📤 Sending notification via ${channel}: ${notification.title}`);
 
@@ -336,7 +300,7 @@ export class NotificationAgent extends BaseAgent {
     return success;
   }
 
-  private async handlePreferences(payload: any): Promise<any> {
+  private async handlePreferences(payload)<any> {
     const { action, userId, preferences } = payload;
 
     if (!userId) {
@@ -349,8 +313,8 @@ export class NotificationAgent extends BaseAgent {
         return {
           userId,
           preferences: {
-            channels: { email: true, sms: false, push: true, whatsapp: false, inApp: true },
-            preferences: { marketing: true, transactional: true, reminders: true, alerts: true },
+            channels: { email, sms, push, whatsapp, inApp},
+            preferences: { marketing, transactional, reminders, alerts},
             language: 'en',
             timezone: 'Asia/Kolkata'
           }
@@ -368,8 +332,8 @@ export class NotificationAgent extends BaseAgent {
       if (!userPrefs) {
         userPrefs = {
           userId,
-          channels: { email: true, sms: false, push: true, whatsapp: false, inApp: true },
-          preferences: { marketing: true, transactional: true, reminders: true, alerts: true },
+          channels: { email, sms, push, whatsapp, inApp},
+          preferences: { marketing, transactional, reminders, alerts},
           language: 'en',
           timezone: 'Asia/Kolkata'
         };
@@ -399,16 +363,16 @@ export class NotificationAgent extends BaseAgent {
 
       return {
         userId,
-        preferences: userPrefs,
-        updated: true,
-        timestamp: new Date().toISOString()
+        preferences,
+        updated,
+        timestampDate().toISOString()
       };
     }
 
     throw new Error('Invalid preferences action');
   }
 
-  private async getHistory(payload: any): Promise<any> {
+  private async getHistory(payload)<any> {
     const { userId, limit = 20, status } = payload;
 
     if (!userId) {
@@ -426,18 +390,18 @@ export class NotificationAgent extends BaseAgent {
     results.sort((a, b) => b.createdAt.getTime() - a.createdAt.getTime());
 
     return {
-      notifications: results.slice(0, limit),
-      total: results.length,
+      notifications.slice(0, limit),
+      total.length,
       userId,
       summary: {
-        sent: userNotifications.filter(n => n.status === 'Sent').length,
-        failed: userNotifications.filter(n => n.status === 'Failed').length,
-        pending: userNotifications.filter(n => n.status === 'Pending').length
+        sent.filter(n => n.status === 'Sent').length,
+        failed.filter(n => n.status === 'Failed').length,
+        pending.filter(n => n.status === 'Pending').length
       }
     };
   }
 
-  private async handleComplexQuery(task: string, payload: any): Promise<any> {
+  private async handleComplexQuery(task, payload)<any> {
     const prompt = `
       Task: ${task}
       Payload: ${JSON.stringify(payload)}
@@ -452,13 +416,13 @@ export class NotificationAgent extends BaseAgent {
     const response = await this.providerManager.generate(prompt);
     
     return {
-      aiResponse: response.content,
-      provider: response.provider,
-      tokensUsed: response.tokensUsed
+      aiResponse.content,
+      provider.provider,
+      tokensUsed.tokensUsed
     };
   }
 
-  protected getRequiredCapability(task: string): string | null {
+  protected getRequiredCapability(task)| null {
     if (task.includes('send')) {
       return 'send_notification';
     }
@@ -474,3 +438,5 @@ export class NotificationAgent extends BaseAgent {
     return null;
   }
 }
+
+

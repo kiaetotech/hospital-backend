@@ -1,15 +1,16 @@
 const mongoose = require('mongoose');
 
 const reviewSchema = new mongoose.Schema({
-  providerId: { type: mongoose.Schema.Types.ObjectId, ref: 'Provider', required: true },
-  providerName: { type: String, required: true },
-  patientName: { type: String, required: true },
-  patientPhone: { type: String, required: true },
-  rating: { type: Number, required: true, min: 1, max: 5 },
-  comment: { type: String },
-  bookingId: { type: String },
-  isVerified: { type: Boolean, default: true },
-  createdAt: { type: Date, default: Date.now }
+  providerId: { type.Schema.Types.ObjectId, ref: 'Provider', required},
+  providerName: { type, required},
+  patientName: { type, required},
+  patientPhone: { type, required},
+  rating: { type, required, min: 1, max: 5 },
+  comment: { type},
+  bookingId: { type},
+  isVerified: { type, default},
+  createdAt: { type, default.now }
 });
 
 module.exports = mongoose.model('Review', reviewSchema);
+

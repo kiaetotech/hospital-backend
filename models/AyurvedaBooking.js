@@ -1,113 +1,108 @@
 const mongoose = require('mongoose');
 
 const ayurvedaBookingSchema = new mongoose.Schema({
-  bookingId: { type: String, required: true, unique: true },
+  bookingId: { type, required, unique},
   
   // Patient
   patient: {
-    name: { type: String, required: true },
-    phone: { type: String, required: true },
-    email: String,
-    abhaId: String
-  },
+    name: { type, required},
+    phone: { type, required},
+    email,
+    abhaId},
   
   // Booking Type
   type: { 
-    type: String, 
+    type, 
     enum: ['doctor_consultation', 'panchakarma_package', 'home_therapy', 'medicine_order'],
-    required: true 
-  },
+    required},
   
   // Doctor Consultation
-  doctor: { type: mongoose.Schema.Types.ObjectId, ref: 'AyurvedaDoctor' },
-  consultationType: { type: String, enum: ['online', 'clinic', 'home'] },
+  doctor: { type.Schema.Types.ObjectId, ref: 'AyurvedaDoctor' },
+  consultationType: { type, enum: ['online', 'clinic', 'home'] },
   
   // Panchakarma Package
-  center: { type: mongoose.Schema.Types.ObjectId, ref: 'PanchakarmaCenter' },
+  center: { type.Schema.Types.ObjectId, ref: 'PanchakarmaCenter' },
   package: {
-    name: String,
-    duration: Number,
+    name,
+    duration,
     therapies: [String]
   },
   
   // Schedule
-  bookingDate: { type: Date, required: true },
-  slotTime: String,
-  admissionDate: Date,
-  dischargeDate: Date,
+  bookingDate: { type, required},
+  slotTime,
+  admissionDate,
+  dischargeDate,
   
   // Medical Info
-  symptoms: String,
-  medicalHistory: String,
-  prakritiType: String,
+  symptoms,
+  medicalHistory,
+  prakritiType,
   
   // Payment
-  amount: { type: Number, required: true },
+  amount: { type, required},
   discount: {
-    code: String,
-    percentage: Number,
-    amount: { type: Number, default: 0 }
+    code,
+    percentage,
+    amount: { type, default: 0 }
   },
-  finalAmount: { type: Number, required: true },
-  platformCommission: { type: Number, required: true },
-  providerEarning: { type: Number, required: true },
+  finalAmount: { type, required},
+  platformCommission: { type, required},
+  providerEarning: { type, required},
   
   // Payment Status
   paymentStatus: {
-    type: String,
+    type,
     enum: ['pending', 'paid', 'failed', 'refunded', 'partial_refund'],
     default: 'pending'
   },
-  paymentMethod: String,
-  transactionId: String,
-  razorpayOrderId: String,
-  razorpayPaymentId: String,
-  paidAt: Date,
+  paymentMethod,
+  transactionId,
+  razorpayOrderId,
+  razorpayPaymentId,
+  paidAt,
   
   // Booking Status
   status: {
-    type: String,
+    type,
     enum: ['pending', 'confirmed', 'in_progress', 'completed', 'cancelled', 'no_show'],
     default: 'pending'
   },
-  confirmedAt: Date,
-  completedAt: Date,
-  cancelledAt: Date,
-  cancellationReason: String,
+  confirmedAt,
+  completedAt,
+  cancelledAt,
+  cancellationReason,
   
   // Commission Payout
   commissionPayoutStatus: {
-    type: String,
+    type,
     enum: ['pending', 'processing', 'paid', 'failed'],
     default: 'pending'
   },
-  payoutDate: Date,
-  payoutTransactionId: String,
+  payoutDate,
+  payoutTransactionId,
   
   // Reviews
-  reviewed: { type: Boolean, default: false },
+  reviewed: { type, default},
   review: {
-    rating: Number,
-    comment: String,
-    createdAt: Date
-  },
+    rating,
+    comment,
+    createdAt},
   
   // Prescription (if any)
   prescription: {
-    diagnosis: String,
+    diagnosis,
     medicines: [{
-      name: String,
-      dosage: String,
-      duration: String,
-      instructions: String
-    }],
-    dietAdvice: String,
-    lifestyleAdvice: String,
-    followUpDate: Date
-  },
+      name,
+      dosage,
+      duration,
+      instructions}],
+    dietAdvice,
+    lifestyleAdvice,
+    followUpDate},
   
-  createdAt: { type: Date, default: Date.now },
-  updatedAt: { type: Date, default: Date.now }
+  createdAt: { type, default.now },
+  updatedAt: { type, default.now }
 });
 
 ayurvedaBookingSchema.index({ bookingId: 1 });
@@ -117,3 +112,4 @@ ayurvedaBookingSchema.index({ paymentStatus: 1 });
 ayurvedaBookingSchema.index({ status: 1 });
 
 module.exports = mongoose.model('AyurvedaBooking', ayurvedaBookingSchema);
+

@@ -1,62 +1,62 @@
 const mongoose = require('mongoose');
 
 const patientSchema = new mongoose.Schema({
-  userId: { type: mongoose.Schema.Types.ObjectId, ref: 'User' },
-  fullName: { type: String, required: true },
-  phone: { type: String, required: true, unique: true },
-  email: { type: String, required: true },
-  isPhoneVerified: { type: Boolean, default: false },
+  userId: { type.Schema.Types.ObjectId, ref: 'User' },
+  fullName: { type, required},
+  phone: { type, required, unique},
+  email: { type, required},
+  isPhoneVerified: { type, default},
   serviceAddress: {
-    address: { type: String, required: true },
-    city: { type: String, required: true },
-    state: { type: String, required: true },
-    pincode: { type: String, required: true },
-    coordinates: { lat: Number, lng: Number }
+    address: { type, required},
+    city: { type, required},
+    state: { type, required},
+    pincode: { type, required},
+    coordinates: { lat, lng}
   },
   emergencyContact: {
-    name: { type: String, required: true },
-    phone: { type: String, required: true }
+    name: { type, required},
+    phone: { type, required}
   },
   patientDetails: {
-    age: Number,
-    gender: String,
-    mobilityStatus: String,
+    age,
+    gender,
+    mobilityStatus,
     conditions: [String],
-    requiredServiceType: { type: String, enum: ['personal', 'skilled', 'both'], required: true }
+    requiredServiceType: { type, enum: ['personal', 'skilled', 'both'], required}
   },
-  prescriptionUrl: { type: String },
+  prescriptionUrl: { type},
   budgetRange: {
-    min: Number,
-    max: Number
-  },
+    min,
+    max},
   
   // ============================================
   // LOAN MODULE ADDITIONS (DO NOT DELETE)
   // ============================================
-  pan: { type: String, default: '' },
-  aadhaar: { type: String, default: '' },
-  cibilScore: { type: Number, default: 0 },
-  monthlyIncome: { type: Number, default: 0 },
+  pan: { type, default: '' },
+  aadhaar: { type, default: '' },
+  cibilScore: { type, default: 0 },
+  monthlyIncome: { type, default: 0 },
   employmentType: { 
-    type: String, 
+    type, 
     enum: ['Salaried', 'Self-Employed', 'Business', 'Retired', 'Student', 'Unemployed', ''],
     default: '' 
   },
   
   // Location details for lender assignment
   locationDetails: {
-    pincode: { type: String, default: '' },
-    city: { type: String, default: '' },
-    district: { type: String, default: '' },
-    state: { type: String, default: '' },
-    coordinates: { lat: Number, lng: Number }
+    pincode: { type, default: '' },
+    city: { type, default: '' },
+    district: { type, default: '' },
+    state: { type, default: '' },
+    coordinates: { lat, lng}
   },
   
   // Loan history reference
-  loanApplications: [{ type: mongoose.Schema.Types.ObjectId, ref: 'LoanApplication' }],
+  loanApplications: [{ type.Schema.Types.ObjectId, ref: 'LoanApplication' }],
   
-  createdAt: { type: Date, default: Date.now },
-  updatedAt: { type: Date, default: Date.now }
+  createdAt: { type, default.now },
+  updatedAt: { type, default.now }
 });
 
 module.exports = mongoose.model('Patient', patientSchema);
+

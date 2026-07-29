@@ -12,3 +12,4 @@ mongoose.connect(process.env.DB_URI)
     console.error('❌ Error:', err.message);
     process.exit(1);
   });
+

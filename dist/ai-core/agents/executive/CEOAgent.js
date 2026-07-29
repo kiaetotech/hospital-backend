@@ -1,6 +1,6 @@
 "use strict";
 // D:\hospital backend\ai-core\agents\executive\CEOAgent.ts
-Object.defineProperty(exports, "__esModule", { value: true });
+Object.defineProperty(exports, "__esModule", { value});
 exports.CEOAgent = void 0;
 const AgentTypes_1 = require("../../../shared/types/AgentTypes");
 const BaseAgent_1 = require("../base/BaseAgent");
@@ -8,36 +8,32 @@ class CEOAgent extends BaseAgent_1.BaseAgent {
     constructor(providerManager, capabilityRegistry) {
         super({
             name: 'CEO Agent',
-            role: AgentTypes_1.AgentRole.CEO,
+            role_1.AgentRole.CEO,
             capabilities: [
                 {
                     name: 'create_strategic_plan',
                     description: 'Create and manage strategic plans',
                     priority: 1,
                     estimatedLatency: 400,
-                    requiresAuth: true
-                },
+                    requiresAuth},
                 {
                     name: 'coordinate_workflows',
                     description: 'Coordinate complex multi-agent workflows',
                     priority: 1,
                     estimatedLatency: 500,
-                    requiresAuth: true
-                },
+                    requiresAuth},
                 {
                     name: 'generate_report',
                     description: 'Generate business reports and insights',
                     priority: 2,
                     estimatedLatency: 600,
-                    requiresAuth: true
-                },
+                    requiresAuth},
                 {
                     name: 'allocate_resources',
                     description: 'Allocate resources across agents',
                     priority: 2,
                     estimatedLatency: 300,
-                    requiresAuth: true
-                }
+                    requiresAuth}
             ]
         }, providerManager);
         this.strategicPlans = new Map();
@@ -58,7 +54,7 @@ class CEOAgent extends BaseAgent_1.BaseAgent {
                     name: 'Hospital Onboarding',
                     description: 'Onboard 50 new hospitals',
                     requiredCapabilities: ['search_hospitals', 'compare_hospitals'],
-                    agentRole: AgentTypes_1.AgentRole.HOSPITAL,
+                    agentRole_1.AgentRole.HOSPITAL,
                     dependencies: [],
                     status: 'Pending'
                 },
@@ -67,7 +63,7 @@ class CEOAgent extends BaseAgent_1.BaseAgent {
                     name: 'User Acquisition Campaign',
                     description: 'Launch marketing campaign for new hospitals',
                     requiredCapabilities: ['generate_content', 'create_campaign'],
-                    agentRole: AgentTypes_1.AgentRole.MARKETING,
+                    agentRole_1.AgentRole.MARKETING,
                     dependencies: ['step1'],
                     status: 'Pending'
                 },
@@ -76,7 +72,7 @@ class CEOAgent extends BaseAgent_1.BaseAgent {
                     name: 'Analytics Review',
                     description: 'Review campaign performance',
                     requiredCapabilities: ['generate_kpi', 'generate_report'],
-                    agentRole: AgentTypes_1.AgentRole.ANALYTICS,
+                    agentRole_1.AgentRole.ANALYTICS,
                     dependencies: ['step2'],
                     status: 'Pending'
                 }
@@ -84,8 +80,8 @@ class CEOAgent extends BaseAgent_1.BaseAgent {
             status: 'Draft',
             priority: 'High',
             assignedTo: ['HospitalAgent', 'MarketingAgent', 'AnalyticsAgent'],
-            createdAt: new Date(),
-            updatedAt: new Date()
+            createdAtDate(),
+            updatedAtDate()
         };
         this.strategicPlans.set(samplePlan.id, samplePlan);
     }
@@ -94,7 +90,7 @@ class CEOAgent extends BaseAgent_1.BaseAgent {
         this.setCurrentTask(request.task);
         try {
             if (!this.validateRequest(request)) {
-                throw new Error('Invalid request: Missing required fields or capabilities');
+                throw new Error('Invalid requestrequired fields or capabilities');
             }
             const { task, payload } = request;
             this.log(`Executing CEO task: ${task}`, 'info');
@@ -117,10 +113,10 @@ class CEOAgent extends BaseAgent_1.BaseAgent {
             this.setStatus(AgentTypes_1.AgentStatus.IDLE);
             this.setCurrentTask(undefined);
             return {
-                success: true,
-                data: result,
-                sourceAgent: this.id,
-                processingTime: Date.now() - new Date().getTime()
+                success,
+                data,
+                sourceAgent.id,
+                processingTime.now() - new Date().getTime()
             };
         }
         catch (error) {
@@ -137,28 +133,28 @@ class CEOAgent extends BaseAgent_1.BaseAgent {
         const plan = {
             id: `plan${Date.now()}`,
             name,
-            description: description || '',
-            steps: steps.map((s, index) => ({
+            description|| '',
+            steps.map((s, index) => ({
                 id: `step${index}`,
-                name: s.name,
-                description: s.description || '',
-                requiredCapabilities: s.requiredCapabilities || [],
-                agentRole: s.agentRole,
-                dependencies: s.dependencies || [],
+                name.name,
+                description.description || '',
+                requiredCapabilities.requiredCapabilities || [],
+                agentRole.agentRole,
+                dependencies.dependencies || [],
                 status: 'Pending'
             })),
             status: 'Draft',
-            priority: priority || 'Medium',
-            assignedTo: this.getAgentsForSteps(steps),
-            createdAt: new Date(),
-            updatedAt: new Date()
+            priority|| 'Medium',
+            assignedTo.getAgentsForSteps(steps),
+            createdAtDate(),
+            updatedAtDate()
         };
         this.strategicPlans.set(plan.id, plan);
         return {
-            planId: plan.id,
-            name: plan.name,
-            steps: plan.steps,
-            status: plan.status,
+            planId.id,
+            name.name,
+            steps.steps,
+            status.status,
             message: 'Strategic plan created successfully',
             nextSteps: 'Review and approve plan for execution'
         };
@@ -194,7 +190,7 @@ class CEOAgent extends BaseAgent_1.BaseAgent {
             plan.status = 'InProgress';
             plan.updatedAt = new Date();
             return {
-                planId: plan.id,
+                planId.id,
                 status: 'Paused',
                 message: 'Plan paused successfully'
             };
@@ -203,7 +199,7 @@ class CEOAgent extends BaseAgent_1.BaseAgent {
             plan.status = 'InProgress';
             plan.updatedAt = new Date();
             return {
-                planId: plan.id,
+                planId.id,
                 status: 'Resumed',
                 message: 'Plan resumed successfully'
             };
@@ -250,9 +246,9 @@ class CEOAgent extends BaseAgent_1.BaseAgent {
                     plan.updatedAt = new Date();
                     executionLog.push(`❌ Step ${step.name} failed: ${error.message}`);
                     return {
-                        planId: plan.id,
-                        status: plan.status,
-                        failedStep: step,
+                        planId.id,
+                        status.status,
+                        failedStep,
                         executionLog,
                         message: 'Plan execution failed'
                     };
@@ -263,8 +259,8 @@ class CEOAgent extends BaseAgent_1.BaseAgent {
                 plan.status = 'Failed';
                 plan.updatedAt = new Date();
                 return {
-                    planId: plan.id,
-                    status: plan.status,
+                    planId.id,
+                    status.status,
                     executionLog,
                     message: 'Execution stalled - possible circular dependency'
                 };
@@ -275,8 +271,8 @@ class CEOAgent extends BaseAgent_1.BaseAgent {
         plan.completedAt = new Date();
         plan.updatedAt = new Date();
         return {
-            planId: plan.id,
-            status: plan.status,
+            planId.id,
+            status.status,
             executionLog,
             message: 'Strategic plan completed successfully'
         };
@@ -285,8 +281,7 @@ class CEOAgent extends BaseAgent_1.BaseAgent {
         this.log(`Executing step: ${step.name}`, 'info');
         // Use AI to help with decision making
         const prompt = `
-      Execute the following strategic step:
-      Name: ${step.name}
+      Execute the following strategic step: ${step.name}
       Description: ${step.description}
       Required Capabilities: ${step.requiredCapabilities.join(', ')}
       Agent Role: ${step.agentRole || 'Not specified'}
@@ -296,10 +291,10 @@ class CEOAgent extends BaseAgent_1.BaseAgent {
     `;
         const response = await this.providerManager.generate(prompt);
         return {
-            step: step.name,
-            execution: response.content,
-            provider: response.provider,
-            timestamp: new Date().toISOString()
+            step.name,
+            execution.content,
+            provider.provider,
+            timestampDate().toISOString()
         };
     }
     getPlanStatus(plan) {
@@ -308,31 +303,31 @@ class CEOAgent extends BaseAgent_1.BaseAgent {
         const failed = plan.steps.filter(s => s.status === 'Failed').length;
         const inProgress = plan.steps.filter(s => s.status === 'InProgress').length;
         return {
-            planId: plan.id,
-            name: plan.name,
-            status: plan.status,
-            progress: Math.round((completed / totalSteps) * 100),
+            planId.id,
+            name.name,
+            status.status,
+            progress.round((completed / totalSteps) * 100),
             totalSteps,
             completed,
             failed,
             inProgress,
-            steps: plan.steps.map(s => ({
-                id: s.id,
-                name: s.name,
-                status: s.status,
-                error: s.error
+            steps.steps.map(s => ({
+                id.id,
+                name.name,
+                status.status,
+                error.error
             })),
-            updatedAt: plan.updatedAt
+            updatedAt.updatedAt
         };
     }
     async generateReport(payload) {
         const { type, period, planId } = payload;
         // Gather data from all agents
         const agentStatuses = this.capabilityRegistry.getAllAgents().map(agent => ({
-            name: agent.name,
-            role: agent.role,
-            status: agent.status,
-            capabilities: agent.capabilities.map(c => c.name)
+            name.name,
+            role.role,
+            status.status,
+            capabilities.capabilities.map(c => c.name)
         }));
         // Use AI to generate report
         const prompt = `
@@ -351,27 +346,27 @@ class CEOAgent extends BaseAgent_1.BaseAgent {
         const report = {
             id: `report${Date.now()}`,
             title: `${type || 'Business'} Report - ${period || new Date().toISOString().slice(0, 7)}`,
-            type: type || 'Monthly',
-            summary: response.content,
+            type|| 'Monthly',
+            summary.content,
             metrics: {
-                activeAgents: agentStatuses.length,
-                healthyAgents: agentStatuses.filter(a => a.status === 'online').length,
-                plans: this.strategicPlans.size,
-                activePlans: Array.from(this.strategicPlans.values()).filter(p => p.status === 'InProgress').length
+                activeAgents.length,
+                healthyAgents.filter(a => a.status === 'online').length,
+                plans.strategicPlans.size,
+                activePlans.from(this.strategicPlans.values()).filter(p => p.status === 'InProgress').length
             },
             recommendations: [
                 'Review agent performance metrics',
                 'Optimize resource allocation',
                 'Identify bottlenecks in workflows'
             ],
-            generatedAt: new Date(),
-            period: period || new Date().toISOString().slice(0, 7)
+            generatedAtDate(),
+            period|| new Date().toISOString().slice(0, 7)
         };
         this.businessReports.push(report);
         return {
             report,
             message: 'Report generated successfully',
-            timestamp: new Date().toISOString()
+            timestampDate().toISOString()
         };
     }
     async allocateResources(payload) {
@@ -380,13 +375,13 @@ class CEOAgent extends BaseAgent_1.BaseAgent {
             // Return current resource allocation
             return {
                 resources: {
-                    totalAgents: this.capabilityRegistry.getAllAgents().length,
-                    activeAgents: this.capabilityRegistry.getAllAgents().filter(a => a.status === 'online').length,
-                    plans: Array.from(this.strategicPlans.values()).map(p => ({
-                        id: p.id,
-                        name: p.name,
-                        status: p.status,
-                        assignedTo: p.assignedTo
+                    totalAgents.capabilityRegistry.getAllAgents().length,
+                    activeAgents.capabilityRegistry.getAllAgents().filter(a => a.status === 'online').length,
+                    plans.from(this.strategicPlans.values()).map(p => ({
+                        id.id,
+                        name.name,
+                        status.status,
+                        assignedTo.assignedTo
                     }))
                 }
             };
@@ -399,8 +394,8 @@ class CEOAgent extends BaseAgent_1.BaseAgent {
             plan.assignedTo = agentAssignments;
             plan.updatedAt = new Date();
             return {
-                planId: plan.id,
-                assignedTo: plan.assignedTo,
+                planId.id,
+                assignedTo.assignedTo,
                 message: 'Resources allocated successfully'
             };
         }
@@ -408,9 +403,9 @@ class CEOAgent extends BaseAgent_1.BaseAgent {
         const availableAgents = this.capabilityRegistry.getAllAgents().filter(a => a.status === 'online');
         const recommended = availableAgents.slice(0, Math.min(3, availableAgents.length)).map(a => a.name);
         return {
-            planId: plan.id,
-            recommendedAllocation: recommended,
-            availableAgents: availableAgents.map(a => a.name)
+            planId.id,
+            recommendedAllocation,
+            availableAgents.map(a => a.name)
         };
     }
     async handleComplexQuery(task, payload) {
@@ -425,9 +420,9 @@ class CEOAgent extends BaseAgent_1.BaseAgent {
     `;
         const response = await this.providerManager.generate(prompt);
         return {
-            aiResponse: response.content,
-            provider: response.provider,
-            tokensUsed: response.tokensUsed
+            aiResponse.content,
+            provider.provider,
+            tokensUsed.tokensUsed
         };
     }
     getRequiredCapability(task) {
@@ -447,3 +442,5 @@ class CEOAgent extends BaseAgent_1.BaseAgent {
     }
 }
 exports.CEOAgent = CEOAgent;
+
+

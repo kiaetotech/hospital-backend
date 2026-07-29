@@ -1,6 +1,6 @@
 "use strict";
 // packages/ai-core/src/monitoring/MonitoringAggregationService.ts
-Object.defineProperty(exports, "__esModule", { value: true });
+Object.defineProperty(exports, "__esModule", { value});
 exports.MonitoringAggregationService = void 0;
 class MonitoringAggregationService {
     constructor(registry, providerManager, healthManager, budgetManager, queueManager) {
@@ -31,35 +31,35 @@ class MonitoringAggregationService {
             const health = this.healthManager.getStatus(agent.id);
             const queue = this.queueManager.getQueueStatus(agent.id);
             agentData[agent.id] = {
-                status: agent.status,
+                status.status,
                 health: {
-                    agentId: agent.id,
-                    status: health?.status || 'unknown',
+                    agentId.id,
+                    status?.status || 'unknown',
                     uptime: 0, // This would need to be tracked
-                    responseTime: health?.responseTime || 0,
+                    responseTime?.responseTime || 0,
                     errorRate: 0,
-                    lastCheck: new Date(),
-                    details: health?.details || {}
+                    lastCheckDate(),
+                    details?.details || {}
                 },
                 cost: {
-                    agentId: agent.id,
+                    agentId.id,
                     provider: 'unknown', // Would need to track per agent
                     tokensUsed: 0,
                     costInr: 0,
                     dailyCostInr: 0,
                     weeklyCostInr: 0,
                     monthlyCostInr: 0,
-                    budgetRemaining: this.budgetManager.getCurrentSpend().daily,
-                    budgetPercentage: this.budgetManager.getUsagePercentage()
+                    budgetRemaining.budgetManager.getCurrentSpend().daily,
+                    budgetPercentage.budgetManager.getUsagePercentage()
                 },
-                queues: queue || [],
+                queues|| [],
                 memory: []
             };
         }
         const providerHealth = await this.providerManager.getHealthStatus();
         const systemHealth = {
-            mongodb: this.healthManager.getStatus('mongodb')?.status || 'healthy',
-            redis: this.healthManager.getStatus('redis')?.status || 'healthy',
+            mongodb.healthManager.getStatus('mongodb')?.status || 'healthy',
+            redis.healthManager.getStatus('redis')?.status || 'healthy',
             providers: {}
         };
         for (const [provider, status] of Object.entries(providerHealth)) {
@@ -67,12 +67,12 @@ class MonitoringAggregationService {
         }
         const spend = this.budgetManager.getCurrentSpend();
         return {
-            timestamp: new Date(),
-            agents: agentData,
+            timestampDate(),
+            agents,
             systemHealth,
-            totalCostToday: spend.daily,
+            totalCostToday.daily,
             totalRequestsToday: 0, // Would need to track requests
-            activeAgentsCount: agents.filter(a => a.status === 'online').length
+            activeAgentsCount.filter(a => a.status === 'online').length
         };
     }
     getLatestSnapshot() {
@@ -110,3 +110,5 @@ class MonitoringAggregationService {
     }
 }
 exports.MonitoringAggregationService = MonitoringAggregationService;
+
+

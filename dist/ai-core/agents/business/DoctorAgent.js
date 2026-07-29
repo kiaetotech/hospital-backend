@@ -1,6 +1,6 @@
 "use strict";
 // D:\hospital backend\ai-core\agents\business\DoctorAgent.ts
-Object.defineProperty(exports, "__esModule", { value: true });
+Object.defineProperty(exports, "__esModule", { value});
 exports.DoctorAgent = void 0;
 const AgentTypes_1 = require("../../../shared/types/AgentTypes");
 const BaseAgent_1 = require("../base/BaseAgent");
@@ -8,36 +8,32 @@ class DoctorAgent extends BaseAgent_1.BaseAgent {
     constructor(providerManager) {
         super({
             name: 'Doctor Agent',
-            role: AgentTypes_1.AgentRole.DOCTOR,
+            role_1.AgentRole.DOCTOR,
             capabilities: [
                 {
                     name: 'find_doctor',
                     description: 'Find doctors by specialty, location, or availability',
                     priority: 1,
                     estimatedLatency: 200,
-                    requiresAuth: false
-                },
+                    requiresAuth},
                 {
                     name: 'book_consultation',
                     description: 'Book a consultation with a doctor',
                     priority: 1,
                     estimatedLatency: 300,
-                    requiresAuth: true
-                },
+                    requiresAuth},
                 {
                     name: 'check_availability',
                     description: 'Check doctor availability for online or in-person consultation',
                     priority: 1,
                     estimatedLatency: 150,
-                    requiresAuth: false
-                },
+                    requiresAuth},
                 {
                     name: 'get_doctor_profile',
                     description: 'Get detailed doctor profile including experience and ratings',
                     priority: 2,
                     estimatedLatency: 100,
-                    requiresAuth: false
-                }
+                    requiresAuth}
             ]
         }, providerManager);
         this.doctors = [];
@@ -56,7 +52,7 @@ class DoctorAgent extends BaseAgent_1.BaseAgent {
                 rating: 4.9,
                 consultationFee: 800,
                 availableSlots: ['10:00 AM', '11:30 AM', '2:00 PM', '4:30 PM'],
-                onlineAvailable: true,
+                onlineAvailable,
                 languages: ['English', 'Hindi', 'Marathi']
             },
             {
@@ -69,7 +65,7 @@ class DoctorAgent extends BaseAgent_1.BaseAgent {
                 rating: 4.7,
                 consultationFee: 700,
                 availableSlots: ['9:00 AM', '1:00 PM', '3:30 PM', '5:00 PM'],
-                onlineAvailable: true,
+                onlineAvailable,
                 languages: ['English', 'Hindi']
             },
             {
@@ -82,7 +78,7 @@ class DoctorAgent extends BaseAgent_1.BaseAgent {
                 rating: 4.9,
                 consultationFee: 1200,
                 availableSlots: ['10:30 AM', '12:00 PM', '3:00 PM'],
-                onlineAvailable: false,
+                onlineAvailable,
                 languages: ['English', 'Hindi', 'Gujarati']
             },
             {
@@ -95,7 +91,7 @@ class DoctorAgent extends BaseAgent_1.BaseAgent {
                 rating: 4.8,
                 consultationFee: 1500,
                 availableSlots: ['9:30 AM', '11:00 AM', '2:30 PM', '5:30 PM'],
-                onlineAvailable: true,
+                onlineAvailable,
                 languages: ['English', 'Hindi']
             },
             {
@@ -108,7 +104,7 @@ class DoctorAgent extends BaseAgent_1.BaseAgent {
                 rating: 4.6,
                 consultationFee: 600,
                 availableSlots: ['8:30 AM', '10:00 AM', '1:30 PM', '4:00 PM'],
-                onlineAvailable: true,
+                onlineAvailable,
                 languages: ['English', 'Tamil', 'Hindi']
             },
             {
@@ -121,7 +117,7 @@ class DoctorAgent extends BaseAgent_1.BaseAgent {
                 rating: 4.5,
                 consultationFee: 500,
                 availableSlots: ['9:00 AM', '11:30 AM', '2:00 PM'],
-                onlineAvailable: true,
+                onlineAvailable,
                 languages: ['English', 'Hindi']
             }
         ];
@@ -131,7 +127,7 @@ class DoctorAgent extends BaseAgent_1.BaseAgent {
         this.setCurrentTask(request.task);
         try {
             if (!this.validateRequest(request)) {
-                throw new Error('Invalid request: Missing required fields or capabilities');
+                throw new Error('Invalid requestrequired fields or capabilities');
             }
             const { task, payload } = request;
             this.log(`Executing task: ${task}`, 'info');
@@ -156,10 +152,10 @@ class DoctorAgent extends BaseAgent_1.BaseAgent {
             this.setStatus(AgentTypes_1.AgentStatus.IDLE);
             this.setCurrentTask(undefined);
             return {
-                success: true,
-                data: result,
-                sourceAgent: this.id,
-                processingTime: Date.now() - new Date().getTime()
+                success,
+                data,
+                sourceAgent.id,
+                processingTime.now() - new Date().getTime()
             };
         }
         catch (error) {
@@ -192,8 +188,8 @@ class DoctorAgent extends BaseAgent_1.BaseAgent {
         // Limit results
         results = results.slice(0, maxResults);
         return {
-            doctors: results,
-            total: results.length,
+            doctors,
+            total.length,
             query: { specialty, city, hospital, onlineOnly }
         };
     }
@@ -218,20 +214,19 @@ class DoctorAgent extends BaseAgent_1.BaseAgent {
         return {
             bookingId,
             doctor: {
-                id: doctor.id,
-                name: doctor.name,
-                specialty: doctor.specialty,
-                hospital: doctor.hospital
+                id.id,
+                name.name,
+                specialty.specialty,
+                hospital.hospital
             },
             patient: {
-                name: patientName,
-                contact: patientContact
-            },
+                name,
+                contact},
             slot,
             type,
-            consultationFee: doctor.consultationFee,
+            consultationFee.consultationFee,
             status: 'Confirmed',
-            timestamp: new Date().toISOString(),
+            timestampDate().toISOString(),
             instructions: 'Please arrive 15 minutes before the scheduled time. Carry your medical reports.'
         };
     }
@@ -242,16 +237,16 @@ class DoctorAgent extends BaseAgent_1.BaseAgent {
             targetDoctors = this.doctors.filter(d => d.id === doctorId);
         }
         const availability = targetDoctors.map(d => ({
-            id: d.id,
-            name: d.name,
-            specialty: d.specialty,
-            onlineAvailable: d.onlineAvailable,
-            availableSlots: d.availableSlots,
-            date: date || new Date().toISOString().split('T')[0]
+            id.id,
+            name.name,
+            specialty.specialty,
+            onlineAvailable.onlineAvailable,
+            availableSlots.availableSlots,
+            date|| new Date().toISOString().split('T')[0]
         }));
         return {
             availability,
-            timestamp: new Date().toISOString()
+            timestampDate().toISOString()
         };
     }
     async getDoctorProfile(payload) {
@@ -265,7 +260,7 @@ class DoctorAgent extends BaseAgent_1.BaseAgent {
                 ...doctor,
                 consultationFee: `₹${doctor.consultationFee}`,
                 experience: `${doctor.experience} years`,
-                availableSlotsCount: doctor.availableSlots.length
+                availableSlotsCount.availableSlots.length
             }
         };
     }
@@ -280,9 +275,9 @@ class DoctorAgent extends BaseAgent_1.BaseAgent {
     `;
         const response = await this.providerManager.generate(prompt);
         return {
-            aiResponse: response.content,
-            provider: response.provider,
-            tokensUsed: response.tokensUsed
+            aiResponse.content,
+            provider.provider,
+            tokensUsed.tokensUsed
         };
     }
     getRequiredCapability(task) {
@@ -302,3 +297,5 @@ class DoctorAgent extends BaseAgent_1.BaseAgent {
     }
 }
 exports.DoctorAgent = DoctorAgent;
+
+

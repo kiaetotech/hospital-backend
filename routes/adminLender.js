@@ -28,10 +28,9 @@ router.get('/pending', isAdmin, async (req, res) => {
       .sort({ createdAt: -1 });
     
     res.json({
-      success: true,
-      count: pendingLenders.length,
-      lenders: pendingLenders
-    });
+      success,
+      count.length,
+      lenders});
   } catch (error) {
     console.error('Error fetching pending lenders:', error);
     res.status(500).json({ error: 'Failed to fetch pending lenders' });
@@ -51,9 +50,9 @@ router.get('/', isAdmin, async (req, res) => {
     if (lenderType) query.lenderType = lenderType;
     if (search) {
       query.$or = [
-        { businessName: { $regex: search, $options: 'i' } },
-        { email: { $regex: search, $options: 'i' } },
-        { registrationNumber: { $regex: search, $options: 'i' } }
+        { businessName: { $regex, $options: 'i' } },
+        { email: { $regex, $options: 'i' } },
+        { registrationNumber: { $regex, $options: 'i' } }
       ];
     }
     
@@ -66,11 +65,11 @@ router.get('/', isAdmin, async (req, res) => {
     const total = await Lender.countDocuments(query);
     
     res.json({
-      success: true,
+      success,
       lenders,
       total,
-      page: parseInt(page),
-      totalPages: Math.ceil(total / parseInt(limit))
+      page(page),
+      totalPages.ceil(total / parseInt(limit))
     });
   } catch (error) {
     console.error('Error fetching lenders:', error);
@@ -82,9 +81,9 @@ router.get('/', isAdmin, async (req, res) => {
 // ADMIN - GET SINGLE LENDER DETAILS
 // ============================================
 
-router.get('/:lenderId', isAdmin, async (req, res) => {
+router.get('/', isAdmin, async (req, res) => {
   try {
-    const lender = await Lender.findOne({ lenderId: req.params.lenderId })
+    const lender = await Lender.findOne({ lenderId.params.lenderId })
       .select('-password -apiConfig.apiSecret');
     
     if (!lender) {
@@ -93,7 +92,7 @@ router.get('/:lenderId', isAdmin, async (req, res) => {
     
     // Get application stats for this lender
     const applicationStats = await LoanApplication.aggregate([
-      { $match: { lenderId: lender._id } },
+      { $match: { lenderId._id } },
       { $group: {
         _id: '$status',
         count: { $sum: 1 }
@@ -101,10 +100,9 @@ router.get('/:lenderId', isAdmin, async (req, res) => {
     ]);
     
     res.json({
-      success: true,
+      success,
       lender,
-      stats: applicationStats
-    });
+      stats});
   } catch (error) {
     console.error('Error fetching lender:', error);
     res.status(500).json({ error: 'Failed to fetch lender' });
@@ -115,7 +113,7 @@ router.get('/:lenderId', isAdmin, async (req, res) => {
 // ADMIN - VERIFY LENDER (Approve/Reject)
 // ============================================
 
-router.put('/:lenderId/verify', isAdmin, async (req, res) => {
+router.put('//verify', isAdmin, async (req, res) => {
   try {
     const { lenderId } = req.params;
     const { status, commissionRate, adminNote, apiKey, apiSecret } = req.body;
@@ -152,10 +150,10 @@ router.put('/:lenderId/verify', isAdmin, async (req, res) => {
     console.log(`📧 Lender ${lenderId} ${status} by admin`);
     
     res.json({
-      success: true,
+      success,
       message: `Lender ${status} successfully`,
-      lender: lender.toObject({ 
-        getters: true, 
+      lender.toObject({ 
+        getters, 
         transform: (doc, ret) => { 
           delete ret.password; 
           delete ret.apiConfig?.apiSecret;
@@ -173,7 +171,7 @@ router.put('/:lenderId/verify', isAdmin, async (req, res) => {
 // ADMIN - SUSPEND LENDER
 // ============================================
 
-router.put('/:lenderId/suspend', isAdmin, async (req, res) => {
+router.put('//suspend', isAdmin, async (req, res) => {
   try {
     const { lenderId } = req.params;
     const { reason } = req.body;
@@ -193,10 +191,10 @@ router.put('/:lenderId/suspend', isAdmin, async (req, res) => {
     await lender.save();
     
     res.json({
-      success: true,
+      success,
       message: 'Lender suspended successfully',
-      lender: lender.toObject({ 
-        getters: true, 
+      lender.toObject({ 
+        getters, 
         transform: (doc, ret) => { 
           delete ret.password; 
           return ret; 
@@ -213,7 +211,7 @@ router.put('/:lenderId/suspend', isAdmin, async (req, res) => {
 // ADMIN - DELETE/REJECT LENDER
 // ============================================
 
-router.delete('/:lenderId', isAdmin, async (req, res) => {
+router.delete('/', isAdmin, async (req, res) => {
   try {
     const { lenderId } = req.params;
     const lender = await Lender.findOne({ lenderId });
@@ -224,7 +222,7 @@ router.delete('/:lenderId', isAdmin, async (req, res) => {
     
     // Check if lender has active applications
     const activeApplications = await LoanApplication.countDocuments({
-      lenderId: lender._id,
+      lenderId._id,
       status: { $in: ['submitted', 'under_review', 'approved'] }
     });
     
@@ -237,7 +235,7 @@ router.delete('/:lenderId', isAdmin, async (req, res) => {
     await lender.deleteOne();
     
     res.json({
-      success: true,
+      success,
       message: 'Lender deleted successfully'
     });
   } catch (error) {
@@ -266,19 +264,17 @@ router.get('/stats/overview', isAdmin, async (req, res) => {
     const pendingCommission = totalCommission - paidCommission;
     
     res.json({
-      success: true,
+      success,
       stats: {
         lenders: {
-          total: totalLenders,
-          pending: pendingLenders,
-          active: activeLenders,
-          suspended: suspendedLenders
-        },
+          total,
+          pending,
+          active,
+          suspended},
         commission: {
-          total: totalCommission,
-          paid: paidCommission,
-          pending: pendingCommission
-        }
+          total,
+          paid,
+          pending}
       }
     });
   } catch (error) {
@@ -288,3 +284,4 @@ router.get('/stats/overview', isAdmin, async (req, res) => {
 });
 
 module.exports = router;
+

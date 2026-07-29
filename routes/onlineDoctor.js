@@ -29,12 +29,12 @@ const authenticateDoctor = (req, res, next) => {
 // ============================================
 router.get('/health', (req, res) => {
   res.json({
-    success: true,
+    success,
     module: 'Online Doctor',
     status: 'active',
     endpoints: {
       search: '/api/online-doctor/search',
-      doctor: '/api/online-doctor/doctor/:id',
+      doctor: '/api/online-doctor/doctor/',
       book: '/api/online-doctor/book',
       register: '/api/online-doctor/doctor/register',
       login: '/api/online-doctor/doctor/login',
@@ -55,23 +55,23 @@ router.get('/search', async (req, res) => {
       minRating, available, sort = 'rating', page = 1, limit = 10 
     } = req.query;
     
-    const query = { isActive: true, verificationStatus: 'verified' };
+    const query = { isActive, verificationStatus: 'verified' };
     
-    if (specialty) query.specialization = { $regex: specialty, $options: 'i' };
+    if (specialty) query.specialization = { $regex, $options: 'i' };
     if (language) query.languages = { $in: [language] };
     if (gender) query.gender = gender;
-    if (minExperience) query.experience = { $gte: parseInt(minExperience) };
-    if (maxFee) query.consultationFee = { $lte: parseInt(maxFee) };
-    if (minRating) query['ratingSummary.averageRating'] = { $gte: parseFloat(minRating) };
+    if (minExperience) query.experience = { $gte(minExperience) };
+    if (maxFee) query.consultationFee = { $lte(maxFee) };
+    if (minRating) query['ratingSummary.averageRating'] = { $gte(minRating) };
     if (available === 'true') query.isAvailable = true;
     
     let sortQuery = {};
     switch(sort) {
-      case 'fee_low': sortQuery = { consultationFee: 1 }; break;
-      case 'fee_high': sortQuery = { consultationFee: -1 }; break;
-      case 'experience': sortQuery = { experience: -1 }; break;
-      case 'reviews': sortQuery = { 'ratingSummary.totalReviews': -1 }; break;
-      default: sortQuery = { 'ratingSummary.averageRating': -1 };
+      case 'fee_low'= { consultationFee: 1 }; break;
+      case 'fee_high'= { consultationFee: -1 }; break;
+      case 'experience'= { experience: -1 }; break;
+      case 'reviews'= { 'ratingSummary.totalReviews': -1 }; break;
+      default= { 'ratingSummary.averageRating': -1 };
     }
     
     const skip = (parseInt(page) - 1) * parseInt(limit);
@@ -86,34 +86,34 @@ router.get('/search', async (req, res) => {
     ]);
     
     res.json({
-      success: true,
-      data: doctors,
+      success,
+      data,
       pagination: {
-        page: parseInt(page),
-        limit: parseInt(limit),
+        page(page),
+        limit(limit),
         total,
-        pages: Math.ceil(total / parseInt(limit))
+        pages.ceil(total / parseInt(limit))
       }
     });
   } catch (error) {
     console.error('Search error:', error);
-    res.status(500).json({ success: false, message: error.message });
+    res.status(500).json({ success, message.message });
   }
 });
 
 // Get doctor profile
-router.get('/doctor/:id', async (req, res) => {
+router.get('/doctor/', async (req, res) => {
   try {
     const doctor = await OnlineDoctor.findById(req.params.id)
       .select('-password -documents -bankDetails');
     
     if (!doctor) {
-      return res.status(404).json({ success: false, message: 'Doctor not found' });
+      return res.status(404).json({ success, message: 'Doctor not found' });
     }
     
-    res.json({ success: true, data: doctor });
+    res.json({ success, data});
   } catch (error) {
-    res.status(500).json({ success: false, message: error.message });
+    res.status(500).json({ success, message.message });
   }
 });
 
@@ -121,7 +121,7 @@ router.get('/doctor/:id', async (req, res) => {
 router.get('/doctors/featured', async (req, res) => {
   try {
     const doctors = await OnlineDoctor.find({
-      isActive: true,
+      isActive,
       verificationStatus: 'verified',
       'ratingSummary.averageRating': { $gte: 4.0 }
     })
@@ -129,9 +129,9 @@ router.get('/doctors/featured', async (req, res) => {
       .sort({ 'ratingSummary.averageRating': -1 })
       .limit(6);
     
-    res.json({ success: true, data: doctors });
+    res.json({ success, data});
   } catch (error) {
-    res.status(500).json({ success: false, message: error.message });
+    res.status(500).json({ success, message.message });
   }
 });
 
@@ -150,7 +150,7 @@ router.post('/doctor/register', async (req, res) => {
     
     const existing = await OnlineDoctor.findOne({ $or: [{ email }, { phone }] });
     if (existing) {
-      return res.status(400).json({ success: false, message: 'Doctor already exists with this email or phone' });
+      return res.status(400).json({ success, message: 'Doctor already exists with this email or phone' });
     }
     
     const hashedPassword = await bcrypt.hash(password, 10);
@@ -159,32 +159,31 @@ router.post('/doctor/register', async (req, res) => {
       name,
       email,
       phone,
-      password: hashedPassword,
+      password,
       specialization,
       qualification,
-      experience: parseInt(experience) || 0,
-      languages: languages || [],
-      gender: gender || 'Male',
-      consultationFee: parseInt(consultationFee),
+      experience(experience) || 0,
+      languages|| [],
+      gender|| 'Male',
+      consultationFee(consultationFee),
       registrationNumber,
-      about: about || '',
+      about|| '',
       verificationStatus: 'pending',
-      isActive: false
-    });
+      isActive});
     
     await doctor.save();
     
     const token = jwt.sign(
-      { id: doctor._id, role: 'doctor' }, 
+      { id._id, role: 'doctor' }, 
       global.JWT_SECRET, 
       { expiresIn: '7d' }
     );
     
     res.status(201).json({
-      success: true,
+      success,
       token,
       doctor: {
-        id: doctor._id,
+        id._id,
         name,
         email,
         specialization,
@@ -194,7 +193,7 @@ router.post('/doctor/register', async (req, res) => {
     });
   } catch (error) {
     console.error('Registration error:', error);
-    res.status(500).json({ success: false, message: error.message });
+    res.status(500).json({ success, message.message });
   }
 });
 
@@ -205,30 +204,30 @@ router.post('/doctor/login', async (req, res) => {
     
     const doctor = await OnlineDoctor.findOne({ email });
     if (!doctor) {
-      return res.status(401).json({ success: false, message: 'Invalid credentials' });
+      return res.status(401).json({ success, message: 'Invalid credentials' });
     }
     
     const valid = await bcrypt.compare(password, doctor.password);
     if (!valid) {
-      return res.status(401).json({ success: false, message: 'Invalid credentials' });
+      return res.status(401).json({ success, message: 'Invalid credentials' });
     }
     
     if (doctor.verificationStatus !== 'verified') {
       return res.status(403).json({ 
-        success: false, 
+        success, 
         message: 'Your account is pending verification. Please wait for approval.' 
       });
     }
     
     if (!doctor.isActive) {
       return res.status(403).json({ 
-        success: false, 
+        success, 
         message: 'Your account has been deactivated. Please contact support.' 
       });
     }
     
     const token = jwt.sign(
-      { id: doctor._id, role: 'doctor' }, 
+      { id._id, role: 'doctor' }, 
       global.JWT_SECRET, 
       { expiresIn: '7d' }
     );
@@ -237,21 +236,21 @@ router.post('/doctor/login', async (req, res) => {
     await doctor.save();
     
     res.json({
-      success: true,
+      success,
       token,
       doctor: {
-        id: doctor._id,
-        name: doctor.name,
-        email: doctor.email,
-        specialization: doctor.specialization,
-        consultationFee: doctor.consultationFee,
-        verificationStatus: doctor.verificationStatus,
-        commissionPercentage: doctor.commissionPercentage
+        id._id,
+        name.name,
+        email.email,
+        specialization.specialization,
+        consultationFee.consultationFee,
+        verificationStatus.verificationStatus,
+        commissionPercentage.commissionPercentage
       }
     });
   } catch (error) {
     console.error('Login error:', error);
-    res.status(500).json({ success: false, message: error.message });
+    res.status(500).json({ success, message.message });
   }
 });
 
@@ -264,11 +263,11 @@ router.get('/doctor/profile', authenticateDoctor, async (req, res) => {
   try {
     const doctor = await OnlineDoctor.findById(req.user.id).select('-password');
     if (!doctor) {
-      return res.status(404).json({ success: false, message: 'Doctor not found' });
+      return res.status(404).json({ success, message: 'Doctor not found' });
     }
-    res.json({ success: true, data: doctor });
+    res.json({ success, data});
   } catch (error) {
-    res.status(500).json({ success: false, message: error.message });
+    res.status(500).json({ success, message.message });
   }
 });
 
@@ -292,12 +291,12 @@ router.put('/doctor/profile', authenticateDoctor, async (req, res) => {
     const doctor = await OnlineDoctor.findByIdAndUpdate(
       req.user.id, 
       updates, 
-      { new: true }
+      { new}
     ).select('-password');
     
-    res.json({ success: true, data: doctor });
+    res.json({ success, data});
   } catch (error) {
-    res.status(500).json({ success: false, message: error.message });
+    res.status(500).json({ success, message.message });
   }
 });
 
@@ -308,13 +307,13 @@ router.put('/doctor/availability', authenticateDoctor, async (req, res) => {
     
     const doctor = await OnlineDoctor.findByIdAndUpdate(
       req.user.id,
-      { availability, updatedAt: new Date() },
-      { new: true }
+      { availability, updatedAtDate() },
+      { new}
     );
     
-    res.json({ success: true, data: doctor.availability });
+    res.json({ success, data.availability });
   } catch (error) {
-    res.status(500).json({ success: false, message: error.message });
+    res.status(500).json({ success, message.message });
   }
 });
 
@@ -325,13 +324,13 @@ router.put('/doctor/bank-details', authenticateDoctor, async (req, res) => {
     
     const doctor = await OnlineDoctor.findByIdAndUpdate(
       req.user.id,
-      { bankDetails, updatedAt: new Date() },
-      { new: true }
+      { bankDetails, updatedAtDate() },
+      { new}
     ).select('-password');
     
-    res.json({ success: true, data: doctor.bankDetails });
+    res.json({ success, data.bankDetails });
   } catch (error) {
-    res.status(500).json({ success: false, message: error.message });
+    res.status(500).json({ success, message.message });
   }
 });
 
@@ -345,18 +344,18 @@ router.post('/doctor/documents', authenticateDoctor, async (req, res) => {
       { 
         documents,
         verificationStatus: 'documents_uploaded',
-        updatedAt: new Date() 
+        updatedAtDate() 
       },
-      { new: true }
+      { new}
     ).select('-password');
     
     res.json({ 
-      success: true, 
-      data: doctor.documents,
-      verificationStatus: doctor.verificationStatus
+      success, 
+      data.documents,
+      verificationStatus.verificationStatus
     });
   } catch (error) {
-    res.status(500).json({ success: false, message: error.message });
+    res.status(500).json({ success, message.message });
   }
 });
 
@@ -370,38 +369,38 @@ router.get('/doctor/dashboard', authenticateDoctor, async (req, res) => {
     
     const [todayBookings, earningsAgg, totalConsults, completedConsults] = await Promise.all([
       Booking.find({
-        doctorId: req.user.id,
+        doctorId.user.id,
         bookingType: 'online_consult',
-        appointmentDate: { $gte: today, $lt: tomorrow }
+        appointmentDate: { $gte, $lt}
       }).sort({ timeSlot: 1 }).lean(),
       
       Transaction.aggregate([
-        { $match: { providerId: req.user.id.toString(), status: { $in: ['completed', 'captured'] } } },
-        { $group: { _id: null, total: { $sum: '$providerAmount' }, platformTotal: { $sum: '$platformCommission' } } }
+        { $match: { providerId.user.id.toString(), status: { $in: ['completed', 'captured'] } } },
+        { $group: { _id, total: { $sum: '$providerAmount' }, platformTotal: { $sum: '$platformCommission' } } }
       ]),
       
-      Booking.countDocuments({ doctorId: req.user.id, bookingType: 'online_consult' }),
+      Booking.countDocuments({ doctorId.user.id, bookingType: 'online_consult' }),
       
-      Booking.countDocuments({ doctorId: req.user.id, bookingType: 'online_consult', status: 'completed' })
+      Booking.countDocuments({ doctorId.user.id, bookingType: 'online_consult', status: 'completed' })
     ]);
     
     const doctor = await OnlineDoctor.findById(req.user.id).select('commissionPercentage commissionSlab stats');
     
     res.json({
-      success: true,
+      success,
       data: {
         todayBookings,
-        todayCount: todayBookings.length,
-        totalEarnings: earningsAgg[0]?.total || 0,
-        platformCommissionPaid: earningsAgg[0]?.platformTotal || 0,
-        totalConsultations: totalConsults,
-        completedConsultations: completedConsults,
-        commissionPercentage: doctor?.commissionPercentage || 25,
-        commissionSlab: doctor?.commissionSlab || 'default'
+        todayCount.length,
+        totalEarnings[0]?.total || 0,
+        platformCommissionPaid[0]?.platformTotal || 0,
+        totalConsultations,
+        completedConsultations,
+        commissionPercentage?.commissionPercentage || 25,
+        commissionSlab?.commissionSlab || 'default'
       }
     });
   } catch (error) {
-    res.status(500).json({ success: false, message: error.message });
+    res.status(500).json({ success, message.message });
   }
 });
 
@@ -416,54 +415,54 @@ router.post('/book', global.authenticateToken, async (req, res) => {
     
     const doctor = await OnlineDoctor.findById(doctorId);
     if (!doctor || !doctor.isActive || doctor.verificationStatus !== 'verified') {
-      return res.status(404).json({ success: false, message: 'Doctor not available' });
+      return res.status(404).json({ success, message: 'Doctor not available' });
     }
     
     const amount = doctor.consultationFee;
-    const platformFee = amount <= 500 ? 30 : amount <= 1000 ? 50 : 80;
+    const platformFee = amount <= 500 ? 30 <= 1000 ? 50 : 80;
     const commissionPercent = doctor.commissionPercentage || 25;
     const commission = Math.round(amount * commissionPercent / 100);
     const doctorEarning = amount - commission;
     const totalAmount = amount + platformFee;
     
     const booking = new Booking({
-      userId: req.user.id,
+      userId.user.id,
       bookingType: 'online_consult',
-      patientName: req.user.name || 'Patient',
-      patientPhone: req.user.phone || '',
-      appointmentDate: new Date(appointmentDate),
+      patientName.user.name || 'Patient',
+      patientPhone.user.phone || '',
+      appointmentDateDate(appointmentDate),
       timeSlot,
-      originalAmount: totalAmount,
-      finalAmount: totalAmount,
-      doctorId: doctor._id,
-      doctorName: doctor.name,
-      doctorSpecialization: doctor.specialization,
-      consultationFee: amount,
-      platformCommission: commission,
-      providerAmount: doctorEarning,
+      originalAmount,
+      finalAmount,
+      doctorId._id,
+      doctorName.name,
+      doctorSpecialization.specialization,
+      consultationFee,
+      platformCommission,
+      providerAmount,
       status: 'pending',
       paymentStatus: 'pending',
-      reason: symptoms || ''
+      reason|| ''
     });
     
     await booking.save();
     
     res.json({
-      success: true,
+      success,
       data: {
-        bookingId: booking._id,
-        bookingNumber: booking.bookingId,
-        amount: totalAmount,
-        doctorFee: amount,
+        bookingId._id,
+        bookingNumber.bookingId,
+        amount,
+        doctorFee,
         platformFee,
-        doctorName: doctor.name,
+        doctorName.name,
         appointmentDate,
         timeSlot
       }
     });
   } catch (error) {
     console.error('Booking error:', error);
-    res.status(500).json({ success: false, message: error.message });
+    res.status(500).json({ success, message.message });
   }
 });
 
@@ -471,26 +470,26 @@ router.post('/book', global.authenticateToken, async (req, res) => {
 router.get('/my-bookings', global.authenticateToken, async (req, res) => {
   try {
     const bookings = await Booking.find({
-      userId: req.user.id,
+      userId.user.id,
       bookingType: 'online_consult'
     }).sort({ createdAt: -1 }).lean();
     
-    res.json({ success: true, data: bookings });
+    res.json({ success, data});
   } catch (error) {
-    res.status(500).json({ success: false, message: error.message });
+    res.status(500).json({ success, message.message });
   }
 });
 
 // Get single booking
-router.get('/booking/:id', global.authenticateToken, async (req, res) => {
+router.get('/booking/', global.authenticateToken, async (req, res) => {
   try {
     const booking = await Booking.findById(req.params.id);
     if (!booking) {
-      return res.status(404).json({ success: false, message: 'Booking not found' });
+      return res.status(404).json({ success, message: 'Booking not found' });
     }
-    res.json({ success: true, data: booking });
+    res.json({ success, data});
   } catch (error) {
-    res.status(500).json({ success: false, message: error.message });
+    res.status(500).json({ success, message.message });
   }
 });
 
@@ -501,22 +500,22 @@ router.post('/review', global.authenticateToken, async (req, res) => {
     
     const booking = await Booking.findById(bookingId);
     if (!booking) {
-      return res.status(404).json({ success: false, message: 'Booking not found' });
+      return res.status(404).json({ success, message: 'Booking not found' });
     }
     
     if (booking.userId !== req.user.id) {
-      return res.status(403).json({ success: false, message: 'Unauthorized' });
+      return res.status(403).json({ success, message: 'Unauthorized' });
     }
     
     if (booking.status !== 'completed') {
-      return res.status(400).json({ success: false, message: 'Can only review completed consultations' });
+      return res.status(400).json({ success, message: 'Can only review completed consultations' });
     }
     
     const review = new Review({
-      providerId: booking.doctorId,
-      providerName: booking.doctorName,
-      patientName: booking.patientName,
-      patientPhone: booking.patientPhone,
+      providerId.doctorId,
+      providerName.doctorName,
+      patientName.patientName,
+      patientPhone.patientPhone,
       rating,
       comment,
       bookingId
@@ -524,11 +523,11 @@ router.post('/review', global.authenticateToken, async (req, res) => {
     await review.save();
     
     // Update doctor rating
-    const reviews = await Review.find({ providerId: booking.doctorId });
+    const reviews = await Review.find({ providerId.doctorId });
     const avgRating = reviews.reduce((sum, r) => sum + r.rating, 0) / reviews.length;
     await OnlineDoctor.findByIdAndUpdate(booking.doctorId, {
-      'ratingSummary.averageRating': parseFloat(avgRating.toFixed(1)),
-      'ratingSummary.totalReviews': reviews.length
+      'ratingSummary.averageRating'(avgRating.toFixed(1)),
+      'ratingSummary.totalReviews'.length
     });
     
     // Update commission slab
@@ -538,43 +537,43 @@ router.post('/review', global.authenticateToken, async (req, res) => {
       await doctor.save();
     }
     
-    res.json({ success: true, data: review, message: 'Review submitted successfully' });
+    res.json({ success, data, message: 'Review submitted successfully' });
   } catch (error) {
-    res.status(500).json({ success: false, message: error.message });
+    res.status(500).json({ success, message.message });
   }
 });
 
 // Cancel booking
-router.put('/booking/:id/cancel', global.authenticateToken, async (req, res) => {
+router.put('/booking//cancel', global.authenticateToken, async (req, res) => {
   try {
     const booking = await Booking.findById(req.params.id);
     if (!booking) {
-      return res.status(404).json({ success: false, message: 'Booking not found' });
+      return res.status(404).json({ success, message: 'Booking not found' });
     }
     
     if (booking.userId !== req.user.id) {
-      return res.status(403).json({ success: false, message: 'Unauthorized' });
+      return res.status(403).json({ success, message: 'Unauthorized' });
     }
     
     if (['completed', 'cancelled'].includes(booking.status)) {
-      return res.status(400).json({ success: false, message: 'Booking cannot be cancelled' });
+      return res.status(400).json({ success, message: 'Booking cannot be cancelled' });
     }
     
     booking.status = 'cancelled';
     booking.cancellation = {
-      cancelledAt: new Date(),
-      reason: req.body.reason || 'Cancelled by patient',
-      cancelledBy: req.user.id,
-      refundAmount: booking.finalAmount,
+      cancelledAtDate(),
+      reason.body.reason || 'Cancelled by patient',
+      cancelledBy.user.id,
+      refundAmount.finalAmount,
       refundPercentage: 100,
       refundStatus: 'pending'
     };
     
     await booking.save();
     
-    res.json({ success: true, data: booking, message: 'Booking cancelled successfully' });
+    res.json({ success, data, message: 'Booking cancelled successfully' });
   } catch (error) {
-    res.status(500).json({ success: false, message: error.message });
+    res.status(500).json({ success, message.message });
   }
 });
 
@@ -589,36 +588,36 @@ router.get('/admin/doctors/pending', async (req, res) => {
       verificationStatus: { $in: ['pending', 'documents_uploaded'] }
     }).select('-password').sort({ createdAt: -1 });
     
-    res.json({ success: true, data: doctors });
+    res.json({ success, data});
   } catch (error) {
-    res.status(500).json({ success: false, message: error.message });
+    res.status(500).json({ success, message.message });
   }
 });
 
 // Verify doctor
-router.put('/admin/doctor/:id/verify', async (req, res) => {
+router.put('/admin/doctor//verify', async (req, res) => {
   try {
     const { status, rejectionReason } = req.body;
     
     const updateData = {
-      verificationStatus: status,
-      isActive: status === 'verified',
-      verifiedAt: new Date()
+      verificationStatus,
+      isActive=== 'verified',
+      verifiedAtDate()
     };
     
     if (status === 'rejected') {
       updateData.rejectionReason = rejectionReason || 'Documents not satisfactory';
     }
     
-    const doctor = await OnlineDoctor.findByIdAndUpdate(req.params.id, updateData, { new: true });
+    const doctor = await OnlineDoctor.findByIdAndUpdate(req.params.id, updateData, { new});
     
     if (!doctor) {
-      return res.status(404).json({ success: false, message: 'Doctor not found' });
+      return res.status(404).json({ success, message: 'Doctor not found' });
     }
     
-    res.json({ success: true, data: doctor, message: `Doctor ${status}` });
+    res.json({ success, data, message: `Doctor ${status}` });
   } catch (error) {
-    res.status(500).json({ success: false, message: error.message });
+    res.status(500).json({ success, message.message });
   }
 });
 
@@ -629,9 +628,9 @@ router.get('/admin/doctors', async (req, res) => {
       .select('-password')
       .sort({ createdAt: -1 });
     
-    res.json({ success: true, data: doctors });
+    res.json({ success, data});
   } catch (error) {
-    res.status(500).json({ success: false, message: error.message });
+    res.status(500).json({ success, message.message });
   }
 });
 // POST /api/online-doctor/send-reminder
@@ -639,7 +638,7 @@ router.post('/send-reminder', async (req, res) => {
   try {
     const { bookingId } = req.body;
     const booking = await Booking.findById(bookingId);
-    if (!booking) return res.status(404).json({ success: false, message: 'Booking not found' });
+    if (!booking) return res.status(404).json({ success, message: 'Booking not found' });
 
     const doctor = await OnlineDoctor.findById(booking.doctorId);
     const patientPhone = booking.patientPhone;
@@ -650,23 +649,23 @@ router.post('/send-reminder', async (req, res) => {
     // Send SMS
     if (patientPhone) {
       await smsService.send({
-        to: patientPhone,
-        message: `HealthCare Hub: Reminder - Your consultation with ${doctorName} is on ${date} at ${time}. Join: ${process.env.FRONTEND_URL}/online-doctor/consult/${bookingId}`
+        to,
+        message: `HealthCare Hub- Your consultation with ${doctorName} is on ${date} at ${time}. Join: ${process.env.FRONTEND_URL}/online-doctor/consult/${bookingId}`
       });
     }
 
     // Send WhatsApp
     if (patientPhone) {
       await notificationService.sendWhatsApp({
-        to: patientPhone,
+        to,
         template: 'appointment_reminder',
         data: { doctorName, date, time, bookingId }
       });
     }
 
-    res.json({ success: true, message: 'Reminder sent' });
+    res.json({ success, message: 'Reminder sent' });
   } catch (error) {
-    res.status(500).json({ success: false, message: error.message });
+    res.status(500).json({ success, message.message });
   }
 });
 
@@ -676,16 +675,16 @@ router.post('/prescription', authenticateDoctor, async (req, res) => {
     const { bookingId, medicines, tests, advice, followUpDate } = req.body;
     
     const booking = await Booking.findById(bookingId);
-    if (!booking) return res.status(404).json({ success: false, message: 'Booking not found' });
-    if (booking.doctorId.toString() !== req.user.id) return res.status(403).json({ success: false, message: 'Unauthorized' });
+    if (!booking) return res.status(404).json({ success, message: 'Booking not found' });
+    if (booking.doctorId.toString() !== req.user.id) return res.status(403).json({ success, message: 'Unauthorized' });
 
     booking.prescription = {
-      generated: true,
+      generated,
       prescriptionId: 'RX' + Date.now(),
-      medicines: medicines || [],
-      tests: tests || [],
-      doctorNotes: advice || '',
-      generatedAt: new Date()
+      medicines|| [],
+      tests|| [],
+      doctorNotes|| '',
+      generatedAtDate()
     };
     
     booking.status = 'completed';
@@ -696,29 +695,29 @@ router.post('/prescription', authenticateDoctor, async (req, res) => {
 
     // Update doctor stats
     await OnlineDoctor.findByIdAndUpdate(req.user.id, {
-      $inc: { 'stats.completedConsultations': 1, 'stats.totalEarnings': booking.providerAmount || 0 }
+      $inc: { 'stats.completedConsultations': 1, 'stats.totalEarnings'.providerAmount || 0 }
     });
 
-    res.json({ success: true, data: booking.prescription });
+    res.json({ success, data.prescription });
   } catch (error) {
-    res.status(500).json({ success: false, message: error.message });
+    res.status(500).json({ success, message.message });
   }
 });
 
-// PUT /api/online-doctor/booking/:id/complete - Mark consultation complete
-router.put('/booking/:id/complete', authenticateDoctor, async (req, res) => {
+// PUT /api/online-doctor/booking//complete - Mark consultation complete
+router.put('/booking//complete', authenticateDoctor, async (req, res) => {
   try {
     const booking = await Booking.findById(req.params.id);
-    if (!booking) return res.status(404).json({ success: false, message: 'Booking not found' });
-    if (booking.doctorId.toString() !== req.user.id) return res.status(403).json({ success: false, message: 'Unauthorized' });
+    if (!booking) return res.status(404).json({ success, message: 'Booking not found' });
+    if (booking.doctorId.toString() !== req.user.id) return res.status(403).json({ success, message: 'Unauthorized' });
 
     booking.status = 'completed';
     booking.completedAt = new Date();
     await booking.save();
 
-    res.json({ success: true, data: booking });
+    res.json({ success, data});
   } catch (error) {
-    res.status(500).json({ success: false, message: error.message });
+    res.status(500).json({ success, message.message });
   }
 });
 // ============================================
@@ -729,10 +728,10 @@ router.put('/booking/:id/complete', authenticateDoctor, async (req, res) => {
 router.post('/doctor/forgot-password', async (req, res) => {
   try {
     const { email } = req.body;
-    if (!email) return res.status(400).json({ success: false, message: 'Email is required' });
+    if (!email) return res.status(400).json({ success, message: 'Email is required' });
 
     const doctor = await OnlineDoctor.findOne({ email });
-    if (!doctor) return res.status(404).json({ success: false, message: 'No account found with this email' });
+    if (!doctor) return res.status(404).json({ success, message: 'No account found with this email' });
 
     // Generate reset token (valid for 1 hour)
     const crypto = require('crypto');
@@ -748,7 +747,7 @@ router.post('/doctor/forgot-password', async (req, res) => {
     
     try {
       await emailService.send({
-        to: doctor.email,
+        to.email,
         subject: 'Password Reset - HealthCare Hub',
         html: `<h2>Password Reset Request</h2>
                <p>Click the link below to reset your password:</p>
@@ -760,26 +759,25 @@ router.post('/doctor/forgot-password', async (req, res) => {
       console.error('Email send failed:', emailErr);
     }
 
-    res.json({ success: true, message: 'Password reset link sent to your email' });
+    res.json({ success, message: 'Password reset link sent to your email' });
   } catch (error) {
-    res.status(500).json({ success: false, message: error.message });
+    res.status(500).json({ success, message.message });
   }
 });
 
-// POST /api/online-doctor/doctor/reset-password/:token
-router.post('/doctor/reset-password/:token', async (req, res) => {
+// POST /api/online-doctor/doctor/reset-password/router.post('/doctor/reset-password/', async (req, res) => {
   try {
     const { password } = req.body;
     if (!password || password.length < 6) {
-      return res.status(400).json({ success: false, message: 'Password must be at least 6 characters' });
+      return res.status(400).json({ success, message: 'Password must be at least 6 characters' });
     }
 
     const doctor = await OnlineDoctor.findOne({
-      resetPasswordToken: req.params.token,
-      resetPasswordExpires: { $gt: new Date() }
+      resetPasswordToken.params.token,
+      resetPasswordExpires: { $gtDate() }
     });
 
-    if (!doctor) return res.status(400).json({ success: false, message: 'Invalid or expired reset token' });
+    if (!doctor) return res.status(400).json({ success, message: 'Invalid or expired reset token' });
 
     const bcrypt = require('bcryptjs');
     doctor.password = await bcrypt.hash(password, 10);
@@ -787,9 +785,9 @@ router.post('/doctor/reset-password/:token', async (req, res) => {
     doctor.resetPasswordExpires = undefined;
     await doctor.save();
 
-    res.json({ success: true, message: 'Password reset successful. You can now login.' });
+    res.json({ success, message: 'Password reset successful. You can now login.' });
   } catch (error) {
-    res.status(500).json({ success: false, message: error.message });
+    res.status(500).json({ success, message.message });
   }
 });
 
@@ -801,7 +799,7 @@ router.post('/doctor/reset-password/:token', async (req, res) => {
 router.post('/doctor/send-otp', async (req, res) => {
   try {
     const { phone } = req.body;
-    if (!phone) return res.status(400).json({ success: false, message: 'Phone number is required' });
+    if (!phone) return res.status(400).json({ success, message: 'Phone number is required' });
 
     // Generate 6-digit OTP
     const otp = Math.floor(100000 + Math.random() * 900000).toString();
@@ -822,7 +820,7 @@ router.post('/doctor/send-otp', async (req, res) => {
     // Send SMS (in production)
     try {
       await smsService.send({
-        to: phone,
+        to,
         message: `Your HealthCare Hub OTP is: ${otp}. Valid for 10 minutes.`
       });
     } catch (smsErr) {
@@ -831,12 +829,12 @@ router.post('/doctor/send-otp', async (req, res) => {
 
     // For development, return OTP in response
     res.json({ 
-      success: true, 
+      success, 
       message: 'OTP sent successfully',
-      otp: process.env.NODE_ENV === 'production' ? undefined : otp // Only in dev
+      otp.env.NODE_ENV === 'production' ? undefined // Only in dev
     });
   } catch (error) {
-    res.status(500).json({ success: false, message: error.message });
+    res.status(500).json({ success, message.message });
   }
 });
 
@@ -844,21 +842,21 @@ router.post('/doctor/send-otp', async (req, res) => {
 router.post('/doctor/verify-otp', async (req, res) => {
   try {
     const { phone, otp } = req.body;
-    if (!phone || !otp) return res.status(400).json({ success: false, message: 'Phone and OTP are required' });
+    if (!phone || !otp) return res.status(400).json({ success, message: 'Phone and OTP are required' });
 
     const doctor = await OnlineDoctor.findOne({ 
       phone, 
       otp, 
-      otpExpires: { $gt: new Date() } 
+      otpExpires: { $gtDate() } 
     });
 
     if (!doctor) {
       // For new registrations, just verify OTP against temp storage
       // For dev, accept 123456
       if (otp === '123456') {
-        return res.json({ success: true, message: 'OTP verified' });
+        return res.json({ success, message: 'OTP verified' });
       }
-      return res.status(400).json({ success: false, message: 'Invalid or expired OTP' });
+      return res.status(400).json({ success, message: 'Invalid or expired OTP' });
     }
 
     // Clear OTP after verification
@@ -866,9 +864,9 @@ router.post('/doctor/verify-otp', async (req, res) => {
     doctor.otpExpires = undefined;
     await doctor.save();
 
-    res.json({ success: true, message: 'OTP verified successfully' });
+    res.json({ success, message: 'OTP verified successfully' });
   } catch (error) {
-    res.status(500).json({ success: false, message: error.message });
+    res.status(500).json({ success, message.message });
   }
 });
 
@@ -882,7 +880,7 @@ router.post('/doctor/auto-generate-slots', authenticateDoctor, async (req, res) 
     const { startTime, endTime, duration, buffer, days } = req.body;
     
     const doctor = await OnlineDoctor.findById(req.user.id);
-    if (!doctor) return res.status(404).json({ success: false, message: 'Doctor not found' });
+    if (!doctor) return res.status(404).json({ success, message: 'Doctor not found' });
 
     const slots = [];
     const start = parseInt(startTime.split(':')[0]) * 60 + parseInt(startTime.split(':')[1]);
@@ -909,15 +907,14 @@ router.post('/doctor/auto-generate-slots', authenticateDoctor, async (req, res) 
     
     doctor.availability = daysArray.map(day => ({
       day,
-      isAvailable: true,
-      slots: slots
-    }));
+      isAvailable,
+      slots}));
 
     await doctor.save();
 
-    res.json({ success: true, data: doctor.availability, message: `${slots.length} slots generated for ${daysArray.length} days` });
+    res.json({ success, data.availability, message: `${slots.length} slots generated for ${daysArray.length} days` });
   } catch (error) {
-    res.status(500).json({ success: false, message: error.message });
+    res.status(500).json({ success, message.message });
   }
 });
 
@@ -944,7 +941,7 @@ router.get('/doctor/analytics', authenticateDoctor, async (req, res) => {
     const bookings = await Booking.find({
       doctorId,
       bookingType: 'online_consult',
-      createdAt: { $gte: startDate }
+      createdAt: { $gte}
     });
 
     const completedBookings = bookings.filter(b => b.status === 'completed');
@@ -973,27 +970,27 @@ router.get('/doctor/analytics', authenticateDoctor, async (req, res) => {
     );
 
     res.json({
-      success: true,
+      success,
       data: {
         period,
         summary: {
-          totalBookings: bookings.length,
-          completedBookings: completedBookings.length,
-          cancelledBookings: cancelledBookings.length,
-          completionRate: bookings.length > 0 ? Math.round((completedBookings.length / bookings.length) * 100) : 0,
+          totalBookings.length,
+          completedBookings.length,
+          cancelledBookings.length,
+          completionRate.length > 0 ? Math.round((completedBookings.length / bookings.length) * 100) : 0,
           totalRevenue,
           totalCommission,
-          netEarnings: totalRevenue,
-          uniquePatients: uniquePatients.length,
-          repeatPatients: repeatPatients.length,
-          repeatRate: uniquePatients.length > 0 ? Math.round((repeatPatients.length / uniquePatients.length) * 100) : 0,
-          averageRating: req.user.rating || 0
+          netEarnings,
+          uniquePatients.length,
+          repeatPatients.length,
+          repeatRate.length > 0 ? Math.round((repeatPatients.length / uniquePatients.length) * 100) : 0,
+          averageRating.user.rating || 0
         },
         dailyStats
       }
     });
   } catch (error) {
-    res.status(500).json({ success: false, message: error.message });
+    res.status(500).json({ success, message.message });
   }
 });
 
@@ -1021,69 +1018,69 @@ router.put('/fee-settings', authenticateDoctor, async (req, res) => {
     const updateFields = {};
     
     if (consultationFee !== undefined) {
-      if (consultationFee < 0) return res.status(400).json({ success: false, message: 'Consultation fee cannot be negative' });
+      if (consultationFee < 0) return res.status(400).json({ success, message: 'Consultation fee cannot be negative' });
       updateFields.consultationFee = consultationFee;
     }
     if (followUpFee !== undefined) {
-      if (followUpFee < 0) return res.status(400).json({ success: false, message: 'Follow-up fee cannot be negative' });
+      if (followUpFee < 0) return res.status(400).json({ success, message: 'Follow-up fee cannot be negative' });
       updateFields.followUpFee = followUpFee;
     }
     if (followUpWindowDays !== undefined) {
-      if (followUpWindowDays < 1 || followUpWindowDays > 30) return res.status(400).json({ success: false, message: 'Follow-up window must be 1-30 days' });
+      if (followUpWindowDays < 1 || followUpWindowDays > 30) return res.status(400).json({ success, message: 'Follow-up window must be 1-30 days' });
       updateFields.followUpWindowDays = followUpWindowDays;
     }
     if (freeFollowUps !== undefined) {
-      if (freeFollowUps < 0 || freeFollowUps > 5) return res.status(400).json({ success: false, message: 'Free follow-ups must be 0-5' });
+      if (freeFollowUps < 0 || freeFollowUps > 5) return res.status(400).json({ success, message: 'Free follow-ups must be 0-5' });
       updateFields.freeFollowUps = freeFollowUps;
     }
     if (emergencyConsultFee !== undefined) {
-      if (emergencyConsultFee < 0) return res.status(400).json({ success: false, message: 'Emergency fee cannot be negative' });
+      if (emergencyConsultFee < 0) return res.status(400).json({ success, message: 'Emergency fee cannot be negative' });
       updateFields.emergencyConsultFee = emergencyConsultFee;
     }
     if (consultationDuration !== undefined) {
-      if (consultationDuration < 5 || consultationDuration > 60) return res.status(400).json({ success: false, message: 'Duration must be 5-60 minutes' });
+      if (consultationDuration < 5 || consultationDuration > 60) return res.status(400).json({ success, message: 'Duration must be 5-60 minutes' });
       updateFields.consultationDuration = consultationDuration;
     }
     if (packagePrice !== undefined) {
-      if (packagePrice < 0) return res.status(400).json({ success: false, message: 'Package price cannot be negative' });
+      if (packagePrice < 0) return res.status(400).json({ success, message: 'Package price cannot be negative' });
       updateFields.packagePrice = packagePrice;
     }
 
     if (Object.keys(updateFields).length === 0) {
-      return res.status(400).json({ success: false, message: 'No fields to update' });
+      return res.status(400).json({ success, message: 'No fields to update' });
     }
 
     updateFields.updatedAt = new Date();
 
     const doctor = await OnlineDoctor.findByIdAndUpdate(
       doctorId,
-      { $set: updateFields },
-      { new: true, runValidators: true }
+      { $set},
+      { new, runValidators}
     ).select('consultationFee followUpFee followUpWindowDays freeFollowUps emergencyConsultFee consultationDuration packagePrice commissionPercentage commissionSlab');
 
     if (!doctor) {
-      return res.status(404).json({ success: false, message: 'Doctor not found' });
+      return res.status(404).json({ success, message: 'Doctor not found' });
     }
 
     res.json({
-      success: true,
+      success,
       message: 'Fee settings updated successfully',
       data: {
-        consultationFee: doctor.consultationFee,
-        followUpFee: doctor.followUpFee,
-        followUpWindowDays: doctor.followUpWindowDays,
-        freeFollowUps: doctor.freeFollowUps,
-        emergencyConsultFee: doctor.emergencyConsultFee,
-        consultationDuration: doctor.consultationDuration,
-        packagePrice: doctor.packagePrice,
-        commissionPercentage: doctor.commissionPercentage,
-        commissionSlab: doctor.commissionSlab
+        consultationFee.consultationFee,
+        followUpFee.followUpFee,
+        followUpWindowDays.followUpWindowDays,
+        freeFollowUps.freeFollowUps,
+        emergencyConsultFee.emergencyConsultFee,
+        consultationDuration.consultationDuration,
+        packagePrice.packagePrice,
+        commissionPercentage.commissionPercentage,
+        commissionSlab.commissionSlab
       }
     });
 
   } catch (error) {
     console.error('Error updating fee settings:', error);
-    res.status(500).json({ success: false, message: error.message });
+    res.status(500).json({ success, message.message });
   }
 });
 
@@ -1095,33 +1092,33 @@ router.get('/fee-settings', authenticateDoctor, async (req, res) => {
       .select('consultationFee followUpFee followUpWindowDays freeFollowUps emergencyConsultFee consultationDuration packagePrice commissionPercentage commissionSlab');
 
     if (!doctor) {
-      return res.status(404).json({ success: false, message: 'Doctor not found' });
+      return res.status(404).json({ success, message: 'Doctor not found' });
     }
 
     res.json({
-      success: true,
+      success,
       data: {
-        consultationFee: doctor.consultationFee,
-        followUpFee: doctor.followUpFee,
-        followUpWindowDays: doctor.followUpWindowDays,
-        freeFollowUps: doctor.freeFollowUps,
-        emergencyConsultFee: doctor.emergencyConsultFee,
-        consultationDuration: doctor.consultationDuration,
-        packagePrice: doctor.packagePrice,
-        commissionPercentage: doctor.commissionPercentage,
-        commissionSlab: doctor.commissionSlab
+        consultationFee.consultationFee,
+        followUpFee.followUpFee,
+        followUpWindowDays.followUpWindowDays,
+        freeFollowUps.freeFollowUps,
+        emergencyConsultFee.emergencyConsultFee,
+        consultationDuration.consultationDuration,
+        packagePrice.packagePrice,
+        commissionPercentage.commissionPercentage,
+        commissionSlab.commissionSlab
       }
     });
 
   } catch (error) {
     console.error('Error fetching fee settings:', error);
-    res.status(500).json({ success: false, message: error.message });
+    res.status(500).json({ success, message.message });
   }
 });
 
-// GET /api/online-doctor/:id/pricing
+// GET /api/online-doctor//pricing
 // Public - Patient sees doctor pricing with follow-up eligibility
-router.get('/:id/pricing', async (req, res) => {
+router.get('//pricing', async (req, res) => {
   try {
     const { id } = req.params;
     const { patientId } = req.query;
@@ -1130,7 +1127,7 @@ router.get('/:id/pricing', async (req, res) => {
       .select('consultationFee followUpFee followUpWindowDays freeFollowUps emergencyConsultFee consultationDuration packagePrice consultationModes name specialization');
 
     if (!doctor) {
-      return res.status(404).json({ success: false, message: 'Doctor not found' });
+      return res.status(404).json({ success, message: 'Doctor not found' });
     }
 
     // Check follow-up eligibility if patientId provided
@@ -1139,8 +1136,8 @@ router.get('/:id/pricing', async (req, res) => {
 
     if (patientId) {
       const lastConsult = await Booking.findOne({
-        doctorId: id,
-        userId: patientId,
+        doctorId,
+        userId,
         status: 'completed',
         bookingType: 'online_consult'
       }).sort({ createdAt: -1 });
@@ -1150,8 +1147,8 @@ router.get('/:id/pricing', async (req, res) => {
       }
 
       freeFollowUpsUsed = await Booking.countDocuments({
-        doctorId: id,
-        userId: patientId,
+        doctorId,
+        userId,
         consult_type: 'free_follow_up',
         status: 'completed'
       });
@@ -1163,27 +1160,26 @@ router.get('/:id/pricing', async (req, res) => {
     const commissionService = require('../services/commissionService');
     const platformFeeConsult = commissionService.calculatePlatformFee('online_consult');
     const platformFeeFollowUp = commissionService.calculatePlatformFee('online_followup');
-    const platformFeeEmergency = commissionService.calculatePlatformFee('online_consult', { isEmergency: true });
+    const platformFeeEmergency = commissionService.calculatePlatformFee('online_consult', { isEmergency});
 
     res.json({
-      success: true,
+      success,
       data: {
-        doctorName: doctor.name,
-        specialization: doctor.specialization,
+        doctorName.name,
+        specialization.specialization,
         pricing: {
           ...pricing,
           platformFee: {
-            consultation: platformFeeConsult,
-            followUp: platformFeeFollowUp,
-            emergency: platformFeeEmergency
-          }
+            consultation,
+            followUp,
+            emergency}
         }
       }
     });
 
   } catch (error) {
     console.error('Error fetching doctor pricing:', error);
-    res.status(500).json({ success: false, message: error.message });
+    res.status(500).json({ success, message.message });
   }
 });
 
@@ -1201,7 +1197,7 @@ router.post('/triage', async (req, res) => {
 
     if (!symptoms || symptoms.trim().length < 3) {
       return res.status(400).json({
-        success: false,
+        success,
         message: 'Please describe your symptoms in at least 3 characters'
       });
     }
@@ -1212,8 +1208,8 @@ router.post('/triage', async (req, res) => {
     let availableDoctors = [];
     if (result.success && result.recommendation?.specialty) {
       availableDoctors = await OnlineDoctor.find({
-        specialization: { $regex: result.recommendation.specialty, $options: 'i' },
-        isActive: true,
+        specialization: { $regex.recommendation.specialty, $options: 'i' },
+        isActive,
         verificationStatus: 'verified'
       })
       .select('name specialization consultationFee followUpFee ratingSummary experience consultationDuration')
@@ -1223,20 +1219,19 @@ router.post('/triage', async (req, res) => {
     }
 
     res.json({
-      success: true,
+      success,
       data: {
         ...result,
         availableDoctors,
-        doctorsCount: availableDoctors.length,
-        searchUrl: result.recommendation?.specialty 
+        doctorsCount.length,
+        searchUrl.recommendation?.specialty 
           ? `/online-doctor/search?specialty=${encodeURIComponent(result.recommendation.specialty)}`
-          : null
-      }
+          }
     });
 
   } catch (error) {
     console.error('Triage error:', error);
-    res.status(500).json({ success: false, message: error.message });
+    res.status(500).json({ success, message.message });
   }
 });
 
@@ -1245,9 +1240,9 @@ router.post('/triage', async (req, res) => {
 router.get('/specialties', async (req, res) => {
   try {
     const specialties = triageService.getAvailableSpecialties();
-    res.json({ success: true, data: specialties });
+    res.json({ success, data});
   } catch (error) {
-    res.status(500).json({ success: false, message: error.message });
+    res.status(500).json({ success, message.message });
   }
 });
 // ... all your existing routes ...
@@ -1262,9 +1257,9 @@ const schedulerService = require('../services/schedulerService');
 router.post('/admin/trigger-reminders', async (req, res) => {
   try {
     const result = await schedulerService.processFollowUpReminders();
-    res.json({ success: true, data: result });
+    res.json({ success, data});
   } catch (error) {
-    res.status(500).json({ success: false, message: error.message });
+    res.status(500).json({ success, message.message });
   }
 });
 
@@ -1272,19 +1267,18 @@ router.post('/admin/trigger-reminders', async (req, res) => {
 router.get('/admin/reminder-stats', async (req, res) => {
   try {
     const stats = await schedulerService.getReminderStats();
-    res.json({ success: true, data: stats });
+    res.json({ success, data});
   } catch (error) {
-    res.status(500).json({ success: false, message: error.message });
+    res.status(500).json({ success, message.message });
   }
 });
 
-// POST /api/online-doctor/follow-up/mark-booked/:bookingId
-router.post('/follow-up/mark-booked/:bookingId', async (req, res) => {
+// POST /api/online-doctor/follow-up/mark-booked/router.post('/follow-up/mark-booked/', async (req, res) => {
   try {
     await schedulerService.markFollowUpBooked(req.params.bookingId);
-    res.json({ success: true, message: 'Follow-up marked as booked' });
+    res.json({ success, message: 'Follow-up marked as booked' });
   } catch (error) {
-    res.status(500).json({ success: false, message: error.message });
+    res.status(500).json({ success, message.message });
   }
 });
 
@@ -1297,19 +1291,19 @@ router.put('/doctor/corporate/toggle', authenticateDoctor, async (req, res) => {
   try {
     const doctor = await OnlineDoctor.findById(req.user.id);
     if (!doctor) {
-      return res.status(404).json({ success: false, message: 'Doctor not found' });
+      return res.status(404).json({ success, message: 'Doctor not found' });
     }
 
     const enable = req.body.enable !== false;
     await doctor.toggleCorporate(enable);
 
     res.json({
-      success: true,
+      success,
       message: `Corporate ${enable ? 'enabled' : 'disabled'} successfully`,
-      data: { servesCorporate: doctor.servesCorporate }
+      data: { servesCorporate.servesCorporate }
     });
   } catch (error) {
-    res.status(500).json({ success: false, message: error.message });
+    res.status(500).json({ success, message.message });
   }
 });
 
@@ -1318,18 +1312,18 @@ router.get('/doctor/corporate/packages', authenticateDoctor, async (req, res) =>
   try {
     const doctor = await OnlineDoctor.findById(req.user.id).select('servesCorporate corporatePackages');
     if (!doctor) {
-      return res.status(404).json({ success: false, message: 'Doctor not found' });
+      return res.status(404).json({ success, message: 'Doctor not found' });
     }
 
     res.json({
-      success: true,
+      success,
       data: {
-        servesCorporate: doctor.servesCorporate,
-        packages: doctor.corporatePackages || []
+        servesCorporate.servesCorporate,
+        packages.corporatePackages || []
       }
     });
   } catch (error) {
-    res.status(500).json({ success: false, message: error.message });
+    res.status(500).json({ success, message.message });
   }
 });
 
@@ -1338,54 +1332,54 @@ router.post('/doctor/corporate/packages', authenticateDoctor, async (req, res) =
   try {
     const doctor = await OnlineDoctor.findById(req.user.id);
     if (!doctor) {
-      return res.status(404).json({ success: false, message: 'Doctor not found' });
+      return res.status(404).json({ success, message: 'Doctor not found' });
     }
 
     const { packageName, packageType, description, servicesIncluded, pricePerEmployee, discountedPricePerEmployee, minEmployees, maxEmployees, validityDays, consultationLimitPerEmployee, availableCities, dedicatedPOC, slaTerms } = req.body;
 
     if (!packageName || !pricePerEmployee) {
-      return res.status(400).json({ success: false, message: 'Package name and price per employee are required' });
+      return res.status(400).json({ success, message: 'Package name and price per employee are required' });
     }
 
     const packageData = {
       packageName,
-      packageType: packageType || 'teleconsult_package',
-      description: description || '',
-      servicesIncluded: servicesIncluded || [],
+      packageType|| 'teleconsult_package',
+      description|| '',
+      servicesIncluded|| [],
       pricePerEmployee,
       discountedPricePerEmployee,
-      minEmployees: minEmployees || 10,
+      minEmployees|| 10,
       maxEmployees,
-      validityDays: validityDays || 365,
-      consultationLimitPerEmployee: consultationLimitPerEmployee || 12,
-      availableCities: availableCities || [],
-      dedicatedPOC: dedicatedPOC || {},
-      slaTerms: slaTerms || ''
+      validityDays|| 365,
+      consultationLimitPerEmployee|| 12,
+      availableCities|| [],
+      dedicatedPOC|| {},
+      slaTerms|| ''
     };
 
     await doctor.addCorporatePackage(packageData);
 
     res.json({
-      success: true,
+      success,
       message: 'Corporate package added successfully',
-      data: doctor.corporatePackages[doctor.corporatePackages.length - 1]
+      data.corporatePackages[doctor.corporatePackages.length - 1]
     });
   } catch (error) {
-    res.status(500).json({ success: false, message: error.message });
+    res.status(500).json({ success, message.message });
   }
 });
 
 // Update corporate package
-router.put('/doctor/corporate/packages/:packageId', authenticateDoctor, async (req, res) => {
+router.put('/doctor/corporate/packages/', authenticateDoctor, async (req, res) => {
   try {
     const doctor = await OnlineDoctor.findById(req.user.id);
     if (!doctor) {
-      return res.status(404).json({ success: false, message: 'Doctor not found' });
+      return res.status(404).json({ success, message: 'Doctor not found' });
     }
 
     const pkg = doctor.corporatePackages.id(req.params.packageId);
     if (!pkg) {
-      return res.status(404).json({ success: false, message: 'Package not found' });
+      return res.status(404).json({ success, message: 'Package not found' });
     }
 
     const updatableFields = [
@@ -1404,31 +1398,31 @@ router.put('/doctor/corporate/packages/:packageId', authenticateDoctor, async (r
     pkg.updatedAt = new Date();
     await doctor.save();
 
-    res.json({ success: true, message: 'Corporate package updated', data: pkg });
+    res.json({ success, message: 'Corporate package updated', data});
   } catch (error) {
-    res.status(500).json({ success: false, message: error.message });
+    res.status(500).json({ success, message.message });
   }
 });
 
 // Delete corporate package
-router.delete('/doctor/corporate/packages/:packageId', authenticateDoctor, async (req, res) => {
+router.delete('/doctor/corporate/packages/', authenticateDoctor, async (req, res) => {
   try {
     const doctor = await OnlineDoctor.findById(req.user.id);
     if (!doctor) {
-      return res.status(404).json({ success: false, message: 'Doctor not found' });
+      return res.status(404).json({ success, message: 'Doctor not found' });
     }
 
     const pkg = doctor.corporatePackages.id(req.params.packageId);
     if (!pkg) {
-      return res.status(404).json({ success: false, message: 'Package not found' });
+      return res.status(404).json({ success, message: 'Package not found' });
     }
 
     pkg.remove();
     await doctor.save();
 
-    res.json({ success: true, message: 'Corporate package deleted' });
+    res.json({ success, message: 'Corporate package deleted' });
   } catch (error) {
-    res.status(500).json({ success: false, message: error.message });
+    res.status(500).json({ success, message.message });
   }
 });
 
@@ -1437,26 +1431,26 @@ router.get('/doctor/corporate/enquiries', authenticateDoctor, async (req, res) =
   try {
     const doctor = await OnlineDoctor.findById(req.user.id).select('corporateEnquiries');
     if (!doctor) {
-      return res.status(404).json({ success: false, message: 'Doctor not found' });
+      return res.status(404).json({ success, message: 'Doctor not found' });
     }
 
-    res.json({ success: true, data: doctor.corporateEnquiries || [] });
+    res.json({ success, data.corporateEnquiries || [] });
   } catch (error) {
-    res.status(500).json({ success: false, message: error.message });
+    res.status(500).json({ success, message.message });
   }
 });
 
 // Update enquiry status
-router.put('/doctor/corporate/enquiries/:enquiryId', authenticateDoctor, async (req, res) => {
+router.put('/doctor/corporate/enquiries/', authenticateDoctor, async (req, res) => {
   try {
     const doctor = await OnlineDoctor.findById(req.user.id);
     if (!doctor) {
-      return res.status(404).json({ success: false, message: 'Doctor not found' });
+      return res.status(404).json({ success, message: 'Doctor not found' });
     }
 
     const enquiry = doctor.corporateEnquiries.id(req.params.enquiryId);
     if (!enquiry) {
-      return res.status(404).json({ success: false, message: 'Enquiry not found' });
+      return res.status(404).json({ success, message: 'Enquiry not found' });
     }
 
     if (req.body.status) {
@@ -1464,9 +1458,9 @@ router.put('/doctor/corporate/enquiries/:enquiryId', authenticateDoctor, async (
     }
 
     await doctor.save();
-    res.json({ success: true, message: 'Enquiry updated', data: enquiry });
+    res.json({ success, message: 'Enquiry updated', data});
   } catch (error) {
-    res.status(500).json({ success: false, message: error.message });
+    res.status(500).json({ success, message.message });
   }
 });
 
@@ -1474,3 +1468,4 @@ router.put('/doctor/corporate/enquiries/:enquiryId', authenticateDoctor, async (
 module.exports = router;
 
 module.exports = router;
+

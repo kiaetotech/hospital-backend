@@ -4,7 +4,7 @@ const mongoose = require('mongoose');
 const InsuranceClaim = require('../models/InsuranceClaim');
 const InsurancePolicy = require('../models/InsurancePolicy');
 const InsuranceCompany = require('../models/InsuranceCompany');
-const { authenticate: auth } = require('../middleware/auth');
+const { authenticate} = require('../middleware/auth');
 const upload = require('../middleware/upload');
 const notificationService = require('../services/notificationService');
 
@@ -33,21 +33,21 @@ router.post('/file', auth, async (req, res) => {
     // Validate required fields
     if (!policyId || !claimType || !amount || !description || !hospitalName || !admissionDate) {
       return res.status(400).json({
-        success: false,
+        success,
         message: 'Missing required fields'
       });
     }
 
     // Verify policy exists and belongs to user
     const policy = await InsurancePolicy.findOne({ 
-      _id: policyId, 
-      userId: req.user.id,
+      _id, 
+      userId.user.id,
       status: 'active'
     });
 
     if (!policy) {
       return res.status(404).json({
-        success: false,
+        success,
         message: 'Active policy not found'
       });
     }
@@ -55,7 +55,7 @@ router.post('/file', auth, async (req, res) => {
     // Check if claim amount exceeds policy limit
     if (amount > policy.sumInsured) {
       return res.status(400).json({
-        success: false,
+        success,
         message: `Claim amount (₹${amount}) exceeds policy limit (₹${policy.sumInsured})`
       });
     }
@@ -64,17 +64,17 @@ router.post('/file', auth, async (req, res) => {
     const company = await InsuranceCompany.findById(policy.companyId);
     if (!company || !company.isActive) {
       return res.status(400).json({
-        success: false,
+        success,
         message: 'Insurance company is not active'
       });
     }
 
     // Create claim
     const claim = new InsuranceClaim({
-      policyId: policy._id,
-      bookingId: policy.bookingId,
-      companyId: policy.companyId,
-      userId: req.user.id,
+      policyId._id,
+      bookingId.bookingId,
+      companyId.companyId,
+      userId.user.id,
       claimType,
       amount,
       description,
@@ -82,12 +82,12 @@ router.post('/file', auth, async (req, res) => {
       hospitalAddress,
       hospitalCity,
       hospitalPincode,
-      admissionDate: new Date(admissionDate),
-      dischargeDate: dischargeDate ? new Date(dischargeDate) : null,
+      admissionDateDate(admissionDate),
+      dischargeDate? new Date(dischargeDate) ,
       diagnosis,
       treatment,
       status: 'submitted',
-      submittedBy: req.user.id
+      submittedBy.user.id
     });
 
     await claim.save();
@@ -102,11 +102,11 @@ router.post('/file', auth, async (req, res) => {
       {
         template: 'new_claim',
         data: {
-          companyName: company.companyName,
-          claimNumber: claim.claimNumber,
-          amount: claim.amount,
-          customerName: req.user.name,
-          policyNumber: policy.policyNumber
+          companyName.companyName,
+          claimNumber.claimNumber,
+          amount.amount,
+          customerName.user.name,
+          policyNumber.policyNumber
         }
       }
     );
@@ -118,57 +118,57 @@ router.post('/file', auth, async (req, res) => {
       {
         template: 'claim_submitted',
         data: {
-          name: req.user.name,
-          claimNumber: claim.claimNumber,
-          amount: claim.amount,
-          policyNumber: policy.policyNumber
+          name.user.name,
+          claimNumber.claimNumber,
+          amount.amount,
+          policyNumber.policyNumber
         }
       }
     );
 
     res.json({
-      success: true,
+      success,
       message: 'Claim submitted successfully',
       data: {
-        claimId: claim._id,
-        claimNumber: claim.claimNumber,
-        status: claim.status
+        claimId._id,
+        claimNumber.claimNumber,
+        status.status
       }
     });
 
   } catch (error) {
     console.error('Claim submission error:', error);
     res.status(500).json({
-      success: false,
+      success,
       message: 'Failed to submit claim: ' + error.message
     });
   }
 });
 
 // Upload claim documents
-router.post('/:claimId/documents', auth, upload.array('documents', 10), async (req, res) => {
+router.post('//documents', auth, upload.array('documents', 10), async (req, res) => {
   try {
     const claimId = req.params.claimId;
     const files = req.files || [];
 
     const claim = await InsuranceClaim.findOne({ 
-      _id: claimId, 
-      userId: req.user.id 
+      _id, 
+      userId.user.id 
     });
 
     if (!claim) {
       return res.status(404).json({
-        success: false,
+        success,
         message: 'Claim not found'
       });
     }
 
     // Add documents to claim
     const documents = files.map(file => ({
-      name: file.originalname,
-      url: file.path || file.location,
-      type: req.body.documentType || 'other',
-      uploadedAt: new Date()
+      name.originalname,
+      url.path || file.location,
+      type.body.documentType || 'other',
+      uploadedAtDate()
     }));
 
     claim.documents.push(...documents);
@@ -182,18 +182,18 @@ router.post('/:claimId/documents', auth, upload.array('documents', 10), async (r
     await claim.save();
 
     res.json({
-      success: true,
+      success,
       message: 'Documents uploaded successfully',
       data: {
-        documents: documents,
-        totalDocuments: claim.documents.length
+        documents,
+        totalDocuments.documents.length
       }
     });
 
   } catch (error) {
     console.error('Document upload error:', error);
     res.status(500).json({
-      success: false,
+      success,
       message: 'Failed to upload documents'
     });
   }
@@ -208,7 +208,7 @@ router.get('/my-claims', auth, async (req, res) => {
   try {
     const { status, page = 1, limit = 20 } = req.query;
 
-    const query = { userId: req.user.id };
+    const query = { userId.user.id };
     if (status) query.status = status;
 
     const skip = (page - 1) * limit;
@@ -222,51 +222,50 @@ router.get('/my-claims', auth, async (req, res) => {
     const total = await InsuranceClaim.countDocuments(query);
 
     res.json({
-      success: true,
-      data: claims,
+      success,
+      data,
       pagination: {
-        page: parseInt(page),
-        limit: parseInt(limit),
+        page(page),
+        limit(limit),
         total,
-        pages: Math.ceil(total / limit)
+        pages.ceil(total / limit)
       }
     });
 
   } catch (error) {
     console.error('Claims fetch error:', error);
     res.status(500).json({
-      success: false,
+      success,
       message: 'Failed to fetch claims'
     });
   }
 });
 
 // Get claim details
-router.get('/my-claims/:id', auth, async (req, res) => {
+router.get('/my-claims/', auth, async (req, res) => {
   try {
     const claim = await InsuranceClaim.findOne({ 
-      _id: req.params.id, 
-      userId: req.user.id 
+      _id.params.id, 
+      userId.user.id 
     })
       .populate('policyId')
       .populate('companyId', 'companyName logo phone email');
 
     if (!claim) {
       return res.status(404).json({
-        success: false,
+        success,
         message: 'Claim not found'
       });
     }
 
     res.json({
-      success: true,
-      data: claim
-    });
+      success,
+      data});
 
   } catch (error) {
     console.error('Claim details error:', error);
     res.status(500).json({
-      success: false,
+      success,
       message: 'Failed to fetch claim details'
     });
   }
@@ -277,16 +276,16 @@ router.get('/my-claims/:id', auth, async (req, res) => {
 // ============================================
 
 // Get claim status (simplified)
-router.get('/status/:claimNumber', auth, async (req, res) => {
+router.get('/status/', auth, async (req, res) => {
   try {
     const claim = await InsuranceClaim.findOne({ 
-      claimNumber: req.params.claimNumber,
-      userId: req.user.id 
+      claimNumber.params.claimNumber,
+      userId.user.id 
     });
 
     if (!claim) {
       return res.status(404).json({
-        success: false,
+        success,
         message: 'Claim not found'
       });
     }
@@ -295,30 +294,30 @@ router.get('/status/:claimNumber', auth, async (req, res) => {
     const timeline = claim.timeline || [];
 
     res.json({
-      success: true,
+      success,
       data: {
-        claimNumber: claim.claimNumber,
-        status: claim.status,
-        statusLabel: this.getStatusLabel(claim.status),
-        amount: claim.amount,
-        approvedAmount: claim.approvedAmount,
-        settlementAmount: claim.settlementAmount,
-        submittedAt: claim.createdAt,
-        timeline: timeline,
-        documents: claim.documents
+        claimNumber.claimNumber,
+        status.status,
+        statusLabel.getStatusLabel(claim.status),
+        amount.amount,
+        approvedAmount.approvedAmount,
+        settlementAmount.settlementAmount,
+        submittedAt.createdAt,
+        timeline,
+        documents.documents
       }
     });
 
   } catch (error) {
     console.error('Claim status error:', error);
     res.status(500).json({
-      success: false,
+      success,
       message: 'Failed to fetch claim status'
     });
   }
 });
 
-// Helper: Get status label
+// Helperstatus label
 const getStatusLabel = (status) => {
   const labels = {
     'submitted': 'Submitted',
@@ -339,16 +338,16 @@ const getStatusLabel = (status) => {
 // ============================================
 
 // Cancel a claim
-router.post('/:id/cancel', auth, async (req, res) => {
+router.post('//cancel', auth, async (req, res) => {
   try {
     const claim = await InsuranceClaim.findOne({ 
-      _id: req.params.id, 
-      userId: req.user.id 
+      _id.params.id, 
+      userId.user.id 
     });
 
     if (!claim) {
       return res.status(404).json({
-        success: false,
+        success,
         message: 'Claim not found'
       });
     }
@@ -356,7 +355,7 @@ router.post('/:id/cancel', auth, async (req, res) => {
     // Only allow cancellation for certain statuses
     if (!['submitted', 'document_uploaded'].includes(claim.status)) {
       return res.status(400).json({
-        success: false,
+        success,
         message: 'Claim cannot be cancelled at this stage'
       });
     }
@@ -368,21 +367,22 @@ router.post('/:id/cancel', auth, async (req, res) => {
     await claim.addTimeline('cancelled', 'Claim cancelled by customer', req.user.id);
 
     res.json({
-      success: true,
+      success,
       message: 'Claim cancelled successfully',
       data: {
-        claimNumber: claim.claimNumber,
-        status: claim.status
+        claimNumber.claimNumber,
+        status.status
       }
     });
 
   } catch (error) {
     console.error('Claim cancellation error:', error);
     res.status(500).json({
-      success: false,
+      success,
       message: 'Failed to cancel claim'
     });
   }
 });
 
 module.exports = router;
+

@@ -3,18 +3,18 @@
 import { ProviderType, LLMResponse } from '../ProviderManager';
 
 export class GeminiAdapter {
-  private apiKey: string;
-  private quotaRemaining: number = 60; // Gemini free tier: 60 requests/min
-  private lastCheck: Date = new Date();
-  private requestCount: number = 0;
-  private minuteStart: Date = new Date();
+  private apiKey;
+  private quotaRemaining= 60; // Gemini free tier: 60 requests/min
+  private lastCheck= new Date();
+  private requestCount= 0;
+  private minuteStart= new Date();
 
   constructor() {
     this.apiKey = process.env.GEMINI_API_KEY || '';
     this.resetQuotaIfNeeded();
   }
 
-  private resetQuotaIfNeeded(): void {
+  private resetQuotaIfNeeded(){
     const now = new Date();
     // Reset per minute counter
     if (now.getTime() - this.minuteStart.getTime() > 60000) {
@@ -23,7 +23,7 @@ export class GeminiAdapter {
     }
   }
 
-  async generate(prompt: string, options?: Record<string, any>): Promise<LLMResponse> {
+  async generate(prompt, options?)<LLMResponse> {
     this.resetQuotaIfNeeded();
 
     if (!this.apiKey) {
@@ -39,12 +39,12 @@ export class GeminiAdapter {
 
       // In production, replace with actual Gemini API call:
       // const response = await fetch(
-      //   `https://generativelanguage.googleapis.com/v1beta/models/gemini-pro:generateContent?key=${this.apiKey}`,
+      //   `https://generativelanguage.googleapis.com/v1beta/models/gemini-pro?key=${this.apiKey}`,
       //   {
       //     method: 'POST',
       //     headers: { 'Content-Type': 'application/json' },
-      //     body: JSON.stringify({
-      //       contents: [{ parts: [{ text: prompt }] }]
+      //     body.stringify({
+      //       contents: [{ parts: [{ text}] }]
       //     })
       //   }
       // );
@@ -52,8 +52,8 @@ export class GeminiAdapter {
       // Simulated response for now
       const simulatedResponse = {
         content: `Gemini response: ${prompt.substring(0, 50)}...`,
-        provider: ProviderType.GEMINI,
-        tokensUsed: Math.floor(prompt.length / 3),
+        provider.GEMINI,
+        tokensUsed.floor(prompt.length / 3),
         costInr: 0, // Free tier
         latency: 300
       };
@@ -66,17 +66,19 @@ export class GeminiAdapter {
     }
   }
 
-  async isAvailable(): Promise<boolean> {
+  async isAvailable()<boolean> {
     this.resetQuotaIfNeeded();
     return this.requestCount < this.quotaRemaining && !!this.apiKey;
   }
 
-  getQuotaRemaining(): number {
+  getQuotaRemaining(){
     this.resetQuotaIfNeeded();
     return Math.max(0, this.quotaRemaining - this.requestCount);
   }
 
-  getLatency(): number {
+  getLatency(){
     return 300; // Average latency in ms
   }
 }
+
+

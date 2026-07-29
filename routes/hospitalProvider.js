@@ -21,7 +21,7 @@ const {
 
 // Multer config for Excel upload
 const upload = multer({ 
-  storage: multer.memoryStorage(),
+  storage.memoryStorage(),
   fileFilter: (req, file, cb) => {
     if (file.mimetype === 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' || 
         file.mimetype === 'application/vnd.ms-excel') {
@@ -51,26 +51,26 @@ router.post('/register', async (req, res) => {
     const { password, contact, name } = req.body;
 
     if (!name) {
-      return res.status(400).json({ success: false, message: 'Hospital name is required' });
+      return res.status(400).json({ success, message: 'Hospital name is required' });
     }
     if (!contact?.phone || !validatePhone(contact.phone)) {
-      return res.status(400).json({ success: false, message: 'Valid 10-digit phone number is required' });
+      return res.status(400).json({ success, message: 'Valid 10-digit phone number is required' });
     }
     if (!contact?.email || !validateEmail(contact.email)) {
-      return res.status(400).json({ success: false, message: 'Valid email is required' });
+      return res.status(400).json({ success, message: 'Valid email is required' });
     }
     if (!validatePassword(password)) {
-      return res.status(400).json({ success: false, message: 'Password must be at least 8 characters' });
+      return res.status(400).json({ success, message: 'Password must be at least 8 characters' });
     }
 
     const existing = await Hospital.findOne({
       $or: [
-        { 'contact.email': contact.email },
-        { 'contact.phone': contact.phone }
+        { 'contact.email'.email },
+        { 'contact.phone'.phone }
       ]
     });
     if (existing) {
-      return res.status(400).json({ success: false, message: 'Hospital with this email or phone already registered' });
+      return res.status(400).json({ success, message: 'Hospital with this email or phone already registered' });
     }
 
     const salt = await bcrypt.genSalt(10);
@@ -78,23 +78,23 @@ router.post('/register', async (req, res) => {
 
     const hospital = new Hospital({
       ...req.body,
-      password: hashedPassword,
-      is_verified: false,
-      is_active: true,
+      password,
+      is_verified,
+      is_active,
       subscription_plan: 'free',
-      created_at: new Date()
+      created_atDate()
     });
     
     await hospital.save();
 
     res.json({ 
-      success: true, 
+      success, 
       message: 'Registration submitted successfully! Please wait for verification.',
-      data: { id: hospital._id, name: hospital.name }
+      data: { id._id, name.name }
     });
   } catch (error) {
     console.error('Registration error:', error);
-    res.status(400).json({ success: false, message: error.message });
+    res.status(400).json({ success, message.message });
   }
 });
 
@@ -104,50 +104,50 @@ router.post('/login', async (req, res) => {
     const { email, phone, password } = req.body;
 
     if (!password) {
-      return res.status(400).json({ success: false, message: 'Password is required' });
+      return res.status(400).json({ success, message: 'Password is required' });
     }
 
     const hospital = await Hospital.findOne({ 
       $or: [
-        { 'contact.email': email || '' },
-        { 'contact.phone': phone || '' }
+        { 'contact.email'|| '' },
+        { 'contact.phone'|| '' }
       ]
     }).select('+password');
     
     if (!hospital) {
-      return res.status(404).json({ success: false, message: 'Hospital not found. Please check your credentials.' });
+      return res.status(404).json({ success, message: 'Hospital not found. Please check your credentials.' });
     }
 
     if (!hospital.is_active) {
-      return res.status(403).json({ success: false, message: 'Hospital account is deactivated. Contact support.' });
+      return res.status(403).json({ success, message: 'Hospital account is deactivated. Contact support.' });
     }
 
     const isMatch = await bcrypt.compare(password, hospital.password);
     if (!isMatch) {
-      return res.status(401).json({ success: false, message: 'Invalid credentials' });
+      return res.status(401).json({ success, message: 'Invalid credentials' });
     }
     
     const token = jwt.sign(
       { 
-        _id: hospital._id, 
+        _id._id, 
         role: 'hospital', 
-        isVerified: hospital.is_verified,
-        subscriptionPlan: hospital.subscription_plan
+        isVerified.is_verified,
+        subscriptionPlan.subscription_plan
       },
       process.env.JWT_SECRET || 'hospital_platform_secret_key_2024',
       { expiresIn: '7d' }
     );
     
     res.json({ 
-      success: true, 
+      success, 
       token, 
-      hospitalId: hospital._id,
-      isVerified: hospital.is_verified,
+      hospitalId._id,
+      isVerified.is_verified,
       message: 'Login successful' 
     });
   } catch (error) {
     console.error('Login error:', error);
-    res.status(500).json({ success: false, message: error.message });
+    res.status(500).json({ success, message.message });
   }
 });
 
@@ -156,17 +156,17 @@ router.get('/auth/verify', authenticateHospital, async (req, res) => {
   try {
     const hospital = await Hospital.findById(req.user._id).select('-password');
     if (!hospital) {
-      return res.status(404).json({ success: false, message: 'Hospital not found' });
+      return res.status(404).json({ success, message: 'Hospital not found' });
     }
-    res.json({ success: true, data: hospital });
+    res.json({ success, data});
   } catch (error) {
-    res.status(500).json({ success: false, message: error.message });
+    res.status(500).json({ success, message.message });
   }
 });
 
 // Logout
 router.post('/logout', authenticateHospital, (req, res) => {
-  res.json({ success: true, message: 'Logged out successfully' });
+  res.json({ success, message: 'Logged out successfully' });
 });
 
 // ============================================
@@ -178,11 +178,11 @@ router.get('/profile', authenticateHospital, async (req, res) => {
   try {
     const hospital = await Hospital.findById(req.user._id).select('-password');
     if (!hospital) {
-      return res.status(404).json({ success: false, message: 'Hospital not found' });
+      return res.status(404).json({ success, message: 'Hospital not found' });
     }
-    res.json({ success: true, data: hospital });
+    res.json({ success, data});
   } catch (error) {
-    res.status(500).json({ success: false, message: error.message });
+    res.status(500).json({ success, message.message });
   }
 });
 
@@ -202,11 +202,11 @@ hospital.updated_at = new Date();
 await hospital.save();
 
 const updated = await Hospital.findById(req.user._id).select('-password');
-res.json({ success: true, data: updated });
+res.json({ success, data});
     
-    res.json({ success: true, data: hospital });
+    res.json({ success, data});
   } catch (error) {
-    res.status(400).json({ success: false, message: error.message });
+    res.status(400).json({ success, message.message });
   }
 });
 
@@ -216,23 +216,23 @@ router.put('/change-password', authenticateHospital, async (req, res) => {
     const { currentPassword, newPassword } = req.body;
 
     if (!validatePassword(newPassword)) {
-      return res.status(400).json({ success: false, message: 'New password must be at least 8 characters' });
+      return res.status(400).json({ success, message: 'New password must be at least 8 characters' });
     }
 
     const hospital = await Hospital.findById(req.user._id);
     const isMatch = await bcrypt.compare(currentPassword, hospital.password);
     
     if (!isMatch) {
-      return res.status(401).json({ success: false, message: 'Current password is incorrect' });
+      return res.status(401).json({ success, message: 'Current password is incorrect' });
     }
 
     const salt = await bcrypt.genSalt(10);
     hospital.password = await bcrypt.hash(newPassword, salt);
     await hospital.save();
 
-    res.json({ success: true, message: 'Password changed successfully' });
+    res.json({ success, message: 'Password changed successfully' });
   } catch (error) {
-    res.status(500).json({ success: false, message: error.message });
+    res.status(500).json({ success, message.message });
   }
 });
 
@@ -244,9 +244,9 @@ router.put('/change-password', authenticateHospital, async (req, res) => {
 router.get('/doctors', authenticateHospital, async (req, res) => {
   try {
     const hospital = await Hospital.findById(req.user._id).select('doctors');
-    res.json({ success: true, data: hospital?.doctors || [] });
+    res.json({ success, data?.doctors || [] });
   } catch (error) {
-    res.status(500).json({ success: false, message: error.message });
+    res.status(500).json({ success, message.message });
   }
 });
 
@@ -255,7 +255,7 @@ router.post('/doctors', authenticateHospital, async (req, res) => {
   try {
     const { name, specialization, consultation_fee } = req.body;
     if (!name || !specialization) {
-      return res.status(400).json({ success: false, message: 'Name and specialization are required' });
+      return res.status(400).json({ success, message: 'Name and specialization are required' });
     }
 
     const hospital = await Hospital.findById(req.user._id);
@@ -265,71 +265,71 @@ router.post('/doctors', authenticateHospital, async (req, res) => {
       reviewCount: 0,
       availability: {
         status: 'available',
-        slots_available: req.body.max_patients_per_day || 20,
-        days: req.body.availability_days || ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'],
-        morning_slots: req.body.morning_slots || '09:00-13:00',
-        evening_slots: req.body.evening_slots || '17:00-20:00',
-        max_patients: req.body.max_patients_per_day || 20
+        slots_available.body.max_patients_per_day || 20,
+        days.body.availability_days || ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'],
+        morning_slots.body.morning_slots || '09:00-13:00',
+        evening_slots.body.evening_slots || '17:00-20:00',
+        max_patients.body.max_patients_per_day || 20
       }
     };
     
     hospital.doctors.push(doctorData);
     await hospital.save();
-    res.json({ success: true, data: hospital.doctors });
+    res.json({ success, data.doctors });
   } catch (error) {
-    res.status(400).json({ success: false, message: error.message });
+    res.status(400).json({ success, message.message });
   }
 });
 
 // Update doctor
-router.put('/doctors/:doctorId', authenticateHospital, async (req, res) => {
+router.put('/doctors/', authenticateHospital, async (req, res) => {
   try {
     const hospital = await Hospital.findById(req.user._id);
     const doctor = hospital.doctors.id(req.params.doctorId);
-    if (!doctor) return res.status(404).json({ success: false, message: 'Doctor not found' });
+    if (!doctor) return res.status(404).json({ success, message: 'Doctor not found' });
     
     Object.assign(doctor, req.body);
     await hospital.save();
-    res.json({ success: true, data: doctor });
+    res.json({ success, data});
   } catch (error) {
-    res.status(400).json({ success: false, message: error.message });
+    res.status(400).json({ success, message.message });
   }
 });
 
 // Delete doctor
-router.delete('/doctors/:doctorId', authenticateHospital, async (req, res) => {
+router.delete('/doctors/', authenticateHospital, async (req, res) => {
   try {
     const hospital = await Hospital.findById(req.user._id);
     hospital.doctors.pull(req.params.doctorId);
     await hospital.save();
-    res.json({ success: true, message: 'Doctor removed' });
+    res.json({ success, message: 'Doctor removed' });
   } catch (error) {
-    res.status(400).json({ success: false, message: error.message });
+    res.status(400).json({ success, message.message });
   }
 });
 
 // Update doctor availability
-router.put('/doctors/:doctorId/availability', authenticateHospital, async (req, res) => {
+router.put('/doctors//availability', authenticateHospital, async (req, res) => {
   try {
     const { status, slots_available, days, morning_slots, evening_slots } = req.body;
     const hospital = await Hospital.findById(req.user._id);
     const doctor = hospital.doctors.id(req.params.doctorId);
     
-    if (!doctor) return res.status(404).json({ success: false, message: 'Doctor not found' });
+    if (!doctor) return res.status(404).json({ success, message: 'Doctor not found' });
     
     doctor.availability = {
-      status: status || doctor.availability?.status || 'available',
-      slots_available: slots_available ?? doctor.availability?.slots_available ?? 20,
-      days: days || doctor.availability?.days || ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'],
-      morning_slots: morning_slots || doctor.availability?.morning_slots,
-      evening_slots: evening_slots || doctor.availability?.evening_slots,
-      max_patients: doctor.availability?.max_patients || 20
+      status|| doctor.availability?.status || 'available',
+      slots_available_available ?? doctor.availability?.slots_available ?? 20,
+      days|| doctor.availability?.days || ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'],
+      morning_slots_slots || doctor.availability?.morning_slots,
+      evening_slots_slots || doctor.availability?.evening_slots,
+      max_patients.availability?.max_patients || 20
     };
     
     await hospital.save();
-    res.json({ success: true, data: doctor.availability });
+    res.json({ success, data.availability });
   } catch (error) {
-    res.status(400).json({ success: false, message: error.message });
+    res.status(400).json({ success, message.message });
   }
 });
 
@@ -346,9 +346,9 @@ router.put('/schemes', authenticateHospital, async (req, res) => {
       hospital.scheme_details = req.body.scheme_details;
     }
     await hospital.save();
-    res.json({ success: true, data: hospital.schemes_accepted });
+    res.json({ success, data.schemes_accepted });
   } catch (error) {
-    res.status(400).json({ success: false, message: error.message });
+    res.status(400).json({ success, message.message });
   }
 });
 
@@ -356,9 +356,9 @@ router.put('/schemes', authenticateHospital, async (req, res) => {
 router.get('/schemes', authenticateHospital, async (req, res) => {
   try {
     const hospital = await Hospital.findById(req.user._id).select('schemes_accepted scheme_details cashless_available tpa_desk_available');
-    res.json({ success: true, data: hospital || {} });
+    res.json({ success, data|| {} });
   } catch (error) {
-    res.status(500).json({ success: false, message: error.message });
+    res.status(500).json({ success, message.message });
   }
 });
 
@@ -374,9 +374,9 @@ router.put('/insurance', authenticateHospital, async (req, res) => {
     hospital.payment_methods = req.body.payment_methods || hospital.payment_methods;
     hospital.emi_available = req.body.emi_available ?? hospital.emi_available;
     await hospital.save();
-    res.json({ success: true, message: 'Insurance updated' });
+    res.json({ success, message: 'Insurance updated' });
   } catch (error) {
-    res.status(400).json({ success: false, message: error.message });
+    res.status(400).json({ success, message.message });
   }
 });
 
@@ -384,9 +384,9 @@ router.put('/insurance', authenticateHospital, async (req, res) => {
 router.get('/insurance', authenticateHospital, async (req, res) => {
   try {
     const hospital = await Hospital.findById(req.user._id).select('insurance_accepted cashless_available tpa_desk_available tpa_partners payment_methods emi_available');
-    res.json({ success: true, data: hospital || {} });
+    res.json({ success, data|| {} });
   } catch (error) {
-    res.status(500).json({ success: false, message: error.message });
+    res.status(500).json({ success, message.message });
   }
 });
 
@@ -407,9 +407,9 @@ router.put('/facilities', authenticateHospital, async (req, res) => {
     if (req.body.operation_theaters) hospital.operation_theaters = req.body.operation_theaters;
     
     await hospital.save();
-    res.json({ success: true, message: 'Facilities updated' });
+    res.json({ success, message: 'Facilities updated' });
   } catch (error) {
-    res.status(400).json({ success: false, message: error.message });
+    res.status(400).json({ success, message.message });
   }
 });
 
@@ -417,9 +417,9 @@ router.put('/facilities', authenticateHospital, async (req, res) => {
 router.get('/facilities', authenticateHospital, async (req, res) => {
   try {
     const hospital = await Hospital.findById(req.user._id).select('facilities technology amenities specialties diseases_treated accreditations operation_theaters has24x7ER trauma_center stroke_ready cardiac_emergency lab_tests_available ambulance_available pharmacy_24x7');
-    res.json({ success: true, data: hospital || {} });
+    res.json({ success, data|| {} });
   } catch (error) {
-    res.status(500).json({ success: false, message: error.message });
+    res.status(500).json({ success, message.message });
   }
 });
 
@@ -441,9 +441,9 @@ router.put('/pricing', authenticateHospital, async (req, res) => {
     if (req.body.online_booking_discount) hospital.pricing.online_booking_discount = req.body.online_booking_discount;
     
     await hospital.save();
-    res.json({ success: true, data: hospital.pricing });
+    res.json({ success, data.pricing });
   } catch (error) {
-    res.status(400).json({ success: false, message: error.message });
+    res.status(400).json({ success, message.message });
   }
 });
 
@@ -455,9 +455,9 @@ router.put('/pricing', authenticateHospital, async (req, res) => {
 router.get('/packages', authenticateHospital, async (req, res) => {
   try {
     const hospital = await Hospital.findById(req.user._id).select('pricing.health_packages');
-    res.json({ success: true, data: hospital?.pricing?.health_packages || [] });
+    res.json({ success, data?.pricing?.health_packages || [] });
   } catch (error) {
-    res.status(500).json({ success: false, message: error.message });
+    res.status(500).json({ success, message.message });
   }
 });
 
@@ -467,36 +467,36 @@ router.post('/packages', authenticateHospital, async (req, res) => {
     const hospital = await Hospital.findById(req.user._id);
     hospital.pricing.health_packages.push(req.body);
     await hospital.save();
-    res.json({ success: true, data: hospital.pricing.health_packages });
+    res.json({ success, data.pricing.health_packages });
   } catch (error) {
-    res.status(400).json({ success: false, message: error.message });
+    res.status(400).json({ success, message.message });
   }
 });
 
 // Update package
-router.put('/packages/:packageId', authenticateHospital, async (req, res) => {
+router.put('/packages/', authenticateHospital, async (req, res) => {
   try {
     const hospital = await Hospital.findById(req.user._id);
     const pkg = hospital.pricing.health_packages.id(req.params.packageId);
-    if (!pkg) return res.status(404).json({ success: false, message: 'Package not found' });
+    if (!pkg) return res.status(404).json({ success, message: 'Package not found' });
     
     Object.assign(pkg, req.body);
     await hospital.save();
-    res.json({ success: true, data: pkg });
+    res.json({ success, data});
   } catch (error) {
-    res.status(400).json({ success: false, message: error.message });
+    res.status(400).json({ success, message.message });
   }
 });
 
 // Delete package
-router.delete('/packages/:packageId', authenticateHospital, async (req, res) => {
+router.delete('/packages/', authenticateHospital, async (req, res) => {
   try {
     const hospital = await Hospital.findById(req.user._id);
     hospital.pricing.health_packages.pull(req.params.packageId);
     await hospital.save();
-    res.json({ success: true, message: 'Package removed' });
+    res.json({ success, message: 'Package removed' });
   } catch (error) {
-    res.status(400).json({ success: false, message: error.message });
+    res.status(400).json({ success, message.message });
   }
 });
 
@@ -504,9 +504,9 @@ router.delete('/packages/:packageId', authenticateHospital, async (req, res) => 
 router.get('/offers', authenticateHospital, async (req, res) => {
   try {
     const hospital = await Hospital.findById(req.user._id).select('pricing.offers');
-    res.json({ success: true, data: hospital?.pricing?.offers || [] });
+    res.json({ success, data?.pricing?.offers || [] });
   } catch (error) {
-    res.status(500).json({ success: false, message: error.message });
+    res.status(500).json({ success, message.message });
   }
 });
 
@@ -516,21 +516,21 @@ router.post('/offers', authenticateHospital, async (req, res) => {
     const hospital = await Hospital.findById(req.user._id);
     hospital.pricing.offers.push(req.body);
     await hospital.save();
-    res.json({ success: true, data: hospital.pricing.offers });
+    res.json({ success, data.pricing.offers });
   } catch (error) {
-    res.status(400).json({ success: false, message: error.message });
+    res.status(400).json({ success, message.message });
   }
 });
 
 // Delete offer
-router.delete('/offers/:offerId', authenticateHospital, async (req, res) => {
+router.delete('/offers/', authenticateHospital, async (req, res) => {
   try {
     const hospital = await Hospital.findById(req.user._id);
     hospital.pricing.offers.pull(req.params.offerId);
     await hospital.save();
-    res.json({ success: true, message: 'Offer removed' });
+    res.json({ success, message: 'Offer removed' });
   } catch (error) {
-    res.status(400).json({ success: false, message: error.message });
+    res.status(400).json({ success, message.message });
   }
 });
 
@@ -542,7 +542,7 @@ router.delete('/offers/:offerId', authenticateHospital, async (req, res) => {
 router.post('/upload-doctors', authenticateHospital, upload.single('file'), async (req, res) => {
   try {
     if (!req.file) {
-      return res.status(400).json({ success: false, message: 'Please upload a file' });
+      return res.status(400).json({ success, message: 'Please upload a file' });
     }
 
     const workbook = xlsx.read(req.file.buffer, { type: 'buffer' });
@@ -550,41 +550,41 @@ router.post('/upload-doctors', authenticateHospital, upload.single('file'), asyn
     const doctors = xlsx.utils.sheet_to_json(sheet);
     
     if (doctors.length === 0) {
-      return res.status(400).json({ success: false, message: 'No doctors found in file' });
+      return res.status(400).json({ success, message: 'No doctors found in file' });
     }
 
     const hospital = await Hospital.findById(req.user._id);
     hospital.doctors = doctors.map(doc => ({
-      name: doc['Doctor Name'] || '',
-      specialization: doc['Specialization'] || '',
-      qualification: doc['Qualification'] || '',
-      experience: doc['Experience (Years)'] || '0',
-      consultation_fee: parseFloat(doc['Consultation Fee (₹)']) || 0,
-      languages: doc['Languages'] ? doc['Languages'].split(',').map(l => l.trim()) : [],
-      gender: doc['Gender'] || 'Male',
+      name['Doctor Name'] || '',
+      specialization['Specialization'] || '',
+      qualification['Qualification'] || '',
+      experience['Experience (Years)'] || '0',
+      consultation_fee(doc['Consultation Fee (₹)']) || 0,
+      languages['Languages'] ? doc['Languages'].split(',').map(l => l.trim()) : [],
+      gender['Gender'] || 'Male',
       rating: 0,
       reviewCount: 0,
       availability: {
         status: 'available',
-        slots_available: parseInt(doc['Max Patients Per Day']) || 20,
-        days: doc['Available Days'] ? doc['Available Days'].split(',').map(d => d.trim()) : ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'],
-        morning_slots: doc['Morning Slots (HH:MM-HH:MM)'] || '09:00-13:00',
-        evening_slots: doc['Evening Slots (HH:MM-HH:MM)'] || '17:00-20:00',
-        max_patients: parseInt(doc['Max Patients Per Day']) || 20
+        slots_available(doc['Max Patients Per Day']) || 20,
+        days['Available Days'] ? doc['Available Days'].split(',').map(d => d.trim()) : ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'],
+        morning_slots['Morning Slots (HH-HH)'] || '09:00-13:00',
+        evening_slots['Evening Slots (HH-HH)'] || '17:00-20:00',
+        max_patients(doc['Max Patients Per Day']) || 20
       }
     }));
     
     hospital.upload_history.push(JSON.stringify({
-    filename: req.file.originalname,
-    uploaded_at: new Date(),
+    filename.file.originalname,
+    uploaded_atDate(),
     type: "bulk_data",
     status: "completed"
 }));
     
     await hospital.save();
-    res.json({ success: true, message: `${doctors.length} doctors uploaded successfully` });
+    res.json({ success, message: `${doctors.length} doctors uploaded successfully` });
   } catch (error) {
-    res.status(400).json({ success: false, message: error.message });
+    res.status(400).json({ success, message.message });
   }
 });
 
@@ -603,7 +603,7 @@ router.post(
       console.log('DEBUG req.user:', JSON.stringify(req.user));
 
       if (!req.file) {
-        return res.status(400).json({ success: false, message: "Please upload an Excel file." });
+        return res.status(400).json({ success, message: "Please upload an Excel file." });
       }
 
       console.log("Uploaded File:", req.file.originalname);
@@ -611,17 +611,17 @@ router.post(
       const workbook = xlsx.read(req.file.buffer, { type: "buffer" });
 
       if (!workbook.SheetNames.length) {
-        return res.status(400).json({ success: false, message: "Excel file contains no sheets." });
+        return res.status(400).json({ success, message: "Excel file contains no sheets." });
       }
 
       const sheet = workbook.Sheets[workbook.SheetNames[0]];
       if (!sheet) {
-        return res.status(400).json({ success: false, message: "Unable to read worksheet." });
+        return res.status(400).json({ success, message: "Unable to read worksheet." });
       }
 
       const rows = xlsx.utils.sheet_to_json(sheet);
       if (!rows.length) {
-        return res.status(400).json({ success: false, message: "Excel file is empty." });
+        return res.status(400).json({ success, message: "Excel file is empty." });
       }
 
       const data = rows[0];
@@ -635,7 +635,7 @@ router.post(
       
       const hospital = await Hospital.findById(hospitalId);
       if (!hospital) {
-        return res.status(404).json({ success: false, message: "Hospital not found. ID: " + hospitalId });
+        return res.status(404).json({ success, message: "Hospital not found. ID: " + hospitalId });
       }
 
       if (!hospital.beds) hospital.beds = {};
@@ -658,8 +658,8 @@ router.post(
       hospital.beds.auto_expire_at = new Date(Date.now() + 24 * 60 * 60 * 1000);
 
       hospital.upload_history.push({
-        filename: req.file.originalname,
-        uploaded_at: new Date(),
+        filename.file.originalname,
+        uploaded_atDate(),
         type: "bulk_data",
         status: "completed"
       });
@@ -669,15 +669,15 @@ router.post(
 
       console.log("Upload completed successfully.");
       return res.json({
-        success: true,
+        success,
         message: "Hospital data uploaded successfully.",
-        uploaded: { beds: hospital.beds, pricing: hospital.pricing }
+        uploaded: { beds.beds, pricing.pricing }
       });
 
     } catch (error) {
       console.error("========== EXCEL UPLOAD ERROR ==========");
       console.error(error);
-      return res.status(500).json({ success: false, message: error.message });
+      return res.status(500).json({ success, message.message });
     }
   }
 );
@@ -687,13 +687,13 @@ router.get('/template/download', (req, res) => {
   // Accept token from query or header
   const token = req.query.token || (req.headers.authorization || '').replace('Bearer ', '');
   if (!token) {
-    return res.status(401).json({ success: false, message: 'Access denied. No token provided.' });
+    return res.status(401).json({ success, message: 'Access denied. No token provided.' });
   }
   try {
     const jwt = require('jsonwebtoken');
     jwt.verify(token, process.env.JWT_SECRET || 'hospital_platform_secret_key_2024');
   } catch(e) {
-    return res.status(401).json({ success: false, message: 'Invalid token.' });
+    return res.status(401).json({ success, message: 'Invalid token.' });
   }
 
   const template = [{
@@ -705,8 +705,8 @@ router.get('/template/download', (req, res) => {
     'Languages': 'English, Hindi',
     'Gender': 'Male',
     'Available Days': 'Mon, Tue, Wed, Thu, Fri, Sat',
-    'Morning Slots (HH:MM-HH:MM)': '09:00-13:00',
-    'Evening Slots (HH:MM-HH:MM)': '17:00-20:00',
+    'Morning Slots (HH-HH)': '09:00-13:00',
+    'Evening Slots (HH-HH)': '17:00-20:00',
     'Max Patients Per Day': '20'
   }];
   
@@ -735,9 +735,9 @@ router.get('/bookings', authenticateHospital, async (req, res) => {
     if (type) query.bookingType = type;
     if (search) {
       query.$or = [
-        { bookingId: { $regex: search, $options: 'i' } },
-        { patientName: { $regex: search, $options: 'i' } },
-        { patientPhone: { $regex: search, $options: 'i' } }
+        { bookingId: { $regex, $options: 'i' } },
+        { patientName: { $regex, $options: 'i' } },
+        { patientPhone: { $regex, $options: 'i' } }
       ];
     }
 
@@ -753,42 +753,41 @@ router.get('/bookings', authenticateHospital, async (req, res) => {
     ]);
 
     res.json({
-      success: true,
-      data: bookings,
+      success,
+      data,
       pagination: {
-        currentPage: parseInt(page),
-        totalPages: Math.ceil(total / parseInt(limit)),
-        totalBookings: total
-      }
+        currentPage(page),
+        totalPages.ceil(total / parseInt(limit)),
+        totalBookings}
     });
   } catch (error) {
-    res.status(500).json({ success: false, message: error.message });
+    res.status(500).json({ success, message.message });
   }
 });
 
 // Update booking status
-router.put('/bookings/:bookingId/status', authenticateHospital, async (req, res) => {
+router.put('/bookings//status', authenticateHospital, async (req, res) => {
   try {
     const { status, note } = req.body;
     const booking = await Booking.findOne({ 
-      bookingId: req.params.bookingId,
-      hospitalId: req.user._id.toString()
+      bookingId.params.bookingId,
+      hospitalId.user._id.toString()
     });
 
     if (!booking) {
-      return res.status(404).json({ success: false, message: 'Booking not found' });
+      return res.status(404).json({ success, message: 'Booking not found' });
     }
 
     const validStatuses = ['pending', 'confirmed', 'in_progress', 'completed', 'cancelled', 'no_show'];
     if (!validStatuses.includes(status)) {
-      return res.status(400).json({ success: false, message: 'Invalid status' });
+      return res.status(400).json({ success, message: 'Invalid status' });
     }
 
     booking.status = status;
     booking.statusHistory.push({
       status,
-      timestamp: new Date(),
-      note: note || `Status updated to ${status} by hospital`
+      timestampDate(),
+      note|| `Status updated to ${status} by hospital`
     });
 
     if (status === 'completed') {
@@ -796,27 +795,27 @@ router.put('/bookings/:bookingId/status', authenticateHospital, async (req, res)
     }
 
     await booking.save();
-    res.json({ success: true, data: booking });
+    res.json({ success, data});
   } catch (error) {
-    res.status(400).json({ success: false, message: error.message });
+    res.status(400).json({ success, message.message });
   }
 });
 
 // Get single booking
-router.get('/bookings/:bookingId', authenticateHospital, async (req, res) => {
+router.get('/bookings/', authenticateHospital, async (req, res) => {
   try {
     const booking = await Booking.findOne({ 
-      bookingId: req.params.bookingId,
-      hospitalId: req.user._id.toString()
+      bookingId.params.bookingId,
+      hospitalId.user._id.toString()
     });
 
     if (!booking) {
-      return res.status(404).json({ success: false, message: 'Booking not found' });
+      return res.status(404).json({ success, message: 'Booking not found' });
     }
 
-    res.json({ success: true, data: booking });
+    res.json({ success, data});
   } catch (error) {
-    res.status(500).json({ success: false, message: error.message });
+    res.status(500).json({ success, message.message });
   }
 });
 
@@ -846,8 +845,8 @@ router.get('/patients', authenticateHospital, async (req, res) => {
         totalSpent: { $sum: '$finalAmount' }
       }},
       { $sort: { lastVisit: -1 } },
-      { $skip: skip },
-      { $limit: parseInt(limit) }
+      { $skip},
+      { $limit(limit) }
     ]);
 
     const total = await Booking.aggregate([
@@ -857,49 +856,49 @@ router.get('/patients', authenticateHospital, async (req, res) => {
     ]);
 
     res.json({
-      success: true,
-      data: patients,
+      success,
+      data,
       pagination: {
-        currentPage: parseInt(page),
-        totalPages: Math.ceil((total[0]?.total || 0) / parseInt(limit)),
-        totalPatients: total[0]?.total || 0
+        currentPage(page),
+        totalPages.ceil((total[0]?.total || 0) / parseInt(limit)),
+        totalPatients[0]?.total || 0
       }
     });
   } catch (error) {
-    res.status(500).json({ success: false, message: error.message });
+    res.status(500).json({ success, message.message });
   }
 });
 
 // Get single patient details
-router.get('/patients/:phone', authenticateHospital, async (req, res) => {
+router.get('/patients/', authenticateHospital, async (req, res) => {
   try {
     const hospitalId = req.user._id.toString();
     
     const bookings = await Booking.find({ 
       hospitalId, 
-      patientPhone: req.params.phone 
+      patientPhone.params.phone 
     }).sort({ createdAt: -1 }).lean();
 
     if (bookings.length === 0) {
-      return res.status(404).json({ success: false, message: 'Patient not found' });
+      return res.status(404).json({ success, message: 'Patient not found' });
     }
 
     res.json({
-      success: true,
+      success,
       data: {
-        patientName: bookings[0].patientName,
-        patientPhone: bookings[0].patientPhone,
-        patientEmail: bookings[0].patientEmail,
-        patientAge: bookings[0].patientAge,
-        patientGender: bookings[0].patientGender,
-        totalBookings: bookings.length,
-        totalSpent: bookings.reduce((sum, b) => sum + (b.finalAmount || 0), 0),
-        lastVisit: bookings[0].appointmentDate,
+        patientName[0].patientName,
+        patientPhone[0].patientPhone,
+        patientEmail[0].patientEmail,
+        patientAge[0].patientAge,
+        patientGender[0].patientGender,
+        totalBookings.length,
+        totalSpent.reduce((sum, b) => sum + (b.finalAmount || 0), 0),
+        lastVisit[0].appointmentDate,
         bookings
       }
     });
   } catch (error) {
-    res.status(500).json({ success: false, message: error.message });
+    res.status(500).json({ success, message.message });
   }
 });
 
@@ -914,8 +913,8 @@ router.post('/prescriptions', authenticateHospital, async (req, res) => {
     
     const prescription = new Prescription({
       ...req.body,
-      hospitalId: req.user._id,
-      hospitalName: hospital.name
+      hospitalId.user._id,
+      hospitalName.name
     });
     
     await prescription.save();
@@ -923,21 +922,21 @@ router.post('/prescriptions', authenticateHospital, async (req, res) => {
     // Update booking with prescription reference
     if (req.body.bookingId) {
       await Booking.findOneAndUpdate(
-        { bookingId: req.body.bookingId },
+        { bookingId.body.bookingId },
         { 
-          'prescription.generated': true,
-          'prescription.prescriptionId': prescription.prescriptionId,
-          'prescription.generatedAt': new Date(),
-          'prescription.medicines': req.body.medicines || [],
-          'prescription.tests': req.body.tests_recommended || [],
-          'prescription.doctorNotes': req.body.doctor_notes || ''
+          'prescription.generated',
+          'prescription.prescriptionId'.prescriptionId,
+          'prescription.generatedAt'Date(),
+          'prescription.medicines'.body.medicines || [],
+          'prescription.tests'.body.tests_recommended || [],
+          'prescription.doctorNotes'.body.doctor_notes || ''
         }
       );
     }
     
-    res.json({ success: true, data: prescription });
+    res.json({ success, data});
   } catch (error) {
-    res.status(400).json({ success: false, message: error.message });
+    res.status(400).json({ success, message.message });
   }
 });
 
@@ -945,7 +944,7 @@ router.post('/prescriptions', authenticateHospital, async (req, res) => {
 router.get('/prescriptions', authenticateHospital, async (req, res) => {
   try {
     const { page = 1, limit = 20, doctorId, status } = req.query;
-    const query = { hospitalId: req.user._id };
+    const query = { hospitalId.user._id };
     
     if (doctorId) query.doctorId = doctorId;
     if (status) query.status = status;
@@ -962,91 +961,90 @@ router.get('/prescriptions', authenticateHospital, async (req, res) => {
     ]);
 
     res.json({
-      success: true,
-      data: prescriptions,
+      success,
+      data,
       pagination: {
-        currentPage: parseInt(page),
-        totalPages: Math.ceil(total / parseInt(limit)),
-        totalPrescriptions: total
-      }
+        currentPage(page),
+        totalPages.ceil(total / parseInt(limit)),
+        totalPrescriptions}
     });
   } catch (error) {
-    res.status(500).json({ success: false, message: error.message });
+    res.status(500).json({ success, message.message });
   }
 });
 
 // Get single prescription
-router.get('/prescriptions/:prescriptionId', authenticateHospital, async (req, res) => {
+router.get('/prescriptions/', authenticateHospital, async (req, res) => {
   try {
     const prescription = await Prescription.findOne({ 
-      prescriptionId: req.params.prescriptionId,
-      hospitalId: req.user._id
+      prescriptionId.params.prescriptionId,
+      hospitalId.user._id
     });
     
     if (!prescription) {
-      return res.status(404).json({ success: false, message: 'Prescription not found' });
+      return res.status(404).json({ success, message: 'Prescription not found' });
     }
     
-    res.json({ success: true, data: prescription });
+    res.json({ success, data});
   } catch (error) {
-    res.status(500).json({ success: false, message: error.message });
+    res.status(500).json({ success, message.message });
   }
 });
 
 // Update prescription
-router.put('/prescriptions/:prescriptionId', authenticateHospital, async (req, res) => {
+router.put('/prescriptions/', authenticateHospital, async (req, res) => {
   try {
     const prescription = await Prescription.findOneAndUpdate(
-      { prescriptionId: req.params.prescriptionId, hospitalId: req.user._id },
-      { ...req.body, updated_at: new Date() },
-      { new: true }
+      { prescriptionId.params.prescriptionId, hospitalId.user._id },
+      { ...req.body, updated_atDate() },
+      { new}
     );
     
     if (!prescription) {
-      return res.status(404).json({ success: false, message: 'Prescription not found' });
+      return res.status(404).json({ success, message: 'Prescription not found' });
     }
     
-    res.json({ success: true, data: prescription });
+    res.json({ success, data});
   } catch (error) {
-    res.status(400).json({ success: false, message: error.message });
+    res.status(400).json({ success, message.message });
   }
 });
 
 // Sign prescription (digital signature)
-router.put('/prescriptions/:prescriptionId/sign', authenticateHospital, async (req, res) => {
+router.put('/prescriptions//sign', authenticateHospital, async (req, res) => {
   try {
     const prescription = await Prescription.findOne({ 
-      prescriptionId: req.params.prescriptionId,
-      hospitalId: req.user._id
+      prescriptionId.params.prescriptionId,
+      hospitalId.user._id
     });
     
     if (!prescription) {
-      return res.status(404).json({ success: false, message: 'Prescription not found' });
+      return res.status(404).json({ success, message: 'Prescription not found' });
     }
     
     await prescription.sign(req.body.signatureUrl, req.ip);
-    res.json({ success: true, message: 'Prescription signed', data: prescription });
+    res.json({ success, message: 'Prescription signed', data});
   } catch (error) {
-    res.status(400).json({ success: false, message: error.message });
+    res.status(400).json({ success, message.message });
   }
 });
 
 // Expire prescription
-router.put('/prescriptions/:prescriptionId/expire', authenticateHospital, async (req, res) => {
+router.put('/prescriptions//expire', authenticateHospital, async (req, res) => {
   try {
     const prescription = await Prescription.findOne({ 
-      prescriptionId: req.params.prescriptionId,
-      hospitalId: req.user._id
+      prescriptionId.params.prescriptionId,
+      hospitalId.user._id
     });
     
     if (!prescription) {
-      return res.status(404).json({ success: false, message: 'Prescription not found' });
+      return res.status(404).json({ success, message: 'Prescription not found' });
     }
     
     await prescription.expire();
-    res.json({ success: true, message: 'Prescription expired', data: prescription });
+    res.json({ success, message: 'Prescription expired', data});
   } catch (error) {
-    res.status(400).json({ success: false, message: error.message });
+    res.status(400).json({ success, message.message });
   }
 });
 
@@ -1069,40 +1067,40 @@ router.get('/dashboard/stats', authenticateHospital, async (req, res) => {
     ] = await Promise.all([
       Hospital.findById(req.user._id).select('doctors beds ratings schemes_accepted insurance_accepted subscription_plan activity_score'),
       Booking.countDocuments({ hospitalId }),
-      Booking.countDocuments({ hospitalId, createdAt: { $gte: new Date(new Date().setHours(0,0,0,0)) } }),
+      Booking.countDocuments({ hospitalId, createdAt: { $gteDate(new Date().setHours(0,0,0,0)) } }),
       Transaction.aggregate([
         { $match: { hospitalId, status: { $in: ['completed', 'captured'] } } },
-        { $group: { _id: null, total: { $sum: '$netAmount' }, commission: { $sum: '$platformCommission' }, count: { $sum: 1 } } }
+        { $group: { _id, total: { $sum: '$netAmount' }, commission: { $sum: '$platformCommission' }, count: { $sum: 1 } } }
       ]),
       Booking.countDocuments({ hospitalId, status: { $in: ['pending', 'confirmed'] } }),
       Booking.countDocuments({ hospitalId, status: 'completed' })
     ]);
 
     res.json({
-      success: true,
+      success,
       data: {
-        totalDoctors: hospital?.doctors?.length || 0,
-        totalBeds: hospital?.beds?.total || 0,
-        availableBeds: hospital?.beds?.available || 0,
-        icuAvailable: hospital?.beds?.icu_available || 0,
-        ventilatorAvailable: hospital?.beds?.ventilator_available || 0,
-        rating: hospital?.ratings?.average || 0,
-        reviewCount: hospital?.ratings?.count || 0,
-        schemesCount: hospital?.schemes_accepted?.length || 0,
-        insuranceCount: hospital?.insurance_accepted?.length || 0,
-        subscription: hospital?.subscription_plan || 'free',
-        activityScore: hospital?.activity_score || 0,
+        totalDoctors?.doctors?.length || 0,
+        totalBeds?.beds?.total || 0,
+        availableBeds?.beds?.available || 0,
+        icuAvailable?.beds?.icu_available || 0,
+        ventilatorAvailable?.beds?.ventilator_available || 0,
+        rating?.ratings?.average || 0,
+        reviewCount?.ratings?.count || 0,
+        schemesCount?.schemes_accepted?.length || 0,
+        insuranceCount?.insurance_accepted?.length || 0,
+        subscription?.subscription_plan || 'free',
+        activityScore?.activity_score || 0,
         totalBookings,
         todayBookings,
         pendingBookings,
         completedBookings,
-        totalRevenue: revenueData[0]?.total || 0,
-        totalCommission: revenueData[0]?.commission || 0,
-        totalTransactions: revenueData[0]?.count || 0
+        totalRevenue[0]?.total || 0,
+        totalCommission[0]?.commission || 0,
+        totalTransactions[0]?.count || 0
       }
     });
   } catch (error) {
-    res.status(500).json({ success: false, message: error.message });
+    res.status(500).json({ success, message.message });
   }
 });
 
@@ -1114,22 +1112,22 @@ router.get('/stats', authenticateHospital, async (req, res) => {
     const [hospital, totalBookings, todayBookings] = await Promise.all([
       Hospital.findById(req.user._id).select('doctors beds ratings'),
       Booking.countDocuments({ hospitalId }),
-      Booking.countDocuments({ hospitalId, createdAt: { $gte: new Date(new Date().setHours(0,0,0,0)) } })
+      Booking.countDocuments({ hospitalId, createdAt: { $gteDate(new Date().setHours(0,0,0,0)) } })
     ]);
 
     res.json({
-      success: true,
+      success,
       data: {
-        totalDoctors: hospital?.doctors?.length || 0,
-        totalBeds: hospital?.beds?.total || 0,
-        availableBeds: hospital?.beds?.available || 0,
-        rating: hospital?.ratings?.average || 0,
+        totalDoctors?.doctors?.length || 0,
+        totalBeds?.beds?.total || 0,
+        availableBeds?.beds?.available || 0,
+        rating?.ratings?.average || 0,
         totalBookings,
         todayBookings
       }
     });
   } catch (error) {
-    res.status(500).json({ success: false, message: error.message });
+    res.status(500).json({ success, message.message });
   }
 });
 
@@ -1143,20 +1141,20 @@ router.get('/analytics', authenticateHospital, async (req, res) => {
 
     const [bookingStats, revenueData, dailyBookings, topDoctors] = await Promise.all([
       Booking.aggregate([
-        { $match: { hospitalId, createdAt: { $gte: startDate } } },
+        { $match: { hospitalId, createdAt: { $gte} } },
         { $group: { _id: '$bookingType', count: { $sum: 1 }, revenue: { $sum: '$finalAmount' } } }
       ]),
       Transaction.aggregate([
-        { $match: { hospitalId, status: 'completed', createdAt: { $gte: startDate } } },
-        { $group: { _id: null, total: { $sum: '$netAmount' }, commission: { $sum: '$platformCommission' }, count: { $sum: 1 } } }
+        { $match: { hospitalId, status: 'completed', createdAt: { $gte} } },
+        { $group: { _id, total: { $sum: '$netAmount' }, commission: { $sum: '$platformCommission' }, count: { $sum: 1 } } }
       ]),
       Booking.aggregate([
-        { $match: { hospitalId, createdAt: { $gte: startDate } } },
+        { $match: { hospitalId, createdAt: { $gte} } },
         { $group: { _id: { $dateToString: { format: '%Y-%m-%d', date: '$createdAt' } }, count: { $sum: 1 }, revenue: { $sum: '$finalAmount' } } },
         { $sort: { _id: 1 } }
       ]),
       Booking.aggregate([
-        { $match: { hospitalId, doctorName: { $ne: null }, createdAt: { $gte: startDate } } },
+        { $match: { hospitalId, doctorName: { $ne}, createdAt: { $gte} } },
         { $group: { _id: '$doctorName', count: { $sum: 1 }, revenue: { $sum: '$finalAmount' } } },
         { $sort: { count: -1 } },
         { $limit: 10 }
@@ -1164,16 +1162,16 @@ router.get('/analytics', authenticateHospital, async (req, res) => {
     ]);
 
     res.json({
-      success: true,
+      success,
       data: {
-        bookingBreakdown: bookingStats,
-        revenue: revenueData[0] || { total: 0, commission: 0, count: 0 },
+        bookingBreakdown,
+        revenue[0] || { total: 0, commission: 0, count: 0 },
         dailyBookings,
         topDoctors
       }
     });
   } catch (error) {
-    res.status(500).json({ success: false, message: error.message });
+    res.status(500).json({ success, message.message });
   }
 });
 
@@ -1192,7 +1190,7 @@ router.get('/reports', authenticateHospital, async (req, res) => {
 
     const [bookingReport, revenueReport] = await Promise.all([
       Booking.aggregate([
-        { $match: matchQuery },
+        { $match},
         { $group: {
           _id: '$bookingType',
           total: { $sum: 1 },
@@ -1203,7 +1201,7 @@ router.get('/reports', authenticateHospital, async (req, res) => {
       Transaction.aggregate([
         { $match: { ...matchQuery, status: 'completed' } },
         { $group: {
-          _id: null,
+          _id,
           totalRevenue: { $sum: '$netAmount' },
           totalCommission: { $sum: '$platformCommission' },
           totalTransactions: { $sum: 1 }
@@ -1212,14 +1210,14 @@ router.get('/reports', authenticateHospital, async (req, res) => {
     ]);
 
     res.json({
-      success: true,
+      success,
       data: {
         bookingReport,
-        revenueReport: revenueReport[0] || { totalRevenue: 0, totalCommission: 0, totalTransactions: 0 }
+        revenueReport[0] || { totalRevenue: 0, totalCommission: 0, totalTransactions: 0 }
       }
     });
   } catch (error) {
-    res.status(500).json({ success: false, message: error.message });
+    res.status(500).json({ success, message.message });
   }
 });
 
@@ -1250,7 +1248,7 @@ router.get('/reports/export', authenticateHospital, async (req, res) => {
     res.setHeader('Content-Disposition', `attachment; filename=hospital_report_${Date.now()}.csv`);
     res.send(csv);
   } catch (error) {
-    res.status(500).json({ success: false, message: error.message });
+    res.status(500).json({ success, message.message });
   }
 });
 
@@ -1263,15 +1261,15 @@ router.get('/activity-score', authenticateHospital, async (req, res) => {
   try {
     const hospital = await Hospital.findById(req.user._id).select('activity_score update_frequency last_activity');
     res.json({
-      success: true,
+      success,
       data: {
-        score: hospital?.activity_score || 0,
-        updateFrequency: hospital?.update_frequency || { today: 0, this_week: 0, this_month: 0 },
-        lastActivity: hospital?.last_activity
+        score?.activity_score || 0,
+        updateFrequency?.update_frequency || { today: 0, this_week: 0, this_month: 0 },
+        lastActivity?.last_activity
       }
     });
   } catch (error) {
-    res.status(500).json({ success: false, message: error.message });
+    res.status(500).json({ success, message.message });
   }
 });
 
@@ -1283,18 +1281,18 @@ router.get('/activity-score', authenticateHospital, async (req, res) => {
 router.get('/notifications', authenticateHospital, async (req, res) => {
   try {
     // You can create a Notification model for this
-    res.json({ success: true, data: [] });
+    res.json({ success, data: [] });
   } catch (error) {
-    res.status(500).json({ success: false, message: error.message });
+    res.status(500).json({ success, message.message });
   }
 });
 
 // Mark notification as read
-router.put('/notifications/:id/read', authenticateHospital, async (req, res) => {
+router.put('/notifications//read', authenticateHospital, async (req, res) => {
   try {
-    res.json({ success: true, message: 'Notification marked as read' });
+    res.json({ success, message: 'Notification marked as read' });
   } catch (error) {
-    res.status(500).json({ success: false, message: error.message });
+    res.status(500).json({ success, message.message });
   }
 });
 
@@ -1306,9 +1304,9 @@ router.put('/notifications/:id/read', authenticateHospital, async (req, res) => 
 router.get('/opd-schedule', authenticateHospital, async (req, res) => {
   try {
     const hospital = await Hospital.findById(req.user._id).select('opd_timings working_hours');
-    res.json({ success: true, data: hospital || {} });
+    res.json({ success, data|| {} });
   } catch (error) {
-    res.status(500).json({ success: false, message: error.message });
+    res.status(500).json({ success, message.message });
   }
 });
 
@@ -1318,16 +1316,16 @@ router.put('/opd-schedule', authenticateHospital, async (req, res) => {
     const hospital = await Hospital.findByIdAndUpdate(
       req.user._id,
       { 
-        opd_timings: req.body.opd_timings,
-        working_hours: req.body.working_hours,
-        visiting_hours: req.body.visiting_hours,
-        icu_visiting_hours: req.body.icu_visiting_hours
+        opd_timings.body.opd_timings,
+        working_hours.body.working_hours,
+        visiting_hours.body.visiting_hours,
+        icu_visiting_hours.body.icu_visiting_hours
       },
-      { new: true }
+      { new}
     );
-    res.json({ success: true, data: hospital.opd_timings });
+    res.json({ success, data.opd_timings });
   } catch (error) {
-    res.status(400).json({ success: false, message: error.message });
+    res.status(400).json({ success, message.message });
   }
 });
 
@@ -1336,19 +1334,19 @@ router.put('/opd-schedule', authenticateHospital, async (req, res) => {
 // ============================================
 
 router.get('/slots', authenticateHospital, (req, res) => {
-  res.json({ success: true, data: [] });
+  res.json({ success, data: [] });
 });
 
 router.post('/slots', authenticateHospital, (req, res) => {
-  res.json({ success: true, message: 'Slot added' });
+  res.json({ success, message: 'Slot added' });
 });
 
-router.put('/slots/:id', authenticateHospital, (req, res) => {
-  res.json({ success: true, message: 'Slot updated' });
+router.put('/slots/', authenticateHospital, (req, res) => {
+  res.json({ success, message: 'Slot updated' });
 });
 
-router.delete('/slots/:id', authenticateHospital, (req, res) => {
-  res.json({ success: true, message: 'Slot removed' });
+router.delete('/slots/', authenticateHospital, (req, res) => {
+  res.json({ success, message: 'Slot removed' });
 });
 
 // ============================================
@@ -1358,22 +1356,22 @@ router.delete('/slots/:id', authenticateHospital, (req, res) => {
 router.get('/rooms', authenticateHospital, async (req, res) => {
   try {
     const hospital = await Hospital.findById(req.user._id).select('beds.categories pricing');
-    res.json({ success: true, data: hospital?.beds?.categories || {} });
+    res.json({ success, data?.beds?.categories || {} });
   } catch (error) {
-    res.status(500).json({ success: false, message: error.message });
+    res.status(500).json({ success, message.message });
   }
 });
 
 router.post('/rooms', authenticateHospital, (req, res) => {
-  res.json({ success: true, message: 'Room added' });
+  res.json({ success, message: 'Room added' });
 });
 
-router.put('/rooms/:id', authenticateHospital, (req, res) => {
-  res.json({ success: true, message: 'Room updated' });
+router.put('/rooms/', authenticateHospital, (req, res) => {
+  res.json({ success, message: 'Room updated' });
 });
 
-router.delete('/rooms/:id', authenticateHospital, (req, res) => {
-  res.json({ success: true, message: 'Room removed' });
+router.delete('/rooms/', authenticateHospital, (req, res) => {
+  res.json({ success, message: 'Room removed' });
 });
 
 // ============================================
@@ -1415,39 +1413,33 @@ router.get('/template/complete', authenticateHospital, async (req, res) => {
     const filePath = excelService.generateHospitalTemplate();
     res.download(filePath, 'hospital_complete_template.xlsx');
   } catch (error) {
-    res.status(500).json({ success: false, message: error.message });
+    res.status(500).json({ success, message.message });
   }
 });
 
 // Download individual sheet templates
-router.get('/template/:type', authenticateHospital, async (req, res) => {
+router.get('/template/', authenticateHospital, async (req, res) => {
   try {
     const excelService = require('../services/excelService');
     let wb, fileName;
     
     switch(req.params.type) {
-      case 'doctors':
-        wb = excelService.generateDoctorsTemplate();
+      case 'doctors'= excelService.generateDoctorsTemplate();
         fileName = 'doctors_template.xlsx';
         break;
-      case 'pricing':
-        wb = excelService.generatePricingTemplate();
+      case 'pricing'= excelService.generatePricingTemplate();
         fileName = 'pricing_template.xlsx';
         break;
-      case 'facilities':
-        wb = excelService.generateFacilitiesTemplate();
+      case 'facilities'= excelService.generateFacilitiesTemplate();
         fileName = 'facilities_template.xlsx';
         break;
-      case 'schemes':
-        wb = excelService.generateSchemesTemplate();
+      case 'schemes'= excelService.generateSchemesTemplate();
         fileName = 'schemes_template.xlsx';
         break;
-      case 'insurance':
-        wb = excelService.generateInsuranceTemplate();
+      case 'insurance'= excelService.generateInsuranceTemplate();
         fileName = 'insurance_template.xlsx';
         break;
-      default:
-        return res.status(400).json({ success: false, message: 'Invalid template type' });
+      defaultres.status(400).json({ success, message: 'Invalid template type' });
     }
     
     const buffer = XLSX.write(wb, { type: 'buffer', bookType: 'xlsx' });
@@ -1455,7 +1447,7 @@ router.get('/template/:type', authenticateHospital, async (req, res) => {
     res.setHeader('Content-Disposition', `attachment; filename=${fileName}`);
     res.send(buffer);
   } catch (error) {
-    res.status(500).json({ success: false, message: error.message });
+    res.status(500).json({ success, message.message });
   }
 });
 
@@ -1463,7 +1455,7 @@ router.get('/template/:type', authenticateHospital, async (req, res) => {
 router.post('/upload-complete', authenticateHospital, upload.single('file'), async (req, res) => {
   try {
     if (!req.file) {
-      return res.status(400).json({ success: false, message: 'Please upload an Excel file' });
+      return res.status(400).json({ success, message: 'Please upload an Excel file' });
     }
 
     const excelService = require('../services/excelService');
@@ -1486,26 +1478,26 @@ router.post('/upload-complete', authenticateHospital, upload.single('file'), asy
     // Update doctors
     if (data.doctors.length > 0) {
       hospital.doctors = data.doctors.map(doc => ({
-        name: doc.name,
-        specialization: doc.specialization,
-        sub_specialization: doc.subSpecialization,
-        qualification: doc.qualification,
-        experience: doc.experience,
-        consultation_fee: doc.consultationFee,
-        languages: doc.languages,
-        gender: doc.gender,
+        name.name,
+        specialization.specialization,
+        sub_specialization.subSpecialization,
+        qualification.qualification,
+        experience.experience,
+        consultation_fee.consultationFee,
+        languages.languages,
+        gender.gender,
         rating: 0,
         reviewCount: 0,
         availability: {
           status: 'available',
-          slots_available: doc.maxPatientsPerDay,
+          slots_available.maxPatientsPerDay,
           days: ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'],
           morning_slots: `${doc.morningStart}-${doc.morningEnd}`,
-          evening_slots: doc.eveningStart ? `${doc.eveningStart}-${doc.eveningEnd}` : '',
-          max_patients: doc.maxPatientsPerDay
+          evening_slots.eveningStart ? `${doc.eveningStart}-${doc.eveningEnd}` : '',
+          max_patients.maxPatientsPerDay
         },
-        online_consult: doc.onlineConsult,
-        online_consult_fee: doc.onlineFee
+        online_consult.onlineConsult,
+        online_consult_fee.onlineFee
       }));
     }
     
@@ -1514,13 +1506,13 @@ router.post('/upload-complete', authenticateHospital, upload.single('file'), asy
       hospital.pricing = hospital.pricing || {};
       data.pricing.forEach(p => {
         switch(p.roomType.toLowerCase().replace(/\s/g, '_')) {
-          case 'general_ward': hospital.pricing.general_bed_per_day = p.perDayCharge; break;
-          case 'semi-private': hospital.pricing.semi_private_per_day = p.perDayCharge; break;
-          case 'private': hospital.pricing.private_per_day = p.perDayCharge; break;
-          case 'deluxe': hospital.pricing.deluxe_per_day = p.perDayCharge; break;
-          case 'icu': hospital.pricing.icu_bed_per_day = p.perDayCharge; break;
-          case 'nicu': hospital.pricing.nicu_per_day = p.perDayCharge; break;
-          case 'emergency': hospital.pricing.emergency_bed_per_day = p.perDayCharge; break;
+          case 'general_ward'.pricing.general_bed_per_day = p.perDayCharge; break;
+          case 'semi-private'.pricing.semi_private_per_day = p.perDayCharge; break;
+          case 'private'.pricing.private_per_day = p.perDayCharge; break;
+          case 'deluxe'.pricing.deluxe_per_day = p.perDayCharge; break;
+          case 'icu'.pricing.icu_bed_per_day = p.perDayCharge; break;
+          case 'nicu'.pricing.nicu_per_day = p.perDayCharge; break;
+          case 'emergency'.pricing.emergency_bed_per_day = p.perDayCharge; break;
         }
       });
     }
@@ -1528,10 +1520,10 @@ router.post('/upload-complete', authenticateHospital, upload.single('file'), asy
     // Update facilities
     if (data.facilities.length > 0) {
       hospital.facilities = data.facilities.map(f => ({
-        name: f.name,
-        category: f.category,
-        available_24x7: f.available24x7,
-        description: f.description
+        name.name,
+        category.category,
+        available_24x7.available24x7,
+        description.description
       }));
     }
     
@@ -1539,10 +1531,9 @@ router.post('/upload-complete', authenticateHospital, upload.single('file'), asy
     if (data.schemes.length > 0) {
       hospital.schemes_accepted = data.schemes.map(s => s.code);
       hospital.scheme_details = data.schemes.map(s => ({
-        code: s.code,
-        name: s.name,
-        active: true
-      }));
+        code.code,
+        name.name,
+        active}));
     }
     
     // Update insurance
@@ -1558,19 +1549,19 @@ router.post('/upload-complete', authenticateHospital, upload.single('file'), asy
     await hospital.save();
     
     res.json({
-      success: true,
+      success,
       message: 'Complete hospital data uploaded successfully',
       data: {
-        doctors: hospital.doctors.length,
-        pricing: data.pricing.length,
-        facilities: hospital.facilities.length,
-        schemes: hospital.schemes_accepted.length,
-        insurance: hospital.insurance_accepted.length
+        doctors.doctors.length,
+        pricing.pricing.length,
+        facilities.facilities.length,
+        schemes.schemes_accepted.length,
+        insurance.insurance_accepted.length
       }
     });
   } catch (error) {
     console.error('Excel upload error:', error);
-    res.status(400).json({ success: false, message: error.message });
+    res.status(400).json({ success, message.message });
   }
 });
 
@@ -1586,24 +1577,24 @@ router.get('/registration-progress', authenticateHospital, async (req, res) => {
       facilities: (hospital.facilities?.length || 0) > 0,
       schemes: (hospital.schemes_accepted?.length || 0) > 0,
       insurance: (hospital.insurance_accepted?.length || 0) > 0,
-      verified: hospital.is_verified
+      verified.is_verified
     };
     
     const completedSteps = Object.values(steps).filter(Boolean).length;
     const totalSteps = Object.keys(steps).length;
     
     res.json({
-      success: true,
+      success,
       data: {
         steps,
         completedSteps,
         totalSteps,
-        percentage: Math.round((completedSteps / totalSteps) * 100),
-        isComplete: completedSteps >= 5
+        percentage.round((completedSteps / totalSteps) * 100),
+        isComplete>= 5
       }
     });
   } catch (error) {
-    res.status(500).json({ success: false, message: error.message });
+    res.status(500).json({ success, message.message });
   }
 });
 
@@ -1614,10 +1605,10 @@ router.post('/submit-verification', authenticateHospital, async (req, res) => {
     
     // Check if minimum data is filled
     if (!hospital.doctors || hospital.doctors.length === 0) {
-      return res.status(400).json({ success: false, message: 'Please add at least one doctor before submitting' });
+      return res.status(400).json({ success, message: 'Please add at least one doctor before submitting' });
     }
     if (!hospital.pricing?.consultation && !hospital.pricing?.general_bed_per_day) {
-      return res.status(400).json({ success: false, message: 'Please add pricing details before submitting' });
+      return res.status(400).json({ success, message: 'Please add pricing details before submitting' });
     }
     
     hospital.is_verified = false;
@@ -1626,9 +1617,9 @@ router.post('/submit-verification', authenticateHospital, async (req, res) => {
     hospital.updated_at = new Date();
     await hospital.save();
     
-    res.json({ success: true, message: 'Hospital submitted for verification. We will review and activate within 24-48 hours.' });
+    res.json({ success, message: 'Hospital submitted for verification. We will review and activate within 24-48 hours.' });
   } catch (error) {
-    res.status(400).json({ success: false, message: error.message });
+    res.status(400).json({ success, message.message });
   }
 });
 
@@ -1641,34 +1632,34 @@ router.get('/template/cities', async (req, res) => {
   try {
     const cityTemplateService = require('../services/cityTemplateService');
     const cities = cityTemplateService.getAvailableCities();
-    res.json({ success: true, data: cities });
+    res.json({ success, data});
   } catch (error) {
-    res.status(500).json({ success: false, message: error.message });
+    res.status(500).json({ success, message.message });
   }
 });
 
 // Get template for a city (what data will be pre-filled)
-router.get('/template/city/:city', async (req, res) => {
+router.get('/template/city/', async (req, res) => {
   try {
     const cityTemplateService = require('../services/cityTemplateService');
     const { sections } = req.query;
     const sectionList = sections ? sections.split(',') : [];
     const template = cityTemplateService.getPartialTemplate(req.params.city, sectionList);
-    res.json({ success: true, data: template });
+    res.json({ success, data});
   } catch (error) {
-    res.status(500).json({ success: false, message: error.message });
+    res.status(500).json({ success, message.message });
   }
 });
 
 // Preview template before applying
-router.get('/template/city/:city/preview', async (req, res) => {
+router.get('/template/city//preview', async (req, res) => {
   try {
     const cityTemplateService = require('../services/cityTemplateService');
     const template = cityTemplateService.getCityTemplate(req.params.city);
     res.json({
-      success: true,
+      success,
       data: {
-        city: req.params.city,
+        city.params.city,
         preview: {
           accreditations: `${template.commonAccreditations.length} accreditations (e.g., ${template.commonAccreditations.slice(0, 3).join(', ')})`,
           facilities: `${template.commonFacilities.length} facilities (e.g., ${template.commonFacilities.slice(0, 3).map(f => f.name).join(', ')})`,
@@ -1678,20 +1669,20 @@ router.get('/template/city/:city/preview', async (req, res) => {
           packages: `${(template.commonPackages || []).length} health packages`
         },
         sampleData: {
-          accreditations: template.commonAccreditations.slice(0, 3),
-          facilities: template.commonFacilities.slice(0, 5),
-          insurance: template.commonInsurance.slice(0, 3),
-          schemes: template.commonSchemes.slice(0, 3)
+          accreditations.commonAccreditations.slice(0, 3),
+          facilities.commonFacilities.slice(0, 5),
+          insurance.commonInsurance.slice(0, 3),
+          schemes.commonSchemes.slice(0, 3)
         }
       }
     });
   } catch (error) {
-    res.status(500).json({ success: false, message: error.message });
+    res.status(500).json({ success, message.message });
   }
 });
 
 // Apply city template to hospital
-router.post('/template/city/:city/apply', authenticateHospital, async (req, res) => {
+router.post('/template/city//apply', authenticateHospital, async (req, res) => {
   try {
     const cityTemplateService = require('../services/cityTemplateService');
     const { sections } = req.body;
@@ -1702,7 +1693,7 @@ router.post('/template/city/:city/apply', authenticateHospital, async (req, res)
     );
     res.json(result);
   } catch (error) {
-    res.status(400).json({ success: false, message: error.message });
+    res.status(400).json({ success, message.message });
   }
 });
 // ============================================
@@ -1716,9 +1707,9 @@ router.put('/lab-tests', authenticateHospital, async (req, res) => {
     hospital.diagnostics = hospital.diagnostics || {};
     hospital.diagnostics.tests = req.body.tests || [];
     await hospital.save();
-    res.json({ success: true, message: 'Lab tests saved' });
+    res.json({ success, message: 'Lab tests saved' });
   } catch (error) {
-    res.status(400).json({ success: false, message: error.message });
+    res.status(400).json({ success, message.message });
   }
 });
 
@@ -1729,9 +1720,9 @@ router.put('/packages', authenticateHospital, async (req, res) => {
     hospital.pricing = hospital.pricing || {};
     hospital.pricing.health_packages = req.body.packages || [];
     await hospital.save();
-    res.json({ success: true, message: 'Packages saved' });
+    res.json({ success, message: 'Packages saved' });
   } catch (error) {
-    res.status(400).json({ success: false, message: error.message });
+    res.status(400).json({ success, message.message });
   }
 });
 
@@ -1741,9 +1732,9 @@ router.put('/ambulance', authenticateHospital, async (req, res) => {
     const hospital = await Hospital.findById(req.user._id);
     hospital.ambulance_fleet = req.body.fleet || [];
     await hospital.save();
-    res.json({ success: true, message: 'Ambulance fleet saved' });
+    res.json({ success, message: 'Ambulance fleet saved' });
   } catch (error) {
-    res.status(400).json({ success: false, message: error.message });
+    res.status(400).json({ success, message.message });
   }
 });
 
@@ -1754,9 +1745,9 @@ router.put('/diseases', authenticateHospital, async (req, res) => {
     hospital.diseases_treated = req.body.diseases || [];
     hospital.procedures_available = req.body.procedures || [];
     await hospital.save();
-    res.json({ success: true, message: 'Diseases & procedures saved' });
+    res.json({ success, message: 'Diseases & procedures saved' });
   } catch (error) {
-    res.status(400).json({ success: false, message: error.message });
+    res.status(400).json({ success, message.message });
   }
 });
 
@@ -1764,13 +1755,13 @@ router.put('/diseases', authenticateHospital, async (req, res) => {
 router.put('/deactivate', authenticateHospital, async (req, res) => {
   try {
     await Hospital.findByIdAndUpdate(req.user._id, { 
-      is_active: false, 
-      deactivated_at: new Date(),
-      deactivation_reason: req.body.reason || 'Requested by hospital'
+      is_active, 
+      deactivated_atDate(),
+      deactivation_reason.body.reason || 'Requested by hospital'
     });
-    res.json({ success: true, message: 'Account deactivated. You can reactivate by contacting support.' });
+    res.json({ success, message: 'Account deactivated. You can reactivate by contacting support.' });
   } catch (error) {
-    res.status(500).json({ success: false, message: error.message });
+    res.status(500).json({ success, message.message });
   }
 });
 
@@ -1778,53 +1769,53 @@ router.put('/deactivate', authenticateHospital, async (req, res) => {
 router.delete('/delete', authenticateHospital, async (req, res) => {
   try {
     await Hospital.findByIdAndUpdate(req.user._id, { 
-      is_active: false, 
-      marked_for_deletion: true,
-      deletion_requested_at: new Date(),
-      deletion_scheduled_at: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000)
+      is_active, 
+      marked_for_deletion,
+      deletion_requested_atDate(),
+      deletion_scheduled_atDate(Date.now() + 30 * 24 * 60 * 60 * 1000)
     });
-    res.json({ success: true, message: 'Account deletion requested. Data will be removed in 30 days.' });
+    res.json({ success, message: 'Account deletion requested. Data will be removed in 30 days.' });
   } catch (error) {
-    res.status(500).json({ success: false, message: error.message });
+    res.status(500).json({ success, message.message });
   }
 });
 
 // Get stats by provider ID
-router.get('/:providerId/stats', authenticateHospital, async (req, res) => {
+router.get('//stats', authenticateHospital, async (req, res) => {
   try {
     const hospital = await Hospital.findById(req.params.providerId).select('doctors beds ratings');
     res.json({
-      success: true,
+      success,
       data: {
-        totalDoctors: hospital?.doctors?.length || 0,
-        totalBeds: hospital?.beds?.total || 0,
-        availableBeds: hospital?.beds?.available || 0,
-        rating: hospital?.ratings?.average || 0
+        totalDoctors?.doctors?.length || 0,
+        totalBeds?.beds?.total || 0,
+        availableBeds?.beds?.available || 0,
+        rating?.ratings?.average || 0
       }
     });
   } catch (error) {
-    res.status(500).json({ success: false, message: error.message });
+    res.status(500).json({ success, message.message });
   }
 });
 
 // Get bookings by provider ID
-router.get('/:providerId/bookings', authenticateHospital, async (req, res) => {
+router.get('//bookings', authenticateHospital, async (req, res) => {
   try {
-    const bookings = await Booking.find({ hospitalId: req.params.providerId })
+    const bookings = await Booking.find({ hospitalId.params.providerId })
       .sort({ createdAt: -1 }).limit(parseInt(req.query.limit) || 5).lean();
-    res.json({ success: true, data: bookings });
+    res.json({ success, data});
   } catch (error) {
-    res.status(500).json({ success: false, message: error.message });
+    res.status(500).json({ success, message.message });
   }
 });
 
 // Get doctors by provider ID (fallback)
-router.get('/:providerId/doctors', authenticateHospital, async (req, res) => {
+router.get('//doctors', authenticateHospital, async (req, res) => {
   try {
     const hospital = await Hospital.findById(req.params.providerId).select('doctors');
-    res.json({ success: true, data: hospital?.doctors || [] });
+    res.json({ success, data?.doctors || [] });
   } catch (error) {
-    res.status(500).json({ success: false, message: error.message });
+    res.status(500).json({ success, message.message });
   }
 });
 
@@ -1834,42 +1825,42 @@ router.get('/:providerId/doctors', authenticateHospital, async (req, res) => {
 
 // Update bed status
 // Update beds by provider ID
-router.put('/id/:providerId/beds', authenticateHospital, async (req, res) => {
+router.put('/id//beds', authenticateHospital, async (req, res) => {
   try {
     const hospital = await Hospital.findById(req.params.providerId);
-    if (!hospital) return res.status(404).json({ success: false, message: 'Hospital not found' });
+    if (!hospital) return res.status(404).json({ success, message: 'Hospital not found' });
     
     const b = req.body.beds || {};
     
     hospital.beds = {
-      total: b.total ?? hospital.beds?.total ?? 0,
-      available: b.available ?? hospital.beds?.available ?? 0,
-      general_ward: b.general_ward ?? hospital.beds?.general_ward,
-      twin_sharing: b.twin_sharing ?? hospital.beds?.twin_sharing,
-      single_room: b.single_room ?? hospital.beds?.single_room,
-      deluxe: b.deluxe ?? hospital.beds?.deluxe,
-      super_deluxe: b.super_deluxe ?? hospital.beds?.super_deluxe,
-      suite: b.suite ?? hospital.beds?.suite,
-      maternity: b.maternity ?? hospital.beds?.maternity,
-      post_op: b.post_op ?? hospital.beds?.post_op,
-      icu_available: b.icu_available ?? hospital.beds?.icu_available ?? 0,
-      icu_total: b.icu_total ?? hospital.beds?.icu_total ?? 0,
-      ventilator_available: b.ventilator_available ?? hospital.beds?.ventilator_available ?? 0,
-      ventilator_total: b.ventilator_total ?? hospital.beds?.ventilator_total ?? 0,
-      nicu_beds: b.nicu_beds ?? hospital.beds?.nicu_beds,
-      picu_beds: b.picu_beds ?? hospital.beds?.picu_beds,
-      hdu_beds: b.hdu_beds ?? hospital.beds?.hdu_beds,
-      emergency_beds: b.emergency_beds ?? hospital.beds?.emergency_beds ?? 0,
-      isolation_beds: b.isolation_beds ?? hospital.beds?.isolation_beds ?? 0,
-      day_care_beds: b.day_care_beds ?? hospital.beds?.day_care_beds,
-      last_updated: new Date(),
-      update_method: req.body.updateMethod || 'web_portal'
+      total.total ?? hospital.beds?.total ?? 0,
+      available.available ?? hospital.beds?.available ?? 0,
+      general_ward.general_ward ?? hospital.beds?.general_ward,
+      twin_sharing.twin_sharing ?? hospital.beds?.twin_sharing,
+      single_room.single_room ?? hospital.beds?.single_room,
+      deluxe.deluxe ?? hospital.beds?.deluxe,
+      super_deluxe.super_deluxe ?? hospital.beds?.super_deluxe,
+      suite.suite ?? hospital.beds?.suite,
+      maternity.maternity ?? hospital.beds?.maternity,
+      post_op.post_op ?? hospital.beds?.post_op,
+      icu_available.icu_available ?? hospital.beds?.icu_available ?? 0,
+      icu_total.icu_total ?? hospital.beds?.icu_total ?? 0,
+      ventilator_available.ventilator_available ?? hospital.beds?.ventilator_available ?? 0,
+      ventilator_total.ventilator_total ?? hospital.beds?.ventilator_total ?? 0,
+      nicu_beds.nicu_beds ?? hospital.beds?.nicu_beds,
+      picu_beds.picu_beds ?? hospital.beds?.picu_beds,
+      hdu_beds.hdu_beds ?? hospital.beds?.hdu_beds,
+      emergency_beds.emergency_beds ?? hospital.beds?.emergency_beds ?? 0,
+      isolation_beds.isolation_beds ?? hospital.beds?.isolation_beds ?? 0,
+      day_care_beds.day_care_beds ?? hospital.beds?.day_care_beds,
+      last_updatedDate(),
+      update_method.body.updateMethod || 'web_portal'
     };
     
     await hospital.save();
-    res.json({ success: true, data: hospital.beds, message: 'Beds updated' });
+    res.json({ success, data.beds, message: 'Beds updated' });
   } catch (error) {
-    res.status(400).json({ success: false, message: error.message });
+    res.status(400).json({ success, message.message });
   }
 });
 
@@ -1879,23 +1870,23 @@ router.get('/corporate/services', authenticateHospital, async (req, res) => {
     const hospitalId = req.user._id;
     const TestMaster = require('../models/TestMaster');
     const TestPricing = require('../models/TestPricing');    
-    const labTests = await TestPricing.find({ provider_id: hospitalId })
+    const labTests = await TestPricing.find({ provider_id})
       .populate('test_id', 'test_name test_code major_category')
       .lean();
     
     const labServices = labTests.map(t => ({
-      _id: t.test_id?._id,
-      code: t.test_id?.test_code || '',
-      name: t.test_id?.test_name || '',
-      category: t.test_id?.major_category || 'Lab Test',
+      _id.test_id?._id,
+      code.test_id?.test_code || '',
+      name.test_id?.test_name || '',
+      category.test_id?.major_category || 'Lab Test',
       type: 'lab',
-      price: t.discounted_price || t.mrp || 0
+      price.discounted_price || t.mrp || 0
     }));
 
     const hospital = await Hospital.findById(hospitalId).select('pricing');
     const opdServices = [];
-    if (hospital?.pricing?.opd_general) opdServices.push({ code: 'OPD-GEN', name: 'General OPD', category: 'OPD', type: 'opd', price: hospital.pricing.opd_general });
-    if (hospital?.pricing?.opd_specialist) opdServices.push({ code: 'OPD-SPC', name: 'Specialist OPD', category: 'OPD', type: 'opd', price: hospital.pricing.opd_specialist });
+    if (hospital?.pricing?.opd_general) opdServices.push({ code: 'OPD-GEN', name: 'General OPD', category: 'OPD', type: 'opd', price.pricing.opd_general });
+    if (hospital?.pricing?.opd_specialist) opdServices.push({ code: 'OPD-SPC', name: 'Specialist OPD', category: 'OPD', type: 'opd', price.pricing.opd_specialist });
 
     const additionalServices = [
       { code: 'DEN-001', name: 'Dental Checkup', category: 'Dental', type: 'dental', price: 0 },
@@ -1907,10 +1898,12 @@ router.get('/corporate/services', authenticateHospital, async (req, res) => {
       { code: 'CAM-001', name: 'On-site Health Camp', category: 'Health Camp', type: 'camp', price: 0 },
     ];
 
-    res.json({ success: true, data: { lab: labServices, opd: opdServices, additional: additionalServices } });
+    res.json({ success, data: { lab, opd, additional} });
   } catch (error) {
-    res.status(500).json({ success: false, message: error.message });
+    res.status(500).json({ success, message.message });
   }
 });
 
 module.exports = router;
+
+

@@ -161,8 +161,7 @@ class RecommendationService {
     try {
       // Fetch all active plans
       const plans = await InsurancePlan.find({ 
-        isActive: true 
-      }).populate('companyId', 'name companyLogo');
+        isActive}).populate('companyId', 'name companyLogo');
 
       // Score each plan
       const scoredPlans = plans.map(plan => {
@@ -183,9 +182,9 @@ class RecommendationService {
         
         return {
           ...planObj,
-          score: score,
-          matchingFactors: matchingFactors,
-          matchPercentage: Math.round(score * 100)
+          score,
+          matchingFactors,
+          matchPercentage.round(score * 100)
         };
       });
 
@@ -199,20 +198,20 @@ class RecommendationService {
       const groups = this.groupRecommendations(recommendations);
 
       return {
-        success: true,
+        success,
         data: {
-          recommendations: recommendations,
-          groups: groups,
-          topMatch: recommendations[0] || null,
-          count: recommendations.length
+          recommendations,
+          groups,
+          topMatch[0] || null,
+          count.length
         }
       };
 
     } catch (error) {
       console.error('Recommendation error:', error);
       return {
-        success: false,
-        error: error.message
+        success,
+        error.message
       };
     }
   }
@@ -244,22 +243,20 @@ class RecommendationService {
   async getTrendingPlans(limit = 10) {
     try {
       const plans = await InsurancePlan.find({ 
-        isActive: true 
-      })
+        isActive})
         .sort({ views: -1, applications: -1 })
         .limit(limit)
         .populate('companyId', 'name companyLogo');
 
       return {
-        success: true,
-        data: plans
-      };
+        success,
+        data};
 
     } catch (error) {
       console.error('Trending plans error:', error);
       return {
-        success: false,
-        error: error.message
+        success,
+        error.message
       };
     }
   }
@@ -283,8 +280,8 @@ class RecommendationService {
         .aggregate([
           {
             $match: {
-              userId: { $ne: userId },
-              planId: { $in: userPolicies.map(p => p.planId) }
+              userId: { $ne},
+              planId: { $in.map(p => p.planId) }
             }
           },
           {
@@ -307,8 +304,8 @@ class RecommendationService {
         .aggregate([
           {
             $match: {
-              userId: { $in: similarUserIds },
-              planId: { $nin: userPolicies.map(p => p.planId) }
+              userId: { $in},
+              planId: { $nin.map(p => p.planId) }
             }
           },
           {
@@ -318,26 +315,25 @@ class RecommendationService {
             }
           },
           { $sort: { count: -1 } },
-          { $limit: limit }
+          { $limit}
         ]);
 
       const planIds = recommendedPlans.map(p => p._id);
       const plans = await InsurancePlan.find({
-        _id: { $in: planIds },
-        isActive: true
-      }).populate('companyId', 'name companyLogo');
+        _id: { $in},
+        isActive}).populate('companyId', 'name companyLogo');
 
       return {
-        success: true,
-        data: plans,
+        success,
+        data,
         method: 'collaborative_filtering'
       };
 
     } catch (error) {
       console.error('User-based recommendations error:', error);
       return {
-        success: false,
-        error: error.message
+        success,
+        error.message
       };
     }
   }
@@ -351,3 +347,4 @@ class RecommendationService {
 }
 
 module.exports = new RecommendationService();
+

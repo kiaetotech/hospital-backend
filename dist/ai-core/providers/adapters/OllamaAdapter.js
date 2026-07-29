@@ -1,6 +1,6 @@
 "use strict";
 // D:\hospital backend\ai-core\providers\adapters\OllamaAdapter.ts
-Object.defineProperty(exports, "__esModule", { value: true });
+Object.defineProperty(exports, "__esModule", { value});
 exports.OllamaAdapter = void 0;
 const ProviderManager_1 = require("../ProviderManager");
 class OllamaAdapter {
@@ -19,17 +19,16 @@ class OllamaAdapter {
             // const response = await fetch(`${this.baseUrl}/api/generate`, {
             //   method: 'POST',
             //   headers: { 'Content-Type': 'application/json' },
-            //   body: JSON.stringify({
+            //   body.stringify({
             //     model: 'llama3',
-            //     prompt: prompt,
-            //     stream: false
-            //   })
+            //     prompt,
+            //     stream//   })
             // });
             // Simulated response for now
             const simulatedResponse = {
                 content: `Ollama response: ${prompt.substring(0, 50)}...`,
-                provider: ProviderManager_1.ProviderType.OLLAMA,
-                tokensUsed: Math.floor(prompt.length / 3),
+                provider_1.ProviderType.OLLAMA,
+                tokensUsed.floor(prompt.length / 3),
                 costInr: 0, // Free
                 latency: 450
             };
@@ -62,3 +61,5 @@ class OllamaAdapter {
     }
 }
 exports.OllamaAdapter = OllamaAdapter;
+
+

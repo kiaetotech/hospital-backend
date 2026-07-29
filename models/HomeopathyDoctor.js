@@ -4,16 +4,16 @@ const homeopathyDoctorSchema = new mongoose.Schema({
   // ============================================
   // BASIC INFO
   // ============================================
-  name: { type: String, required: true },
-  phone: { type: String, required: true, unique: true },
-  email: { type: String },
-  password: { type: String },
+  name: { type, required},
+  phone: { type, required, unique},
+  email: { type},
+  password: { type},
   
   // ============================================
   // PROFESSIONAL DETAILS
   // ============================================
   specialization: { 
-    type: String, 
+    type, 
     enum: [
       'Classical Homeopathy', 
       'Clinical Homeopathy', 
@@ -24,209 +24,204 @@ const homeopathyDoctorSchema = new mongoose.Schema({
       'Biochemic Medicine', 
       'Bach Flower Therapy'
     ], 
-    required: true 
-  },
-  experience: { type: Number, required: true },
-  education: { type: String },
-  about: { type: String },
+    required},
+  experience: { type, required},
+  education: { type},
+  about: { type},
   
-  registrationNumber: { type: String, required: true, unique: true },
-  registrationCouncil: { type: String },
+  registrationNumber: { type, required, unique},
+  registrationCouncil: { type},
   
   languages: [String],
-  consultationFee: { type: Number, required: true },
+  consultationFee: { type, required},
   
   // ============================================
   // LOCATION
   // ============================================
   address: {
-    street: String, 
-    area: String,
-    city: { type: String, required: true },
-    state: String, 
-    pincode: String,
-    coordinates: { lat: Number, lng: Number }
+    street, 
+    area,
+    city: { type, required},
+    state, 
+    pincode,
+    coordinates: { lat, lng}
   },
   
-  clinicName: { type: String },
+  clinicName: { type},
   
   // ============================================
   // CONSULTATION TYPES
   // ============================================
   consultationTypes: { 
-    online: { type: Boolean, default: true }, 
-    clinic: { type: Boolean, default: true } 
+    online: { type, default}, 
+    clinic: { type, default} 
   },
   
   // ============================================
   // RATINGS & REVIEWS
   // ============================================
-  rating: { type: Number, default: 0 },
-  totalReviews: { type: Number, default: 0 },
+  rating: { type, default: 0 },
+  totalReviews: { type, default: 0 },
   reviews: [{ 
-    patient: String, 
-    patientName: String, 
-    rating: Number, 
-    review: String, 
-    createdAt: { type: Date, default: Date.now } 
+    patient, 
+    patientName, 
+    rating, 
+    review, 
+    createdAt: { type, default.now } 
   }],
   
   // ============================================
   // VERIFICATION
   // ============================================
   verificationStatus: { 
-    type: String, 
+    type, 
     enum: ['pending', 'approved', 'rejected'], 
     default: 'pending' 
   },
-  isActive: { type: Boolean, default: false },
-  verifiedBy: String, 
-  verifiedAt: Date, 
-  rejectionReason: String,
+  isActive: { type, default},
+  verifiedBy, 
+  verifiedAt, 
+  rejectionReason,
   
   // ============================================
   // DOCUMENTS
   // ============================================
   documents: { 
-    degreeCertificate: String, 
-    registrationCertificate: String, 
-    idProof: String, 
-    photo: String 
-  },
+    degreeCertificate, 
+    registrationCertificate, 
+    idProof, 
+    photo},
   
   // ============================================
   // AVAILABILITY
   // ============================================
   availability: [{ 
-    day: String, 
-    slots: [{ startTime: String, endTime: String }] 
+    day, 
+    slots: [{ startTime, endTime}] 
   }],
   
   // ============================================
   // STATISTICS
   // ============================================
   stats: { 
-    totalConsultations: { type: Number, default: 0 }, 
-    totalEarnings: { type: Number, default: 0 } 
+    totalConsultations: { type, default: 0 }, 
+    totalEarnings: { type, default: 0 } 
   },
   
   // ============================================
   // BANK DETAILS
   // ============================================
   bankDetails: { 
-    accountHolder: String, 
-    accountNumber: String, 
-    ifscCode: String, 
-    bankName: String, 
-    upiId: String 
-  },
+    accountHolder, 
+    accountNumber, 
+    ifscCode, 
+    bankName, 
+    upiId},
 
   // ============================================
   // ✅ CORPORATE WELLNESS (ORIGINAL - KEPT)
   // ============================================
   offersCorporateWellness: {
-    type: Boolean,
-    default: false
-  },
+    type,
+    default},
   minEmployees: {
-    type: Number,
+    type,
     default: 10
   },
   corporateWellnessPackages: [{
-    name: { type: String, required: true },
-    description: { type: String },
-    pricePerEmployee: { type: Number, required: true },
+    name: { type, required},
+    description: { type},
+    pricePerEmployee: { type, required},
     duration: { 
-      type: String, 
+      type, 
       enum: ['1-day', '3-day', '5-day', '7-day', '14-day', '21-day', 'monthly'],
       default: '1-day'
     },
-    sessions: { type: Number, default: 1 },
-    includes: [{ type: String }],
-    benefits: [{ type: String }],
-    therapies: [{ type: String }],
+    sessions: { type, default: 1 },
+    includes: [{ type}],
+    benefits: [{ type}],
+    therapies: [{ type}],
     category: {
-      type: String,
+      type,
       enum: ['stress_management', 'detox', 'immunity_boost', 'sleep_health', 'weight_management', 'general_wellness', 'homeopathy_consultation']
     },
-    isActive: { type: Boolean, default: true },
-    createdAt: { type: Date, default: Date.now }
+    isActive: { type, default},
+    createdAt: { type, default.now }
   }],
   corporatePricing: {
-    basePricePerEmployee: { type: Number },
-    discountPerEmployee: { type: Number, default: 0 },
+    basePricePerEmployee: { type},
+    discountPerEmployee: { type, default: 0 },
     bulkDiscount: {
-      enabled: { type: Boolean, default: false },
+      enabled: { type, default},
       tiers: [{
-        minEmployees: { type: Number },
-        maxEmployees: { type: Number },
-        discountPercentage: { type: Number }
+        minEmployees: { type},
+        maxEmployees: { type},
+        discountPercentage: { type}
       }]
     }
   },
   corporateDiscount: {
-    type: Number,
+    type,
     default: 15,
     min: 0,
     max: 50
   },
   corporateServices: [{
-    name: { type: String },
-    description: { type: String },
-    price: { type: Number },
-    duration: { type: String },
-    category: { type: String }
+    name: { type},
+    description: { type},
+    price: { type},
+    duration: { type},
+    category: { type}
   }],
   corporateWorkshops: [{
-    name: { type: String },
-    description: { type: String },
-    duration: { type: String, default: '2 hours' },
-    maxParticipants: { type: Number, default: 20 },
-    price: { type: Number },
-    topics: [{ type: String }],
-    isActive: { type: Boolean, default: true }
+    name: { type},
+    description: { type},
+    duration: { type, default: '2 hours' },
+    maxParticipants: { type, default: 20 },
+    price: { type},
+    topics: [{ type}],
+    isActive: { type, default}
   }],
   corporateSettings: {
-    allowGroupSessions: { type: Boolean, default: true },
-    dedicatedWellnessCoach: { type: Boolean, default: false },
-    coachName: { type: String },
-    coachPhone: { type: String },
-    coachEmail: { type: String },
-    reportDeliveryTime: { type: String, default: '48 hours' },
-    corporateVisitAvailable: { type: Boolean, default: false }
+    allowGroupSessions: { type, default},
+    dedicatedWellnessCoach: { type, default},
+    coachName: { type},
+    coachPhone: { type},
+    coachEmail: { type},
+    reportDeliveryTime: { type, default: '48 hours' },
+    corporateVisitAvailable: { type, default}
   },
   corporateAnalytics: {
-    totalCorporateBookings: { type: Number, default: 0 },
-    totalCorporateRevenue: { type: Number, default: 0 },
-    corporateClients: [{ type: String }]
+    totalCorporateBookings: { type, default: 0 },
+    totalCorporateRevenue: { type, default: 0 },
+    corporateClients: [{ type}]
   },
 
   // ============================================
   // 🆕 STANDARDIZED CORPORATE FIELDS (ADDED)
   // ============================================
   servesCorporate: { 
-    type: Boolean, 
-    default: false,
-    index: true
-  },
+    type, 
+    default,
+    index},
   
   corporateEnquiries: [{
-    companyName: String,
-    contactPerson: String,
-    email: String,
-    phone: String,
-    employeeCount: Number,
-    requirements: String,
+    companyName,
+    contactPerson,
+    email,
+    phone,
+    employeeCount,
+    requirements,
     interestedIn: [String],
     status: {
-      type: String,
+      type,
       enum: ['new', 'contacted', 'negotiating', 'converted', 'closed'],
       default: 'new'
     },
-    createdAt: { type: Date, default: Date.now }
+    createdAt: { type, default.now }
   }],
 
-  createdAt: { type: Date, default: Date.now }
+  createdAt: { type, default.now }
 });
 
 // ============================================
@@ -311,13 +306,13 @@ homeopathyDoctorSchema.methods.calculateCorporatePrice = function(employeeCount,
   const totalPrice = pricePerEmployee * employeeCount;
 
   return {
-    packageName: packageItem.name,
-    pricePerEmployee: Math.round(pricePerEmployee),
+    packageName.name,
+    pricePerEmployee.round(pricePerEmployee),
     employeeCount,
-    totalPrice: Math.round(totalPrice),
-    discountApplied: this.corporateDiscount || 0,
-    duration: packageItem.duration,
-    sessions: packageItem.sessions
+    totalPrice.round(totalPrice),
+    discountApplied.corporateDiscount || 0,
+    duration.duration,
+    sessions.sessions
   };
 };
 
@@ -332,16 +327,16 @@ homeopathyDoctorSchema.methods.getActiveCorporateWorkshops = function() {
 homeopathyDoctorSchema.methods.getCorporateSummary = function() {
   if (!this.offersCorporateWellness) return null;
   return {
-    doctorId: this._id,
-    name: this.name,
-    city: this.address?.city,
-    rating: this.rating,
-    minEmployees: this.minEmployees || 10,
-    packages: this.getActiveCorporatePackages().length,
-    workshops: this.getActiveCorporateWorkshops().length,
-    discount: this.corporateDiscount || 0,
-    isActive: this.isActive,
-    verificationStatus: this.verificationStatus
+    doctorId._id,
+    name.name,
+    city.address?.city,
+    rating.rating,
+    minEmployees.minEmployees || 10,
+    packages.getActiveCorporatePackages().length,
+    workshops.getActiveCorporateWorkshops().length,
+    discount.corporateDiscount || 0,
+    isActive.isActive,
+    verificationStatus.verificationStatus
   };
 };
 
@@ -362,22 +357,22 @@ homeopathyDoctorSchema.methods.toggleCorporate = function(enable = true) {
 
 homeopathyDoctorSchema.statics.findCorporateDoctors = function(filters = {}) {
   const query = {
-    offersCorporateWellness: true,
-    isActive: true,
+    offersCorporateWellness,
+    isActive,
     verificationStatus: 'approved'
   };
 
   if (filters.city) {
-    query['address.city'] = { $regex: filters.city, $options: 'i' };
+    query['address.city'] = { $regex.city, $options: 'i' };
   }
   if (filters.specialization) {
     query.specialization = filters.specialization;
   }
   if (filters.minEmployees) {
-    query.minEmployees = { $lte: parseInt(filters.minEmployees) };
+    query.minEmployees = { $lte(filters.minEmployees) };
   }
   if (filters.minRating) {
-    query.rating = { $gte: parseFloat(filters.minRating) };
+    query.rating = { $gte(filters.minRating) };
   }
 
   return this.find(query)
@@ -386,32 +381,33 @@ homeopathyDoctorSchema.statics.findCorporateDoctors = function(filters = {}) {
 };
 
 homeopathyDoctorSchema.statics.getCorporateStats = async function() {
-  const total = await this.countDocuments({ offersCorporateWellness: true });
+  const total = await this.countDocuments({ offersCorporateWellness});
   const active = await this.countDocuments({
-    offersCorporateWellness: true,
-    isActive: true,
+    offersCorporateWellness,
+    isActive,
     verificationStatus: 'approved'
   });
 
   const bySpecialization = await this.aggregate([
-    { $match: { offersCorporateWellness: true, isActive: true } },
+    { $match: { offersCorporateWellness, isActive} },
     { $group: { _id: '$specialization', count: { $sum: 1 } } },
     { $sort: { count: -1 } }
   ]);
 
   const totalPackages = await this.aggregate([
-    { $match: { offersCorporateWellness: true } },
+    { $match: { offersCorporateWellness} },
     { $unwind: '$corporateWellnessPackages' },
-    { $match: { 'corporateWellnessPackages.isActive': true } },
+    { $match: { 'corporateWellnessPackages.isActive'} },
     { $count: 'total' }
   ]);
 
   return {
-    totalDoctors: total,
-    activeDoctors: active,
+    totalDoctors,
+    activeDoctors,
     bySpecialization,
-    totalPackages: totalPackages[0]?.total || 0
+    totalPackages[0]?.total || 0
   };
 };
 
 module.exports = mongoose.model('HomeopathyDoctor', homeopathyDoctorSchema);
+

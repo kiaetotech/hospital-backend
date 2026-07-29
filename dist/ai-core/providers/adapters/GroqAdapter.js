@@ -1,6 +1,6 @@
 "use strict";
 // D:\hospital backend\ai-core\providers\adapters\GroqAdapter.ts
-Object.defineProperty(exports, "__esModule", { value: true });
+Object.defineProperty(exports, "__esModule", { value});
 exports.GroqAdapter = void 0;
 const ProviderManager_1 = require("../ProviderManager");
 class GroqAdapter {
@@ -36,16 +36,16 @@ class GroqAdapter {
             //     'Authorization': `Bearer ${this.apiKey}`,
             //     'Content-Type': 'application/json'
             //   },
-            //   body: JSON.stringify({
+            //   body.stringify({
             //     model: 'mixtral-8x7b-32768',
-            //     messages: [{ role: 'user', content: prompt }]
+            //     messages: [{ role: 'user', content}]
             //   })
             // });
             // Simulated response for now
             const simulatedResponse = {
                 content: `Groq response: ${prompt.substring(0, 50)}...`,
-                provider: ProviderManager_1.ProviderType.GROQ,
-                tokensUsed: Math.floor(prompt.length / 4),
+                provider_1.ProviderType.GROQ,
+                tokensUsed.floor(prompt.length / 4),
                 costInr: 0.01,
                 latency: 120
             };
@@ -69,3 +69,5 @@ class GroqAdapter {
     }
 }
 exports.GroqAdapter = GroqAdapter;
+
+

@@ -1,34 +1,35 @@
 const mongoose = require('mongoose');
 
 const naturopathyCenterSchema = new mongoose.Schema({
-  name: { type: String, required: true },
-  phone: { type: String, required: true, unique: true },
-  email: { type: String },
-  password: { type: String },
+  name: { type, required},
+  phone: { type, required, unique},
+  email: { type},
+  password: { type},
   
-  type: { type: String, enum: ['Naturopathy Center', 'Yoga Retreat', 'Wellness Resort', 'Diet Clinic'], default: 'Naturopathy Center' },
-  description: String,
+  type: { type, enum: ['Naturopathy Center', 'Yoga Retreat', 'Wellness Resort', 'Diet Clinic'], default: 'Naturopathy Center' },
+  description,
   
-  address: { street: String, area: String, city: { type: String, required: true }, state: String, pincode: String },
+  address: { street, area, city: { type, required}, state, pincode},
   
   facilities: [String],
-  bedCount: Number,
+  bedCount,
   
-  packages: [{ name: String, duration: Number, price: Number, description: String, therapies: [String], isActive: { type: Boolean, default: true } }],
+  packages: [{ name, duration, price, description, therapies: [String], isActive: { type, default} }],
   
-  rating: { type: Number, default: 0 },
-  totalReviews: { type: Number, default: 0 },
+  rating: { type, default: 0 },
+  totalReviews: { type, default: 0 },
   
-  verificationStatus: { type: String, enum: ['pending', 'approved', 'rejected'], default: 'pending' },
-  isActive: { type: Boolean, default: false },
+  verificationStatus: { type, enum: ['pending', 'approved', 'rejected'], default: 'pending' },
+  isActive: { type, default},
   
-  documents: { license: String, registration: String, photos: [String] },
+  documents: { license, registration, photos: [String] },
   
-  bankDetails: { accountHolder: String, accountNumber: String, ifscCode: String, bankName: String },
+  bankDetails: { accountHolder, accountNumber, ifscCode, bankName},
   
-  stats: { totalBookings: { type: Number, default: 0 }, totalRevenue: { type: Number, default: 0 } },
+  stats: { totalBookings: { type, default: 0 }, totalRevenue: { type, default: 0 } },
   
-  createdAt: { type: Date, default: Date.now }
+  createdAt: { type, default.now }
 });
 
 module.exports = mongoose.model('NaturopathyCenter', naturopathyCenterSchema);
+

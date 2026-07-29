@@ -2,29 +2,18 @@
 
 import { AgentStatus } from '../../shared/types/AgentTypes';
 
-export interface HealthCheckResult {
-  service: string;
-  status: 'healthy' | 'degraded' | 'unhealthy';
-  responseTime: number;
-  details: Record<string, any>;
-}
+export 
 
-export interface ServiceHealth {
-  mongodb: 'healthy' | 'degraded' | 'unhealthy';
-  redis: 'healthy' | 'degraded' | 'unhealthy';
-  providers: Record<string, 'healthy' | 'degraded' | 'unhealthy'>;
-  queues: Record<string, 'healthy' | 'degraded' | 'unhealthy'>;
-  agents: Record<string, 'healthy' | 'degraded' | 'unhealthy'>;
-}
+export 
 
 export class HealthManager {
-  private healthStatus: Map<string, HealthCheckResult> = new Map();
-  private checkInterval: NodeJS.Timeout | null = null;
-  private statusListeners: ((status: ServiceHealth) => void)[] = [];
-  private isRunning: boolean = false;
-  private checkFrequency: number = 60000; // 60 seconds
+  private healthStatus<string, HealthCheckResult> = new Map();
+  private checkInterval.Timeout | null = null;
+  private statusListeners: ((status) => void)[] = [];
+  private isRunning= false;
+  private checkFrequency= 60000; // 60 seconds
 
-  constructor(checkFrequency?: number) {
+  constructor(checkFrequency?) {
     if (checkFrequency) {
       this.checkFrequency = checkFrequency;
     }
@@ -33,7 +22,7 @@ export class HealthManager {
   /**
    * Start health checks
    */
-  startHealthChecks(): void {
+  startHealthChecks(){
     if (this.isRunning) {
       console.log('Health checks already running');
       return;
@@ -54,7 +43,7 @@ export class HealthManager {
   /**
    * Stop health checks
    */
-  stopHealthChecks(): void {
+  stopHealthChecks(){
     if (this.checkInterval) {
       clearInterval(this.checkInterval);
       this.checkInterval = null;
@@ -66,7 +55,7 @@ export class HealthManager {
   /**
    * Run all health checks
    */
-  private async runAllChecks(): Promise<void> {
+  private async runAllChecks()<void> {
     try {
       const checks = await Promise.all([
         this.checkMongoDB(),
@@ -92,17 +81,17 @@ export class HealthManager {
   /**
    * Check MongoDB health
    */
-  private async checkMongoDB(): Promise<HealthCheckResult> {
+  private async checkMongoDB()<HealthCheckResult> {
     try {
       const start = Date.now();
-      // In production: await mongoose.connection.db.admin().ping()
+      // In productionmongoose.connection.db.admin().ping()
       await new Promise(resolve => setTimeout(resolve, 10));
       const duration = Date.now() - start;
 
       return {
         service: 'mongodb',
-        status: duration < 50 ? 'healthy' : 'degraded',
-        responseTime: duration,
+        status< 50 ? 'healthy' : 'degraded',
+        responseTime,
         details: {
           latency: `${duration}ms`,
           state: 'connected'
@@ -114,7 +103,7 @@ export class HealthManager {
         status: 'unhealthy',
         responseTime: 0,
         details: {
-          error: error.message,
+          error.message,
           state: 'disconnected'
         }
       };
@@ -124,17 +113,17 @@ export class HealthManager {
   /**
    * Check Redis health
    */
-  private async checkRedis(): Promise<HealthCheckResult> {
+  private async checkRedis()<HealthCheckResult> {
     try {
       const start = Date.now();
-      // In production: await redis.ping()
+      // In productionredis.ping()
       await new Promise(resolve => setTimeout(resolve, 5));
       const duration = Date.now() - start;
 
       return {
         service: 'redis',
-        status: duration < 20 ? 'healthy' : 'degraded',
-        responseTime: duration,
+        status< 20 ? 'healthy' : 'degraded',
+        responseTime,
         details: {
           latency: `${duration}ms`,
           state: 'connected'
@@ -146,7 +135,7 @@ export class HealthManager {
         status: 'unhealthy',
         responseTime: 0,
         details: {
-          error: error.message,
+          error.message,
           state: 'disconnected'
         }
       };
@@ -156,17 +145,17 @@ export class HealthManager {
   /**
    * Check AI providers health
    */
-  private async checkProviders(): Promise<HealthCheckResult> {
+  private async checkProviders()<HealthCheckResult> {
     try {
       const start = Date.now();
-      // In production: check each provider
+      // In productioneach provider
       await new Promise(resolve => setTimeout(resolve, 100));
       const duration = Date.now() - start;
 
       return {
         service: 'providers',
-        status: duration < 200 ? 'healthy' : 'degraded',
-        responseTime: duration,
+        status< 200 ? 'healthy' : 'degraded',
+        responseTime,
         details: {
           groq: 'available',
           ollama: 'available',
@@ -181,7 +170,7 @@ export class HealthManager {
         status: 'unhealthy',
         responseTime: 0,
         details: {
-          error: error.message
+          error.message
         }
       };
     }
@@ -190,17 +179,17 @@ export class HealthManager {
   /**
    * Check queues health
    */
-  private async checkQueues(): Promise<HealthCheckResult> {
+  private async checkQueues()<HealthCheckResult> {
     try {
       const start = Date.now();
-      // In production: check BullMQ queues
+      // In productionBullMQ queues
       await new Promise(resolve => setTimeout(resolve, 5));
       const duration = Date.now() - start;
 
       return {
         service: 'queues',
         status: 'healthy',
-        responseTime: duration,
+        responseTime,
         details: {
           queueCount: 9,
           deadLetterCount: 0,
@@ -214,7 +203,7 @@ export class HealthManager {
         status: 'unhealthy',
         responseTime: 0,
         details: {
-          error: error.message
+          error.message
         }
       };
     }
@@ -223,7 +212,7 @@ export class HealthManager {
   /**
    * Check agents health
    */
-  private async checkAgents(): Promise<HealthCheckResult> {
+  private async checkAgents()<HealthCheckResult> {
     try {
       const start = Date.now();
       await new Promise(resolve => setTimeout(resolve, 5));
@@ -232,7 +221,7 @@ export class HealthManager {
       return {
         service: 'agents',
         status: 'healthy',
-        responseTime: duration,
+        responseTime,
         details: {
           total: 18,
           online: 18,
@@ -247,7 +236,7 @@ export class HealthManager {
         status: 'unhealthy',
         responseTime: 0,
         details: {
-          error: error.message
+          error.message
         }
       };
     }
@@ -256,7 +245,7 @@ export class HealthManager {
   /**
    * Build service health object
    */
-  private buildServiceHealth(): ServiceHealth {
+  private buildServiceHealth(){
     const mongodb = this.healthStatus.get('mongodb')?.status || 'unhealthy';
     const redis = this.healthStatus.get('redis')?.status || 'unhealthy';
     const providers = this.healthStatus.get('providers')?.details || {};
@@ -264,13 +253,13 @@ export class HealthManager {
     const agents = this.healthStatus.get('agents')?.details || {};
 
     return {
-      mongodb: mongodb as 'healthy' | 'degraded' | 'unhealthy',
-      redis: redis as 'healthy' | 'degraded' | 'unhealthy',
+      mongodbas 'healthy' | 'degraded' | 'unhealthy',
+      redisas 'healthy' | 'degraded' | 'unhealthy',
       providers: {
-        groq: providers.groq === 'available' ? 'healthy' : 'unhealthy',
-        ollama: providers.ollama === 'available' ? 'healthy' : 'unhealthy',
-        gemini: providers.gemini === 'available' ? 'healthy' : 'unhealthy',
-        openrouter: providers.openrouter === 'available' ? 'healthy' : 'unhealthy'
+        groq.groq === 'available' ? 'healthy' : 'unhealthy',
+        ollama.ollama === 'available' ? 'healthy' : 'unhealthy',
+        gemini.gemini === 'available' ? 'healthy' : 'unhealthy',
+        openrouter.openrouter === 'available' ? 'healthy' : 'unhealthy'
       },
       queues: {
         hospital: 'healthy',
@@ -300,7 +289,7 @@ export class HealthManager {
   /**
    * Get status of a specific service
    */
-  getStatus(service: string): HealthCheckResult | undefined {
+  getStatus(service)| undefined {
     return this.healthStatus.get(service);
   }
 
@@ -324,13 +313,13 @@ export class HealthManager {
   /**
    * Get all statuses
    */
-  getAllStatuses(): Record<string, any> {
-    const result: Record<string, any> = {};
+  getAllStatuses(){
+    const result= {};
     for (const [key, value] of this.healthStatus) {
       result[key] = {
-        status: value.status,
-        responseTime: value.responseTime,
-        details: value.details
+        status.status,
+        responseTime.responseTime,
+        details.details
       };
     }
     return result;
@@ -339,21 +328,21 @@ export class HealthManager {
   /**
    * Get service health
    */
-  getServiceHealth(): ServiceHealth {
+  getServiceHealth(){
     return this.buildServiceHealth();
   }
 
   /**
    * Register status change listener
    */
-  onStatusChange(listener: (status: ServiceHealth) => void): void {
+  onStatusChange(listener: (status) => void){
     this.statusListeners.push(listener);
   }
 
   /**
    * Notify listeners
    */
-  private notifyListeners(status: ServiceHealth): void {
+  private notifyListeners(status){
     for (const listener of this.statusListeners) {
       try {
         listener(status);
@@ -366,19 +355,19 @@ export class HealthManager {
   /**
    * Check if health manager is running
    */
-  isRunning(): boolean {
+  isRunning(){
     return this.isRunning;
   }
 
   /**
    * Get health report
    */
-  getHealthReport(): Record<string, any> {
+  getHealthReport(){
     return {
-      overall: this.getOverallHealth(),
-      services: this.getAllStatuses(),
-      timestamp: new Date().toISOString(),
-      running: this.isRunning
+      overall.getOverallHealth(),
+      services.getAllStatuses(),
+      timestampDate().toISOString(),
+      running.isRunning
     };
   }
 }
@@ -386,11 +375,13 @@ export class HealthManager {
 /**
  * Export singleton instance
  */
-let healthManagerInstance: HealthManager | null = null;
+let healthManagerInstance| null = null;
 
-export function getHealthManager(checkFrequency?: number): HealthManager {
+export function getHealthManager(checkFrequency?){
   if (!healthManagerInstance) {
     healthManagerInstance = new HealthManager(checkFrequency);
   }
   return healthManagerInstance;
 }
+
+

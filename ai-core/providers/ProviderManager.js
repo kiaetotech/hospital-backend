@@ -4,25 +4,14 @@ import { ProviderType } from '../../shared/types/AgentTypes';
 import { BudgetManager } from '../monitoring/BudgetManager';
 import { CircuitBreaker } from '../recovery/CircuitBreaker';
 
-export interface LLMResponse {
-  content: string;
-  provider: ProviderType;
-  tokensUsed: number;
-  costInr: number;
-  latency: number;
-}
+export 
 
-interface ProviderAdapter {
-  generate(prompt: string, options?: Record<string, any>): Promise<LLMResponse>;
-  isAvailable(): Promise<boolean>;
-  getQuotaRemaining(): number;
-  getLatency(): number;
-}
+
 
 export class ProviderManager {
-  private budgetManager: BudgetManager;
-  private circuitBreakers: Map<ProviderType, CircuitBreaker> = new Map();
-  private fallbackOrder: ProviderType[] = [
+  private budgetManager;
+  private circuitBreakers<ProviderType, CircuitBreaker> = new Map();
+  private fallbackOrder[] = [
     ProviderType.GROQ,
     ProviderType.OLLAMA,
     ProviderType.GEMINI,
@@ -30,15 +19,15 @@ export class ProviderManager {
   ];
 
   // Mock mode flag
-  private mockMode: boolean = true;
+  private mockMode= true;
 
-  constructor(budgetManager: BudgetManager) {
+  constructor(budgetManager) {
     this.budgetManager = budgetManager;
     this.initializeCircuitBreakers();
     console.log('🔧 ProviderManager initialized with MOCK MODE:', this.mockMode);
   }
 
-  private initializeCircuitBreakers(): void {
+  private initializeCircuitBreakers(){
     for (const type of this.fallbackOrder) {
       this.circuitBreakers.set(type, new CircuitBreaker({
         failureThreshold: 3,
@@ -48,11 +37,11 @@ export class ProviderManager {
     }
   }
 
-  async generate(prompt: string, critical: boolean = false): Promise<LLMResponse> {
+  async generate(prompt, critical= false)<LLMResponse> {
     if (this.mockMode) {
       console.log('🔄 [MOCK] Generating response for:', prompt.substring(0, 50) + '...');
       
-      let mockData: any = {};
+      let mockData= {};
       const lowerPrompt = prompt.toLowerCase();
       
       // ============================================
@@ -354,7 +343,7 @@ export class ProviderManager {
             type: 'Email',
             status: 'Sent',
             channel: 'email',
-            timestamp: new Date().toISOString()
+            timestampDate().toISOString()
           },
           message: 'Notification sent successfully'
         };
@@ -382,16 +371,16 @@ export class ProviderManager {
       else {
         mockData = {
           message: 'AI response for your request',
-          task: prompt.substring(0, 100),
-          timestamp: new Date().toISOString()
+          task.substring(0, 100),
+          timestampDate().toISOString()
         };
       }
 
       this.budgetManager.recordSpend(0, critical);
 
       return {
-        content: JSON.stringify(mockData),
-        provider: ProviderType.GROQ,
+        content.stringify(mockData),
+        provider.GROQ,
         tokensUsed: 10,
         costInr: 0,
         latency: 50
@@ -402,21 +391,23 @@ export class ProviderManager {
     return this.generate(prompt, critical);
   }
 
-  async getHealthStatus(): Promise<Record<ProviderType, any>> {
-    const status: Record<ProviderType, any> = {} as any;
+  async getHealthStatus()<Record<ProviderType, any>> {
+    const status= {} as any;
     for (const type of this.fallbackOrder) {
       status[type] = {
-        available: this.mockMode ? true : false,
-        quota: this.mockMode ? 999 : 0,
-        latency: this.mockMode ? 50 : 0,
-        circuitBreaker: this.circuitBreakers.get(type)?.getStatus() || { state: 'CLOSED' }
+        available.mockMode ? true ,
+        quota.mockMode ? 999 : 0,
+        latency.mockMode ? 50 : 0,
+        circuitBreaker.circuitBreakers.get(type)?.getStatus() || { state: 'CLOSED' }
       };
     }
     return status;
   }
 
-  setMockMode(enabled: boolean): void {
+  setMockMode(enabled){
     this.mockMode = enabled;
     console.log(`🔧 Mock mode ${enabled ? 'ENABLED' : 'DISABLED'}`);
   }
 }
+
+

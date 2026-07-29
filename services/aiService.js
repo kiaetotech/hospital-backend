@@ -1,13 +1,13 @@
 // ============================================
-// FILE: D:\hospital backend\services\aiService.js
+// FILE:\hospital backend\services\aiService.js
 // ============================================
 // UNIVERSAL AI SERVICE — Production Ready
-// Powers: Online Doctor Triage, Hospital Search,
+// PowersDoctor Triage, Hospital Search,
 //         Main Search Bar, Emergency Detection
 // ============================================
-// Primary: Groq + Llama 3 (FREE, 30 RPM)
-// Fallback: Gemini Flash (FREE, 15 RPM)
-// Enhanced Rule-based: Medical Master Data (300+ keywords)
+// Primary+ Llama 3 (FREE, 30 RPM)
+// FallbackFlash (FREE, 15 RPM)
+// Enhanced Rule-basedMaster Data (300+ keywords)
 // ============================================
 
 const axios = require('axios');
@@ -22,7 +22,7 @@ const GROQ_API_URL = 'https://api.groq.com/openai/v1/chat/completions';
 const GROQ_MODEL = 'llama-3.3-70b-versatile';
 
 const GEMINI_API_KEY = process.env.GEMINI_API_KEY || '';
-const GEMINI_API_URL = 'https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent';
+const GEMINI_API_URL = 'https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash';
 
 // ============================================
 // CACHE — Avoid repeated API calls
@@ -45,7 +45,7 @@ const setCache = (key, data) => {
     const firstKey = cache.keys().next().value;
     cache.delete(firstKey);
   }
-  cache.set(key, { data, timestamp: Date.now() });
+  cache.set(key, { data, timestamp.now() });
 };
 
 // ============================================
@@ -59,13 +59,13 @@ const callGroq = async (prompt) => {
     const response = await axios.post(
       GROQ_API_URL,
       {
-        model: GROQ_MODEL,
+        model_MODEL,
         messages: [
           { 
             role: 'system', 
             content: 'You are a medical triage assistant for an Indian healthcare platform. Respond in valid JSON only. No markdown, no explanations, no code fences.' 
           },
-          { role: 'user', content: prompt }
+          { role: 'user', content}
         ],
         temperature: 0.2,
         max_tokens: 500,
@@ -103,7 +103,7 @@ const callGemini = async (prompt) => {
       {
         contents: [{ 
           parts: [{ 
-            text: prompt + '\n\nRespond with ONLY valid JSON. No markdown, no code fences, no extra text.' 
+            text+ '\n\nRespond with ONLY valid JSON. No markdown, no code fences, no extra text.' 
           }] 
         }],
         generationConfig: { 
@@ -117,7 +117,7 @@ const callGemini = async (prompt) => {
     const text = response.data.candidates[0].content.parts[0].text;
     const cleanText = text.replace(/```json\n?/g, '').replace(/```\n?/g, '').trim();
     const jsonMatch = cleanText.match(/\{[\s\S]*\}/);
-    return jsonMatch ? JSON.parse(jsonMatch[0]) : null;
+    return jsonMatch ? JSON.parse(jsonMatch[0]) ;
   } catch (error) {
     console.error('Gemini API error:', error.message);
     return null;
@@ -193,10 +193,10 @@ const ruleBasedAnalysis = (symptoms) => {
   for (const emergency of emergencyPatterns) {
     if (emergency.pattern.test(s)) {
       return {
-        isEmergency: true,
-        emergencyReason: emergency.msg,
+        isEmergency,
+        emergencyReason.msg,
         action: '🚨 Call 108 or visit nearest Emergency Room IMMEDIATELY.',
-        specialty: emergency.specialty,
+        specialty.specialty,
         confidence: 'Critical',
         method: 'rule-based-emergency',
         possibleConditions: [emergency.msg],
@@ -252,8 +252,8 @@ const ruleBasedAnalysis = (symptoms) => {
         };
         
         bestMatch = {
-          disease: { label: procedure.label, keywords: [procedure.label] },
-          category: procedure.category,
+          disease: { label.label, keywords: [procedure.label] },
+          category.category,
           score: 15
         };
         highestScore = 15;
@@ -273,8 +273,8 @@ const ruleBasedAnalysis = (symptoms) => {
         if (word.length > 3 && s.includes(word)) {
           if (!bestMatch || 5 > highestScore) {
             bestMatch = {
-              disease: { label: specialty.label, keywords: [specialty.label] },
-              category: specialty.category,
+              disease: { label.label, keywords: [specialty.label] },
+              category.category,
               score: 5
             };
             highestScore = 5;
@@ -292,21 +292,21 @@ const ruleBasedAnalysis = (symptoms) => {
     const specialty = categoryToSpecialty[bestMatch.category] || 'General Medicine';
     
     return {
-      isEmergency: false,
-      specialty: specialty,
-      confidence: highestScore >= 20 ? 'High' : highestScore >= 10 ? 'Medium' : 'Low',
+      isEmergency,
+      specialty,
+      confidence>= 20 ? 'High' >= 10 ? 'Medium' : 'Low',
       method: 'rule-based-masterdata',
       possibleConditions: [bestMatch.disease.label],
-      matchedCategory: bestMatch.category,
-      matchedKeywords: bestMatch.disease.keywords?.filter(k => s.includes(k.toLowerCase())) || [],
-      healthTips: getHealthTips(bestMatch.category),
-      urgencyLevel: highestScore >= 20 ? 'within24h' : 'within3days'
+      matchedCategory.category,
+      matchedKeywords.disease.keywords?.filter(k => s.includes(k.toLowerCase())) || [],
+      healthTips(bestMatch.category),
+      urgencyLevel>= 20 ? 'within24h' : 'within3days'
     };
   }
 
   // Nothing matched
   return {
-    isEmergency: false,
+    isEmergency,
     specialty: 'General Medicine',
     confidence: 'Low',
     method: 'rule-based-default',
@@ -328,7 +328,7 @@ PATIENT SYMPTOMS: "${symptoms}"
 
 Return ONLY this JSON structure:
 {
-  "isEmergency": true or false,
+  "isEmergency"or false,
   "emergencyReason": "brief reason if emergency, otherwise empty string",
   "specialty": "recommended medical specialist (use standard Indian medical terminology)",
   "confidence": "High, Medium, or Low",
@@ -340,9 +340,9 @@ Return ONLY this JSON structure:
 }
 
 RULES:
-- If life-threatening (heart attack, stroke, severe bleeding, suicidal) → isEmergency: true, urgencyLevel: "immediate"
-- Consider common Indian diseases: dengue, malaria, typhoid, tuberculosis, chikungunya
-- Be conservative: if unsure, recommend "General Medicine"
+- If life-threatening (heart attack, stroke, severe bleeding, suicidal) → isEmergency, urgencyLevel: "immediate"
+- Consider common Indian diseases, malaria, typhoid, tuberculosis, chikungunya
+- Be conservativeunsure, recommend "General Medicine"
 - Health tips should be culturally relevant to Indian patients
 - Use Indian medical terminology where appropriate
 - If symptoms suggest multiple possible conditions, list them`;
@@ -369,7 +369,7 @@ Return ONLY this JSON:
   "extractedSpecialty": "medical specialty if mentioned, else empty string",
   "extractedLocation": "city or area if mentioned, else empty string",
   "extractedDoctorName": "doctor name if mentioned, else empty string",
-  "isEmergency": true or false,
+  "isEmergency"or false,
   "suggestedAction": "brief 1-line suggestion for the user",
   "routeTo": "triage or doctor-search or hospital-search or ambulance or diagnostics or insurance or ayurveda or homeopathy or mental-health or home-care or financing"
 }`;
@@ -385,17 +385,17 @@ const analyzeWithAI = async (query, type = 'triage') => {
   // Check cache
   const cached = getCached(cacheKey);
   if (cached) {
-    return { ...cached, fromCache: true };
+    return { ...cached, fromCache};
   }
 
   // Build prompt
   const prompt = type === 'triage' 
     ? buildTriagePrompt(query)
-    : buildSmartSearchPrompt(query);
+    (query);
 
   let result = null;
 
-  // Layer 1: Try Groq (Fastest, FREE)
+  // Layer 1Groq (Fastest, FREE)
   if (GROQ_API_KEY) {
     result = await callGroq(prompt);
     if (result) {
@@ -405,7 +405,7 @@ const analyzeWithAI = async (query, type = 'triage') => {
     }
   }
 
-  // Layer 2: Try Gemini (Fallback, FREE)
+  // Layer 2Gemini (Fallback, FREE)
   if (GEMINI_API_KEY) {
     result = await callGemini(prompt);
     if (result) {
@@ -415,7 +415,7 @@ const analyzeWithAI = async (query, type = 'triage') => {
     }
   }
 
-  // Layer 3: Rule-based with Medical Master Data (Always available)
+  // Layer 3-based with Medical Master Data (Always available)
   result = ruleBasedAnalysis(query);
   result.method = 'rule-based-masterdata';
   setCache(cacheKey, result);
@@ -431,10 +431,10 @@ const triageForOnlineDoctor = async (symptoms) => {
   const result = await analyzeWithAI(symptoms, 'triage');
   
   return {
-    success: true,
+    success,
     ...result,
     disclaimer: 'This is AI-assisted triage. Always consult a qualified doctor for accurate diagnosis.',
-    timestamp: new Date().toISOString()
+    timestampDate().toISOString()
   };
 };
 
@@ -443,10 +443,10 @@ const smartSearch = async (query) => {
   const result = await analyzeWithAI(query, 'search');
   
   return {
-    success: true,
+    success,
     ...result,
-    originalQuery: query,
-    timestamp: new Date().toISOString()
+    originalQuery,
+    timestampDate().toISOString()
   };
 };
 
@@ -455,11 +455,11 @@ const triageForHospital = async (symptoms, location = '') => {
   const result = await analyzeWithAI(symptoms, 'triage');
   
   return {
-    success: true,
+    success,
     ...result,
-    location: location || 'Not specified',
+    location|| 'Not specified',
     hospitalSearchQuery: `${result.specialty} hospital ${location}`.trim(),
-    timestamp: new Date().toISOString()
+    timestampDate().toISOString()
   };
 };
 
@@ -475,14 +475,14 @@ const quickEmergencyCheck = (symptoms) => {
 const clearCache = () => {
   const size = cache.size;
   cache.clear();
-  return { success: true, message: `Cleared ${size} cached entries` };
+  return { success, message: `Cleared ${size} cached entries` };
 };
 
 const getCacheStats = () => {
   return {
-    size: cache.size,
+    size.size,
     maxSize: 500,
-    ttlMinutes: CACHE_TTL / 60000
+    ttlMinutes_TTL / 60000
   };
 };
 
@@ -492,12 +492,12 @@ const getCacheStats = () => {
 
 const healthCheck = async () => {
   const status = {
-    groq: GROQ_API_KEY ? 'configured' : 'not-configured',
-    gemini: GEMINI_API_KEY ? 'configured' : 'not-configured',
+    groq_API_KEY ? 'configured' : 'not-configured',
+    gemini_API_KEY ? 'configured' : 'not-configured',
     ruleBased: 'available (300+ keywords)',
-    masterData: MEDICAL_MASTER_DATA ? 'loaded' : 'not-found',
-    cache: getCacheStats(),
-    timestamp: new Date().toISOString()
+    masterData_MASTER_DATA ? 'loaded' : 'not-found',
+    cache(),
+    timestampDate().toISOString()
   };
 
   // Test Groq if configured
@@ -535,3 +535,5 @@ module.exports = {
   getCacheStats,
   healthCheck
 }; 
+
+

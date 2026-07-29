@@ -1,11 +1,6 @@
 // D:\hospital backend\ai-core\recovery\CircuitBreaker.ts
 
-export interface CircuitBreakerConfig {
-  failureThreshold: number;      // Number of failures before opening circuit
-  timeout: number;               // Time in ms to wait before attempting again
-  resetTimeout: number;          // Time in ms to wait before trying half-open
-  successThreshold?: number;     // Number of successes needed to close circuit
-}
+export 
 
 export enum CircuitBreakerState {
   CLOSED = 'CLOSED',        // Normal operation - requests flow through
@@ -13,43 +8,34 @@ export enum CircuitBreakerState {
   HALF_OPEN = 'HALF_OPEN'   // Testing if service is recovered
 }
 
-export interface CircuitBreakerStatus {
-  state: CircuitBreakerState;
-  failureCount: number;
-  successCount: number;
-  lastFailure: Date | null;
-  lastSuccess: Date | null;
-  openSince: Date | null;
-  totalFailures: number;
-  totalSuccesses: number;
-}
+export 
 
 export class CircuitBreaker {
-  private state: CircuitBreakerState = CircuitBreakerState.CLOSED;
-  private failureCount: number = 0;
-  private successCount: number = 0;
-  private lastFailure: Date | null = null;
-  private lastSuccess: Date | null = null;
-  private openSince: Date | null = null;
-  private totalFailures: number = 0;
-  private totalSuccesses: number = 0;
+  private state= CircuitBreakerState.CLOSED;
+  private failureCount= 0;
+  private successCount= 0;
+  private lastFailure| null = null;
+  private lastSuccess| null = null;
+  private openSince| null = null;
+  private totalFailures= 0;
+  private totalSuccesses= 0;
 
-  private config: CircuitBreakerConfig;
-  private resetTimer: NodeJS.Timeout | null = null;
+  private config;
+  private resetTimer.Timeout | null = null;
 
-  constructor(config: CircuitBreakerConfig) {
+  constructor(config) {
     this.config = {
-      failureThreshold: config.failureThreshold || 5,
-      timeout: config.timeout || 60000,
-      resetTimeout: config.resetTimeout || 30000,
-      successThreshold: config.successThreshold || 3
+      failureThreshold.failureThreshold || 5,
+      timeout.timeout || 60000,
+      resetTimeout.resetTimeout || 30000,
+      successThreshold.successThreshold || 3
     };
   }
 
   /**
    * Check if circuit allows request to pass through
    */
-  isOpen(): boolean {
+  isOpen(){
     if (this.state === CircuitBreakerState.OPEN) {
       // Check if timeout has elapsed
       if (this.openSince && (Date.now() - this.openSince.getTime() > this.config.timeout)) {
@@ -65,7 +51,7 @@ export class CircuitBreaker {
   /**
    * Record a successful request
    */
-  recordSuccess(): void {
+  recordSuccess(){
     this.totalSuccesses++;
     this.lastSuccess = new Date();
 
@@ -83,7 +69,7 @@ export class CircuitBreaker {
   /**
    * Record a failed request
    */
-  recordFailure(): void {
+  recordFailure(){
     this.totalFailures++;
     this.lastFailure = new Date();
 
@@ -101,7 +87,7 @@ export class CircuitBreaker {
   /**
    * Transition to OPEN state
    */
-  private transitionToOpen(): void {
+  private transitionToOpen(){
     this.state = CircuitBreakerState.OPEN;
     this.openSince = new Date();
     this.failureCount = 0;
@@ -121,7 +107,7 @@ export class CircuitBreaker {
   /**
    * Transition to HALF_OPEN state
    */
-  private transitionToHalfOpen(): void {
+  private transitionToHalfOpen(){
     this.state = CircuitBreakerState.HALF_OPEN;
     this.successCount = 0;
     this.failureCount = 0;
@@ -135,7 +121,7 @@ export class CircuitBreaker {
   /**
    * Transition to CLOSED state
    */
-  private transitionToClosed(): void {
+  private transitionToClosed(){
     this.state = CircuitBreakerState.CLOSED;
     this.failureCount = 0;
     this.successCount = 0;
@@ -149,7 +135,7 @@ export class CircuitBreaker {
   /**
    * Clear reset timer
    */
-  private clearResetTimer(): void {
+  private clearResetTimer(){
     if (this.resetTimer) {
       clearTimeout(this.resetTimer);
       this.resetTimer = null;
@@ -159,23 +145,23 @@ export class CircuitBreaker {
   /**
    * Get current circuit status
    */
-  getStatus(): CircuitBreakerStatus {
+  getStatus(){
     return {
-      state: this.state,
-      failureCount: this.failureCount,
-      successCount: this.successCount,
-      lastFailure: this.lastFailure,
-      lastSuccess: this.lastSuccess,
-      openSince: this.openSince,
-      totalFailures: this.totalFailures,
-      totalSuccesses: this.totalSuccesses
+      state.state,
+      failureCount.failureCount,
+      successCount.successCount,
+      lastFailure.lastFailure,
+      lastSuccess.lastSuccess,
+      openSince.openSince,
+      totalFailures.totalFailures,
+      totalSuccesses.totalSuccesses
     };
   }
 
   /**
    * Force circuit to closed state
    */
-  forceClosed(): void {
+  forceClosed(){
     this.transitionToClosed();
     console.log('🔌 Circuit FORCED CLOSED');
   }
@@ -183,7 +169,7 @@ export class CircuitBreaker {
   /**
    * Force circuit to open state
    */
-  forceOpen(): void {
+  forceOpen(){
     this.transitionToOpen();
     console.log('🔌 Circuit FORCED OPEN');
   }
@@ -191,7 +177,7 @@ export class CircuitBreaker {
   /**
    * Reset circuit completely
    */
-  reset(): void {
+  reset(){
     this.state = CircuitBreakerState.CLOSED;
     this.failureCount = 0;
     this.successCount = 0;
@@ -207,7 +193,7 @@ export class CircuitBreaker {
   /**
    * Get failure rate
    */
-  getFailureRate(): number {
+  getFailureRate(){
     const total = this.totalFailures + this.totalSuccesses;
     if (total === 0) return 0;
     return (this.totalFailures / total) * 100;
@@ -218,8 +204,8 @@ export class CircuitBreaker {
    */
   getHealth(): {
     status: 'healthy' | 'degraded' | 'unhealthy';
-    failureRate: number;
-    state: CircuitBreakerState;
+    failureRate;
+    state;
   } {
     const failureRate = this.getFailureRate();
     let status: 'healthy' | 'degraded' | 'unhealthy';
@@ -235,7 +221,7 @@ export class CircuitBreaker {
     return {
       status,
       failureRate,
-      state: this.state
+      state.state
     };
   }
 }
@@ -244,14 +230,13 @@ export class CircuitBreaker {
  * Circuit Breaker Factory
  */
 export class CircuitBreakerFactory {
-  private static instances: Map<string, CircuitBreaker> = new Map();
+  private static instances<string, CircuitBreaker> = new Map();
 
   static getInstance(
-    name: string,
-    config?: CircuitBreakerConfig
-  ): CircuitBreaker {
+    name,
+    config?){
     if (!this.instances.has(name)) {
-      const defaultConfig: CircuitBreakerConfig = {
+      const defaultConfig= {
         failureThreshold: 5,
         timeout: 60000,
         resetTimeout: 30000,
@@ -262,14 +247,16 @@ export class CircuitBreakerFactory {
     return this.instances.get(name)!;
   }
 
-  static getAllInstances(): Map<string, CircuitBreaker> {
+  static getAllInstances()<string, CircuitBreaker> {
     return this.instances;
   }
 
-  static resetAll(): void {
+  static resetAll(){
     for (const [name, breaker] of this.instances) {
       breaker.reset();
       console.log(`🔄 Circuit ${name} reset`);
     }
   }
 }
+
+

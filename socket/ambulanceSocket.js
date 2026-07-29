@@ -21,22 +21,22 @@ const dispatchService = require('../services/ambulanceDispatchService');
 // Track connected sockets by type
 const connectedClients = {
   // 🚑 Ambulance drivers
-  drivers: new Map(),        // driverId -> { socket, userId, providerId, vehicleType }
+  driversMap(),        // driverId -> { socket, userId, providerId, vehicleType }
   
   // 🏠 Caregivers
-  caregivers: new Map(),     // caregiverId -> { socket, userId }
+  caregiversMap(),     // caregiverId -> { socket, userId }
   
   // 🔬 Phlebotomists
-  phlebotomists: new Map(),  // phleboId -> { socket, userId, labId }
+  phlebotomistsMap(),  // phleboId -> { socket, userId, labId }
   
   // 👤 Patients (tracking their emergencies)
-  patients: new Map(),       // userId -> { socket, trackingBookingId }
+  patientsMap(),       // userId -> { socket, trackingBookingId }
   
   // 🏥 Hospitals (receiving ER notifications)
-  hospitals: new Map(),      // hospitalId -> { socket }
+  hospitalsMap(),      // hospitalId -> { socket }
   
   // 👨‍💼 Admin (monitoring dashboard)
-  admins: new Map()          // adminId -> { socket }
+  adminsMap()          // adminId -> { socket }
 };
 
 // ============================================
@@ -47,7 +47,7 @@ const connectedClients = {
 // emergency:{bookingId} - Patient + Driver + Admin
 // driver:{driverId} - Driver-specific updates
 // hospital:{hospitalId} - Hospital notifications
-// admin:emergencies - Admin live monitoring
+// admin- Admin live monitoring
 
 // ============================================
 // SOCKET INITIALIZATION
@@ -101,110 +101,110 @@ const initializeSocket = (io) => {
     // ============================================
     
     // 🚑 Driver registration
-    socket.on('driver:register', (data) => {
+    socket.on('driver', (data) => {
       const { driverId, providerId, vehicleType } = data;
       connectedClients.drivers.set(driverId, {
         socket,
-        userId: socket.userId,
+        userId.userId,
         providerId,
         vehicleType,
-        registeredAt: new Date()
+        registeredAtDate()
       });
       socket.driverId = driverId;
       socket.join(`driver:${driverId}`);
-      socket.join('drivers:active');
+      socket.join('drivers');
       
       console.log(`🚑 Driver registered: ${driverId} (${vehicleType})`);
-      socket.emit('driver:registered', { success: true, driverId });
+      socket.emit('driver', { success, driverId });
       
       // Notify admin of driver online
-      io.to('admin:emergencies').emit('driver:online', { driverId, vehicleType, timestamp: new Date() });
+      io.to('admin').emit('driver', { driverId, vehicleType, timestampDate() });
     });
     
     // 🏠 Caregiver registration
-    socket.on('caregiver:register', (data) => {
+    socket.on('caregiver', (data) => {
       const { caregiverId } = data;
       connectedClients.caregivers.set(caregiverId, {
         socket,
-        userId: socket.userId,
-        registeredAt: new Date()
+        userId.userId,
+        registeredAtDate()
       });
       socket.caregiverId = caregiverId;
       socket.join(`caregiver:${caregiverId}`);
       
       console.log(`🏠 Caregiver registered: ${caregiverId}`);
-      socket.emit('caregiver:registered', { success: true, caregiverId });
+      socket.emit('caregiver', { success, caregiverId });
     });
     
     // 🔬 Phlebotomist registration
-    socket.on('phlebotomist:register', (data) => {
+    socket.on('phlebotomist', (data) => {
       const { phleboId, labId } = data;
       connectedClients.phlebotomists.set(phleboId, {
         socket,
-        userId: socket.userId,
+        userId.userId,
         labId,
-        registeredAt: new Date()
+        registeredAtDate()
       });
       socket.phleboId = phleboId;
       socket.join(`phlebotomist:${phleboId}`);
       
       console.log(`🔬 Phlebotomist registered: ${phleboId}`);
-      socket.emit('phlebotomist:registered', { success: true, phleboId });
+      socket.emit('phlebotomist', { success, phleboId });
     });
     
     // 👤 Patient tracking registration
-    socket.on('patient:track', (data) => {
+    socket.on('patient', (data) => {
       const { bookingId } = data;
       if (socket.userId) {
         connectedClients.patients.set(socket.userId, {
           socket,
-          trackingBookingId: bookingId,
-          registeredAt: new Date()
+          trackingBookingId,
+          registeredAtDate()
         });
       }
       socket.join(`emergency:${bookingId}`);
       
       console.log(`👤 Patient tracking: ${bookingId}`);
-      socket.emit('patient:tracking_started', { success: true, bookingId });
+      socket.emit('patient_started', { success, bookingId });
     });
     
     // 🏥 Hospital registration
-    socket.on('hospital:register', (data) => {
+    socket.on('hospital', (data) => {
       const { hospitalId } = data;
       connectedClients.hospitals.set(hospitalId, {
         socket,
-        registeredAt: new Date()
+        registeredAtDate()
       });
       socket.hospitalId = hospitalId;
       socket.join(`hospital:${hospitalId}`);
       
       console.log(`🏥 Hospital registered: ${hospitalId}`);
-      socket.emit('hospital:registered', { success: true, hospitalId });
+      socket.emit('hospital', { success, hospitalId });
     });
     
     // 👨‍💼 Admin registration
-    socket.on('admin:register', (data) => {
+    socket.on('admin', (data) => {
       const { adminId } = data;
       connectedClients.admins.set(adminId || socket.userId, {
         socket,
-        registeredAt: new Date()
+        registeredAtDate()
       });
-      socket.join('admin:emergencies');
-      socket.join('admin:drivers');
-      socket.join('admin:all');
+      socket.join('admin');
+      socket.join('admin');
+      socket.join('admin');
       
       console.log(`👨‍💼 Admin registered: ${adminId || socket.userId}`);
       
       // Send current active emergencies to admin
       const activeEmergencies = locationCache.ambulance.getActiveEmergencies();
-      socket.emit('admin:active_emergencies', activeEmergencies);
+      socket.emit('admin_emergencies', activeEmergencies);
     });
 
     // ============================================
     // 🚑 DRIVER LOCATION UPDATES
     // ============================================
     
-    socket.on('driver:location_update', async (data) => {
+    socket.on('driver_update', async (data) => {
       const { lat, lng, speed, heading, accuracy, isAvailable, isOnTrip, tripId } = data;
       
       if (!socket.driverId) {
@@ -216,28 +216,28 @@ const initializeSocket = (io) => {
         // Update location in Redis
         await locationCache.ambulance.updateDriverLocation(socket.driverId, lat, lng, {
           speed, heading, accuracy,
-          isAvailable: isAvailable !== false,
-          vehicleType: connectedClients.drivers.get(socket.driverId)?.vehicleType || 'basic',
-          providerId: connectedClients.drivers.get(socket.driverId)?.providerId || '',
-          isOnTrip: isOnTrip || false,
-          tripId: tripId || ''
+          isAvailable!== false,
+          vehicleType.drivers.get(socket.driverId)?.vehicleType || 'basic',
+          providerId.drivers.get(socket.driverId)?.providerId || '',
+          isOnTrip|| false,
+          tripId|| ''
         });
         
         // If on trip, broadcast location to patient tracking
         if (isOnTrip && tripId) {
-          io.to(`emergency:${tripId}`).emit('driver:location_updated', {
-            driverId: socket.driverId,
+          io.to(`emergency:${tripId}`).emit('driver_updated', {
+            driverId.driverId,
             lat, lng, speed, heading,
-            timestamp: new Date().toISOString()
+            timestampDate().toISOString()
           });
         }
         
         // Broadcast to admin
-        io.to('admin:emergencies').emit('driver:location_updated', {
-          driverId: socket.driverId,
+        io.to('admin').emit('driver_updated', {
+          driverId.driverId,
           lat, lng, speed, heading,
           isAvailable, isOnTrip, tripId,
-          timestamp: new Date().toISOString()
+          timestampDate().toISOString()
         });
         
       } catch (error) {
@@ -247,7 +247,7 @@ const initializeSocket = (io) => {
     });
     
     // 🏠 Caregiver location update
-    socket.on('caregiver:location_update', async (data) => {
+    socket.on('caregiver_update', async (data) => {
       const { lat, lng, isAvailable, isOnVisit, visitId } = data;
       
       if (!socket.caregiverId) {
@@ -261,10 +261,10 @@ const initializeSocket = (io) => {
         });
         
         if (isOnVisit && visitId) {
-          io.to(`visit:${visitId}`).emit('caregiver:location_updated', {
-            caregiverId: socket.caregiverId,
+          io.to(`visit:${visitId}`).emit('caregiver_updated', {
+            caregiverId.caregiverId,
             lat, lng,
-            timestamp: new Date().toISOString()
+            timestampDate().toISOString()
           });
         }
         
@@ -274,7 +274,7 @@ const initializeSocket = (io) => {
     });
     
     // 🔬 Phlebotomist location update
-    socket.on('phlebotomist:location_update', async (data) => {
+    socket.on('phlebotomist_update', async (data) => {
       const { lat, lng, isAvailable, isOnCollection, collectionId } = data;
       
       if (!socket.phleboId) {
@@ -285,7 +285,7 @@ const initializeSocket = (io) => {
       try {
         await locationCache.diagnostics.updatePhleboLocation(socket.phleboId, lat, lng, {
           isAvailable, isOnCollection, collectionId,
-          labId: connectedClients.phlebotomists.get(socket.phleboId)?.labId || ''
+          labId.phlebotomists.get(socket.phleboId)?.labId || ''
         });
         
       } catch (error) {
@@ -298,7 +298,7 @@ const initializeSocket = (io) => {
     // ============================================
     
     // Driver accepts emergency
-    socket.on('driver:accept_emergency', async (data) => {
+    socket.on('driver_emergency', async (data) => {
       const { bookingId } = data;
       
       if (!socket.driverId) {
@@ -311,25 +311,25 @@ const initializeSocket = (io) => {
         
         if (result.success) {
           // Notify patient
-          io.to(`emergency:${bookingId}`).emit('emergency:driver_accepted', {
+          io.to(`emergency:${bookingId}`).emit('emergency_accepted', {
             bookingId,
-            driverId: socket.driverId,
-            driverName: result.booking.driverName,
-            vehicleNumber: result.booking.vehicleNumber,
+            driverId.driverId,
+            driverName.booking.driverName,
+            vehicleNumber.booking.vehicleNumber,
             eta: '5 minutes',
-            timestamp: new Date().toISOString()
+            timestampDate().toISOString()
           });
           
           // Notify admin
-          io.to('admin:emergencies').emit('emergency:driver_accepted', {
+          io.to('admin').emit('emergency_accepted', {
             bookingId,
-            driverId: socket.driverId,
-            timestamp: new Date().toISOString()
+            driverId.driverId,
+            timestampDate().toISOString()
           });
           
-          socket.emit('driver:accept_confirmed', { success: true, bookingId });
+          socket.emit('driver_confirmed', { success, bookingId });
         } else {
-          socket.emit('driver:accept_failed', result);
+          socket.emit('driver_failed', result);
         }
         
       } catch (error) {
@@ -338,36 +338,36 @@ const initializeSocket = (io) => {
     });
     
     // Driver rejects emergency
-    socket.on('driver:reject_emergency', (data) => {
+    socket.on('driver_emergency', (data) => {
       const { bookingId, reason } = data;
       
       console.log(`❌ Driver ${socket.driverId} rejected emergency ${bookingId}: ${reason}`);
       
       // Admin notified for monitoring
-      io.to('admin:emergencies').emit('driver:rejected_emergency', {
+      io.to('admin').emit('driver_emergency', {
         bookingId,
-        driverId: socket.driverId,
+        driverId.driverId,
         reason,
-        timestamp: new Date().toISOString()
+        timestampDate().toISOString()
       });
     });
     
     // Driver reached pickup
-    socket.on('driver:arrived_pickup', async (data) => {
+    socket.on('driver_pickup', async (data) => {
       const { bookingId } = data;
       
       try {
         const result = await dispatchService.driverArrivedAtPickup(bookingId);
         
         if (result.success) {
-          io.to(`emergency:${bookingId}`).emit('emergency:driver_arrived', {
+          io.to(`emergency:${bookingId}`).emit('emergency_arrived', {
             bookingId,
-            timestamp: new Date().toISOString()
+            timestampDate().toISOString()
           });
           
-          io.to('admin:emergencies').emit('emergency:driver_arrived', {
+          io.to('admin').emit('emergency_arrived', {
             bookingId,
-            timestamp: new Date().toISOString()
+            timestampDate().toISOString()
           });
         }
         
@@ -377,26 +377,26 @@ const initializeSocket = (io) => {
     });
     
     // Patient onboard
-    socket.on('driver:patient_onboard', async (data) => {
+    socket.on('driver_onboard', async (data) => {
       const { bookingId, otp } = data;
       
       try {
         const result = await dispatchService.patientOnboard(bookingId, otp);
         
         if (result.success) {
-          io.to(`emergency:${bookingId}`).emit('emergency:patient_onboard', {
+          io.to(`emergency:${bookingId}`).emit('emergency_onboard', {
             bookingId,
-            timestamp: new Date().toISOString()
+            timestampDate().toISOString()
           });
           
           // Notify hospital
           const booking = result.booking;
           if (booking.hospitalDestination?.hospitalId) {
-            io.to(`hospital:${booking.hospitalDestination.hospitalId}`).emit('hospital:patient_onboard', {
+            io.to(`hospital:${booking.hospitalDestination.hospitalId}`).emit('hospital_onboard', {
               bookingId,
-              patientName: booking.patientName,
+              patientName.patientName,
               eta: '10 minutes',
-              timestamp: new Date().toISOString()
+              timestampDate().toISOString()
             });
           }
         }
@@ -407,16 +407,16 @@ const initializeSocket = (io) => {
     });
     
     // Arrived at hospital
-    socket.on('driver:arrived_hospital', async (data) => {
+    socket.on('driver_hospital', async (data) => {
       const { bookingId, vitals } = data;
       
       try {
         const result = await dispatchService.arrivedAtHospital(bookingId, vitals);
         
         if (result.success) {
-          io.to(`emergency:${bookingId}`).emit('emergency:arrived_hospital', {
+          io.to(`emergency:${bookingId}`).emit('emergency_hospital', {
             bookingId,
-            timestamp: new Date().toISOString()
+            timestampDate().toISOString()
           });
         }
         
@@ -426,32 +426,31 @@ const initializeSocket = (io) => {
     });
     
     // Trip completed
-    socket.on('driver:trip_completed', async (data) => {
+    socket.on('driver_completed', async (data) => {
       const { bookingId, distance, duration, oxygenAdministered, medicationsGiven, notes } = data;
       
       try {
         const result = await dispatchService.completeEmergencyTrip(bookingId, {
           distance, duration, oxygenAdministered, medicationsGiven,
-          driverNotes: notes
-        });
+          driverNotes});
         
         if (result.success) {
-          io.to(`emergency:${bookingId}`).emit('emergency:trip_completed', {
+          io.to(`emergency:${bookingId}`).emit('emergency_completed', {
             bookingId,
-            fareBreakdown: result.fareBreakdown,
-            timestamp: new Date().toISOString()
+            fareBreakdown.fareBreakdown,
+            timestampDate().toISOString()
           });
           
-          io.to('admin:emergencies').emit('emergency:trip_completed', {
+          io.to('admin').emit('emergency_completed', {
             bookingId,
-            driverId: socket.driverId,
-            timestamp: new Date().toISOString()
+            driverId.driverId,
+            timestampDate().toISOString()
           });
           
-          socket.emit('driver:trip_summary', {
+          socket.emit('driver_summary', {
             bookingId,
-            earnings: result.fareBreakdown?.driverEarnings || 0,
-            fare: result.fareBreakdown?.total || 0
+            earnings.fareBreakdown?.driverEarnings || 0,
+            fare.fareBreakdown?.total || 0
           });
         }
         
@@ -465,7 +464,7 @@ const initializeSocket = (io) => {
     // ============================================
     
     // Hospital updates bed availability
-    socket.on('hospital:bed_update', async (data) => {
+    socket.on('hospital_update', async (data) => {
       const { hospitalId, availableBeds, icuBeds, ventilatorBeds } = data;
       
       try {
@@ -474,10 +473,10 @@ const initializeSocket = (io) => {
         });
         
         // Broadcast to admin
-        io.to('admin:emergencies').emit('hospital:bed_updated', {
+        io.to('admin').emit('hospital_updated', {
           hospitalId,
           availableBeds, icuBeds, ventilatorBeds,
-          timestamp: new Date().toISOString()
+          timestampDate().toISOString()
         });
         
       } catch (error) {
@@ -490,34 +489,34 @@ const initializeSocket = (io) => {
     // ============================================
     
     // Patient joins tracking room
-    socket.on('patient:join_tracking', (data) => {
+    socket.on('patient_tracking', (data) => {
       const { bookingId } = data;
       socket.join(`emergency:${bookingId}`);
-      socket.emit('patient:joined', { bookingId });
+      socket.emit('patient', { bookingId });
     });
     
     // Patient cancels emergency
-    socket.on('patient:cancel_emergency', async (data) => {
+    socket.on('patient_emergency', async (data) => {
       const { bookingId, reason } = data;
       
       try {
         const result = await dispatchService.cancelEmergency(bookingId, reason, 'patient');
         
         if (result.success) {
-          io.to(`emergency:${bookingId}`).emit('emergency:cancelled', {
+          io.to(`emergency:${bookingId}`).emit('emergency', {
             bookingId,
             cancelledBy: 'patient',
             reason,
-            timestamp: new Date().toISOString()
+            timestampDate().toISOString()
           });
           
           // Notify driver
           const driverId = result.booking.driverId;
           if (driverId) {
-            io.to(`driver:${driverId}`).emit('emergency:cancelled', {
+            io.to(`driver:${driverId}`).emit('emergency', {
               bookingId,
               reason,
-              timestamp: new Date().toISOString()
+              timestampDate().toISOString()
             });
           }
         }
@@ -533,7 +532,7 @@ const initializeSocket = (io) => {
     
     socket.on('heartbeat', (data) => {
       const { service, id } = data;
-      socket.emit('heartbeat:ack', { timestamp: Date.now() });
+      socket.emit('heartbeat', { timestamp.now() });
     });
 
     // ============================================
@@ -549,9 +548,9 @@ const initializeSocket = (io) => {
         locationCache.ambulance.removeDriver(socket.driverId).catch(console.error);
         
         // Notify admin
-        io.to('admin:emergencies').emit('driver:offline', {
-          driverId: socket.driverId,
-          timestamp: new Date().toISOString()
+        io.to('admin').emit('driver', {
+          driverId.driverId,
+          timestampDate().toISOString()
         });
       }
       
@@ -594,7 +593,7 @@ const isDriverOnline = (driverId) => connectedClients.drivers.has(driverId);
 const sendEmergencyToDriver = (io, driverId, emergencyData) => {
   const driver = connectedClients.drivers.get(driverId);
   if (driver) {
-    driver.socket.emit('emergency:new_request', emergencyData);
+    driver.socket.emit('emergency_request', emergencyData);
     return true;
   }
   return false;
@@ -602,18 +601,18 @@ const sendEmergencyToDriver = (io, driverId, emergencyData) => {
 
 // Broadcast to all admins
 const broadcastToAdmins = (io, event, data) => {
-  io.to('admin:emergencies').emit(event, data);
+  io.to('admin').emit(event, data);
 };
 
 // Get connected clients stats
 const getConnectionStats = () => ({
-  drivers: connectedClients.drivers.size,
-  caregivers: connectedClients.caregivers.size,
-  phlebotomists: connectedClients.phlebotomists.size,
-  patients: connectedClients.patients.size,
-  hospitals: connectedClients.hospitals.size,
-  admins: connectedClients.admins.size,
-  timestamp: new Date().toISOString()
+  drivers.drivers.size,
+  caregivers.caregivers.size,
+  phlebotomists.phlebotomists.size,
+  patients.patients.size,
+  hospitals.hospitals.size,
+  admins.admins.size,
+  timestampDate().toISOString()
 });
 
 // ============================================
@@ -633,3 +632,4 @@ module.exports = {
   broadcastToAdmins,
   getConnectionStats
 };
+

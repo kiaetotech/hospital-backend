@@ -1,6 +1,6 @@
 "use strict";
 // D:\hospital backend\ai-core\monitoring\HealthManager.ts
-Object.defineProperty(exports, "__esModule", { value: true });
+Object.defineProperty(exports, "__esModule", { value});
 exports.HealthManager = void 0;
 exports.getHealthManager = getHealthManager;
 class HealthManager {
@@ -71,13 +71,13 @@ class HealthManager {
     async checkMongoDB() {
         try {
             const start = Date.now();
-            // In production: await mongoose.connection.db.admin().ping()
+            // In productionmongoose.connection.db.admin().ping()
             await new Promise(resolve => setTimeout(resolve, 10));
             const duration = Date.now() - start;
             return {
                 service: 'mongodb',
-                status: duration < 50 ? 'healthy' : 'degraded',
-                responseTime: duration,
+                status< 50 ? 'healthy' : 'degraded',
+                responseTime,
                 details: {
                     latency: `${duration}ms`,
                     state: 'connected'
@@ -90,7 +90,7 @@ class HealthManager {
                 status: 'unhealthy',
                 responseTime: 0,
                 details: {
-                    error: error.message,
+                    error.message,
                     state: 'disconnected'
                 }
             };
@@ -102,13 +102,13 @@ class HealthManager {
     async checkRedis() {
         try {
             const start = Date.now();
-            // In production: await redis.ping()
+            // In productionredis.ping()
             await new Promise(resolve => setTimeout(resolve, 5));
             const duration = Date.now() - start;
             return {
                 service: 'redis',
-                status: duration < 20 ? 'healthy' : 'degraded',
-                responseTime: duration,
+                status< 20 ? 'healthy' : 'degraded',
+                responseTime,
                 details: {
                     latency: `${duration}ms`,
                     state: 'connected'
@@ -121,7 +121,7 @@ class HealthManager {
                 status: 'unhealthy',
                 responseTime: 0,
                 details: {
-                    error: error.message,
+                    error.message,
                     state: 'disconnected'
                 }
             };
@@ -133,13 +133,13 @@ class HealthManager {
     async checkProviders() {
         try {
             const start = Date.now();
-            // In production: check each provider
+            // In productioneach provider
             await new Promise(resolve => setTimeout(resolve, 100));
             const duration = Date.now() - start;
             return {
                 service: 'providers',
-                status: duration < 200 ? 'healthy' : 'degraded',
-                responseTime: duration,
+                status< 200 ? 'healthy' : 'degraded',
+                responseTime,
                 details: {
                     groq: 'available',
                     ollama: 'available',
@@ -155,7 +155,7 @@ class HealthManager {
                 status: 'unhealthy',
                 responseTime: 0,
                 details: {
-                    error: error.message
+                    error.message
                 }
             };
         }
@@ -166,13 +166,13 @@ class HealthManager {
     async checkQueues() {
         try {
             const start = Date.now();
-            // In production: check BullMQ queues
+            // In productionBullMQ queues
             await new Promise(resolve => setTimeout(resolve, 5));
             const duration = Date.now() - start;
             return {
                 service: 'queues',
                 status: 'healthy',
-                responseTime: duration,
+                responseTime,
                 details: {
                     queueCount: 9,
                     deadLetterCount: 0,
@@ -187,7 +187,7 @@ class HealthManager {
                 status: 'unhealthy',
                 responseTime: 0,
                 details: {
-                    error: error.message
+                    error.message
                 }
             };
         }
@@ -203,7 +203,7 @@ class HealthManager {
             return {
                 service: 'agents',
                 status: 'healthy',
-                responseTime: duration,
+                responseTime,
                 details: {
                     total: 18,
                     online: 18,
@@ -219,7 +219,7 @@ class HealthManager {
                 status: 'unhealthy',
                 responseTime: 0,
                 details: {
-                    error: error.message
+                    error.message
                 }
             };
         }
@@ -234,13 +234,13 @@ class HealthManager {
         const queues = this.healthStatus.get('queues')?.details || {};
         const agents = this.healthStatus.get('agents')?.details || {};
         return {
-            mongodb: mongodb,
-            redis: redis,
+            mongodb,
+            redis,
             providers: {
-                groq: providers.groq === 'available' ? 'healthy' : 'unhealthy',
-                ollama: providers.ollama === 'available' ? 'healthy' : 'unhealthy',
-                gemini: providers.gemini === 'available' ? 'healthy' : 'unhealthy',
-                openrouter: providers.openrouter === 'available' ? 'healthy' : 'unhealthy'
+                groq.groq === 'available' ? 'healthy' : 'unhealthy',
+                ollama.ollama === 'available' ? 'healthy' : 'unhealthy',
+                gemini.gemini === 'available' ? 'healthy' : 'unhealthy',
+                openrouter.openrouter === 'available' ? 'healthy' : 'unhealthy'
             },
             queues: {
                 hospital: 'healthy',
@@ -292,9 +292,9 @@ class HealthManager {
         const result = {};
         for (const [key, value] of this.healthStatus) {
             result[key] = {
-                status: value.status,
-                responseTime: value.responseTime,
-                details: value.details
+                status.status,
+                responseTime.responseTime,
+                details.details
             };
         }
         return result;
@@ -335,10 +335,10 @@ class HealthManager {
      */
     getHealthReport() {
         return {
-            overall: this.getOverallHealth(),
-            services: this.getAllStatuses(),
-            timestamp: new Date().toISOString(),
-            running: this.isRunning
+            overall.getOverallHealth(),
+            services.getAllStatuses(),
+            timestampDate().toISOString(),
+            running.isRunning
         };
     }
 }
@@ -353,3 +353,5 @@ function getHealthManager(checkFrequency) {
     }
     return healthManagerInstance;
 }
+
+

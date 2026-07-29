@@ -11,27 +11,21 @@ import {
 import { ProviderManager } from '../../providers/ProviderManager';
 import { v4 as uuidv4 } from 'uuid';
 
-export interface AgentConfig {
-  id?: string;
-  name: string;
-  role: AgentRole;
-  capabilities: AgentCapability[];
-  metadata?: Record<string, any>;
-}
+export 
 
 export abstract class BaseAgent {
-  public id: string;
-  public name: string;
-  public role: AgentRole;
-  public status: AgentStatus;
-  public capabilities: AgentCapability[];
-  public metadata: Record<string, any>;
-  public lastActive: Date;
-  public currentTask?: string;
+  public id;
+  public name;
+  public role;
+  public status;
+  public capabilities[];
+  public metadata;
+  public lastActive;
+  public currentTask?;
 
-  protected providerManager: ProviderManager;
+  protected providerManager;
 
-  constructor(config: AgentConfig, providerManager: ProviderManager) {
+  constructor(config, providerManager) {
     this.id = config.id || uuidv4();
     this.name = config.name;
     this.role = config.role;
@@ -45,28 +39,28 @@ export abstract class BaseAgent {
   /**
    * Main execution method - must be implemented by all agents
    */
-  abstract execute(request: AgentRequest): Promise<AgentResponse>;
+  abstract execute(request)<AgentResponse>;
 
   /**
    * Get agent registration for capability registry
    */
-  getRegistration(): AgentRegistration {
+  getRegistration(){
     return {
-      id: this.id,
-      name: this.name,
-      role: this.role,
-      status: this.status,
-      capabilities: this.capabilities,
-      currentTask: this.currentTask,
-      lastActive: this.lastActive,
-      metadata: this.metadata
+      id.id,
+      name.name,
+      role.role,
+      status.status,
+      capabilities.capabilities,
+      currentTask.currentTask,
+      lastActive.lastActive,
+      metadata.metadata
     };
   }
 
   /**
    * Update agent status
    */
-  setStatus(status: AgentStatus): void {
+  setStatus(status){
     this.status = status;
     this.lastActive = new Date();
   }
@@ -74,7 +68,7 @@ export abstract class BaseAgent {
   /**
    * Set current task
    */
-  setCurrentTask(task?: string): void {
+  setCurrentTask(task?){
     this.currentTask = task;
     this.lastActive = new Date();
   }
@@ -82,21 +76,21 @@ export abstract class BaseAgent {
   /**
    * Check if agent has a specific capability
    */
-  hasCapability(capabilityName: string): boolean {
+  hasCapability(capabilityName){
     return this.capabilities.some(c => c.name === capabilityName);
   }
 
   /**
    * Get capability by name
    */
-  getCapability(capabilityName: string): AgentCapability | undefined {
+  getCapability(capabilityName)| undefined {
     return this.capabilities.find(c => c.name === capabilityName);
   }
 
   /**
    * Validate request before execution
    */
-  protected validateRequest(request: AgentRequest): boolean {
+  protected validateRequest(request){
     // Check if request has required fields
     if (!request.task || !request.payload) {
       return false;
@@ -115,7 +109,7 @@ export abstract class BaseAgent {
    * Get required capability for a task
    * Override this in child classes
    */
-  protected getRequiredCapability(task: string): string | null {
+  protected getRequiredCapability(task)| null {
     // Default implementation - can be overridden
     return null;
   }
@@ -123,13 +117,13 @@ export abstract class BaseAgent {
   /**
    * Handle errors gracefully
    */
-  protected handleError(error: Error, request: AgentRequest): AgentResponse {
+  protected handleError(error, request){
     console.error(`[${this.name}] Error:`, error.message);
     
     return {
-      success: false,
-      error: error.message,
-      sourceAgent: this.id,
+      success,
+      error.message,
+      sourceAgent.id,
       processingTime: 0
     };
   }
@@ -137,7 +131,7 @@ export abstract class BaseAgent {
   /**
    * Log agent activity
    */
-  protected log(message: string, level: 'info' | 'warn' | 'error' = 'info'): void {
+  protected log(message, level: 'info' | 'warn' | 'error' = 'info'){
     const timestamp = new Date().toISOString();
     console.log(`[${timestamp}] [${this.name}] [${level.toUpperCase()}] ${message}`);
   }
@@ -145,14 +139,14 @@ export abstract class BaseAgent {
   /**
    * Update metadata
    */
-  updateMetadata(key: string, value: any): void {
+  updateMetadata(key, value){
     this.metadata[key] = value;
   }
 
   /**
    * Get metadata
    */
-  getMetadata<T>(key: string): T | undefined {
+  getMetadata<T>(key)| undefined {
     return this.metadata[key] as T;
   }
 
@@ -160,25 +154,25 @@ export abstract class BaseAgent {
    * Get agent health status
    */
   getHealthStatus(): {
-    status: AgentStatus;
-    lastActive: Date;
-    capabilities: string[];
-    currentTask?: string;
-    metadata: Record<string, any>;
+    status;
+    lastActive;
+    capabilities[];
+    currentTask?;
+    metadata;
   } {
     return {
-      status: this.status,
-      lastActive: this.lastActive,
-      capabilities: this.capabilities.map(c => c.name),
-      currentTask: this.currentTask,
-      metadata: this.metadata
+      status.status,
+      lastActive.lastActive,
+      capabilities.capabilities.map(c => c.name),
+      currentTask.currentTask,
+      metadata.metadata
     };
   }
 
   /**
    * Check if agent is healthy
    */
-  isHealthy(): boolean {
+  isHealthy(){
     // Check if agent is online or busy
     return this.status === AgentStatus.ONLINE || this.status === AgentStatus.BUSY;
   }
@@ -186,9 +180,11 @@ export abstract class BaseAgent {
   /**
    * Reset agent state
    */
-  reset(): void {
+  reset(){
     this.status = AgentStatus.IDLE;
     this.currentTask = undefined;
     this.lastActive = new Date();
   }
 }
+
+

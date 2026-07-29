@@ -5,30 +5,23 @@ import { CapabilityRegistry } from './CapabilityRegistry';
 import { ProviderManager } from '../providers/ProviderManager';
 import { v4 as uuidv4 } from 'uuid';
 
-interface WorkflowStep {
-  id: string;
-  task: string;
-  agentId: string;
-  status: 'pending' | 'running' | 'completed' | 'failed';
-  result?: any;
-  error?: string;
-}
+
 
 export class Orchestrator {
-  private registry: CapabilityRegistry;
-  private providerManager: ProviderManager;
-  private activeWorkflows: Map<string, WorkflowStep[]> = new Map();
+  private registry;
+  private providerManager;
+  private activeWorkflows<string, WorkflowStep[]> = new Map();
 
-  constructor(registry: CapabilityRegistry, providerManager: ProviderManager) {
+  constructor(registry, providerManager) {
     this.registry = registry;
     this.providerManager = providerManager;
   }
 
-  async orchestrate(request: AgentRequest, tasks: string[]): Promise<AgentResponse> {
+  async orchestrate(request, tasks[])<AgentResponse> {
     // If no tasks, return error
     if (!tasks || tasks.length === 0) {
       return {
-        success: false,
+        success,
         error: 'No tasks provided for orchestration',
         sourceAgent: 'Orchestrator',
         processingTime: 0
@@ -40,16 +33,16 @@ export class Orchestrator {
       return await this.executeSingleTask(request, tasks[0]);
     }
 
-    // Multiple tasks: Execute workflow
+    // Multiple tasksworkflow
     return await this.executeWorkflow(request, tasks);
   }
 
-  private async executeSingleTask(request: AgentRequest, task: string): Promise<AgentResponse> {
+  private async executeSingleTask(request, task)<AgentResponse> {
     // Find agent for this task
     const agent = this.registry.findAgentForTask(task);
     if (!agent) {
       return {
-        success: false,
+        success,
         error: `No agent found for task: ${task}`,
         sourceAgent: 'Orchestrator',
         processingTime: 0
@@ -62,40 +55,40 @@ export class Orchestrator {
         return await agent.execute(request);
       }
 
-      // Fallback: Use ProviderManager
+      // FallbackProviderManager
       const response = await this.providerManager.generate(
         `Task: ${request.task}\nPayload: ${JSON.stringify(request.payload)}`,
         request.critical
       );
 
       return {
-        success: true,
-        data: { response: response.content },
-        sourceAgent: agent.id,
-        processingTime: response.latency || 0,
-        providerUsed: response.provider
+        success,
+        data: { response.content },
+        sourceAgent.id,
+        processingTime.latency || 0,
+        providerUsed.provider
       };
     } catch (error) {
       return {
-        success: false,
-        error: error.message,
-        sourceAgent: agent.id,
+        success,
+        error.message,
+        sourceAgent.id,
         processingTime: 0
       };
     }
   }
 
-  private async executeWorkflow(request: AgentRequest, tasks: string[]): Promise<AgentResponse> {
+  private async executeWorkflow(request, tasks[])<AgentResponse> {
     const workflowId = uuidv4();
-    const steps: WorkflowStep[] = [];
+    const steps[] = [];
 
     // Create steps for each task
     for (const task of tasks) {
       const agent = this.registry.findAgentForTask(task);
       steps.push({
-        id: uuidv4(),
+        id(),
         task,
-        agentId: agent?.id || 'unknown',
+        agentId?.id || 'unknown',
         status: 'pending'
       });
     }
@@ -103,7 +96,7 @@ export class Orchestrator {
     this.activeWorkflows.set(workflowId, steps);
 
     const results = [];
-    let previousResult: any = null;
+    let previousResult= null;
 
     try {
       for (const step of steps) {
@@ -126,7 +119,7 @@ export class Orchestrator {
               `Task: ${step.task}\nPayload: ${JSON.stringify(request.payload)}\nPrevious Result: ${JSON.stringify(previousResult)}`,
               request.critical
             );
-            result = { data: { response: response.content }, success: true };
+            result = { data: { response.content }, success};
           }
 
           step.status = 'completed';
@@ -147,8 +140,8 @@ export class Orchestrator {
       const allCompleted = steps.every(s => s.status === 'completed');
 
       return {
-        success: allCompleted,
-        data: allCompleted ? { steps: results, workflowId } : { error: 'Workflow incomplete', failedStep: steps.find(s => s.status === 'failed') },
+        success,
+        data? { steps, workflowId } : { error: 'Workflow incomplete', failedStep.find(s => s.status === 'failed') },
         sourceAgent: 'CEO_Agent',
         processingTime: 0
       };
@@ -156,15 +149,17 @@ export class Orchestrator {
     } catch (error) {
       this.activeWorkflows.delete(workflowId);
       return {
-        success: false,
-        error: error.message || 'Workflow execution failed',
+        success,
+        error.message || 'Workflow execution failed',
         sourceAgent: 'CEO_Agent',
         processingTime: 0
       };
     }
   }
 
-  getWorkflowStatus(workflowId: string): WorkflowStep[] | null {
+  getWorkflowStatus(workflowId)[] | null {
     return this.activeWorkflows.get(workflowId) || null;
   }
 }
+
+

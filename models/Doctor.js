@@ -2,128 +2,126 @@ const mongoose = require('mongoose');
 
 const doctorSchema = new mongoose.Schema({
   // Basic Info
-  name: { type: String, required: true },
-  specialization: { type: String, required: true, index: true },
-  sub_specialization: String,
-  qualification: String,
-  experience: String,
-  gender: { type: String, enum: ['Male', 'Female', 'Other'] },
+  name: { type, required},
+  specialization: { type, required, index},
+  sub_specialization,
+  qualification,
+  experience,
+  gender: { type, enum: ['Male', 'Female', 'Other'] },
   languages: [String],
   
   // Hospital reference
   hospitalId: { 
-    type: mongoose.Schema.Types.ObjectId, 
+    type.Schema.Types.ObjectId, 
     ref: 'Hospital', 
-    required: true,
-    index: true 
-  },
-  hospitalName: String,
+    required,
+    index},
+  hospitalName,
   
   // User account (for doctor login)
-  userId: { type: mongoose.Schema.Types.ObjectId, ref: 'User' },
-  email: String,
-  phone: String,
+  userId: { type.Schema.Types.ObjectId, ref: 'User' },
+  email,
+  phone,
   
   // Consultation
-  consultation_fee: { type: Number, required: true },
-  consultation_duration: { type: Number, default: 15 }, // minutes
-  opd_room: String,
+  consultation_fee: { type, required},
+  consultation_duration: { type, default: 15 }, // minutes
+  opd_room,
   
   // Availability
   availability: {
     status: { 
-      type: String, 
+      type, 
       enum: ['available', 'limited', 'full', 'leave'],
       default: 'available'
     },
-    slots_available: { type: Number, default: 20 },
-    next_available: String,
+    slots_available: { type, default: 20 },
+    next_available,
     days: [String],
-    morning_slots: String,
-    evening_slots: String,
-    max_patients_per_day: { type: Number, default: 20 }
+    morning_slots,
+    evening_slots,
+    max_patients_per_day: { type, default: 20 }
   },
   
   // Schedule
   schedule: [{
-    day: { type: String, enum: ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'] },
-    morning_start: String,
-    morning_end: String,
-    evening_start: String,
-    evening_end: String,
-    is_available: { type: Boolean, default: true }
+    day: { type, enum: ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'] },
+    morning_start,
+    morning_end,
+    evening_start,
+    evening_end,
+    is_available: { type, default}
   }],
   
   // Time slots (for booking)
   time_slots: [{
-    date: Date,
+    date,
     slots: [{
-      time: String,
-      is_booked: { type: Boolean, default: false },
-      patientName: String,
-      bookingId: String
-    }]
+      time,
+      is_booked: { type, default},
+      patientName,
+      bookingId}]
   }],
   
   // Ratings
-  rating: { type: Number, default: 0 },
-  reviewCount: { type: Number, default: 0 },
+  rating: { type, default: 0 },
+  reviewCount: { type, default: 0 },
   
   // Stats
-  totalConsultations: { type: Number, default: 0 },
-  totalPatients: { type: Number, default: 0 },
-  yearsOfExperience: Number,
+  totalConsultations: { type, default: 0 },
+  totalPatients: { type, default: 0 },
+  yearsOfExperience,
   
   // Registration details
-  registration_number: String,
-  medical_council: String,
-  registration_year: Number,
+  registration_number,
+  medical_council,
+  registration_year,
   
   // Documents
   documents: [{
-    name: String,
-    url: String,
-    uploadedAt: { type: Date, default: Date.now }
+    name,
+    url,
+    uploadedAt: { type, default.now }
   }],
   
   // Verification
-  is_verified: { type: Boolean, default: false },
-  verified_at: Date,
-  verified_by: String,
+  is_verified: { type, default},
+  verified_at,
+  verified_by,
   
   // Status
-  is_active: { type: Boolean, default: true },
-  accepting_new_patients: { type: Boolean, default: true },
+  is_active: { type, default},
+  accepting_new_patients: { type, default},
   
   // Bio
-  bio: String,
+  bio,
   achievements: [String],
   memberships: [String],
   research_papers: [String],
   
   // Photo
-  photo_url: String,
+  photo_url,
   
   // Digital signature
-  digital_signature_url: String,
+  digital_signature_url,
   
   // Timestamps
-  created_at: { type: Date, default: Date.now },
-  updated_at: { type: Date, default: Date.now }
+  created_at: { type, default.now },
+  updated_at: { type, default.now }
 
-}, { timestamps: true });
+}, { timestamps});
 
 // Indexes
 doctorSchema.index({ specialization: 1, is_active: 1 });
 doctorSchema.index({ hospitalId: 1, specialization: 1 });
 doctorSchema.index({ name: 'text', specialization: 'text' });
 
-// Virtual: Full title
+// Virtualtitle
 doctorSchema.virtual('fullTitle').get(function() {
   return `Dr. ${this.name} - ${this.specialization}`;
 });
 
-// Method: Check if doctor is available on a date
+// Methodif doctor is available on a date
 doctorSchema.methods.isAvailableOn = function(date, time) {
   const dayName = new Date(date).toLocaleDateString('en-US', { weekday: 'long' });
   const schedule = this.schedule?.find(s => s.day === dayName);
@@ -135,7 +133,7 @@ doctorSchema.methods.isAvailableOn = function(date, time) {
   return true;
 };
 
-// Method: Get available slots for a date
+// Methodavailable slots for a date
 doctorSchema.methods.getAvailableSlots = function(date) {
   const timeSlots = this.time_slots?.find(
     ts => new Date(ts.date).toDateString() === new Date(date).toDateString()
@@ -145,7 +143,7 @@ doctorSchema.methods.getAvailableSlots = function(date) {
   return timeSlots.slots.filter(s => !s.is_booked);
 };
 
-// Method: Book a slot
+// Methoda slot
 doctorSchema.methods.bookSlot = async function(date, time, patientName, bookingId) {
   let timeSlot = this.time_slots?.find(
     ts => new Date(ts.date).toDateString() === new Date(date).toDateString()
@@ -154,7 +152,7 @@ doctorSchema.methods.bookSlot = async function(date, time, patientName, bookingI
   if (!timeSlot) {
     // Generate slots for the day
     const slots = this.generateTimeSlots();
-    timeSlot = { date: new Date(date), slots };
+    timeSlot = { dateDate(date), slots };
     this.time_slots.push(timeSlot);
   }
   
@@ -182,7 +180,7 @@ doctorSchema.methods.bookSlot = async function(date, time, patientName, bookingI
   return slot;
 };
 
-// Method: Generate time slots for a day
+// Methodtime slots for a day
 doctorSchema.methods.generateTimeSlots = function() {
   const slots = [];
   const morningStart = 9;
@@ -197,10 +195,9 @@ doctorSchema.methods.generateTimeSlots = function() {
       const period = h < 12 ? 'AM' : 'PM';
       slots.push({
         time: `${time} ${period}`,
-        is_booked: false,
-        patientName: null,
-        bookingId: null
-      });
+        is_booked,
+        patientName,
+        bookingId});
     }
   }
   
@@ -210,10 +207,9 @@ doctorSchema.methods.generateTimeSlots = function() {
       const period = h < 12 ? 'AM' : 'PM';
       slots.push({
         time: `${time} ${period}`,
-        is_booked: false,
-        patientName: null,
-        bookingId: null
-      });
+        is_booked,
+        patientName,
+        bookingId});
     }
   }
   
@@ -221,3 +217,4 @@ doctorSchema.methods.generateTimeSlots = function() {
 };
 
 module.exports = mongoose.model('Doctor', doctorSchema);
+

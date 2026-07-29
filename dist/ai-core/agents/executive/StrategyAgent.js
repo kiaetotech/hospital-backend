@@ -1,6 +1,6 @@
 "use strict";
 // D:\hospital backend\ai-core\agents\executive\StrategyAgent.ts
-Object.defineProperty(exports, "__esModule", { value: true });
+Object.defineProperty(exports, "__esModule", { value});
 exports.StrategyAgent = void 0;
 const AgentTypes_1 = require("../../../shared/types/AgentTypes");
 const BaseAgent_1 = require("../base/BaseAgent");
@@ -8,36 +8,32 @@ class StrategyAgent extends BaseAgent_1.BaseAgent {
     constructor(providerManager) {
         super({
             name: 'Strategy Agent',
-            role: AgentTypes_1.AgentRole.STRATEGY,
+            role_1.AgentRole.STRATEGY,
             capabilities: [
                 {
                     name: 'analyze_market',
                     description: 'Analyze market trends and opportunities',
                     priority: 1,
                     estimatedLatency: 500,
-                    requiresAuth: true
-                },
+                    requiresAuth},
                 {
                     name: 'competitive_analysis',
                     description: 'Perform competitive analysis',
                     priority: 1,
                     estimatedLatency: 400,
-                    requiresAuth: true
-                },
+                    requiresAuth},
                 {
                     name: 'generate_insights',
                     description: 'Generate strategic insights and recommendations',
                     priority: 1,
                     estimatedLatency: 300,
-                    requiresAuth: true
-                },
+                    requiresAuth},
                 {
                     name: 'strategic_forecast',
                     description: 'Forecast business trends and opportunities',
                     priority: 2,
                     estimatedLatency: 600,
-                    requiresAuth: true
-                }
+                    requiresAuth}
             ]
         }, providerManager);
         this.insights = [];
@@ -61,7 +57,7 @@ class StrategyAgent extends BaseAgent_1.BaseAgent {
                 category: 'Growth',
                 suggestedAction: 'Launch targeted hospital onboarding campaign in 5 tier-2 cities',
                 metrics: { potentialRevenue: 5000000, estimatedCost: 1000000 },
-                generatedAt: new Date(),
+                generatedAtDate(),
                 status: 'Pending'
             },
             {
@@ -75,7 +71,7 @@ class StrategyAgent extends BaseAgent_1.BaseAgent {
                 category: 'Competition',
                 suggestedAction: 'Accelerate feature development and user acquisition',
                 metrics: { competitorName: 'HealthPlus', estimatedLaunch: 'Q4 2026' },
-                generatedAt: new Date(),
+                generatedAtDate(),
                 status: 'InReview'
             }
         ];
@@ -115,7 +111,7 @@ class StrategyAgent extends BaseAgent_1.BaseAgent {
                 weaknesses: ['Limited Wellness Offerings', 'Higher Pricing'],
                 opportunities: ['Wellness Integration', 'Insurance Partnerships'],
                 threats: ['New Entrants', 'Regulatory Changes'],
-                analyzedAt: new Date()
+                analyzedAtDate()
             }
         ];
     }
@@ -150,7 +146,7 @@ class StrategyAgent extends BaseAgent_1.BaseAgent {
         this.setCurrentTask(request.task);
         try {
             if (!this.validateRequest(request)) {
-                throw new Error('Invalid request: Missing required fields or capabilities');
+                throw new Error('Invalid requestrequired fields or capabilities');
             }
             const { task, payload } = request;
             this.log(`Executing strategy task: ${task}`, 'info');
@@ -173,10 +169,10 @@ class StrategyAgent extends BaseAgent_1.BaseAgent {
             this.setStatus(AgentTypes_1.AgentStatus.IDLE);
             this.setCurrentTask(undefined);
             return {
-                success: true,
-                data: result,
-                sourceAgent: this.id,
-                processingTime: Date.now() - new Date().getTime()
+                success,
+                data,
+                sourceAgent.id,
+                processingTime.now() - new Date().getTime()
             };
         }
         catch (error) {
@@ -208,12 +204,12 @@ class StrategyAgent extends BaseAgent_1.BaseAgent {
     `;
         const response = await this.providerManager.generate(prompt);
         return {
-            trends: results.slice(0, limit),
-            total: results.length,
-            aiAnalysis: response.content,
-            provider: response.provider,
-            tokensUsed: response.tokensUsed,
-            timestamp: new Date().toISOString()
+            trends.slice(0, limit),
+            total.length,
+            aiAnalysis.content,
+            provider.provider,
+            tokensUsed.tokensUsed,
+            timestampDate().toISOString()
         };
     }
     async competitiveAnalysis(payload) {
@@ -235,12 +231,12 @@ class StrategyAgent extends BaseAgent_1.BaseAgent {
     `;
         const response = await this.providerManager.generate(prompt);
         return {
-            competitors: results,
-            total: results.length,
-            aiAnalysis: response.content,
-            provider: response.provider,
-            tokensUsed: response.tokensUsed,
-            timestamp: new Date().toISOString()
+            competitors,
+            total.length,
+            aiAnalysis.content,
+            provider.provider,
+            tokensUsed.tokensUsed,
+            timestampDate().toISOString()
         };
     }
     async generateInsights(payload) {
@@ -259,8 +255,7 @@ class StrategyAgent extends BaseAgent_1.BaseAgent {
         // Use AI to generate new insights
         if (payload.generateNew) {
             const prompt = `
-        Generate strategic insights for a healthcare platform:
-        Current Insights: ${JSON.stringify(results.slice(0, 3))}
+        Generate strategic insights for a healthcare platformInsights: ${JSON.stringify(results.slice(0, 3))}
         Market Trends: ${JSON.stringify(this.marketTrends.slice(0, 3))}
         Competitors: ${JSON.stringify(this.competitiveAnalysis.slice(0, 3))}
         
@@ -274,31 +269,30 @@ class StrategyAgent extends BaseAgent_1.BaseAgent {
       `;
             const response = await this.providerManager.generate(prompt);
             return {
-                insights: results.slice(0, limit),
-                total: results.length,
-                newInsights: response.content,
-                provider: response.provider,
-                tokensUsed: response.tokensUsed,
-                timestamp: new Date().toISOString()
+                insights.slice(0, limit),
+                total.length,
+                newInsights.content,
+                provider.provider,
+                tokensUsed.tokensUsed,
+                timestampDate().toISOString()
             };
         }
         return {
-            insights: results.slice(0, limit),
-            total: results.length,
+            insights.slice(0, limit),
+            total.length,
             summary: {
-                opportunities: results.filter(i => i.type === 'Opportunity').length,
-                threats: results.filter(i => i.type === 'Threat').length,
-                highPriority: results.filter(i => i.priority === 'High' || i.priority === 'Critical').length
+                opportunities.filter(i => i.type === 'Opportunity').length,
+                threats.filter(i => i.type === 'Threat').length,
+                highPriority.filter(i => i.priority === 'High' || i.priority === 'Critical').length
             },
-            timestamp: new Date().toISOString()
+            timestampDate().toISOString()
         };
     }
     async strategicForecast(payload) {
         const { horizon, metrics } = payload;
         // Use AI for forecasting
         const prompt = `
-      Generate a strategic forecast for the healthcare platform:
-      Horizon: ${horizon || '12 months'}
+      Generate a strategic forecast for the healthcare platform: ${horizon || '12 months'}
       
       Current Insights: ${JSON.stringify(this.insights.slice(0, 5))}
       Market Trends: ${JSON.stringify(this.marketTrends.slice(0, 5))}
@@ -314,11 +308,11 @@ class StrategyAgent extends BaseAgent_1.BaseAgent {
     `;
         const response = await this.providerManager.generate(prompt);
         return {
-            forecast: response.content,
-            horizon: horizon || '12 months',
-            provider: response.provider,
-            tokensUsed: response.tokensUsed,
-            generatedAt: new Date().toISOString()
+            forecast.content,
+            horizon|| '12 months',
+            provider.provider,
+            tokensUsed.tokensUsed,
+            generatedAtDate().toISOString()
         };
     }
     async handleComplexQuery(task, payload) {
@@ -334,9 +328,9 @@ class StrategyAgent extends BaseAgent_1.BaseAgent {
     `;
         const response = await this.providerManager.generate(prompt);
         return {
-            aiResponse: response.content,
-            provider: response.provider,
-            tokensUsed: response.tokensUsed
+            aiResponse.content,
+            provider.provider,
+            tokensUsed.tokensUsed
         };
     }
     getRequiredCapability(task) {
@@ -367,3 +361,5 @@ class StrategyAgent extends BaseAgent_1.BaseAgent {
     }
 }
 exports.StrategyAgent = StrategyAgent;
+
+

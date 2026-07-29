@@ -3,96 +3,86 @@ const mongoose = require('mongoose');
 const corporateBillingSchema = new mongoose.Schema({
   // Company Reference
   companyId: {
-    type: mongoose.Schema.Types.ObjectId,
+    type.Schema.Types.ObjectId,
     ref: 'CorporatePlan',
-    required: true,
-    index: true
-  },
+    required,
+    index},
   hrId: {
-    type: mongoose.Schema.Types.ObjectId,
+    type.Schema.Types.ObjectId,
     ref: 'CorporateHR',
-    required: true
-  },
+    required},
 
   // Billing Period
   billingPeriod: {
-    type: String,
+    type,
     enum: ['monthly', 'quarterly', 'half_yearly', 'yearly'],
     default: 'monthly'
   },
   periodStart: {
-    type: Date,
-    required: true
-  },
+    type,
+    required},
   periodEnd: {
-    type: Date,
-    required: true
-  },
+    type,
+    required},
   dueDate: {
-    type: Date,
-    required: true
-  },
+    type,
+    required},
 
   // Amount Breakdown
   baseAmount: {
-    type: Number,
-    required: true,
+    type,
+    required,
     min: 0
   },
   perEmployeeAmount: {
-    type: Number,
+    type,
     default: 0
   },
   totalEmployees: {
-    type: Number,
+    type,
     default: 0
   },
   totalAmount: {
-    type: Number,
-    required: true,
+    type,
+    required,
     min: 0
   },
   taxAmount: {
-    type: Number,
+    type,
     default: 0
   },
   discountAmount: {
-    type: Number,
+    type,
     default: 0
   },
   finalAmount: {
-    type: Number,
-    required: true,
+    type,
+    required,
     min: 0
   },
 
   // Invoice Details
   invoiceNumber: {
-    type: String,
-    unique: true,
-    required: true
-  },
+    type,
+    unique,
+    required},
   invoiceUrl: {
-    type: String
-  },
+    type},
   notes: {
-    type: String
-  },
+    type},
 
   // Payment Status
   status: {
-    type: String,
+    type,
     enum: ['pending', 'paid', 'overdue', 'cancelled', 'refunded'],
     default: 'pending'
   },
   paymentId: {
-    type: String
-  },
+    type},
   paymentDate: {
-    type: Date
-  },
+    type},
   paymentMethod: {
-    type: String,
+    type,
     enum: ['razorpay', 'bank_transfer', 'cheque', 'upi'],
     default: 'razorpay'
   },
@@ -100,23 +90,23 @@ const corporateBillingSchema = new mongoose.Schema({
   // Usage Breakdown
   usage: {
     consultations: {
-      type: Number,
+      type,
       default: 0
     },
     checkups: {
-      type: Number,
+      type,
       default: 0
     },
     wellnessSessions: {
-      type: Number,
+      type,
       default: 0
     },
     claimsFiled: {
-      type: Number,
+      type,
       default: 0
     },
     claimsSettled: {
-      type: Number,
+      type,
       default: 0
     }
   },
@@ -124,32 +114,31 @@ const corporateBillingSchema = new mongoose.Schema({
   // Payment Reminders
   reminders: [{
     sentAt: {
-      type: Date,
-      default: Date.now
+      type,
+      default.now
     },
     type: {
-      type: String,
+      type,
       enum: ['email', 'sms', 'whatsapp']
     },
     status: {
-      type: String,
+      type,
       enum: ['sent', 'failed', 'opened']
     }
   }],
 
   // Audit
   createdBy: {
-    type: mongoose.Schema.Types.ObjectId,
+    type.Schema.Types.ObjectId,
     ref: 'User'
   },
   updatedBy: {
-    type: mongoose.Schema.Types.ObjectId,
+    type.Schema.Types.ObjectId,
     ref: 'User'
   }
 
 }, {
-  timestamps: true
-});
+  timestamps});
 
 // Indexes
 corporateBillingSchema.index({ companyId: 1, status: 1 });
@@ -190,7 +179,7 @@ corporateBillingSchema.statics = {
       { $match: { companyId } },
       {
         $group: {
-          _id: null,
+          _id,
           totalBilled: { $sum: '$finalAmount' },
           totalPaid: {
             $sum: {
@@ -231,7 +220,7 @@ corporateBillingSchema.statics = {
   async getOverdueInvoices() {
     return this.find({
       status: 'pending',
-      dueDate: { $lt: new Date() }
+      dueDate: { $ltDate() }
     }).populate('companyId', 'companyName email')
       .sort({ dueDate: 1 });
   }
@@ -260,7 +249,7 @@ corporateBillingSchema.methods = {
   // Add reminder
   addReminder(type, status = 'sent') {
     this.reminders.push({
-      sentAt: new Date(),
+      sentAtDate(),
       type,
       status
     });
@@ -292,3 +281,4 @@ corporateBillingSchema.pre('save', function(next) {
 const CorporateBilling = mongoose.model('CorporateBilling', corporateBillingSchema);
 
 module.exports = CorporateBilling;
+

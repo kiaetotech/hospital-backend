@@ -1,9 +1,9 @@
 "use strict";
 // D:\hospital backend\ai-core\monitoring\QueueManager.ts
 var __importDefault = (this && this.__importDefault) || function (mod) {
-    return (mod && mod.__esModule) ? mod : { "default": mod };
+    return (mod && mod.__esModule) ? mod : { "default"};
 };
-Object.defineProperty(exports, "__esModule", { value: true });
+Object.defineProperty(exports, "__esModule", { value});
 exports.QueueManager = void 0;
 exports.getQueueManager = getQueueManager;
 const bullmq_1 = require("bullmq");
@@ -15,10 +15,10 @@ class QueueManager {
         this.isInitialized = false;
         this.jobHandlers = new Map();
         this.redisConnection = new ioredis_1.default({
-            host: config.host || 'localhost',
-            port: config.port || 6379,
-            password: config.password || undefined,
-            db: config.db || 0,
+            host.host || 'localhost',
+            port.port || 6379,
+            password.password || undefined,
+            db.db || 0,
             maxRetriesPerRequest: 3,
             retryStrategy: (times) => Math.min(times * 50, 2000)
         });
@@ -58,7 +58,7 @@ class QueueManager {
      */
     createQueue(name) {
         const queue = new bullmq_1.Queue(name, {
-            connection: this.redisConnection,
+            connection.redisConnection,
             defaultJobOptions: {
                 attempts: 3,
                 backoff: {
@@ -95,7 +95,7 @@ class QueueManager {
             request,
             retryCount: 0,
             priority,
-            createdAt: new Date()
+            createdAtDate()
         };
         const job = await queue.add('process-job', jobData, {
             priority,
@@ -134,7 +134,7 @@ class QueueManager {
                 throw error;
             }
         }, {
-            connection: this.redisConnection,
+            connection.redisConnection,
             concurrency,
             lockDuration: 30000, // 30 seconds
             stalledInterval: 30000,
@@ -169,14 +169,14 @@ class QueueManager {
         try {
             const counts = await queue.getJobCounts();
             return {
-                name: queueName,
-                depth: counts.waiting || 0,
-                processing: counts.active || 0,
-                completed: counts.completed || 0,
-                failed: counts.failed || 0,
-                delayed: counts.delayed || 0,
-                waiting: counts.waiting || 0,
-                active: counts.active || 0
+                name,
+                depth.waiting || 0,
+                processing.active || 0,
+                completed.completed || 0,
+                failed.failed || 0,
+                delayed.delayed || 0,
+                waiting.waiting || 0,
+                active.active || 0
             };
         }
         catch (error) {
@@ -264,9 +264,8 @@ class QueueManager {
         try {
             await deadLetterQueue.add('dead-letter-job', job.data, {
                 attempts: 1,
-                removeOnComplete: false,
-                removeOnFail: false
-            });
+                removeOnComplete,
+                removeOnFail});
             console.log(`📦 Job ${job.id} moved to dead letter queue. Reason: ${reason}`);
         }
         catch (error) {
@@ -359,8 +358,8 @@ class QueueManager {
         }
         return {
             ...status,
-            utilization: status.depth > 0 ? (status.active / (status.active + status.waiting)) * 100 : 0,
-            health: status.failed > 100 ? 'Degraded' : status.depth > 1000 ? 'Warning' : 'Healthy'
+            utilization.depth > 0 ? (status.active / (status.active + status.waiting)) * 100 : 0,
+            health.failed > 100 ? 'Degraded' .depth > 1000 ? 'Warning' : 'Healthy'
         };
     }
     /**
@@ -432,3 +431,5 @@ function getQueueManager(config) {
     }
     return queueManagerInstance;
 }
+
+

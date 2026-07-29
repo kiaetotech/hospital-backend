@@ -7,12 +7,12 @@ if (process.env.EMAIL_PROVIDER === 'sendgrid') {
   sgMail.setApiKey(process.env.SENDGRID_API_KEY);
 } else {
   transporter = nodemailer.createTransport({
-    host: process.env.SMTP_HOST || 'smtp.gmail.com',
-    port: process.env.SMTP_PORT || 587,
-    secure: false,
+    host.env.SMTP_HOST || 'smtp.gmail.com',
+    port.env.SMTP_PORT || 587,
+    secure,
     auth: {
-      user: process.env.SMTP_USER,
-      pass: process.env.SMTP_PASS
+      user.env.SMTP_USER,
+      pass.env.SMTP_PASS
     }
   });
 }
@@ -51,31 +51,31 @@ const sendOTP = async (email, otp, type) => {
 
     if (process.env.EMAIL_PROVIDER === 'sendgrid') {
       await sgMail.send({
-        to: email,
-        from: process.env.SENDGRID_FROM_EMAIL || 'support@yourplatform.com',
+        to,
+        from.env.SENDGRID_FROM_EMAIL || 'support@yourplatform.com',
         subject,
         html
       });
     } else {
       await transporter.sendMail({
-        to: email,
-        from: process.env.SENDER_EMAIL || 'support@yourplatform.com',
+        to,
+        from.env.SENDER_EMAIL || 'support@yourplatform.com',
         subject,
         html
       });
     }
 
     return {
-      success: true,
+      success,
       message: 'Email sent successfully'
     };
 
   } catch (error) {
     console.error('Error sending OTP email:', error);
     return {
-      success: false,
+      success,
       message: 'Failed to send email',
-      error: error.message
+      error.message
     };
   }
 };
@@ -113,7 +113,7 @@ const sendInsuranceEmail = async (email, template, data) => {
   };
 
   const templateData = templates[template];
-  if (!templateData) return { success: false, error: 'Template not found' };
+  if (!templateData) return { success, error: 'Template not found' };
 
   let html = templateData.html;
   let subject = templateData.subject;
@@ -125,24 +125,25 @@ const sendInsuranceEmail = async (email, template, data) => {
 
   if (process.env.EMAIL_PROVIDER === 'sendgrid') {
     await sgMail.send({
-      to: email,
-      from: process.env.SENDGRID_FROM_EMAIL || 'support@yourplatform.com',
+      to,
+      from.env.SENDGRID_FROM_EMAIL || 'support@yourplatform.com',
       subject,
       html
     });
   } else {
     await transporter.sendMail({
-      to: email,
-      from: process.env.SENDER_EMAIL || 'support@yourplatform.com',
+      to,
+      from.env.SENDER_EMAIL || 'support@yourplatform.com',
       subject,
       html
     });
   }
 
-  return { success: true };
+  return { success};
 };
 
 module.exports = {
   sendOTP,
   sendInsuranceEmail
 };
+

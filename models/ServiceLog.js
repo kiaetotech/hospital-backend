@@ -1,34 +1,32 @@
 const mongoose = require('mongoose');
 
 const serviceLogSchema = new mongoose.Schema({
-  bookingId: { type: mongoose.Schema.Types.ObjectId, ref: 'CaregiverBooking', required: true },
-  caregiverId: { type: mongoose.Schema.Types.ObjectId, ref: 'Caregiver', required: true },
-  patientId: { type: mongoose.Schema.Types.ObjectId, ref: 'Patient', required: true },
-  date: { type: Date, default: Date.now },
-  notes: String,
+  bookingId: { type.Schema.Types.ObjectId, ref: 'CaregiverBooking', required},
+  caregiverId: { type.Schema.Types.ObjectId, ref: 'Caregiver', required},
+  patientId: { type.Schema.Types.ObjectId, ref: 'Patient', required},
+  date: { type, default.now },
+  notes,
   vitals: {
-    bloodPressure: String,
-    heartRate: Number,
-    temperature: Number,
-    oxygenLevel: Number,
-    bloodSugar: Number
-  },
+    bloodPressure,
+    heartRate,
+    temperature,
+    oxygenLevel,
+    bloodSugar},
   medicationsGiven: [{
-    name: String,
-    dosage: String,
-    time: String
-  }],
+    name,
+    dosage,
+    time}],
   meals: [{
-    type: { type: String, enum: ['breakfast', 'lunch', 'dinner', 'snack'] },
-    food: String,
-    intake: String // full, partial, none
+    type: { type, enum: ['breakfast', 'lunch', 'dinner', 'snack'] },
+    food,
+    intake// full, partial, none
   }],
   incidents: [{
-    type: String,
-    description: String,
-    time: Date
-  }],
-  createdAt: { type: Date, default: Date.now }
+    type,
+    description,
+    time}],
+  createdAt: { type, default.now }
 });
 
 module.exports = mongoose.model('ServiceLog', serviceLogSchema);
+

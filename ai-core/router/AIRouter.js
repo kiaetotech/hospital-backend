@@ -11,31 +11,30 @@ import { Orchestrator } from './Orchestrator';
 import { ProviderManager } from '../providers/ProviderManager';
 import { HealthManager } from '../monitoring/HealthManager';
 
-  useAI: boolean;
-  directAgentId?: string;
-  requiresOrchestration?: boolean;
-  tasks?: string[];
+  useAI;
+  directAgentId?;
+  requiresOrchestration?;
+  tasks?[];
 }
 
 export class AIRouter {
-  private registry: CapabilityRegistry;
-  private orchestrator: Orchestrator;
-  private providerManager: ProviderManager;
-  private healthManager: HealthManager;
+  private registry;
+  private orchestrator;
+  private providerManager;
+  private healthManager;
 
   constructor(
-    registry: CapabilityRegistry,
-    orchestrator: Orchestrator,
-    providerManager: ProviderManager,
-    healthManager: HealthManager
-  ) {
+    registry,
+    orchestrator,
+    providerManager,
+    healthManager) {
     this.registry = registry;
     this.orchestrator = orchestrator;
     this.providerManager = providerManager;
     this.healthManager = healthManager;
   }
 
-  async route(request: AgentRequest): Promise<AgentResponse> {
+  async route(request)<AgentResponse> {
     // 1. Check if AI is healthy
     const health = this.healthManager.getOverallHealth();
     if (health === 'unhealthy') {
@@ -65,12 +64,12 @@ export class AIRouter {
     return this.gracefulDegradation(request);
   }
 
-  private decideRoute(request: AgentRequest): RouteDecision {
+  private decideRoute(request){
   const task = request.task.toLowerCase();
   
   // Check if it's a simple query first
   if (this.isSimpleQuery(request.task)) {
-    return { useAI: false };
+    return { useAI};
   }
 
   // ============================================
@@ -83,7 +82,7 @@ export class AIRouter {
   if (doctorKeywords.some(keyword => task.includes(keyword))) {
     const agent = this.registry.findAgentForTask('find_doctor');
     if (agent && (agent.status === AgentStatus.ONLINE || agent.status === AgentStatus.IDLE)) {
-      return { useAI: true, directAgentId: agent.id };
+      return { useAI, directAgentId.id };
     }
   }
 
@@ -92,7 +91,7 @@ export class AIRouter {
   if (hospitalKeywords.some(keyword => task.includes(keyword))) {
     const agent = this.registry.findAgentForTask('search_hospitals');
     if (agent && (agent.status === AgentStatus.ONLINE || agent.status === AgentStatus.IDLE)) {
-      return { useAI: true, directAgentId: agent.id };
+      return { useAI, directAgentId.id };
     }
   }
 
@@ -101,7 +100,7 @@ export class AIRouter {
   if (ambulanceKeywords.some(keyword => task.includes(keyword))) {
     const agent = this.registry.findAgentForTask('dispatch_ambulance');
     if (agent && (agent.status === AgentStatus.ONLINE || agent.status === AgentStatus.IDLE)) {
-      return { useAI: true, directAgentId: agent.id };
+      return { useAI, directAgentId.id };
     }
   }
 
@@ -110,7 +109,7 @@ export class AIRouter {
   if (insuranceKeywords.some(keyword => task.includes(keyword))) {
     const agent = this.registry.findAgentForTask('compare_policies');
     if (agent && (agent.status === AgentStatus.ONLINE || agent.status === AgentStatus.IDLE)) {
-      return { useAI: true, directAgentId: agent.id };
+      return { useAI, directAgentId.id };
     }
   }
 
@@ -119,7 +118,7 @@ export class AIRouter {
   if (wellnessKeywords.some(keyword => task.includes(keyword))) {
     const agent = this.registry.findAgentForTask('find_practitioner');
     if (agent && (agent.status === AgentStatus.ONLINE || agent.status === AgentStatus.IDLE)) {
-      return { useAI: true, directAgentId: agent.id };
+      return { useAI, directAgentId.id };
     }
   }
 
@@ -128,7 +127,7 @@ export class AIRouter {
   if (caregiverKeywords.some(keyword => task.includes(keyword))) {
     const agent = this.registry.findAgentForTask('find_caregiver');
     if (agent && (agent.status === AgentStatus.ONLINE || agent.status === AgentStatus.IDLE)) {
-      return { useAI: true, directAgentId: agent.id };
+      return { useAI, directAgentId.id };
     }
   }
 
@@ -137,7 +136,7 @@ export class AIRouter {
   if (diagnosticsKeywords.some(keyword => task.includes(keyword))) {
     const agent = this.registry.findAgentForTask('find_lab');
     if (agent && (agent.status === AgentStatus.ONLINE || agent.status === AgentStatus.IDLE)) {
-      return { useAI: true, directAgentId: agent.id };
+      return { useAI, directAgentId.id };
     }
   }
 
@@ -146,7 +145,7 @@ export class AIRouter {
   if (financeKeywords.some(keyword => task.includes(keyword))) {
     const agent = this.registry.findAgentForTask('calculate_emi');
     if (agent && (agent.status === AgentStatus.ONLINE || agent.status === AgentStatus.IDLE)) {
-      return { useAI: true, directAgentId: agent.id };
+      return { useAI, directAgentId.id };
     }
   }
 
@@ -155,7 +154,7 @@ export class AIRouter {
   if (corporateKeywords.some(keyword => task.includes(keyword))) {
     const agent = this.registry.findAgentForTask('get_corporate_plans');
     if (agent && (agent.status === AgentStatus.ONLINE || agent.status === AgentStatus.IDLE)) {
-      return { useAI: true, directAgentId: agent.id };
+      return { useAI, directAgentId.id };
     }
   }
 
@@ -164,7 +163,7 @@ export class AIRouter {
   if (supportKeywords.some(keyword => task.includes(keyword))) {
     const agent = this.registry.findAgentForTask('answer_faq');
     if (agent && (agent.status === AgentStatus.ONLINE || agent.status === AgentStatus.IDLE)) {
-      return { useAI: true, directAgentId: agent.id };
+      return { useAI, directAgentId.id };
     }
   }
 
@@ -177,7 +176,7 @@ export class AIRouter {
   if (crmKeywords.some(keyword => task.includes(keyword))) {
     const agent = this.registry.findAgentForTask('track_customer');
     if (agent && (agent.status === AgentStatus.ONLINE || agent.status === AgentStatus.IDLE)) {
-      return { useAI: true, directAgentId: agent.id };
+      return { useAI, directAgentId.id };
     }
   }
 
@@ -186,7 +185,7 @@ export class AIRouter {
   if (marketingKeywords.some(keyword => task.includes(keyword))) {
     const agent = this.registry.findAgentForTask('generate_content');
     if (agent && (agent.status === AgentStatus.ONLINE || agent.status === AgentStatus.IDLE)) {
-      return { useAI: true, directAgentId: agent.id };
+      return { useAI, directAgentId.id };
     }
   }
 
@@ -195,7 +194,7 @@ export class AIRouter {
   if (analyticsKeywords.some(keyword => task.includes(keyword))) {
     const agent = this.registry.findAgentForTask('generate_kpi');
     if (agent && (agent.status === AgentStatus.ONLINE || agent.status === AgentStatus.IDLE)) {
-      return { useAI: true, directAgentId: agent.id };
+      return { useAI, directAgentId.id };
     }
   }
 
@@ -204,15 +203,15 @@ export class AIRouter {
   // ============================================
   
   if (task.includes('book hospital') && task.includes('doctor')) {
-    return { useAI: true, requiresOrchestration: true, tasks: ['search_hospitals', 'find_doctor'] };
+    return { useAI, requiresOrchestration, tasks: ['search_hospitals', 'find_doctor'] };
   }
   
   if (task.includes('ambulance') && task.includes('hospital')) {
-    return { useAI: true, requiresOrchestration: true, tasks: ['dispatch_ambulance', 'search_hospitals'] };
+    return { useAI, requiresOrchestration, tasks: ['dispatch_ambulance', 'search_hospitals'] };
   }
   
   if (task.includes('insurance') && task.includes('hospital')) {
-    return { useAI: true, requiresOrchestration: true, tasks: ['search_hospitals', 'compare_policies'] };
+    return { useAI, requiresOrchestration, tasks: ['search_hospitals', 'compare_policies'] };
   }
 
   // ============================================
@@ -220,17 +219,16 @@ export class AIRouter {
   // ============================================
   const capabilities = this.identifyRequiredCapabilities(request.task);
   if (capabilities.length === 0) {
-    return { useAI: false };
+    return { useAI};
   }
   
   return { 
-    useAI: true, 
-    requiresOrchestration: true,
-    tasks: capabilities 
-  };
+    useAI, 
+    requiresOrchestration,
+    tasks};
 }
 
-  private isSimpleQuery(task: string): boolean {
+  private isSimpleQuery(task){
     const simplePatterns = [
       'list hospitals',
       'show booking',
@@ -257,8 +255,8 @@ export class AIRouter {
     );
   }
 
-  private identifyRequiredCapabilities(task: string): string[] {
-    const capabilityMap: Record<string, string[]> = {
+  private identifyRequiredCapabilities(task)[] {
+    const capabilityMap= {
       'hospital': ['search_hospitals', 'compare_hospitals', 'check_beds'],
       'doctor': ['find_doctor', 'book_consultation', 'check_availability'],
       'ambulance': ['dispatch_ambulance', 'track_ambulance'],
@@ -268,7 +266,7 @@ export class AIRouter {
       'wellness': ['find_practitioner', 'book_consultation']
     };
 
-    const matchedCapabilities: string[] = [];
+    const matchedCapabilities[] = [];
     const lowerTask = task.toLowerCase();
 
     for (const [keyword, caps] of Object.entries(capabilityMap)) {
@@ -280,7 +278,7 @@ export class AIRouter {
     return [...new Set(matchedCapabilities)];
   }
 
-  private async routeToAgent(agentId: string, request: AgentRequest): Promise<AgentResponse> {
+  private async routeToAgent(agentId, request)<AgentResponse> {
     try {
       // Find the agent and execute it directly
       const agent = this.registry.getAgent(agentId);
@@ -288,45 +286,45 @@ export class AIRouter {
         return await agent.execute(request);
       }
       
-      // Fallback: Use ProviderManager
+      // FallbackProviderManager
       const response = await this.providerManager.generate(
         `Task: ${request.task}\nPayload: ${JSON.stringify(request.payload)}`,
         request.critical
       );
       
       return {
-        success: true,
-        data: { response: response.content },
-        sourceAgent: agentId,
-        processingTime: response.latency || 0,
-        providerUsed: response.provider
+        success,
+        data: { response.content },
+        sourceAgent,
+        processingTime.latency || 0,
+        providerUsed.provider
       };
     } catch (error) {
       return {
-        success: false,
-        error: error.message,
-        sourceAgent: agentId,
+        success,
+        error.message,
+        sourceAgent,
         processingTime: 0
       };
     }
   }
 
-  private gracefulDegradation(request: AgentRequest): AgentResponse {
+  private gracefulDegradation(request){
     return {
-      success: false,
+      success,
       error: 'AI temporarily unavailable. Please try again later.',
       sourceAgent: 'AI_Router',
       processingTime: 0,
       data: {
-        fallback: true,
+        fallback,
         message: 'Core services (Booking, Payments, Hospital search) are still available.'
       }
     };
   }
 
-  private handleNoAI(request: AgentRequest): AgentResponse {
+  private handleNoAI(request){
     return {
-      success: true,
+      success,
       data: {
         message: 'This request does not require AI processing.',
         details: 'You can use the normal business services flow.'
@@ -336,3 +334,5 @@ export class AIRouter {
     };
   }
 }
+
+

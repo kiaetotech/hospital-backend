@@ -25,17 +25,17 @@ async function seed() {
 
   // Insert all
   const docs = rows.map((row, index) => ({
-    test_id: index + 1,
-    test_name: row['test_name'] || row['Test Name'] || '',
-    test_short_name: row['test_short_name'] || row['Short Name'] || '',
-    major_category: row['main_category'] || row['major_category'] || row['Category'] || '',
-    major_category_name: row['main_category'] || row['major_category'] || row['Category'] || '',
-    sub_category: row['sub_category'] || row['Sub Category'] || '',
-    common_or_unique: row['common_unique'] || 'Common',
-    search_keywords: row['search_keywords'] || row['Keywords'] || '',
-    sample_type: row['sample_type'] || 'Blood',
-    is_active: true,
-    home_collection_possible: true,
+    test_id+ 1,
+    test_name['test_name'] || row['Test Name'] || '',
+    test_short_name['test_short_name'] || row['Short Name'] || '',
+    major_category['main_category'] || row['major_category'] || row['Category'] || '',
+    major_category_name['main_category'] || row['major_category'] || row['Category'] || '',
+    sub_category['sub_category'] || row['Sub Category'] || '',
+    common_or_unique['common_unique'] || 'Common',
+    search_keywords['search_keywords'] || row['Keywords'] || '',
+    sample_type['sample_type'] || 'Blood',
+    is_active,
+    home_collection_possible,
     turnaround_time_default_hours: 24
   }));
 
@@ -46,3 +46,4 @@ async function seed() {
 }
 
 seed().catch(err => { console.error(err); process.exit(1); });
+

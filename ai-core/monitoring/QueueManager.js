@@ -4,39 +4,18 @@ import { Queue, Worker, Job } from 'bullmq';
 import Redis from 'ioredis';
 import { AgentRequest, AgentResponse } from '../../shared/types/AgentTypes';
 
-export interface QueueConfig {
-  host: string;
-  port: number;
-  password?: string;
-  db?: number;
-}
+export 
 
-export interface QueueStatus {
-  name: string;
-  depth: number;
-  processing: number;
-  completed: number;
-  failed: number;
-  delayed: number;
-  waiting: number;
-  active: number;
-}
+export 
 
-export interface JobData {
-  id: string;
-  agentId: string;
-  request: AgentRequest;
-  retryCount: number;
-  priority: number;
-  createdAt: Date;
-}
+export 
 
 export class QueueManager {
-  private queues: Map<string, Queue> = new Map();
-  private workers: Map<string, Worker> = new Map();
-  private redisConnection: Redis;
-  private isInitialized: boolean = false;
-  private jobHandlers: Map<string, (job: Job<JobData>) => Promise<AgentResponse>> = new Map();
+  private queues<string, Queue> = new Map();
+  private workers<string, Worker> = new Map();
+  private redisConnection;
+  private isInitialized= false;
+  private jobHandlers<string, (job<JobData>) => Promise<AgentResponse>> = new Map();
 
   // Queue names
   public static readonly QUEUES = {
@@ -53,14 +32,14 @@ export class QueueManager {
     DEAD_LETTER: 'dead-letter-queue'
   } as const;
 
-  constructor(config: QueueConfig) {
+  constructor(config) {
     this.redisConnection = new Redis({
-      host: config.host || 'localhost',
-      port: config.port || 6379,
-      password: config.password || undefined,
-      db: config.db || 0,
+      host.host || 'localhost',
+      port.port || 6379,
+      password.password || undefined,
+      db.db || 0,
       maxRetriesPerRequest: 3,
-      retryStrategy: (times: number) => Math.min(times * 50, 2000)
+      retryStrategy: (times) => Math.min(times * 50, 2000)
     });
 
     this.redisConnection.on('connect', () => {
@@ -77,7 +56,7 @@ export class QueueManager {
   /**
    * Initialize all queues
    */
-  async initialize(): Promise<void> {
+  async initialize()<void> {
     if (this.isInitialized) {
       console.log('QueueManager already initialized');
       return;
@@ -101,9 +80,9 @@ export class QueueManager {
   /**
    * Create a queue
    */
-  private createQueue(name: string): Queue {
+  private createQueue(name){
     const queue = new Queue(name, {
-      connection: this.redisConnection,
+      connection.redisConnection,
       defaultJobOptions: {
         attempts: 3,
         backoff: {
@@ -129,11 +108,11 @@ export class QueueManager {
    * Add a job to a queue
    */
   async addJob(
-    queueName: string,
-    agentId: string,
-    request: AgentRequest,
-    priority: number = 1
-  ): Promise<string> {
+    queueName,
+    agentId,
+    request,
+    priority= 1
+  )<string> {
     if (!this.isInitialized) {
       throw new Error('QueueManager not initialized');
     }
@@ -143,13 +122,13 @@ export class QueueManager {
       throw new Error(`Queue ${queueName} not found`);
     }
 
-    const jobData: JobData = {
+    const jobData= {
       id: `job-${Date.now()}-${Math.random().toString(36).substring(2, 7)}`,
       agentId,
       request,
       retryCount: 0,
       priority,
-      createdAt: new Date()
+      createdAtDate()
     };
 
     const job = await queue.add('process-job', jobData, {
@@ -169,10 +148,10 @@ export class QueueManager {
    * Register a worker for a queue
    */
   async registerWorker(
-    queueName: string,
-    handler: (job: Job<JobData>) => Promise<AgentResponse>,
-    concurrency: number = 5
-  ): Promise<void> {
+    queueName,
+    handler: (job<JobData>) => Promise<AgentResponse>,
+    concurrency= 5
+  )<void> {
     if (!this.isInitialized) {
       throw new Error('QueueManager not initialized');
     }
@@ -188,7 +167,7 @@ export class QueueManager {
     // Create worker
     const worker = new Worker(
       queueName,
-      async (job: Job<JobData>) => {
+      async (job<JobData>) => {
         try {
           console.log(`🔄 Processing job ${job.id} from ${queueName}`);
           
@@ -202,7 +181,7 @@ export class QueueManager {
         }
       },
       {
-        connection: this.redisConnection,
+        connection.redisConnection,
         concurrency,
         lockDuration: 30000, // 30 seconds
         stalledInterval: 30000,
@@ -211,17 +190,17 @@ export class QueueManager {
     );
 
     // Worker event handlers
-    worker.on('completed', (job: Job) => {
+    worker.on('completed', (job) => {
       console.log(`✅ Job ${job.id} completed from ${queueName}`);
     });
 
-    worker.on('failed', (job: Job | undefined, error: Error) => {
+    worker.on('failed', (job| undefined, error) => {
       if (job) {
         console.error(`❌ Job ${job.id} failed from ${queueName}:`, error.message);
       }
     });
 
-    worker.on('stalled', (jobId: string) => {
+    worker.on('stalled', (jobId) => {
       console.warn(`⚠️ Job ${jobId} stalled from ${queueName}`);
     });
 
@@ -232,7 +211,7 @@ export class QueueManager {
   /**
    * Get queue status
    */
-  async getQueueStatus(queueName: string): Promise<QueueStatus | null> {
+  async getQueueStatus(queueName)<QueueStatus | null> {
     if (!this.isInitialized) {
       return null;
     }
@@ -246,14 +225,14 @@ export class QueueManager {
       const counts = await queue.getJobCounts();
       
       return {
-        name: queueName,
-        depth: counts.waiting || 0,
-        processing: counts.active || 0,
-        completed: counts.completed || 0,
-        failed: counts.failed || 0,
-        delayed: counts.delayed || 0,
-        waiting: counts.waiting || 0,
-        active: counts.active || 0
+        name,
+        depth.waiting || 0,
+        processing.active || 0,
+        completed.completed || 0,
+        failed.failed || 0,
+        delayed.delayed || 0,
+        waiting.waiting || 0,
+        active.active || 0
       };
     } catch (error) {
       console.error(`Failed to get status for ${queueName}:`, error);
@@ -264,8 +243,8 @@ export class QueueManager {
   /**
    * Get status for all queues
    */
-  async getAllQueueStatus(): Promise<Record<string, QueueStatus>> {
-    const statuses: Record<string, QueueStatus> = {};
+  async getAllQueueStatus()<Record<string, QueueStatus>> {
+    const statuses= {};
 
     for (const [name] of this.queues) {
       const status = await this.getQueueStatus(name);
@@ -280,7 +259,7 @@ export class QueueManager {
   /**
    * Get job by ID
    */
-  async getJob(queueName: string, jobId: string): Promise<Job | null> {
+  async getJob(queueName, jobId)<Job | null> {
     const queue = this.queues.get(queueName);
     if (!queue) {
       return null;
@@ -297,7 +276,7 @@ export class QueueManager {
   /**
    * Cancel a job
    */
-  async cancelJob(queueName: string, jobId: string): Promise<boolean> {
+  async cancelJob(queueName, jobId)<boolean> {
     const queue = this.queues.get(queueName);
     if (!queue) {
       return false;
@@ -320,7 +299,7 @@ export class QueueManager {
   /**
    * Get dead letter queue (failed jobs)
    */
-  async getDeadLetterQueue(): Promise<Job[]> {
+  async getDeadLetterQueue()<Job[]> {
     const queue = this.queues.get(QueueManager.QUEUES.DEAD_LETTER);
     if (!queue) {
       return [];
@@ -338,7 +317,7 @@ export class QueueManager {
   /**
    * Move failed job to dead letter queue
    */
-  async moveToDeadLetter(job: Job<JobData>, reason: string): Promise<void> {
+  async moveToDeadLetter(job<JobData>, reason)<void> {
     const deadLetterQueue = this.queues.get(QueueManager.QUEUES.DEAD_LETTER);
     if (!deadLetterQueue) {
       console.error('Dead letter queue not found');
@@ -348,9 +327,8 @@ export class QueueManager {
     try {
       await deadLetterQueue.add('dead-letter-job', job.data, {
         attempts: 1,
-        removeOnComplete: false,
-        removeOnFail: false
-      });
+        removeOnComplete,
+        removeOnFail});
       
       console.log(`📦 Job ${job.id} moved to dead letter queue. Reason: ${reason}`);
     } catch (error) {
@@ -361,7 +339,7 @@ export class QueueManager {
   /**
    * Retry a failed job
    */
-  async retryJob(queueName: string, jobId: string): Promise<boolean> {
+  async retryJob(queueName, jobId)<boolean> {
     const queue = this.queues.get(queueName);
     if (!queue) {
       return false;
@@ -384,7 +362,7 @@ export class QueueManager {
   /**
    * Pause a queue
    */
-  async pauseQueue(queueName: string): Promise<boolean> {
+  async pauseQueue(queueName)<boolean> {
     const queue = this.queues.get(queueName);
     if (!queue) {
       return false;
@@ -403,7 +381,7 @@ export class QueueManager {
   /**
    * Resume a queue
    */
-  async resumeQueue(queueName: string): Promise<boolean> {
+  async resumeQueue(queueName)<boolean> {
     const queue = this.queues.get(queueName);
     if (!queue) {
       return false;
@@ -422,7 +400,7 @@ export class QueueManager {
   /**
    * Clean old jobs from a queue
    */
-  async cleanQueue(queueName: string, age: number = 3600): Promise<number> {
+  async cleanQueue(queueName, age= 3600)<number> {
     const queue = this.queues.get(queueName);
     if (!queue) {
       return 0;
@@ -441,7 +419,7 @@ export class QueueManager {
   /**
    * Get queue metrics for monitoring
    */
-  async getQueueMetrics(queueName: string): Promise<any> {
+  async getQueueMetrics(queueName)<any> {
     const status = await this.getQueueStatus(queueName);
     if (!status) {
       return null;
@@ -449,16 +427,16 @@ export class QueueManager {
 
     return {
       ...status,
-      utilization: status.depth > 0 ? (status.active / (status.active + status.waiting)) * 100 : 0,
-      health: status.failed > 100 ? 'Degraded' : status.depth > 1000 ? 'Warning' : 'Healthy'
+      utilization.depth > 0 ? (status.active / (status.active + status.waiting)) * 100 : 0,
+      health.failed > 100 ? 'Degraded' .depth > 1000 ? 'Warning' : 'Healthy'
     };
   }
 
   /**
    * Get all queue metrics
    */
-  async getAllQueueMetrics(): Promise<Record<string, any>> {
-    const metrics: Record<string, any> = {};
+  async getAllQueueMetrics()<Record<string, any>> {
+    const metrics= {};
 
     for (const [name] of this.queues) {
       const metric = await this.getQueueMetrics(name);
@@ -473,7 +451,7 @@ export class QueueManager {
   /**
    * Shutdown all queues and workers
    */
-  async shutdown(): Promise<void> {
+  async shutdown()<void> {
     console.log('🔄 Shutting down QueueManager...');
 
     // Close all workers
@@ -499,7 +477,7 @@ export class QueueManager {
   /**
    * Check if QueueManager is healthy
    */
-  isHealthy(): boolean {
+  isHealthy(){
     return this.isInitialized && this.redisConnection.status === 'ready';
   }
 }
@@ -507,9 +485,9 @@ export class QueueManager {
 /**
  * Export singleton instance
  */
-let queueManagerInstance: QueueManager | null = null;
+let queueManagerInstance| null = null;
 
-export function getQueueManager(config?: QueueConfig): QueueManager {
+export function getQueueManager(config?){
   if (!queueManagerInstance) {
     if (!config) {
       throw new Error('QueueConfig required for initializing QueueManager');
@@ -518,3 +496,5 @@ export function getQueueManager(config?: QueueConfig): QueueManager {
   }
   return queueManagerInstance;
 }
+
+

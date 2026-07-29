@@ -1,6 +1,6 @@
 "use strict";
 // packages/shared/types/AgentTypes.ts
-Object.defineProperty(exports, "__esModule", { value: true });
+Object.defineProperty(exports, "__esModule", { value});
 exports.ProviderType = exports.AgentStatus = exports.AgentRole = void 0;
 var AgentRole;
 (function (AgentRole) {
@@ -47,3 +47,5 @@ var ProviderType;
     ProviderType["CLAUDE"] = "claude";
     ProviderType["GPT"] = "gpt";
 })(ProviderType || (exports.ProviderType = ProviderType = {}));
+
+

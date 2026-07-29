@@ -3,17 +3,17 @@
 import { ProviderType, LLMResponse } from '../ProviderManager';
 
 export class GroqAdapter {
-  private apiKey: string;
-  private baseUrl: string = 'https://api.groq.com/openai/v1';
-  private quotaRemaining: number = 14500; // Groq free tier: 14,500 requests/day
-  private lastCheck: Date = new Date();
+  private apiKey;
+  private baseUrl= 'https://api.groq.com/openai/v1';
+  private quotaRemaining= 14500; // Groq free tier: 14,500 requests/day
+  private lastCheck= new Date();
 
   constructor() {
     this.apiKey = process.env.GROQ_API_KEY || '';
     this.resetQuotaIfNeeded();
   }
 
-  private resetQuotaIfNeeded(): void {
+  private resetQuotaIfNeeded(){
     const now = new Date();
     if (now.getDate() !== this.lastCheck.getDate()) {
       this.quotaRemaining = 14500;
@@ -21,7 +21,7 @@ export class GroqAdapter {
     }
   }
 
-  async generate(prompt: string, options?: Record<string, any>): Promise<LLMResponse> {
+  async generate(prompt, options?)<LLMResponse> {
     this.resetQuotaIfNeeded();
 
     if (!this.apiKey) {
@@ -43,17 +43,17 @@ export class GroqAdapter {
       //     'Authorization': `Bearer ${this.apiKey}`,
       //     'Content-Type': 'application/json'
       //   },
-      //   body: JSON.stringify({
+      //   body.stringify({
       //     model: 'mixtral-8x7b-32768',
-      //     messages: [{ role: 'user', content: prompt }]
+      //     messages: [{ role: 'user', content}]
       //   })
       // });
 
       // Simulated response for now
       const simulatedResponse = {
         content: `Groq response: ${prompt.substring(0, 50)}...`,
-        provider: ProviderType.GROQ,
-        tokensUsed: Math.floor(prompt.length / 4),
+        provider.GROQ,
+        tokensUsed.floor(prompt.length / 4),
         costInr: 0.01,
         latency: 120
       };
@@ -66,17 +66,19 @@ export class GroqAdapter {
     }
   }
 
-  async isAvailable(): Promise<boolean> {
+  async isAvailable()<boolean> {
     this.resetQuotaIfNeeded();
     return this.quotaRemaining > 0 && !!this.apiKey;
   }
 
-  getQuotaRemaining(): number {
+  getQuotaRemaining(){
     this.resetQuotaIfNeeded();
     return this.quotaRemaining;
   }
 
-  getLatency(): number {
+  getLatency(){
     return 120; // Average latency in ms
   }
 }
+
+

@@ -1,6 +1,6 @@
 "use strict";
 // D:\hospital backend\ai-core\recovery\FallbackHandler.ts
-Object.defineProperty(exports, "__esModule", { value: true });
+Object.defineProperty(exports, "__esModule", { value});
 exports.FallbackResponses = exports.GracefulDegradation = exports.FallbackFactory = exports.FallbackHandler = exports.FallbackLevel = void 0;
 exports.executeWithFallback = executeWithFallback;
 var FallbackLevel;
@@ -24,13 +24,13 @@ class FallbackHandler {
         try {
             const result = await this.executeWithTimeout(this.chain.primary);
             return {
-                success: true,
-                data: result,
+                success,
+                data,
                 source: 'primary',
-                fallbackUsed: false,
-                fallbackLevel: FallbackLevel.NONE,
-                timestamp: new Date(),
-                latency: Date.now() - startTime
+                fallbackUsed,
+                fallbackLevel.NONE,
+                timestampDate(),
+                latency.now() - startTime
             };
         }
         catch (error) {
@@ -42,13 +42,13 @@ class FallbackHandler {
             try {
                 const result = await this.executeWithTimeout(this.chain.secondary);
                 return {
-                    success: true,
-                    data: result,
+                    success,
+                    data,
                     source: 'secondary',
-                    fallbackUsed: true,
-                    fallbackLevel: FallbackLevel.PRIMARY,
-                    timestamp: new Date(),
-                    latency: Date.now() - startTime
+                    fallbackUsed,
+                    fallbackLevel.PRIMARY,
+                    timestampDate(),
+                    latency.now() - startTime
                 };
             }
             catch (error) {
@@ -61,13 +61,13 @@ class FallbackHandler {
             try {
                 const result = await this.executeWithTimeout(this.chain.tertiary);
                 return {
-                    success: true,
-                    data: result,
+                    success,
+                    data,
                     source: 'tertiary',
-                    fallbackUsed: true,
-                    fallbackLevel: FallbackLevel.SECONDARY,
-                    timestamp: new Date(),
-                    latency: Date.now() - startTime
+                    fallbackUsed,
+                    fallbackLevel.SECONDARY,
+                    timestampDate(),
+                    latency.now() - startTime
                 };
             }
             catch (error) {
@@ -78,24 +78,24 @@ class FallbackHandler {
         // All fallbacks failed
         if (this.chain.fallbackValue !== undefined) {
             return {
-                success: true,
-                data: this.chain.fallbackValue,
+                success,
+                data.chain.fallbackValue,
                 source: 'fallback_value',
-                fallbackUsed: true,
-                fallbackLevel: FallbackLevel.TERTIARY,
-                timestamp: new Date(),
-                latency: Date.now() - startTime
+                fallbackUsed,
+                fallbackLevel.TERTIARY,
+                timestampDate(),
+                latency.now() - startTime
             };
         }
         // Return error response
         return {
-            success: false,
-            error: this.chain.fallbackError || 'All fallbacks failed',
+            success,
+            error.chain.fallbackError || 'All fallbacks failed',
             source: 'fallback_error',
-            fallbackUsed: true,
-            fallbackLevel: FallbackLevel.TERTIARY,
-            timestamp: new Date(),
-            latency: Date.now() - startTime
+            fallbackUsed,
+            fallbackLevel.TERTIARY,
+            timestampDate(),
+            latency.now() - startTime
         };
     }
     /**
@@ -135,8 +135,8 @@ class FallbackHandler {
             hasPrimary: !!this.chain.primary,
             hasSecondary: !!this.chain.secondary,
             hasTertiary: !!this.chain.tertiary,
-            hasFallbackValue: this.chain.fallbackValue !== undefined,
-            timeout: this.timeout
+            hasFallbackValue.chain.fallbackValue !== undefined,
+            timeout.timeout
         };
     }
 }
@@ -167,7 +167,7 @@ class FallbackFactory {
      */
     static createFromProviders(providers, fallbackValue, timeout) {
         const chain = {
-            primary: providers[0] || (() => Promise.reject(new Error('No primary provider'))),
+            primary[0] || (() => Promise.reject(new Error('No primary provider'))),
             timeout
         };
         if (providers.length > 1) {
@@ -232,10 +232,10 @@ class FallbackResponses {
      */
     static apiError(message) {
         return {
-            success: false,
-            error: message || 'Service temporarily unavailable',
-            gracefulDegradation: true,
-            timestamp: new Date().toISOString(),
+            success,
+            error|| 'Service temporarily unavailable',
+            gracefulDegradation,
+            timestampDate().toISOString(),
             recommendations: [
                 'Please try again in a few minutes',
                 'You can still use other services on the platform',
@@ -248,7 +248,7 @@ class FallbackResponses {
      */
     static aiFallback() {
         return {
-            success: true,
+            success,
             data: {
                 message: 'AI recommendation is temporarily unavailable.',
                 fallback: 'You can still search and book services manually.',
@@ -258,7 +258,7 @@ class FallbackResponses {
                     'View available services'
                 ]
             },
-            timestamp: new Date().toISOString()
+            timestampDate().toISOString()
         };
     }
     /**
@@ -266,11 +266,11 @@ class FallbackResponses {
      */
     static paymentFallback() {
         return {
-            success: false,
+            success,
             error: 'Payment service is temporarily unavailable',
             fallback: 'Please try again in a few minutes. Your booking is saved.',
             bookingStatus: 'pending',
-            timestamp: new Date().toISOString()
+            timestampDate().toISOString()
         };
     }
     /**
@@ -278,7 +278,7 @@ class FallbackResponses {
      */
     static searchFallback(query) {
         return {
-            success: true,
+            success,
             data: {
                 results: [],
                 message: 'Search results are limited right now.',
@@ -292,7 +292,7 @@ class FallbackResponses {
                     'Wellness'
                 ]
             },
-            timestamp: new Date().toISOString()
+            timestampDate().toISOString()
         };
     }
 }
@@ -304,3 +304,5 @@ async function executeWithFallback(chain) {
     const handler = new FallbackHandler(chain);
     return await handler.execute();
 }
+
+

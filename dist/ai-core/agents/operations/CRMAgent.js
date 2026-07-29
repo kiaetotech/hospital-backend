@@ -1,6 +1,6 @@
 "use strict";
 // D:\hospital backend\ai-core\agents\operations\CRMAgent.ts
-Object.defineProperty(exports, "__esModule", { value: true });
+Object.defineProperty(exports, "__esModule", { value});
 exports.CRMAgent = void 0;
 const AgentTypes_1 = require("../../../shared/types/AgentTypes");
 const BaseAgent_1 = require("../base/BaseAgent");
@@ -8,36 +8,32 @@ class CRMAgent extends BaseAgent_1.BaseAgent {
     constructor(providerManager) {
         super({
             name: 'CRM Agent',
-            role: AgentTypes_1.AgentRole.CRM,
+            role_1.AgentRole.CRM,
             capabilities: [
                 {
                     name: 'track_customer',
                     description: 'Track customer activity and engagement',
                     priority: 1,
                     estimatedLatency: 150,
-                    requiresAuth: true
-                },
+                    requiresAuth},
                 {
                     name: 'score_lead',
                     description: 'Score and qualify leads',
                     priority: 2,
                     estimatedLatency: 200,
-                    requiresAuth: true
-                },
+                    requiresAuth},
                 {
                     name: 'segment_customers',
                     description: 'Segment customers by behavior and preferences',
                     priority: 2,
                     estimatedLatency: 250,
-                    requiresAuth: true
-                },
+                    requiresAuth},
                 {
                     name: 'predict_churn',
                     description: 'Predict customer churn risk',
                     priority: 2,
                     estimatedLatency: 300,
-                    requiresAuth: true
-                }
+                    requiresAuth}
             ]
         }, providerManager);
         this.customers = [];
@@ -54,7 +50,7 @@ class CRMAgent extends BaseAgent_1.BaseAgent {
                 city: 'Mumbai',
                 totalBookings: 12,
                 totalSpent: 45000,
-                lastVisit: new Date('2026-07-20'),
+                lastVisitDate('2026-07-20'),
                 preferences: ['Cardiology', 'Orthopedics'],
                 loyaltyTier: 'Gold',
                 engagementScore: 85
@@ -67,7 +63,7 @@ class CRMAgent extends BaseAgent_1.BaseAgent {
                 city: 'Delhi',
                 totalBookings: 5,
                 totalSpent: 12000,
-                lastVisit: new Date('2026-07-15'),
+                lastVisitDate('2026-07-15'),
                 preferences: ['Dermatology', 'Wellness'],
                 loyaltyTier: 'Silver',
                 engagementScore: 60
@@ -80,7 +76,7 @@ class CRMAgent extends BaseAgent_1.BaseAgent {
                 city: 'Mumbai',
                 totalBookings: 1,
                 totalSpent: 1500,
-                lastVisit: new Date('2026-07-01'),
+                lastVisitDate('2026-07-01'),
                 preferences: ['General Medicine'],
                 loyaltyTier: 'Bronze',
                 engagementScore: 25
@@ -95,8 +91,8 @@ class CRMAgent extends BaseAgent_1.BaseAgent {
                 source: 'Website',
                 status: 'Qualified',
                 score: 75,
-                createdAt: new Date('2026-07-10'),
-                updatedAt: new Date('2026-07-15')
+                createdAtDate('2026-07-10'),
+                updatedAtDate('2026-07-15')
             },
             {
                 id: 'l2',
@@ -106,8 +102,8 @@ class CRMAgent extends BaseAgent_1.BaseAgent {
                 source: 'Referral',
                 status: 'New',
                 score: 40,
-                createdAt: new Date('2026-07-18'),
-                updatedAt: new Date('2026-07-18')
+                createdAtDate('2026-07-18'),
+                updatedAtDate('2026-07-18')
             }
         ];
     }
@@ -116,7 +112,7 @@ class CRMAgent extends BaseAgent_1.BaseAgent {
         this.setCurrentTask(request.task);
         try {
             if (!this.validateRequest(request)) {
-                throw new Error('Invalid request: Missing required fields or capabilities');
+                throw new Error('Invalid requestrequired fields or capabilities');
             }
             const { task, payload } = request;
             this.log(`Executing task: ${task}`, 'info');
@@ -139,10 +135,10 @@ class CRMAgent extends BaseAgent_1.BaseAgent {
             this.setStatus(AgentTypes_1.AgentStatus.IDLE);
             this.setCurrentTask(undefined);
             return {
-                success: true,
-                data: result,
-                sourceAgent: this.id,
-                processingTime: Date.now() - new Date().getTime()
+                success,
+                data,
+                sourceAgent.id,
+                processingTime.now() - new Date().getTime()
             };
         }
         catch (error) {
@@ -161,11 +157,11 @@ class CRMAgent extends BaseAgent_1.BaseAgent {
             return {
                 customer,
                 activitySummary: {
-                    totalBookings: customer.totalBookings,
-                    totalSpent: customer.totalSpent,
-                    loyaltyTier: customer.loyaltyTier,
-                    engagementScore: customer.engagementScore,
-                    lastVisit: customer.lastVisit
+                    totalBookings.totalBookings,
+                    totalSpent.totalSpent,
+                    loyaltyTier.loyaltyTier,
+                    engagementScore.engagementScore,
+                    lastVisit.lastVisit
                 }
             };
         }
@@ -173,26 +169,26 @@ class CRMAgent extends BaseAgent_1.BaseAgent {
             // Add new customer
             const newCustomer = {
                 id: `c${Date.now()}`,
-                name: customerData.name,
-                email: customerData.email,
-                phone: customerData.phone,
-                city: customerData.city,
+                name.name,
+                email.email,
+                phone.phone,
+                city.city,
                 totalBookings: 0,
                 totalSpent: 0,
-                lastVisit: new Date(),
-                preferences: customerData.preferences || [],
+                lastVisitDate(),
+                preferences.preferences || [],
                 loyaltyTier: 'Bronze',
                 engagementScore: 0
             };
             this.customers.push(newCustomer);
             return {
-                customer: newCustomer,
+                customer,
                 message: 'Customer added successfully'
             };
         }
         return {
-            customers: this.customers,
-            total: this.customers.length
+            customers.customers,
+            total.customers.length
         };
     }
     async scoreLead(payload) {
@@ -204,8 +200,8 @@ class CRMAgent extends BaseAgent_1.BaseAgent {
             }
             return {
                 lead,
-                score: lead.score,
-                status: lead.status
+                score.score,
+                status.status
             };
         }
         if (leadData) {
@@ -233,41 +229,41 @@ class CRMAgent extends BaseAgent_1.BaseAgent {
             }
             const newLead = {
                 id: `l${Date.now()}`,
-                name: leadData.name,
-                email: leadData.email,
-                phone: leadData.phone,
-                source: leadData.source || 'Other',
+                name.name,
+                email.email,
+                phone.phone,
+                source.source || 'Other',
                 status: 'New',
-                score: Math.min(score, 100),
-                createdAt: new Date(),
-                updatedAt: new Date()
+                score.min(score, 100),
+                createdAtDate(),
+                updatedAtDate()
             };
             this.leads.push(newLead);
             return {
-                lead: newLead,
+                lead,
                 message: 'Lead scored successfully'
             };
         }
         return {
-            leads: this.leads,
-            total: this.leads.length,
-            qualifiedLeads: this.leads.filter(l => l.status === 'Qualified').length
+            leads.leads,
+            total.leads.length,
+            qualifiedLeads.leads.filter(l => l.status === 'Qualified').length
         };
     }
     async segmentCustomers(payload) {
         const { segmentBy } = payload;
         const segments = {
             byLoyalty: {
-                Bronze: this.customers.filter(c => c.loyaltyTier === 'Bronze'),
-                Silver: this.customers.filter(c => c.loyaltyTier === 'Silver'),
-                Gold: this.customers.filter(c => c.loyaltyTier === 'Gold'),
-                Platinum: this.customers.filter(c => c.loyaltyTier === 'Platinum')
+                Bronze.customers.filter(c => c.loyaltyTier === 'Bronze'),
+                Silver.customers.filter(c => c.loyaltyTier === 'Silver'),
+                Gold.customers.filter(c => c.loyaltyTier === 'Gold'),
+                Platinum.customers.filter(c => c.loyaltyTier === 'Platinum')
             },
             byCity: {},
             byEngagement: {
-                High: this.customers.filter(c => c.engagementScore > 70),
-                Medium: this.customers.filter(c => c.engagementScore > 40 && c.engagementScore <= 70),
-                Low: this.customers.filter(c => c.engagementScore <= 40)
+                High.customers.filter(c => c.engagementScore > 70),
+                Medium.customers.filter(c => c.engagementScore > 40 && c.engagementScore <= 70),
+                Low.customers.filter(c => c.engagementScore <= 40)
             }
         };
         // Group by city
@@ -280,9 +276,9 @@ class CRMAgent extends BaseAgent_1.BaseAgent {
         return {
             segments,
             summary: {
-                totalCustomers: this.customers.length,
-                goldCustomers: segments.byLoyalty.Gold.length,
-                highEngagement: segments.byEngagement.High.length
+                totalCustomers.customers.length,
+                goldCustomers.byLoyalty.Gold.length,
+                highEngagement.byEngagement.High.length
             }
         };
     }
@@ -296,7 +292,7 @@ class CRMAgent extends BaseAgent_1.BaseAgent {
             // Calculate churn risk based on various factors
             let riskScore = 0;
             let riskFactors = [];
-            // Factor 1: Days since last visit
+            // Factor 1since last visit
             const daysSinceLastVisit = Math.floor((Date.now() - c.lastVisit.getTime()) / (1000 * 60 * 60 * 24));
             if (daysSinceLastVisit > 30) {
                 riskScore += 20;
@@ -306,37 +302,37 @@ class CRMAgent extends BaseAgent_1.BaseAgent {
                 riskScore += 20;
                 riskFactors.push('No visit in last 60 days');
             }
-            // Factor 2: Engagement score
+            // Factor 2score
             if (c.engagementScore < 30) {
                 riskScore += 20;
                 riskFactors.push('Low engagement score');
             }
-            // Factor 3: Total bookings
+            // Factor 3bookings
             if (c.totalBookings < 2) {
                 riskScore += 15;
                 riskFactors.push('Few total bookings');
             }
-            // Factor 4: Total spent
+            // Factor 4spent
             if (c.totalSpent < 1000) {
                 riskScore += 10;
                 riskFactors.push('Low spending');
             }
-            const riskLevel = riskScore > 60 ? 'High' : riskScore > 30 ? 'Medium' : 'Low';
+            const riskLevel = riskScore > 60 ? 'High' > 30 ? 'Medium' : 'Low';
             return {
-                customerId: c.id,
-                customerName: c.name,
+                customerId.id,
+                customerName.name,
                 riskScore,
                 riskLevel,
                 riskFactors,
-                recommendations: this.getChurnRecommendations(riskLevel, riskFactors)
+                recommendations.getChurnRecommendations(riskLevel, riskFactors)
             };
         });
         return {
             churnAnalysis,
             summary: {
-                highRisk: churnAnalysis.filter(c => c.riskLevel === 'High').length,
-                mediumRisk: churnAnalysis.filter(c => c.riskLevel === 'Medium').length,
-                lowRisk: churnAnalysis.filter(c => c.riskLevel === 'Low').length
+                highRisk.filter(c => c.riskLevel === 'High').length,
+                mediumRisk.filter(c => c.riskLevel === 'Medium').length,
+                lowRisk.filter(c => c.riskLevel === 'Low').length
             }
         };
     }
@@ -366,17 +362,16 @@ class CRMAgent extends BaseAgent_1.BaseAgent {
       Task: ${task}
       Payload: ${JSON.stringify(payload)}
       
-      CRM Data:
-      Customers: ${JSON.stringify(this.customers)}
+      CRM Data: ${JSON.stringify(this.customers)}
       Leads: ${JSON.stringify(this.leads)}
       
       Please analyze the query and provide a recommendation.
     `;
         const response = await this.providerManager.generate(prompt);
         return {
-            aiResponse: response.content,
-            provider: response.provider,
-            tokensUsed: response.tokensUsed
+            aiResponse.content,
+            provider.provider,
+            tokensUsed.tokensUsed
         };
     }
     getRequiredCapability(task) {
@@ -396,3 +391,5 @@ class CRMAgent extends BaseAgent_1.BaseAgent {
     }
 }
 exports.CRMAgent = CRMAgent;
+
+

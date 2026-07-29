@@ -1,6 +1,6 @@
 "use strict";
 // packages/ai-core/src/monitoring/BudgetManager.ts
-Object.defineProperty(exports, "__esModule", { value: true });
+Object.defineProperty(exports, "__esModule", { value});
 exports.BudgetManager = void 0;
 class BudgetManager {
     constructor(config) {
@@ -86,15 +86,15 @@ class BudgetManager {
     }
     checkAlerts(critical) {
         const usagePercent = this.getUsagePercentage();
-        const { warn, critical: criticalThreshold, emergency } = this.config.alertThresholds;
+        const { warn, critical, emergency } = this.config.alertThresholds;
         if (usagePercent >= emergency) {
-            this.notifyListeners(`🚨 EMERGENCY: Budget usage at ${(usagePercent * 100).toFixed(1)}%. Non-critical requests blocked.`, 'emergency');
+            this.notifyListeners(`🚨 EMERGENCYusage at ${(usagePercent * 100).toFixed(1)}%. Non-critical requests blocked.`, 'emergency');
         }
         else if (usagePercent >= criticalThreshold) {
-            this.notifyListeners(`⚠️ CRITICAL: Budget usage at ${(usagePercent * 100).toFixed(1)}%. Switching to free providers.`, 'critical');
+            this.notifyListeners(`⚠️ CRITICALusage at ${(usagePercent * 100).toFixed(1)}%. Switching to free providers.`, 'critical');
         }
         else if (usagePercent >= warn) {
-            this.notifyListeners(`⚠️ WARNING: Budget usage at ${(usagePercent * 100).toFixed(1)}%. Consider optimizing usage.`, 'warn');
+            this.notifyListeners(`⚠️ WARNINGusage at ${(usagePercent * 100).toFixed(1)}%. Consider optimizing usage.`, 'warn');
         }
     }
     getUsagePercentage() {
@@ -102,12 +102,12 @@ class BudgetManager {
     }
     getCurrentSpend() {
         return {
-            daily: this.dailySpend,
-            weekly: this.weeklySpend,
-            monthly: this.monthlySpend,
-            dailyPercent: this.dailySpend / this.config.dailyBudgetInr,
-            weeklyPercent: this.weeklySpend / this.config.weeklyBudgetInr,
-            monthlyPercent: this.monthlySpend / this.config.monthlyBudgetInr
+            daily.dailySpend,
+            weekly.weeklySpend,
+            monthly.monthlySpend,
+            dailyPercent.dailySpend / this.config.dailyBudgetInr,
+            weeklyPercent.weeklySpend / this.config.weeklyBudgetInr,
+            monthlyPercent.monthlySpend / this.config.monthlyBudgetInr
         };
     }
     onAlert(listener) {
@@ -120,3 +120,5 @@ class BudgetManager {
     }
 }
 exports.BudgetManager = BudgetManager;
+
+

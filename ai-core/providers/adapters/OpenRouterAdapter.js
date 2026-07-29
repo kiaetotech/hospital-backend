@@ -3,19 +3,19 @@
 import { ProviderType, LLMResponse } from '../ProviderManager';
 
 export class OpenRouterAdapter {
-  private apiKey: string;
-  private baseUrl: string = 'https://openrouter.ai/api/v1';
-  private quotaRemaining: number = 20; // OpenRouter free tier: 20 requests/day
-  private lastCheck: Date = new Date();
-  private dailyRequestCount: number = 0;
-  private dayStart: Date = new Date();
+  private apiKey;
+  private baseUrl= 'https://openrouter.ai/api/v1';
+  private quotaRemaining= 20; // OpenRouter free tier: 20 requests/day
+  private lastCheck= new Date();
+  private dailyRequestCount= 0;
+  private dayStart= new Date();
 
   constructor() {
     this.apiKey = process.env.OPENROUTER_API_KEY || '';
     this.resetQuotaIfNeeded();
   }
 
-  private resetQuotaIfNeeded(): void {
+  private resetQuotaIfNeeded(){
     const now = new Date();
     // Reset daily counter
     if (now.getDate() !== this.dayStart.getDate()) {
@@ -24,7 +24,7 @@ export class OpenRouterAdapter {
     }
   }
 
-  async generate(prompt: string, options?: Record<string, any>): Promise<LLMResponse> {
+  async generate(prompt, options?)<LLMResponse> {
     this.resetQuotaIfNeeded();
 
     if (!this.apiKey) {
@@ -45,17 +45,17 @@ export class OpenRouterAdapter {
       //     'Authorization': `Bearer ${this.apiKey}`,
       //     'Content-Type': 'application/json'
       //   },
-      //   body: JSON.stringify({
+      //   body.stringify({
       //     model: 'mistralai/mistral-7b-instruct',
-      //     messages: [{ role: 'user', content: prompt }]
+      //     messages: [{ role: 'user', content}]
       //   })
       // });
 
       // Simulated response for now
       const simulatedResponse = {
         content: `OpenRouter response: ${prompt.substring(0, 50)}...`,
-        provider: ProviderType.OPENROUTER,
-        tokensUsed: Math.floor(prompt.length / 4),
+        provider.OPENROUTER,
+        tokensUsed.floor(prompt.length / 4),
         costInr: 0, // Free tier
         latency: 350
       };
@@ -68,17 +68,19 @@ export class OpenRouterAdapter {
     }
   }
 
-  async isAvailable(): Promise<boolean> {
+  async isAvailable()<boolean> {
     this.resetQuotaIfNeeded();
     return this.dailyRequestCount < this.quotaRemaining && !!this.apiKey;
   }
 
-  getQuotaRemaining(): number {
+  getQuotaRemaining(){
     this.resetQuotaIfNeeded();
     return Math.max(0, this.quotaRemaining - this.dailyRequestCount);
   }
 
-  getLatency(): number {
+  getLatency(){
     return 350; // Average latency in ms
   }
 }
+
+

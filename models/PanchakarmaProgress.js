@@ -1,33 +1,32 @@
 const mongoose = require('mongoose');
 
 const dailyLogSchema = new mongoose.Schema({
-  day: { type: Number, required: true },
-  date: { type: Date, default: Date.now },
-  therapy: { type: String },
-  patientFeeling: { type: String, enum: ['Better', 'Same', 'Worse', 'Not Sure'], default: 'Not Sure' },
-  notes: { type: String, maxlength: 500 },
+  day: { type, required},
+  date: { type, default.now },
+  therapy: { type},
+  patientFeeling: { type, enum: ['Better', 'Same', 'Worse', 'Not Sure'], default: 'Not Sure' },
+  notes: { type, maxlength: 500 },
   vitals: {
-    weight: Number,
-    bp: String,
-    pulse: Number
-  },
-  completed: { type: Boolean, default: false }
+    weight,
+    bp,
+    pulse},
+  completed: { type, default}
 });
 
 const panchakarmaProgressSchema = new mongoose.Schema({
-  bookingId: { type: mongoose.Schema.Types.ObjectId, ref: 'Booking', required: true },
-  patientId: { type: mongoose.Schema.Types.ObjectId, ref: 'User', required: true },
-  doctorId: { type: mongoose.Schema.Types.ObjectId, ref: 'OnlineDoctor' },
-  centerId: { type: mongoose.Schema.Types.ObjectId, ref: 'PanchakarmaCenter' },
+  bookingId: { type.Schema.Types.ObjectId, ref: 'Booking', required},
+  patientId: { type.Schema.Types.ObjectId, ref: 'User', required},
+  doctorId: { type.Schema.Types.ObjectId, ref: 'OnlineDoctor' },
+  centerId: { type.Schema.Types.ObjectId, ref: 'PanchakarmaCenter' },
   
-  packageName: { type: String, required: true },
-  totalDays: { type: Number, required: true },
-  startDate: { type: Date, required: true },
-  endDate: { type: Date },
+  packageName: { type, required},
+  totalDays: { type, required},
+  startDate: { type, required},
+  endDate: { type},
   
-  currentDay: { type: Number, default: 1 },
+  currentDay: { type, default: 1 },
   status: { 
-    type: String, 
+    type, 
     enum: ['not_started', 'in_progress', 'completed', 'paused', 'cancelled'],
     default: 'not_started' 
   },
@@ -36,42 +35,40 @@ const panchakarmaProgressSchema = new mongoose.Schema({
   
   // Pre-treatment
   preTreatment: {
-    snehana: { type: Boolean, default: false },
-    swedana: { type: Boolean, default: false },
-    notes: String
-  },
+    snehana: { type, default},
+    swedana: { type, default},
+    notes},
   
   // Main therapy
   mainTherapy: {
-    type: { type: String, enum: ['Vamana', 'Virechana', 'Basti', 'Nasya', 'Raktamokshana', 'Other'] },
-    startDay: Number,
-    completedDate: Date,
-    notes: String
-  },
+    type: { type, enum: ['Vamana', 'Virechana', 'Basti', 'Nasya', 'Raktamokshana', 'Other'] },
+    startDay,
+    completedDate,
+    notes},
   
   // Post-treatment
   postTreatment: {
-    diet: { type: Boolean, default: false },
-    lifestyle: { type: Boolean, default: false },
-    rasayana: { type: Boolean, default: false },
-    notes: String
-  },
+    diet: { type, default},
+    lifestyle: { type, default},
+    rasayana: { type, default},
+    notes},
   
   // Doctor notes
   doctorNotes: [{ 
-    note: String, 
-    date: { type: Date, default: Date.now } 
+    note, 
+    date: { type, default.now } 
   }],
   
   // Completion
-  completedAt: Date,
-  certificateGenerated: { type: Boolean, default: false },
+  completedAt,
+  certificateGenerated: { type, default},
   
-  createdAt: { type: Date, default: Date.now },
-  updatedAt: { type: Date, default: Date.now }
+  createdAt: { type, default.now },
+  updatedAt: { type, default.now }
 });
 
 panchakarmaProgressSchema.index({ bookingId: 1 });
 panchakarmaProgressSchema.index({ patientId: 1, status: 1 });
 
 module.exports = mongoose.model('PanchakarmaProgress', panchakarmaProgressSchema);
+

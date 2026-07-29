@@ -4,97 +4,52 @@ import { AgentRole, AgentStatus, AgentRequest, AgentResponse } from '../../../sh
 import { BaseAgent } from '../base/BaseAgent';
 import { ProviderManager } from '../../providers/ProviderManager';
 
-interface EMIPartner {
-  id: string;
-  name: string;
-  type: 'Bank' | 'NBFC' | 'Fintech';
-  logo: string;
-  rating: number;
-  plans: EMIPlan[];
-  eligibility: {
-    minCreditScore: number;
-    minIncome: number;
-    ageRange: { min: number; max: number };
-    requiredDocuments: string[];
+;
+    requiredDocuments[];
   };
-  processingTime: string;
+  processingTime;
 }
 
-interface EMIPlan {
-  name: string;
-  type: '0% EMI' | 'Low Interest' | 'No Cost EMI';
-  minAmount: number;
-  maxAmount: number;
-  tenures: number[];
-  interestRate: number;
-  processingFee: number;
-  applicableOn: string[];
-}
 
-interface EMIQuote {
-  amount: number;
-  tenure: number;
-  interestRate: number;
-  processingFee: number;
-  totalInterest: number;
-  totalAmount: number;
-  monthlyPayment: number;
-  partner: string;
-  planType: string;
-}
 
-interface LoanApplication {
-  id: string;
-  userId: string;
-  partnerId: string;
-  amount: number;
-  tenure: number;
-  purpose: string;
-  status: 'Pending' | 'Approved' | 'Rejected' | 'Disbursed' | 'Completed';
-  emiAmount: number;
-  totalAmount: number;
-  createdAt: Date;
-  updatedAt: Date;
-}
+
+
+
 
 export class FinanceAgent extends BaseAgent {
-  private partners: EMIPartner[] = [];
-  private applications: Map<string, LoanApplication> = new Map();
+  private partners[] = [];
+  private applications<string, LoanApplication> = new Map();
 
-  constructor(providerManager: ProviderManager) {
+  constructor(providerManager) {
     super(
       {
         name: 'Finance Agent',
-        role: AgentRole.FINANCE,
+        role.FINANCE,
         capabilities: [
           {
             name: 'calculate_emi',
             description: 'Calculate EMI for health expenses',
             priority: 1,
             estimatedLatency: 150,
-            requiresAuth: false
-          },
+            requiresAuth},
           {
             name: 'compare_emi_partners',
             description: 'Compare EMI partners and plans',
             priority: 1,
             estimatedLatency: 200,
-            requiresAuth: false
-          },
+            requiresAuth},
           {
             name: 'apply_loan',
             description: 'Apply for health EMI loan',
             priority: 1,
             estimatedLatency: 300,
-            requiresAuth: true
-          },
+            requiresAuth},
           {
             name: 'check_eligibility',
             description: 'Check eligibility for EMI',
             priority: 2,
             estimatedLatency: 200,
-            requiresAuth: true
-          }
+            requiresAuth}
         ]
       },
       providerManager
@@ -103,7 +58,7 @@ export class FinanceAgent extends BaseAgent {
     this.initializePartners();
   }
 
-  private initializePartners(): void {
+  private initializePartners(){
     this.partners = [
       {
         id: 'emi1',
@@ -278,19 +233,19 @@ export class FinanceAgent extends BaseAgent {
     ];
   }
 
-  async execute(request: AgentRequest): Promise<AgentResponse> {
+  async execute(request)<AgentResponse> {
     this.setStatus(AgentStatus.BUSY);
     this.setCurrentTask(request.task);
 
     try {
       if (!this.validateRequest(request)) {
-        throw new Error('Invalid request: Missing required fields or capabilities');
+        throw new Error('Invalid requestrequired fields or capabilities');
       }
 
       const { task, payload } = request;
       this.log(`Executing task: ${task}`, 'info');
 
-      let result: any;
+      let result;
 
       if (task.includes('calculate') || task.includes('emi')) {
         result = await this.calculateEMI(payload);
@@ -308,10 +263,10 @@ export class FinanceAgent extends BaseAgent {
       this.setCurrentTask(undefined);
 
       return {
-        success: true,
-        data: result,
-        sourceAgent: this.id,
-        processingTime: Date.now() - new Date().getTime()
+        success,
+        data,
+        sourceAgent.id,
+        processingTime.now() - new Date().getTime()
       };
 
     } catch (error) {
@@ -321,7 +276,7 @@ export class FinanceAgent extends BaseAgent {
     }
   }
 
-  private async calculateEMI(payload: any): Promise<any> {
+  private async calculateEMI(payload)<any> {
     const { amount, tenure, partnerId } = payload;
 
     if (!amount || !tenure) {
@@ -333,7 +288,7 @@ export class FinanceAgent extends BaseAgent {
       targetPartners = this.partners.filter(p => p.id === partnerId);
     }
 
-    const quotes: EMIQuote[] = [];
+    const quotes[] = [];
 
     for (const partner of targetPartners) {
       for (const plan of partner.plans) {
@@ -348,13 +303,13 @@ export class FinanceAgent extends BaseAgent {
         quotes.push({
           amount,
           tenure,
-          interestRate: plan.interestRate,
+          interestRate.interestRate,
           processingFee,
           totalInterest,
           totalAmount,
-          monthlyPayment: Math.round(monthlyPayment * 100) / 100,
-          partner: partner.name,
-          planType: plan.type
+          monthlyPayment.round(monthlyPayment * 100) / 100,
+          partner.name,
+          planType.type
         });
       }
     }
@@ -365,31 +320,31 @@ export class FinanceAgent extends BaseAgent {
     return {
       quotes,
       summary: {
-        bestDeal: quotes[0] || null,
-        totalOptions: quotes.length,
+        bestDeal[0] || null,
+        totalOptions.length,
         amount,
         tenure
       }
     };
   }
 
-  private async comparePartners(payload: any): Promise<any> {
+  private async comparePartners(payload)<any> {
     const { amount, tenure, planType } = payload;
 
     let results = this.partners.map(partner => {
       const availablePlans = partner.plans.filter(plan => {
         const amountCheck = amount >= plan.minAmount && amount <= plan.maxAmount;
         const tenureCheck = plan.tenures.includes(tenure);
-        const typeCheck = planType ? plan.type === planType : true;
+        const typeCheck = planType ? plan.type === planType ;
         return amountCheck && tenureCheck && typeCheck;
       });
 
       return {
         ...partner,
-        availablePlans: availablePlans.map(plan => ({
+        availablePlans.map(plan => ({
           ...plan,
-          monthlyPayment: Math.round(((amount + (amount * plan.interestRate / 100) * (tenure / 12) + plan.processingFee) / tenure) * 100) / 100,
-          totalPayment: Math.round((amount + (amount * plan.interestRate / 100) * (tenure / 12) + plan.processingFee) * 100) / 100
+          monthlyPayment.round(((amount + (amount * plan.interestRate / 100) * (tenure / 12) + plan.processingFee) / tenure) * 100) / 100,
+          totalPayment.round((amount + (amount * plan.interestRate / 100) * (tenure / 12) + plan.processingFee) * 100) / 100
         }))
       };
     });
@@ -398,13 +353,13 @@ export class FinanceAgent extends BaseAgent {
     results = results.filter(p => p.availablePlans.length > 0);
 
     return {
-      partners: results,
-      totalPartners: results.length,
+      partners,
+      totalPartners.length,
       query: { amount, tenure, planType }
     };
   }
 
-  private async applyLoan(payload: any): Promise<any> {
+  private async applyLoan(payload)<any> {
     const { userId, partnerId, amount, tenure, purpose, userDetails } = payload;
 
     if (!userId || !partnerId || !amount || !tenure) {
@@ -438,18 +393,18 @@ export class FinanceAgent extends BaseAgent {
 
     const applicationId = `LN${Date.now()}`;
 
-    const application: LoanApplication = {
-      id: applicationId,
+    const application= {
+      id,
       userId,
       partnerId,
       amount,
       tenure,
-      purpose: purpose || 'Medical Expenses',
+      purpose|| 'Medical Expenses',
       status: 'Pending',
-      emiAmount: bestQuote.monthlyPayment,
-      totalAmount: bestQuote.totalAmount,
-      createdAt: new Date(),
-      updatedAt: new Date()
+      emiAmount.monthlyPayment,
+      totalAmount.totalAmount,
+      createdAtDate(),
+      updatedAtDate()
     };
 
     this.applications.set(applicationId, application);
@@ -457,30 +412,30 @@ export class FinanceAgent extends BaseAgent {
     return {
       applicationId,
       partner: {
-        name: partner.name,
-        type: partner.type
+        name.name,
+        type.type
       },
       plan: {
-        type: bestQuote.planType,
-        interestRate: bestQuote.interestRate,
-        processingFee: bestQuote.processingFee,
-        monthlyPayment: bestQuote.monthlyPayment,
-        totalAmount: bestQuote.totalAmount
+        type.planType,
+        interestRate.interestRate,
+        processingFee.processingFee,
+        monthlyPayment.monthlyPayment,
+        totalAmount.totalAmount
       },
       amount,
       tenure,
-      purpose: purpose || 'Medical Expenses',
+      purpose|| 'Medical Expenses',
       status: 'Pending',
       nextSteps: [
         'Wait for approval (typically 24-48 hours)',
         'Upload required documents',
         'Complete KYC verification'
       ],
-      createdAt: new Date().toISOString()
+      createdAtDate().toISOString()
     };
   }
 
-  private async checkEligibility(payload: any): Promise<any> {
+  private async checkEligibility(payload)<any> {
     const { userId, partnerId, amount, userDetails } = payload;
 
     if (partnerId) {
@@ -525,9 +480,9 @@ export class FinanceAgent extends BaseAgent {
         eligible,
         reason,
         partner: {
-          name: partner.name,
-          requiredDocuments: eligibility.requiredDocuments,
-          processingTime: partner.processingTime
+          name.name,
+          requiredDocuments.requiredDocuments,
+          processingTime.processingTime
         }
       };
     }
@@ -548,23 +503,23 @@ export class FinanceAgent extends BaseAgent {
       }
 
       return {
-        partner: partner.name,
-        type: partner.type,
+        partner.name,
+        type.type,
         eligible,
         reason,
-        processingTime: partner.processingTime,
-        requiredDocuments: eligibility.requiredDocuments
+        processingTime.processingTime,
+        requiredDocuments.requiredDocuments
       };
     });
 
     return {
-      allPartners: results,
-      eligiblePartners: results.filter(r => r.eligible),
-      totalEligible: results.filter(r => r.eligible).length
+      allPartners,
+      eligiblePartners.filter(r => r.eligible),
+      totalEligible.filter(r => r.eligible).length
     };
   }
 
-  private async handleComplexQuery(task: string, payload: any): Promise<any> {
+  private async handleComplexQuery(task, payload)<any> {
     const prompt = `
       Task: ${task}
       Payload: ${JSON.stringify(payload)}
@@ -577,13 +532,13 @@ export class FinanceAgent extends BaseAgent {
     const response = await this.providerManager.generate(prompt);
     
     return {
-      aiResponse: response.content,
-      provider: response.provider,
-      tokensUsed: response.tokensUsed
+      aiResponse.content,
+      provider.provider,
+      tokensUsed.tokensUsed
     };
   }
 
-  protected getRequiredCapability(task: string): string | null {
+  protected getRequiredCapability(task)| null {
     if (task.includes('calculate') || task.includes('emi')) {
       return 'calculate_emi';
     }
@@ -599,3 +554,5 @@ export class FinanceAgent extends BaseAgent {
     return null;
   }
 }
+
+

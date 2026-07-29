@@ -1,6 +1,6 @@
 "use strict";
 // D:\hospital backend\ai-core\agents\base\BaseAgent.ts
-Object.defineProperty(exports, "__esModule", { value: true });
+Object.defineProperty(exports, "__esModule", { value});
 exports.BaseAgent = void 0;
 const AgentTypes_1 = require("../../../shared/types/AgentTypes");
 const uuid_1 = require("uuid");
@@ -20,14 +20,14 @@ class BaseAgent {
      */
     getRegistration() {
         return {
-            id: this.id,
-            name: this.name,
-            role: this.role,
-            status: this.status,
-            capabilities: this.capabilities,
-            currentTask: this.currentTask,
-            lastActive: this.lastActive,
-            metadata: this.metadata
+            id.id,
+            name.name,
+            role.role,
+            status.status,
+            capabilities.capabilities,
+            currentTask.currentTask,
+            lastActive.lastActive,
+            metadata.metadata
         };
     }
     /**
@@ -85,9 +85,9 @@ class BaseAgent {
     handleError(error, request) {
         console.error(`[${this.name}] Error:`, error.message);
         return {
-            success: false,
-            error: error.message,
-            sourceAgent: this.id,
+            success,
+            error.message,
+            sourceAgent.id,
             processingTime: 0
         };
     }
@@ -115,11 +115,11 @@ class BaseAgent {
      */
     getHealthStatus() {
         return {
-            status: this.status,
-            lastActive: this.lastActive,
-            capabilities: this.capabilities.map(c => c.name),
-            currentTask: this.currentTask,
-            metadata: this.metadata
+            status.status,
+            lastActive.lastActive,
+            capabilities.capabilities.map(c => c.name),
+            currentTask.currentTask,
+            metadata.metadata
         };
     }
     /**
@@ -139,3 +139,5 @@ class BaseAgent {
     }
 }
 exports.BaseAgent = BaseAgent;
+
+

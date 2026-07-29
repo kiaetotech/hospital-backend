@@ -6,27 +6,25 @@ const discountSchema = new mongoose.Schema({
   // ============================================
   
   code: { 
-    type: String, 
-    required: true, 
-    unique: true,
-    uppercase: true,
-    trim: true
-  },
+    type, 
+    required, 
+    unique,
+    uppercase,
+    trim},
   
   type: { 
-    type: String, 
+    type, 
     enum: ['percentage', 'fixed'], 
-    required: true 
-  },
+    required},
   
   value: { 
-    type: Number, 
-    required: true,
+    type, 
+    required,
     min: 0 
   },
   
   description: { 
-    type: String,
+    type,
     default: '' 
   },
   
@@ -35,7 +33,7 @@ const discountSchema = new mongoose.Schema({
   // ============================================
   
   applicableTags: [{ 
-    type: String, 
+    type, 
     enum: [
       // Existing Tags (DO NOT DELETE)
       'opd', 
@@ -61,51 +59,47 @@ const discountSchema = new mongoose.Schema({
   // ============================================
   
   minAmount: { 
-    type: Number, 
+    type, 
     default: 0 
   },
   
   maxDiscount: { 
-    type: Number 
-  },
+    type},
   
   // ============================================
   // VALIDITY PERIOD
   // ============================================
   
   validFrom: { 
-    type: Date, 
-    default: Date.now 
+    type, 
+    default.now 
   },
   
   validUntil: { 
-    type: Date 
-  },
+    type},
   
   // ============================================
   // USAGE LIMITS
   // ============================================
   
   maxUses: { 
-    type: Number,
-    default: null 
-  },
+    type,
+    default},
   
   usedCount: { 
-    type: Number, 
+    type, 
     default: 0 
   },
   
   // Per user limit
   maxUsesPerUser: { 
-    type: Number,
-    default: null 
-  },
+    type,
+    default},
   
   // Track which users used this discount
   usedBy: [{
-    userId: String,
-    usedAt: { type: Date, default: Date.now }
+    userId,
+    usedAt: { type, default.now }
   }],
   
   // ============================================
@@ -113,32 +107,30 @@ const discountSchema = new mongoose.Schema({
   // ============================================
   
   createdBy: {
-    type: { type: String, enum: ['admin', 'doctor', 'center', 'system'], default: 'admin' },
-    id: mongoose.Schema.Types.ObjectId,
-    name: String
-  },
+    type: { type, enum: ['admin', 'doctor', 'center', 'system'], default: 'admin' },
+    id.Schema.Types.ObjectId,
+    name},
   
   // ============================================
   // STATUS
   // ============================================
   
   isActive: { 
-    type: Boolean, 
-    default: true 
-  },
+    type, 
+    default},
   
   // ============================================
   // TIMESTAMPS
   // ============================================
   
   createdAt: { 
-    type: Date, 
-    default: Date.now 
+    type, 
+    default.now 
   },
   
   updatedAt: { 
-    type: Date, 
-    default: Date.now 
+    type, 
+    default.now 
   }
 });
 
@@ -152,7 +144,7 @@ discountSchema.pre('save', function(next) {
 });
 
 // ============================================
-// VIRTUAL: Check if discount is expired
+// VIRTUALif discount is expired
 // ============================================
 
 discountSchema.virtual('isExpired').get(function() {
@@ -163,7 +155,7 @@ discountSchema.virtual('isExpired').get(function() {
 });
 
 // ============================================
-// VIRTUAL: Check if discount is currently active
+// VIRTUALif discount is currently active
 // ============================================
 
 discountSchema.virtual('isCurrentlyActive').get(function() {
@@ -176,7 +168,7 @@ discountSchema.virtual('isCurrentlyActive').get(function() {
 });
 
 // ============================================
-// VIRTUAL: Get discount display text
+// VIRTUALdiscount display text
 // ============================================
 
 discountSchema.virtual('displayText').get(function() {
@@ -215,32 +207,32 @@ discountSchema.methods.canApply = function(amount, bookingType, userId) {
   
   // Check if active
   if (!this.isActive) {
-    return { valid: false, reason: 'Discount code is not active' };
+    return { valid, reason: 'Discount code is not active' };
   }
   
   // Check validity period
   if (this.validFrom && now < this.validFrom) {
-    return { valid: false, reason: 'Discount code is not yet active' };
+    return { valid, reason: 'Discount code is not yet active' };
   }
   if (this.validUntil && now > this.validUntil) {
-    return { valid: false, reason: 'Discount code has expired' };
+    return { valid, reason: 'Discount code has expired' };
   }
   
   // Check overall usage limit
   if (this.maxUses && this.usedCount >= this.maxUses) {
-    return { valid: false, reason: 'Discount code usage limit exceeded' };
+    return { valid, reason: 'Discount code usage limit exceeded' };
   }
   
   // Check minimum amount
   if (this.minAmount && amount < this.minAmount) {
-    return { valid: false, reason: `Minimum order amount of ₹${this.minAmount} required` };
+    return { valid, reason: `Minimum order amount of ₹${this.minAmount} required` };
   }
   
   // Check per-user limit
   if (userId && this.maxUsesPerUser) {
     const userUsageCount = this.usedBy.filter(u => u.userId === userId).length;
     if (userUsageCount >= this.maxUsesPerUser) {
-      return { valid: false, reason: 'You have already used this discount code' };
+      return { valid, reason: 'You have already used this discount code' };
     }
   }
   
@@ -273,11 +265,11 @@ discountSchema.methods.canApply = function(amount, bookingType, userId) {
     });
     
     if (!matches) {
-      return { valid: false, reason: 'Discount code not applicable for this service' };
+      return { valid, reason: 'Discount code not applicable for this service' };
     }
   }
   
-  return { valid: true };
+  return { valid};
 };
 
 // Increment usage count
@@ -285,7 +277,7 @@ discountSchema.methods.incrementUsage = async function(userId) {
   this.usedCount += 1;
   
   if (userId) {
-    this.usedBy.push({ userId, usedAt: new Date() });
+    this.usedBy.push({ userId, usedAtDate() });
   }
   
   // Auto-deactivate if max uses reached
@@ -303,12 +295,12 @@ discountSchema.methods.applyToAmount = function(amount) {
   const finalAmount = amount - discountAmount;
   
   return {
-    originalAmount: amount,
+    originalAmount,
     discountAmount,
     finalAmount,
-    saved: discountAmount,
-    code: this.code,
-    description: this.description
+    saved,
+    code.code,
+    description.description
   };
 };
 
@@ -320,18 +312,18 @@ discountSchema.methods.applyToAmount = function(amount) {
 discountSchema.statics.findActive = function(bookingType = null) {
   const now = new Date();
   const query = {
-    isActive: true,
+    isActive,
     $and: [
       {
         $or: [
-          { validUntil: { $gt: now } },
-          { validUntil: null }
+          { validUntil: { $gt} },
+          { validUntil}
         ]
       },
       {
         $or: [
-          { validFrom: { $lte: now } },
-          { validFrom: null }
+          { validFrom: { $lte} },
+          { validFrom}
         ]
       }
     ]
@@ -347,15 +339,14 @@ discountSchema.statics.findActive = function(bookingType = null) {
 // Find discount by code
 discountSchema.statics.findByCode = function(code) {
   return this.findOne({ 
-    code: code.toUpperCase(),
-    isActive: true 
-  });
+    code.toUpperCase(),
+    isActive});
 };
 
 // Find discounts for Ayurveda
 discountSchema.statics.findAyurvedaDiscounts = function() {
   return this.find({
-    isActive: true,
+    isActive,
     applicableTags: { 
       $in: ['ayurveda_consultation', 'ayurveda_panchakarma', 'ayurveda_home_therapy', 'ayurveda_all'] 
     }
@@ -366,11 +357,11 @@ discountSchema.statics.findAyurvedaDiscounts = function() {
 discountSchema.statics.findByTag = function(tag) {
   const now = new Date();
   return this.find({
-    isActive: true,
+    isActive,
     applicableTags: { $in: [tag, 'general'] },
     $or: [
-      { validUntil: { $gt: now } },
-      { validUntil: null }
+      { validUntil: { $gt} },
+      { validUntil}
     ]
   }).sort({ value: -1 });
 };
@@ -392,3 +383,4 @@ discountSchema.index({ createdBy: 1 });
 const Discount = mongoose.model('Discount', discountSchema);
 
 module.exports = Discount;
+

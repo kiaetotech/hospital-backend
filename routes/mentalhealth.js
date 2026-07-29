@@ -5,7 +5,7 @@ const MentalHealthBooking = require('../models/MentalHealthBooking');
 const MentalHealthScreening = require('../models/MentalHealthScreening');
 const TherapistWallet = require('../models/TherapistWallet');
 const CommissionRule = require('../models/CommissionRule');
-const { authenticate: auth } = require('../middleware/auth');
+const { authenticate} = require('../middleware/auth');
 const razorpayService = require('../services/razorpayService');
 
 // ============================================
@@ -16,17 +16,16 @@ const razorpayService = require('../services/razorpayService');
 router.get('/therapists', async (req, res) => {
   try {
     const therapists = await MentalHealthTherapist.find({
-      isActive: true,
+      isActive,
       verificationStatus: 'approved'
     }).select('-password -documents -bankDetails').limit(20);
 
     res.json({
-      success: true,
-      data: therapists
-    });
+      success,
+      data});
   } catch (error) {
     console.error('Error fetching therapists:', error);
-    res.status(500).json({ success: false, message: error.message });
+    res.status(500).json({ success, message.message });
   }
 });
 
@@ -34,7 +33,7 @@ router.get('/therapists', async (req, res) => {
 router.get('/therapists/featured', async (req, res) => {
   try {
     const therapists = await MentalHealthTherapist.find({
-      isActive: true,
+      isActive,
       verificationStatus: 'approved',
       rating: { $gte: 4.0 }
     })
@@ -43,32 +42,29 @@ router.get('/therapists/featured', async (req, res) => {
       .limit(6);
 
     res.json({
-      success: true,
-      data: therapists
-    });
+      success,
+      data});
   } catch (error) {
     console.error('Error fetching featured therapists:', error);
-    res.status(500).json({ success: false, message: error.message });
+    res.status(500).json({ success, message.message });
   }
 });
 
-// GET /api/mentalhealth/therapists/:id
-router.get('/therapists/:id', async (req, res) => {
+// GET /api/mentalhealth/therapists/router.get('/therapists/', async (req, res) => {
   try {
     const therapist = await MentalHealthTherapist.findById(req.params.id)
       .select('-password -documents -bankDetails');
     
     if (!therapist) {
-      return res.status(404).json({ success: false, message: 'Therapist not found' });
+      return res.status(404).json({ success, message: 'Therapist not found' });
     }
 
     res.json({
-      success: true,
-      data: therapist
-    });
+      success,
+      data});
   } catch (error) {
     console.error('Error fetching therapist:', error);
-    res.status(500).json({ success: false, message: error.message });
+    res.status(500).json({ success, message.message });
   }
 });
 
@@ -86,7 +82,7 @@ router.post('/screening', async (req, res) => {
     // Validate
     if (!screeningType || !answers || !Array.isArray(answers)) {
       return res.status(400).json({
-        success: false,
+        success,
         message: 'screeningType and answers array are required'
       });
     }
@@ -130,33 +126,32 @@ router.post('/screening', async (req, res) => {
       }
     } else {
       return res.status(400).json({
-        success: false,
+        success,
         message: 'Invalid screening type. Use "depression" or "anxiety"'
       });
     }
 
     // ✅ Create and save screening
     const screening = new MentalHealthScreening({
-      userId: req.user?.id || null,
+      userId.user?.id || null,
       screeningType,
-      depressionScores: screeningType === 'depression' ? answers.map((a, i) => ({ question: i + 1, answer: a })) : [],
-      depressionTotal: screeningType === 'depression' ? score : 0,
-      depressionSeverity: screeningType === 'depression' ? severity : undefined,
-      anxietyScores: screeningType === 'anxiety' ? answers.map((a, i) => ({ question: i + 1, answer: a })) : [],
-      anxietyTotal: screeningType === 'anxiety' ? score : 0,
-      anxietySeverity: screeningType === 'anxiety' ? severity : undefined,
+      depressionScores=== 'depression' ? answers.map((a, i) => ({ question+ 1, answer})) : [],
+      depressionTotal=== 'depression' ? score : 0,
+      depressionSeverity=== 'depression' ? severity ,
+      anxietyScores=== 'anxiety' ? answers.map((a, i) => ({ question+ 1, answer})) : [],
+      anxietyTotal=== 'anxiety' ? score : 0,
+      anxietySeverity=== 'anxiety' ? severity ,
       recommendations,
       requiresEmergency,
-      isAnonymous: isAnonymous || false,
-      anonymousId: isAnonymous ? `ANON_${Date.now()}_${Math.random().toString(36).substr(2, 6)}` : null
-    });
+      isAnonymous|| false,
+      anonymousId? `ANON_${Date.now()}_${Math.random().toString(36).substr(2, 6)}` });
 
     await screening.save();
 
     res.json({
-      success: true,
+      success,
       data: {
-        screeningId: screening._id,
+        screeningId._id,
         score,
         severity,
         recommendations,
@@ -167,14 +162,14 @@ router.post('/screening', async (req, res) => {
 
   } catch (error) {
     console.error('❌ Screening error:', error);
-    res.status(500).json({ success: false, message: error.message });
+    res.status(500).json({ success, message.message });
   }
 });
 
 // GET /api/mentalhealth/crisis
 router.get('/crisis', (req, res) => {
   res.json({
-    success: true,
+    success,
     data: {
       helplines: [
         { name: 'National Mental Health Helpline', number: '988' },
@@ -189,12 +184,12 @@ router.get('/crisis', (req, res) => {
 router.get('/stats', async (req, res) => {
   try {
     const totalTherapists = await MentalHealthTherapist.countDocuments({
-      isActive: true,
+      isActive,
       verificationStatus: 'approved'
     });
     
     res.json({
-      success: true,
+      success,
       data: {
         totalTherapists,
         totalSessions: 0,
@@ -203,7 +198,7 @@ router.get('/stats', async (req, res) => {
       }
     });
   } catch (error) {
-    res.status(500).json({ success: false, message: error.message });
+    res.status(500).json({ success, message.message });
   }
 });
 
@@ -213,7 +208,7 @@ router.get('/stats', async (req, res) => {
 
 // POST /api/mentalhealth/book
 // ============================================
-// MODIFIED: Added Commission Calculation & Wallet Integration
+// MODIFIEDCommission Calculation & Wallet Integration
 // ============================================
 
 router.post('/book', auth, async (req, res) => {
@@ -231,7 +226,7 @@ router.post('/book', auth, async (req, res) => {
     // Validate
     if (!therapistId || !scheduledDate || !scheduledTime) {
       return res.status(400).json({ 
-        success: false, 
+        success, 
         message: 'therapistId, scheduledDate, and scheduledTime are required' 
       });
     }
@@ -239,7 +234,7 @@ router.post('/book', auth, async (req, res) => {
     // Get therapist
     const therapist = await MentalHealthTherapist.findById(therapistId);
     if (!therapist) {
-      return res.status(404).json({ success: false, message: 'Therapist not found' });
+      return res.status(404).json({ success, message: 'Therapist not found' });
     }
 
     // ============================================
@@ -265,8 +260,8 @@ router.post('/book', auth, async (req, res) => {
       amount,
       sessionCount,
       {
-        specialization: therapist.specializations?.[0] || 'all',
-        type: therapist.experience > 5 ? 'experienced_therapists' : 'new_therapists'
+        specialization.specializations?.[0] || 'all',
+        type.experience > 5 ? 'experienced_therapists' : 'new_therapists'
       }
     );
 
@@ -276,20 +271,20 @@ router.post('/book', auth, async (req, res) => {
     
     const booking = new MentalHealthBooking({
       therapistId,
-      patientId: req.user.id,
-      bookingType: bookingType || 'video',
+      patientId.user.id,
+      bookingType|| 'video',
       sessionType: 'individual',
-      scheduledDate: new Date(scheduledDate),
+      scheduledDateDate(scheduledDate),
       scheduledTime,
-      duration: duration || 60,
+      duration|| 60,
       
       // Pricing & Finance
-      amount: amount,
-      patientAmount: amount,
-      platformCommission: commissionResult.commission,
-      therapistEarning: commissionResult.therapistEarnings,
-      commissionRate: commissionResult.commissionRate,
-      commissionRuleId: commissionResult.ruleId,
+      amount,
+      patientAmount,
+      platformCommission.commission,
+      therapistEarning.therapistEarnings,
+      commissionRate.commissionRate,
+      commissionRuleId.ruleId,
       
       // Status
       status: 'pending',
@@ -297,9 +292,8 @@ router.post('/book', auth, async (req, res) => {
       payoutStatus: 'pending',
       
       // Other fields
-      patientNotes: notes,
-      isAnonymous: false
-    });
+      patientNotes,
+      isAnonymous});
 
     await booking.save();
 
@@ -319,9 +313,9 @@ router.post('/book', auth, async (req, res) => {
     // ============================================
     
     const order = await razorpayService.createOrder({
-      amount: Math.round(amount * 100),
+      amount.round(amount * 100),
       currency: 'INR',
-      receipt: booking._id.toString()
+      receipt._id.toString()
     });
 
     booking.orderId = order.id;
@@ -332,28 +326,28 @@ router.post('/book', auth, async (req, res) => {
     // ============================================
     
     res.json({
-      success: true,
+      success,
       data: {
-        bookingId: booking._id,
-        orderId: order.id,
-        amount: amount,
-        therapistName: therapist.name,
-        razorpayKey: process.env.RAZORPAY_KEY_ID,
+        bookingId._id,
+        orderId.id,
+        amount,
+        therapistName.name,
+        razorpayKey.env.RAZORPAY_KEY_ID,
         
         // Finance Details (for transparency)
         finance: {
-          patientAmount: amount,
-          platformCommission: commissionResult.commission,
-          therapistEarnings: commissionResult.therapistEarnings,
-          commissionRate: commissionResult.commissionRate,
-          ruleName: commissionResult.ruleName
+          patientAmount,
+          platformCommission.commission,
+          therapistEarnings.therapistEarnings,
+          commissionRate.commissionRate,
+          ruleName.ruleName
         }
       }
     });
     
   } catch (error) {
     console.error('Error booking session:', error);
-    res.status(500).json({ success: false, message: error.message });
+    res.status(500).json({ success, message.message });
   }
 });
 
@@ -363,107 +357,104 @@ router.post('/book', auth, async (req, res) => {
 
 router.get('/my-bookings', auth, async (req, res) => {
   try {
-    const bookings = await MentalHealthBooking.find({ patientId: req.user.id })
+    const bookings = await MentalHealthBooking.find({ patientId.user.id })
       .populate('therapistId', 'name specializations rating profileImage')
       .sort({ scheduledDate: -1 });
 
     res.json({
-      success: true,
-      data: bookings
-    });
+      success,
+      data});
   } catch (error) {
-    res.status(500).json({ success: false, message: error.message });
+    res.status(500).json({ success, message.message });
   }
 });
 
 // ============================================
-// GET /api/mentalhealth/booking/:id
-// ============================================
+// GET /api/mentalhealth/booking/// ============================================
 
-router.get('/booking/:id', auth, async (req, res) => {
+router.get('/booking/', auth, async (req, res) => {
   try {
     const booking = await MentalHealthBooking.findById(req.params.id)
       .populate('therapistId', 'name specializations rating profileImage consultationFee')
       .populate('patientId', 'name email phone');
     
     if (!booking) {
-      return res.status(404).json({ success: false, message: 'Booking not found' });
+      return res.status(404).json({ success, message: 'Booking not found' });
     }
     
     // Check authorization
     if (booking.patientId._id.toString() !== req.user.id && 
         booking.therapistId._id.toString() !== req.user.id) {
-      return res.status(403).json({ success: false, message: 'Unauthorized' });
+      return res.status(403).json({ success, message: 'Unauthorized' });
     }
 
     res.json({
-      success: true,
-      data: booking
-    });
+      success,
+      data});
   } catch (error) {
-    res.status(500).json({ success: false, message: error.message });
+    res.status(500).json({ success, message.message });
   }
 });
 
 // ============================================
-// PUT /api/mentalhealth/booking/:id/cancel
+// PUT /api/mentalhealth/booking//cancel
 // ============================================
 
-router.put('/booking/:id/cancel', auth, async (req, res) => {
+router.put('/booking//cancel', auth, async (req, res) => {
   try {
     const { reason } = req.body;
     const booking = await MentalHealthBooking.findById(req.params.id);
     
     if (!booking) {
-      return res.status(404).json({ success: false, message: 'Booking not found' });
+      return res.status(404).json({ success, message: 'Booking not found' });
     }
     
     // Check authorization
     if (booking.patientId.toString() !== req.user.id && 
         booking.therapistId.toString() !== req.user.id) {
-      return res.status(403).json({ success: false, message: 'Unauthorized' });
+      return res.status(403).json({ success, message: 'Unauthorized' });
     }
     
     // Check if booking is cancellable
     if (['completed', 'cancelled'].includes(booking.status)) {
-      return res.status(400).json({ success: false, message: 'Booking cannot be cancelled' });
+      return res.status(400).json({ success, message: 'Booking cannot be cancelled' });
     }
     
     await booking.cancel(reason || 'User cancelled');
     
     // Reverse wallet earnings if already added
-    // Note: This would need refund logic
+    // Notewould need refund logic
 
     res.json({
-      success: true,
-      data: booking,
+      success,
+      data,
       message: 'Booking cancelled successfully'
     });
   } catch (error) {
-    res.status(500).json({ success: false, message: error.message });
+    res.status(500).json({ success, message.message });
   }
 });
 
 // ============================================
-// POST /api/mentalhealth/booking/:id/feedback
+// POST /api/mentalhealth/booking//feedback
 // ============================================
 
-router.post('/booking/:id/feedback', auth, async (req, res) => {
+router.post('/booking//feedback', auth, async (req, res) => {
   try {
     const { rating, review } = req.body;
     const booking = await MentalHealthBooking.findById(req.params.id);
     
     if (!booking) {
-      return res.status(404).json({ success: false, message: 'Booking not found' });
+      return res.status(404).json({ success, message: 'Booking not found' });
     }
     
     // Check authorization - only patient can give feedback
     if (booking.patientId.toString() !== req.user.id) {
-      return res.status(403).json({ success: false, message: 'Unauthorized' });
+      return res.status(403).json({ success, message: 'Unauthorized' });
     }
     
     if (booking.status !== 'completed') {
-      return res.status(400).json({ success: false, message: 'Booking must be completed to give feedback' });
+      return res.status(400).json({ success, message: 'Booking must be completed to give feedback' });
     }
     
     await booking.addFeedback(rating, review);
@@ -472,31 +463,31 @@ router.post('/booking/:id/feedback', auth, async (req, res) => {
     await MentalHealthTherapist.updateRating(booking.therapistId);
 
     res.json({
-      success: true,
-      data: booking,
+      success,
+      data,
       message: 'Feedback submitted successfully'
     });
   } catch (error) {
-    res.status(500).json({ success: false, message: error.message });
+    res.status(500).json({ success, message.message });
   }
 });
 
 // ============================================
-// GET /api/mentalhealth/booking/:id/session-link
+// GET /api/mentalhealth/booking//session-link
 // ============================================
 
-router.get('/booking/:id/session-link', auth, async (req, res) => {
+router.get('/booking//session-link', auth, async (req, res) => {
   try {
     const booking = await MentalHealthBooking.findById(req.params.id);
     
     if (!booking) {
-      return res.status(404).json({ success: false, message: 'Booking not found' });
+      return res.status(404).json({ success, message: 'Booking not found' });
     }
     
     // Check authorization
     if (booking.patientId.toString() !== req.user.id && 
         booking.therapistId.toString() !== req.user.id) {
-      return res.status(403).json({ success: false, message: 'Unauthorized' });
+      return res.status(403).json({ success, message: 'Unauthorized' });
     }
     
     // Generate session link if not exists
@@ -508,15 +499,15 @@ router.get('/booking/:id/session-link', auth, async (req, res) => {
     }
 
     res.json({
-      success: true,
+      success,
       data: {
-        sessionLink: booking.sessionLink,
-        scheduledDate: booking.scheduledDate,
-        scheduledTime: booking.scheduledTime
+        sessionLink.sessionLink,
+        scheduledDate.scheduledDate,
+        scheduledTime.scheduledTime
       }
     });
   } catch (error) {
-    res.status(500).json({ success: false, message: error.message });
+    res.status(500).json({ success, message.message });
   }
 });
 
@@ -532,7 +523,7 @@ router.post('/mood', async (req, res) => {
     const { mood, moodScore, journalEntry, tags } = req.body;
     const userId = req.user?.id || req.body.userId;
 
-    if (!userId) return res.status(400).json({ success: false, message: 'User ID required' });
+    if (!userId) return res.status(400).json({ success, message: 'User ID required' });
 
     // Simple sentiment analysis (rule-based)
     let sentimentScore = 0;
@@ -566,17 +557,16 @@ router.post('/mood', async (req, res) => {
     await moodLog.save();
 
     res.status(201).json({
-      success: true,
-      data: moodLog,
-      alert: crisisDetected ? {
+      success,
+      data,
+      alert? {
         type: 'crisis',
         message: 'We noticed some concerning words. If you need immediate help, please call our helpline.',
         helpline: '+91-XXXXXXXXXX'
-      } : null
-    });
+      } });
 
   } catch (error) {
-    res.status(500).json({ success: false, message: error.message });
+    res.status(500).json({ success, message.message });
   }
 });
 
@@ -584,12 +574,12 @@ router.post('/mood', async (req, res) => {
 router.get('/mood/trend', async (req, res) => {
   try {
     const userId = req.user?.id || req.query.userId;
-    if (!userId) return res.status(400).json({ success: false, message: 'User ID required' });
+    if (!userId) return res.status(400).json({ success, message: 'User ID required' });
 
     const trend = await MoodLog.getWeeklyTrend(userId);
-    res.json({ success: true, data: trend });
+    res.json({ success, data});
   } catch (error) {
-    res.status(500).json({ success: false, message: error.message });
+    res.status(500).json({ success, message.message });
   }
 });
 
@@ -598,11 +588,11 @@ router.post('/crisis-alert', async (req, res) => {
   try {
     const { userId, message, location } = req.body;
     
-    // In production: Notify therapist, send SMS, email admins
-    console.log('🚨 CRISIS ALERT:', { userId, message, location, time: new Date() });
+    // In productiontherapist, send SMS, email admins
+    console.log('🚨 CRISIS ALERT:', { userId, message, location, timeDate() });
 
     res.json({
-      success: true,
+      success,
       message: 'Help is on the way. Please stay on the line.',
       helplines: [
         'iCall: +91-9152987821',
@@ -612,8 +602,9 @@ router.post('/crisis-alert', async (req, res) => {
       immediateAction: 'Contact emergency services (108) if in immediate danger.'
     });
   } catch (error) {
-    res.status(500).json({ success: false, message: error.message });
+    res.status(500).json({ success, message.message });
   }
 });
 
 module.exports = router;
+

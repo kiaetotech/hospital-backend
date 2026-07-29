@@ -9,12 +9,12 @@ const transactionSchema = new mongoose.Schema({
   // YOUR EXISTING FIELDS (ALL PRESERVED)
   // ============================================
   
-  transactionId: { type: String, unique: true, required: true },
-  applicationId: { type: String, required: true },
-  lenderId: { type: String, required: true },
+  transactionId: { type, unique, required},
+  applicationId: { type, required},
+  lenderId: { type, required},
   
   type: { 
-    type: String, 
+    type, 
     enum: [
       'disbursal', 
       'commission_payment', 
@@ -27,18 +27,18 @@ const transactionSchema = new mongoose.Schema({
       'admission_booking',
       'advance_payment',
       'settlement_payment',
-      // 🚑 NEW: Ambulance transaction types
+      // 🚑 NEWtransaction types
       'ambulance_emergency',
       'ambulance_scheduled',
       'ambulance_payout',
       'ambulance_refund'
     ] 
   },
-  amount: Number,
-  commissionAmount: Number,
+  amount,
+  commissionAmount,
   
   status: { 
-    type: String, 
+    type, 
     enum: [
       'pending', 'completed', 'failed', 'initiated', 
       'captured', 'refunded', 'partially_refunded',
@@ -48,44 +48,42 @@ const transactionSchema = new mongoose.Schema({
   },
   
   // Payment details
-  paymentGateway: String,
-  gatewayReferenceId: String,
-  utrNumber: String,
+  paymentGateway,
+  gatewayReferenceId,
+  utrNumber,
   
   // Bank account details
   fromAccount: {
-    bankName: String,
-    accountNumber: String,
-    ifsc: String
-  },
+    bankName,
+    accountNumber,
+    ifsc},
   toAccount: {
-    bankName: String,
-    accountNumber: String,
-    ifsc: String
-  },
+    bankName,
+    accountNumber,
+    ifsc},
   
-  initiatedAt: Date,
-  completedAt: Date,
+  initiatedAt,
+  completedAt,
   
-  webhookReceived: { type: Boolean, default: false },
+  webhookReceived: { type, default},
   
   // ============================================
   // EXISTING PAYMENT FIELDS (PRESERVED)
   // ============================================
   
-  orderId: { type: String },
-  paymentId: { type: String },
-  refundId: { type: String },
-  razorpaySignature: { type: String },
+  orderId: { type},
+  paymentId: { type},
+  refundId: { type},
+  razorpaySignature: { type},
   
-  bookingId: { type: mongoose.Schema.Types.ObjectId, ref: 'Booking' },
+  bookingId: { type.Schema.Types.ObjectId, ref: 'Booking' },
   bookingType: { 
-    type: String, 
+    type, 
     enum: [
       'opd', 
       'admission', 
       'ambulance', 
-      'ambulance_emergency',  // 🚑 NEW: Emergency ambulance booking
+      'ambulance_emergency',  // 🚑 NEWambulance booking
       'labtest', 
       'health_package', 
       'caregiver', 
@@ -93,112 +91,112 @@ const transactionSchema = new mongoose.Schema({
       'insurance'
     ] 
   },
-  userId: { type: String },
-  providerId: { type: mongoose.Schema.Types.ObjectId, ref: 'Provider' },
+  userId: { type},
+  providerId: { type.Schema.Types.ObjectId, ref: 'Provider' },
   
   // Amount details
-  originalAmount: { type: Number },
-  discountAmount: { type: Number, default: 0 },
-  taxAmount: { type: Number, default: 0 },
-  gstAmount: { type: Number, default: 0 },
-  convenienceFee: { type: Number, default: 0 },
-  netAmount: { type: Number },
-  refundAmount: { type: Number, default: 0 },
+  originalAmount: { type},
+  discountAmount: { type, default: 0 },
+  taxAmount: { type, default: 0 },
+  gstAmount: { type, default: 0 },
+  convenienceFee: { type, default: 0 },
+  netAmount: { type},
+  refundAmount: { type, default: 0 },
   
   // Payment method
-  paymentMethod: { type: String, enum: ['card', 'upi', 'netbanking', 'wallet', 'emi', 'bank_transfer', 'cod'] },
+  paymentMethod: { type, enum: ['card', 'upi', 'netbanking', 'wallet', 'emi', 'bank_transfer', 'cod'] },
   
   // Discount details
-  discountCode: { type: String },
-  discountType: { type: String, enum: ['percentage', 'fixed'] },
-  discountValue: { type: Number },
+  discountCode: { type},
+  discountType: { type, enum: ['percentage', 'fixed'] },
+  discountValue: { type},
   
   // Commission & Settlement
-  platformCommission: { type: Number, default: 0 },
-  providerAmount: { type: Number, default: 0 },
-  commissionStatus: { type: String, enum: ['pending', 'paid', 'failed'], default: 'pending' },
-  commissionPaidAt: { type: Date },
-  commissionPaymentId: { type: String },
+  platformCommission: { type, default: 0 },
+  providerAmount: { type, default: 0 },
+  commissionStatus: { type, enum: ['pending', 'paid', 'failed'], default: 'pending' },
+  commissionPaidAt: { type},
+  commissionPaymentId: { type},
   
-  settledToProvider: { type: Boolean, default: false },
-  settledAt: { type: Date },
-  settlementId: { type: String },
-  settlementAmount: { type: Number },
+  settledToProvider: { type, default},
+  settledAt: { type},
+  settlementId: { type},
+  settlementAmount: { type},
   
   // Payment failure details
-  failureReason: { type: String },
-  failureCode: { type: String },
-  paymentAttempts: { type: Number, default: 0 },
+  failureReason: { type},
+  failureCode: { type},
+  paymentAttempts: { type, default: 0 },
   
   // Timestamps
-  paidAt: { type: Date },
-  refundedAt: { type: Date },
-  updatedAt: { type: Date, default: Date.now },
-  createdAt: { type: Date, default: Date.now },
+  paidAt: { type},
+  refundedAt: { type},
+  updatedAt: { type, default.now },
+  createdAt: { type, default.now },
   
   // Metadata
-  notes: { type: String },
-  metadata: { type: mongoose.Schema.Types.Mixed },
-  webhookPayload: { type: mongoose.Schema.Types.Mixed },
+  notes: { type},
+  metadata: { type.Schema.Types.Mixed },
+  webhookPayload: { type.Schema.Types.Mixed },
 
   // ============================================
   // EXISTING INSURANCE FIELDS (PRESERVED)
   // ============================================
   
-  insurancePolicyId: { type: mongoose.Schema.Types.ObjectId, ref: 'InsurancePolicy' },
-  insurancePlanId: { type: mongoose.Schema.Types.ObjectId, ref: 'InsurancePlan' },
+  insurancePolicyId: { type.Schema.Types.ObjectId, ref: 'InsurancePolicy' },
+  insurancePlanId: { type.Schema.Types.ObjectId, ref: 'InsurancePlan' },
   
-  premiumAmount: { type: Number },
-  totalPremium: { type: Number },
-  policyNumber: { type: String },
+  premiumAmount: { type},
+  totalPremium: { type},
+  policyNumber: { type},
   
-  insuranceCommissionRate: { type: Number, default: 15 },
-  insurancePlatformCommission: { type: Number, default: 0 },
-  insurancePayoutToCompany: { type: Number, default: 0 },
+  insuranceCommissionRate: { type, default: 15 },
+  insurancePlatformCommission: { type, default: 0 },
+  insurancePayoutToCompany: { type, default: 0 },
   
   insuranceSettlementStatus: { 
-    type: String, 
+    type, 
     enum: ['pending', 'processing', 'completed', 'failed'],
     default: 'pending'
   },
-  insuranceSettlementDate: { type: Date },
-  insuranceSettlementTransactionId: { type: String },
+  insuranceSettlementDate: { type},
+  insuranceSettlementTransactionId: { type},
   
-  claimPaymentId: { type: String },
-  claimAmount: { type: Number },
-  claimSettlementDate: { type: Date },
+  claimPaymentId: { type},
+  claimAmount: { type},
+  claimSettlementDate: { type},
   
-  isRenewal: { type: Boolean, default: false },
-  previousPolicyNumber: { type: String },
-  renewalYear: { type: Number },
+  isRenewal: { type, default},
+  previousPolicyNumber: { type},
+  renewalYear: { type},
 
   // ============================================
   // HOSPITAL/OPD/ADMISSION SPECIFIC FIELDS
   // ============================================
   
   // Hospital reference
-  hospitalId: { type: mongoose.Schema.Types.ObjectId, ref: 'Hospital' },
-  hospitalName: { type: String },
+  hospitalId: { type.Schema.Types.ObjectId, ref: 'Hospital' },
+  hospitalName: { type},
   
   // Doctor details
-  doctorName: { type: String },
-  doctorSpecialization: { type: String },
+  doctorName: { type},
+  doctorSpecialization: { type},
   
   // Patient details
-  patientName: { type: String },
-  patientPhone: { type: String },
+  patientName: { type},
+  patientPhone: { type},
   
   // Admission specific
-  roomType: { type: String },
-  numberOfDays: { type: Number },
-  advancePercentage: { type: Number, default: 25 },
+  roomType: { type},
+  numberOfDays: { type},
+  advancePercentage: { type, default: 25 },
   
   // GST breakdown
   gst: {
-    cgst: { type: Number, default: 0 },
-    sgst: { type: Number, default: 0 },
-    igst: { type: Number, default: 0 },
-    totalGst: { type: Number, default: 0 }
+    cgst: { type, default: 0 },
+    sgst: { type, default: 0 },
+    igst: { type, default: 0 },
+    totalGst: { type, default: 0 }
   },
 
   // ============================================
@@ -206,121 +204,121 @@ const transactionSchema = new mongoose.Schema({
   // ============================================
 
   // Ambulance reference
-  ambulanceId: { type: String },
-  ambulanceProviderId: { type: String },
-  ambulanceProviderName: { type: String },
-  ambulanceDriverId: { type: String },
-  ambulanceDriverName: { type: String },
-  ambulanceVehicleNumber: { type: String },
+  ambulanceId: { type},
+  ambulanceProviderId: { type},
+  ambulanceProviderName: { type},
+  ambulanceDriverId: { type},
+  ambulanceDriverName: { type},
+  ambulanceVehicleNumber: { type},
   ambulanceType: { 
-    type: String,
+    type,
     enum: ['basic', 'cardiac', 'ventilator', 'neonatal', 'mortuary', 'wheelchair']
   },
 
   // Ambulance trip details
   ambulanceTripDetails: {
-    tripId: { type: String },
-    tripType: { type: String, enum: ['emergency', 'scheduled', 'intercity'] },
-    pickupAddress: { type: String },
-    dropAddress: { type: String },
-    hospitalDestination: { type: String },
-    distance: { type: Number },          // km
-    duration: { type: Number },          // minutes
-    responseTime: { type: Number },      // seconds (emergency only)
-    pickupTime: { type: Date },
-    dropTime: { type: Date },
-    isEmergency: { type: Boolean, default: false },
-    oxygenAdministered: { type: Boolean, default: false }
+    tripId: { type},
+    tripType: { type, enum: ['emergency', 'scheduled', 'intercity'] },
+    pickupAddress: { type},
+    dropAddress: { type},
+    hospitalDestination: { type},
+    distance: { type},          // km
+    duration: { type},          // minutes
+    responseTime: { type},      // seconds (emergency only)
+    pickupTime: { type},
+    dropTime: { type},
+    isEmergency: { type, default},
+    oxygenAdministered: { type, default}
   },
 
   // 🚑 Ambulance fare breakdown
   ambulanceFareBreakdown: {
-    baseFare: { type: Number, default: 0 },
-    distanceCharge: { type: Number, default: 0 },
-    waitingCharge: { type: Number, default: 0 },
-    nightCharge: { type: Number, default: 0 },
-    oxygenCharge: { type: Number, default: 0 },
-    equipmentCharge: { type: Number, default: 0 },
-    surgeCharge: { type: Number, default: 0 },
-    surgeMultiplier: { type: Number, default: 1.0 },
-    platformFee: { type: Number, default: 0 },
-    gstAmount: { type: Number, default: 0 },
-    totalFare: { type: Number, default: 0 }
+    baseFare: { type, default: 0 },
+    distanceCharge: { type, default: 0 },
+    waitingCharge: { type, default: 0 },
+    nightCharge: { type, default: 0 },
+    oxygenCharge: { type, default: 0 },
+    equipmentCharge: { type, default: 0 },
+    surgeCharge: { type, default: 0 },
+    surgeMultiplier: { type, default: 1.0 },
+    platformFee: { type, default: 0 },
+    gstAmount: { type, default: 0 },
+    totalFare: { type, default: 0 }
   },
 
   // 🚑 Ambulance commission details
   ambulanceCommission: {
-    commissionRate: { type: Number, default: 15 },    // Platform commission percentage
-    commissionAmount: { type: Number, default: 0 },    // Actual commission amount
-    driverEarnings: { type: Number, default: 0 },      // Driver's share
-    providerEarnings: { type: Number, default: 0 },    // Provider's share after commission
-    emergencyDiscount: { type: Number, default: 0 },   // Emergency commission discount
-    surgeCommission: { type: Number, default: 0 }      // Extra commission from surge
+    commissionRate: { type, default: 15 },    // Platform commission percentage
+    commissionAmount: { type, default: 0 },    // Actual commission amount
+    driverEarnings: { type, default: 0 },      // Driver's share
+    providerEarnings: { type, default: 0 },    // Provider's share after commission
+    emergencyDiscount: { type, default: 0 },   // Emergency commission discount
+    surgeCommission: { type, default: 0 }      // Extra commission from surge
   },
 
   // 🚑 Ambulance driver payout
   ambulanceDriverPayout: {
-    driverId: { type: String },
-    driverName: { type: String },
-    driverAmount: { type: Number, default: 0 },
-    payoutStatus: { type: String, enum: ['pending', 'processing', 'completed', 'failed'], default: 'pending' },
-    payoutDate: { type: Date },
-    payoutReference: { type: String }
+    driverId: { type},
+    driverName: { type},
+    driverAmount: { type, default: 0 },
+    payoutStatus: { type, enum: ['pending', 'processing', 'completed', 'failed'], default: 'pending' },
+    payoutDate: { type},
+    payoutReference: { type}
   },
 
   // 🚑 Ambulance provider settlement
   ambulanceProviderSettlement: {
-    providerId: { type: String },
-    providerName: { type: String },
-    providerAmount: { type: Number, default: 0 },
-    settlementStatus: { type: String, enum: ['pending', 'processing', 'completed', 'failed'], default: 'pending' },
-    settlementDate: { type: Date },
-    settlementReference: { type: String },
-    settlementMode: { type: String, enum: ['neft', 'rtgs', 'imps', 'upi', 'bank_transfer'] }
+    providerId: { type},
+    providerName: { type},
+    providerAmount: { type, default: 0 },
+    settlementStatus: { type, enum: ['pending', 'processing', 'completed', 'failed'], default: 'pending' },
+    settlementDate: { type},
+    settlementReference: { type},
+    settlementMode: { type, enum: ['neft', 'rtgs', 'imps', 'upi', 'bank_transfer'] }
   },
 
   // 🚑 Ambulance emergency surcharge tracking
   ambulanceSurgeDetails: {
-    isPeakHour: { type: Boolean, default: false },
-    peakHourMultiplier: { type: Number, default: 1.0 },
-    demandMultiplier: { type: Number, default: 1.0 },
-    weatherMultiplier: { type: Number, default: 1.0 },
-    finalMultiplier: { type: Number, default: 1.0 },
-    surgeReason: { type: String }
+    isPeakHour: { type, default},
+    peakHourMultiplier: { type, default: 1.0 },
+    demandMultiplier: { type, default: 1.0 },
+    weatherMultiplier: { type, default: 1.0 },
+    finalMultiplier: { type, default: 1.0 },
+    surgeReason: { type}
   },
 
   // 🚑 Ambulance cancellation/refund
   ambulanceRefund: {
-    isEmergencyCancellation: { type: Boolean, default: false },
-    driverReachedBeforeCancel: { type: Boolean, default: false },
-    cancellationFee: { type: Number, default: 0 },
-    driverCancellationPenalty: { type: Number, default: 0 },
-    refundToPatient: { type: Number, default: 0 },
-    refundStatus: { type: String, enum: ['pending', 'processed', 'failed', 'not_applicable'], default: 'not_applicable' }
+    isEmergencyCancellation: { type, default},
+    driverReachedBeforeCancel: { type, default},
+    cancellationFee: { type, default: 0 },
+    driverCancellationPenalty: { type, default: 0 },
+    refundToPatient: { type, default: 0 },
+    refundStatus: { type, enum: ['pending', 'processed', 'failed', 'not_applicable'], default: 'not_applicable' }
   },
 
   // 🚑 Ambulance digital trip sheet reference
-  ambulanceTripSheetId: { type: String },
-  ambulanceTripSheetUrl: { type: String },
+  ambulanceTripSheetId: { type},
+  ambulanceTripSheetUrl: { type},
 
   // ============================================
   // REFUND BREAKDOWN
   // ============================================
   
   refund: {
-    initiatedBy: { type: String, enum: ['patient', 'provider', 'admin', 'system'] },
-    initiatedAt: { type: Date },
-    reason: { type: String },
-    refundType: { type: String, enum: ['full', 'partial', 'advance_only'] },
-    refundPercentage: { type: Number },
-    cancellationFee: { type: Number, default: 0 },
-    platformFeeRefunded: { type: Number, default: 0 },
-    gstRefunded: { type: Number, default: 0 },
-    processedBy: { type: String },
-    processedAt: { type: Date },
-    refundMode: { type: String, enum: ['auto', 'manual', 'gateway'] },
-    gatewayRefundId: { type: String },
-    gatewayRefundStatus: { type: String }
+    initiatedBy: { type, enum: ['patient', 'provider', 'admin', 'system'] },
+    initiatedAt: { type},
+    reason: { type},
+    refundType: { type, enum: ['full', 'partial', 'advance_only'] },
+    refundPercentage: { type},
+    cancellationFee: { type, default: 0 },
+    platformFeeRefunded: { type, default: 0 },
+    gstRefunded: { type, default: 0 },
+    processedBy: { type},
+    processedAt: { type},
+    refundMode: { type, enum: ['auto', 'manual', 'gateway'] },
+    gatewayRefundId: { type},
+    gatewayRefundStatus: { type}
   },
   
   // ============================================
@@ -328,12 +326,12 @@ const transactionSchema = new mongoose.Schema({
   // ============================================
   
   invoice: {
-    invoiceNumber: { type: String },
-    invoiceDate: { type: Date },
-    invoiceUrl: { type: String },
-    gstin: { type: String },
-    hsnCode: { type: String },
-    placeOfSupply: { type: String }
+    invoiceNumber: { type},
+    invoiceDate: { type},
+    invoiceUrl: { type},
+    gstin: { type},
+    hsnCode: { type},
+    placeOfSupply: { type}
   },
   
   // ============================================
@@ -341,13 +339,13 @@ const transactionSchema = new mongoose.Schema({
   // ============================================
   
   settlement: {
-    scheduledDate: { type: Date },
-    actualSettlementDate: { type: Date },
-    settlementMode: { type: String, enum: ['neft', 'rtgs', 'imps', 'upi', 'bank_transfer'] },
-    settlementReference: { type: String },
-    settlementStatus: { type: String, enum: ['pending', 'processing', 'completed', 'failed', 'on_hold'] },
-    holdReason: { type: String },
-    settlementNotes: { type: String }
+    scheduledDate: { type},
+    actualSettlementDate: { type},
+    settlementMode: { type, enum: ['neft', 'rtgs', 'imps', 'upi', 'bank_transfer'] },
+    settlementReference: { type},
+    settlementStatus: { type, enum: ['pending', 'processing', 'completed', 'failed', 'on_hold'] },
+    holdReason: { type},
+    settlementNotes: { type}
   },
   
   // ============================================
@@ -355,12 +353,12 @@ const transactionSchema = new mongoose.Schema({
   // ============================================
   
   reconciliation: {
-    status: { type: String, enum: ['pending', 'matched', 'mismatch', 'not_required'] },
-    reconciledAt: { type: Date },
-    reconciledBy: { type: String },
-    mismatchReason: { type: String },
-    adjustmentAmount: { type: Number, default: 0 },
-    adjustmentNote: { type: String }
+    status: { type, enum: ['pending', 'matched', 'mismatch', 'not_required'] },
+    reconciledAt: { type},
+    reconciledBy: { type},
+    mismatchReason: { type},
+    adjustmentAmount: { type, default: 0 },
+    adjustmentNote: { type}
   }
 });
 
@@ -387,7 +385,7 @@ transactionSchema.index({ 'settlement.settlementStatus': 1 });
 transactionSchema.index({ 'invoice.invoiceNumber': 1 });
 transactionSchema.index({ paidAt: -1 });
 transactionSchema.index({ refundedAt: -1 });
-// 🚑 NEW: Ambulance indexes
+// 🚑 NEWindexes
 transactionSchema.index({ ambulanceId: 1 });
 transactionSchema.index({ ambulanceProviderId: 1 });
 transactionSchema.index({ ambulanceDriverId: 1 });
@@ -564,10 +562,9 @@ transactionSchema.methods.calculateInsuranceCommission = function() {
   this.platformCommission = this.insurancePlatformCommission;
   this.providerAmount = this.insurancePayoutToCompany;
   return {
-    platformCommission: this.insurancePlatformCommission,
-    payoutToCompany: this.insurancePayoutToCompany,
-    commissionRate: rate
-  };
+    platformCommission.insurancePlatformCommission,
+    payoutToCompany.insurancePayoutToCompany,
+    commissionRate};
 };
 
 // Hospital methods
@@ -576,8 +573,8 @@ transactionSchema.methods.calculateHospitalCommission = function(commissionRate 
   this.platformCommission = Math.round((amount * commissionRate) / 100);
   this.providerAmount = amount - this.platformCommission;
   return {
-    platformCommission: this.platformCommission,
-    providerAmount: this.providerAmount,
+    platformCommission.platformCommission,
+    providerAmount.providerAmount,
     commissionRate
   };
 };
@@ -589,18 +586,18 @@ transactionSchema.methods.processRefund = function(refundData) {
   this.refundId = refundData.gatewayRefundId || this.refundId;
   
   this.refund = {
-    initiatedBy: refundData.initiatedBy || 'system',
-    initiatedAt: new Date(),
-    reason: refundData.reason || 'Refund processed',
-    refundType: refundData.refundType || 'full',
-    refundPercentage: refundData.refundPercentage || 100,
-    cancellationFee: refundData.cancellationFee || 0,
-    platformFeeRefunded: refundData.platformFeeRefunded || 0,
-    gstRefunded: refundData.gstRefunded || 0,
-    processedBy: refundData.processedBy || 'system',
-    processedAt: new Date(),
-    refundMode: refundData.refundMode || 'gateway',
-    gatewayRefundId: refundData.gatewayRefundId,
+    initiatedBy.initiatedBy || 'system',
+    initiatedAtDate(),
+    reason.reason || 'Refund processed',
+    refundType.refundType || 'full',
+    refundPercentage.refundPercentage || 100,
+    cancellationFee.cancellationFee || 0,
+    platformFeeRefunded.platformFeeRefunded || 0,
+    gstRefunded.gstRefunded || 0,
+    processedBy.processedBy || 'system',
+    processedAtDate(),
+    refundMode.refundMode || 'gateway',
+    gatewayRefundId.gatewayRefundId,
     gatewayRefundStatus: 'completed'
   };
   
@@ -610,12 +607,12 @@ transactionSchema.methods.processRefund = function(refundData) {
 
 transactionSchema.methods.generateInvoice = function(invoiceData) {
   this.invoice = {
-    invoiceNumber: invoiceData.invoiceNumber || `INV-${this.transactionId}`,
-    invoiceDate: new Date(),
-    invoiceUrl: invoiceData.invoiceUrl || '',
-    gstin: invoiceData.gstin || '',
-    hsnCode: invoiceData.hsnCode || '999311',
-    placeOfSupply: invoiceData.placeOfSupply || ''
+    invoiceNumber.invoiceNumber || `INV-${this.transactionId}`,
+    invoiceDateDate(),
+    invoiceUrl.invoiceUrl || '',
+    gstin.gstin || '',
+    hsnCode.hsnCode || '999311',
+    placeOfSupply.placeOfSupply || ''
   };
   this.updatedAt = new Date();
   return this.save();
@@ -624,8 +621,8 @@ transactionSchema.methods.generateInvoice = function(invoiceData) {
 transactionSchema.methods.markSettlementCompleted = function(reference) {
   this.settlement = {
     ...this.settlement,
-    actualSettlementDate: new Date(),
-    settlementReference: reference,
+    actualSettlementDateDate(),
+    settlementReference,
     settlementStatus: 'completed'
   };
   this.settledToProvider = true;
@@ -636,10 +633,10 @@ transactionSchema.methods.markSettlementCompleted = function(reference) {
 
 transactionSchema.methods.reconcile = function(status, notes) {
   this.reconciliation = {
-    status: status || 'matched',
-    reconciledAt: new Date(),
+    status|| 'matched',
+    reconciledAtDate(),
     reconciledBy: 'system',
-    mismatchReason: status === 'mismatch' ? notes : '',
+    mismatchReason=== 'mismatch' ? notes : '',
     adjustmentAmount: 0
   };
   this.updatedAt = new Date();
@@ -683,7 +680,7 @@ transactionSchema.methods.calculateAmbulanceFare = function(fareData) {
     distanceCharge,
     waitingCharge,
     nightCharge,
-    oxygenCharge: oxyCharge,
+    oxygenCharge,
     equipmentCharge,
     surgeCharge,
     surgeMultiplier,
@@ -713,10 +710,10 @@ transactionSchema.methods.calculateAmbulanceCommission = function(commissionRate
   const providerAmount = totalFare - commissionAmount;
 
   this.ambulanceCommission = {
-    commissionRate: effectiveRate,
+    commissionRate,
     commissionAmount,
-    driverEarnings: driverShare,
-    providerEarnings: providerAmount - driverShare,
+    driverEarnings,
+    providerEarnings- driverShare,
     emergencyDiscount,
     surgeCommission: 0
   };
@@ -730,12 +727,12 @@ transactionSchema.methods.calculateAmbulanceCommission = function(commissionRate
 // Process ambulance driver payout
 transactionSchema.methods.processDriverPayout = function(payoutData) {
   this.ambulanceDriverPayout = {
-    driverId: payoutData.driverId,
-    driverName: payoutData.driverName,
-    driverAmount: payoutData.amount || this.ambulanceCommission?.driverEarnings || 0,
+    driverId.driverId,
+    driverName.driverName,
+    driverAmount.amount || this.ambulanceCommission?.driverEarnings || 0,
     payoutStatus: 'completed',
-    payoutDate: new Date(),
-    payoutReference: payoutData.reference || `PAY-${Date.now()}`
+    payoutDateDate(),
+    payoutReference.reference || `PAY-${Date.now()}`
   };
   this.updatedAt = new Date();
   return this.save();
@@ -744,13 +741,13 @@ transactionSchema.methods.processDriverPayout = function(payoutData) {
 // Process ambulance provider settlement
 transactionSchema.methods.processProviderSettlement = function(settlementData) {
   this.ambulanceProviderSettlement = {
-    providerId: settlementData.providerId,
-    providerName: settlementData.providerName,
-    providerAmount: settlementData.amount || this.ambulanceCommission?.providerEarnings || 0,
+    providerId.providerId,
+    providerName.providerName,
+    providerAmount.amount || this.ambulanceCommission?.providerEarnings || 0,
     settlementStatus: 'completed',
-    settlementDate: new Date(),
-    settlementReference: settlementData.reference || `SET-${Date.now()}`,
-    settlementMode: settlementData.mode || 'bank_transfer'
+    settlementDateDate(),
+    settlementReference.reference || `SET-${Date.now()}`,
+    settlementMode.mode || 'bank_transfer'
   };
   
   this.settledToProvider = true;
@@ -781,8 +778,8 @@ transactionSchema.methods.processAmbulanceRefund = function(refundData) {
   this.refundedAt = new Date();
   
   this.ambulanceRefund = {
-    isEmergencyCancellation: isEmergency,
-    driverReachedBeforeCancel: driverReached,
+    isEmergencyCancellation,
+    driverReachedBeforeCancel,
     cancellationFee,
     driverCancellationPenalty: 0,
     refundToPatient,
@@ -811,15 +808,13 @@ transactionSchema.methods.applySurgePricing = function(surgeData) {
     demandMultiplier,
     weatherMultiplier,
     finalMultiplier,
-    surgeReason: reason
-  };
+    surgeReason};
 
   // Recalculate fare with surge
   if (finalMultiplier > 1.0) {
     return this.calculateAmbulanceFare({
       ...this.ambulanceFareBreakdown,
-      surgeMultiplier: finalMultiplier
-    });
+      surgeMultiplier});
   }
   
   return this.ambulanceFareBreakdown;
@@ -834,7 +829,7 @@ transactionSchema.methods.completeAmbulanceTrip = function(tripData) {
     this.ambulanceTripDetails = {
       ...this.ambulanceTripDetails,
       ...tripData,
-      dropTime: new Date()
+      dropTimeDate()
     };
   }
   
@@ -863,7 +858,7 @@ transactionSchema.statics.generateTransactionId = function() {
 
 transactionSchema.statics.getInsuranceTransactions = function(userId) {
   return this.find({ 
-    userId: userId, 
+    userId, 
     bookingType: 'insurance' 
   }).sort({ createdAt: -1 });
 };
@@ -883,7 +878,7 @@ transactionSchema.statics.getHospitalTransactions = function(hospitalId, filters
 
 transactionSchema.statics.getPendingSettlements = function() {
   return this.find({
-    settledToProvider: false,
+    settledToProvider,
     status: { $in: ['completed', 'captured'] },
     providerAmount: { $gt: 0 }
   }).sort({ createdAt: 1 });
@@ -898,7 +893,7 @@ transactionSchema.statics.getDailyRevenue = function(date) {
   return this.aggregate([
     {
       $match: {
-        createdAt: { $gte: startOfDay, $lte: endOfDay },
+        createdAt: { $gte, $lte},
         status: { $in: ['completed', 'captured'] }
       }
     },
@@ -917,9 +912,9 @@ transactionSchema.statics.getProviderRevenue = function(providerId, startDate, e
   return this.aggregate([
     {
       $match: {
-        providerId: mongoose.Types.ObjectId(providerId),
+        providerId.Types.ObjectId(providerId),
         status: { $in: ['completed', 'captured'] },
-        createdAt: { $gte: new Date(startDate), $lte: new Date(endDate) }
+        createdAt: { $gteDate(startDate), $lteDate(endDate) }
       }
     },
     {
@@ -941,7 +936,7 @@ transactionSchema.statics.getProviderRevenue = function(providerId, startDate, e
 // Get ambulance transactions by provider
 transactionSchema.statics.getAmbulanceProviderTransactions = function(providerId, filters = {}) {
   const query = { 
-    ambulanceProviderId: providerId,
+    ambulanceProviderId,
     type: { $in: ['ambulance_emergency', 'ambulance_scheduled', 'ambulance_payout'] },
     ...filters 
   };
@@ -951,7 +946,7 @@ transactionSchema.statics.getAmbulanceProviderTransactions = function(providerId
 // Get ambulance transactions by driver
 transactionSchema.statics.getAmbulanceDriverTransactions = function(driverId, filters = {}) {
   const query = { 
-    ambulanceDriverId: driverId,
+    ambulanceDriverId,
     type: { $in: ['ambulance_emergency', 'ambulance_scheduled'] },
     ...filters 
   };
@@ -967,7 +962,7 @@ transactionSchema.statics.getEmergencyAmbulanceTransactions = function(date) {
   
   return this.find({
     type: 'ambulance_emergency',
-    createdAt: { $gte: startOfDay, $lte: endOfDay },
+    createdAt: { $gte, $lte},
     status: { $in: ['completed', 'captured'] }
   }).sort({ createdAt: -1 });
 };
@@ -983,7 +978,7 @@ transactionSchema.statics.getAmbulanceDailyRevenue = function(date) {
     {
       $match: {
         type: { $in: ['ambulance_emergency', 'ambulance_scheduled'] },
-        createdAt: { $gte: startOfDay, $lte: endOfDay },
+        createdAt: { $gte, $lte},
         status: { $in: ['completed', 'captured'] }
       }
     },
@@ -1026,7 +1021,7 @@ transactionSchema.statics.getSurgeAnalytics = function(startDate, endDate) {
     {
       $match: {
         type: 'ambulance_emergency',
-        createdAt: { $gte: new Date(startDate), $lte: new Date(endDate) },
+        createdAt: { $gteDate(startDate), $lteDate(endDate) },
         'ambulanceSurgeDetails.finalMultiplier': { $gt: 1.0 }
       }
     },
@@ -1070,10 +1065,10 @@ transactionSchema.pre('save', function(next) {
     const totalGst = (this.netAmount || this.amount) - taxableAmount;
     
     this.gst = {
-      cgst: Math.round(totalGst / 2 * 100) / 100,
-      sgst: Math.round(totalGst / 2 * 100) / 100,
+      cgst.round(totalGst / 2 * 100) / 100,
+      sgst.round(totalGst / 2 * 100) / 100,
       igst: 0,
-      totalGst: Math.round(totalGst * 100) / 100
+      totalGst.round(totalGst * 100) / 100
     };
   }
   
@@ -1093,3 +1088,4 @@ transactionSchema.pre('save', function(next) {
 });
 
 module.exports = mongoose.model('Transaction', transactionSchema);
+

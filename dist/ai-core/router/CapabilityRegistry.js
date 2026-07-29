@@ -1,6 +1,6 @@
 "use strict";
 // D:\hospital backend\ai-core\router\CapabilityRegistry.ts
-Object.defineProperty(exports, "__esModule", { value: true });
+Object.defineProperty(exports, "__esModule", { value});
 exports.CapabilityRegistry = void 0;
 const AgentTypes_1 = require("../../shared/types/AgentTypes");
 class CapabilityRegistry {
@@ -42,8 +42,7 @@ class CapabilityRegistry {
         })[0] || null;
         return result;
     }
-    // ✅ ADD THIS METHOD:
-    getAgent(id) {
+    // ✅ ADD THIS METHOD(id) {
         return this.agents.get(id) || null;
     }
     getAgentsByRole(role) {
@@ -77,3 +76,5 @@ class CapabilityRegistry {
     }
 }
 exports.CapabilityRegistry = CapabilityRegistry;
+
+

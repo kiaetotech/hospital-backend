@@ -1,6 +1,6 @@
 "use strict";
 // D:\hospital backend\ai-core\agents\operations\FinanceAgent.ts
-Object.defineProperty(exports, "__esModule", { value: true });
+Object.defineProperty(exports, "__esModule", { value});
 exports.FinanceAgent = void 0;
 const AgentTypes_1 = require("../../../shared/types/AgentTypes");
 const BaseAgent_1 = require("../base/BaseAgent");
@@ -8,36 +8,32 @@ class FinanceAgent extends BaseAgent_1.BaseAgent {
     constructor(providerManager) {
         super({
             name: 'Finance Agent',
-            role: AgentTypes_1.AgentRole.FINANCE,
+            role_1.AgentRole.FINANCE,
             capabilities: [
                 {
                     name: 'calculate_emi',
                     description: 'Calculate EMI for health expenses',
                     priority: 1,
                     estimatedLatency: 150,
-                    requiresAuth: false
-                },
+                    requiresAuth},
                 {
                     name: 'compare_emi_partners',
                     description: 'Compare EMI partners and plans',
                     priority: 1,
                     estimatedLatency: 200,
-                    requiresAuth: false
-                },
+                    requiresAuth},
                 {
                     name: 'apply_loan',
                     description: 'Apply for health EMI loan',
                     priority: 1,
                     estimatedLatency: 300,
-                    requiresAuth: true
-                },
+                    requiresAuth},
                 {
                     name: 'check_eligibility',
                     description: 'Check eligibility for EMI',
                     priority: 2,
                     estimatedLatency: 200,
-                    requiresAuth: true
-                }
+                    requiresAuth}
             ]
         }, providerManager);
         this.partners = [];
@@ -223,7 +219,7 @@ class FinanceAgent extends BaseAgent_1.BaseAgent {
         this.setCurrentTask(request.task);
         try {
             if (!this.validateRequest(request)) {
-                throw new Error('Invalid request: Missing required fields or capabilities');
+                throw new Error('Invalid requestrequired fields or capabilities');
             }
             const { task, payload } = request;
             this.log(`Executing task: ${task}`, 'info');
@@ -246,10 +242,10 @@ class FinanceAgent extends BaseAgent_1.BaseAgent {
             this.setStatus(AgentTypes_1.AgentStatus.IDLE);
             this.setCurrentTask(undefined);
             return {
-                success: true,
-                data: result,
-                sourceAgent: this.id,
-                processingTime: Date.now() - new Date().getTime()
+                success,
+                data,
+                sourceAgent.id,
+                processingTime.now() - new Date().getTime()
             };
         }
         catch (error) {
@@ -281,13 +277,13 @@ class FinanceAgent extends BaseAgent_1.BaseAgent {
                 quotes.push({
                     amount,
                     tenure,
-                    interestRate: plan.interestRate,
+                    interestRate.interestRate,
                     processingFee,
                     totalInterest,
                     totalAmount,
-                    monthlyPayment: Math.round(monthlyPayment * 100) / 100,
-                    partner: partner.name,
-                    planType: plan.type
+                    monthlyPayment.round(monthlyPayment * 100) / 100,
+                    partner.name,
+                    planType.type
                 });
             }
         }
@@ -296,8 +292,8 @@ class FinanceAgent extends BaseAgent_1.BaseAgent {
         return {
             quotes,
             summary: {
-                bestDeal: quotes[0] || null,
-                totalOptions: quotes.length,
+                bestDeal[0] || null,
+                totalOptions.length,
                 amount,
                 tenure
             }
@@ -309,23 +305,23 @@ class FinanceAgent extends BaseAgent_1.BaseAgent {
             const availablePlans = partner.plans.filter(plan => {
                 const amountCheck = amount >= plan.minAmount && amount <= plan.maxAmount;
                 const tenureCheck = plan.tenures.includes(tenure);
-                const typeCheck = planType ? plan.type === planType : true;
+                const typeCheck = planType ? plan.type === planType ;
                 return amountCheck && tenureCheck && typeCheck;
             });
             return {
                 ...partner,
-                availablePlans: availablePlans.map(plan => ({
+                availablePlans.map(plan => ({
                     ...plan,
-                    monthlyPayment: Math.round(((amount + (amount * plan.interestRate / 100) * (tenure / 12) + plan.processingFee) / tenure) * 100) / 100,
-                    totalPayment: Math.round((amount + (amount * plan.interestRate / 100) * (tenure / 12) + plan.processingFee) * 100) / 100
+                    monthlyPayment.round(((amount + (amount * plan.interestRate / 100) * (tenure / 12) + plan.processingFee) / tenure) * 100) / 100,
+                    totalPayment.round((amount + (amount * plan.interestRate / 100) * (tenure / 12) + plan.processingFee) * 100) / 100
                 }))
             };
         });
         // Filter partners with at least one available plan
         results = results.filter(p => p.availablePlans.length > 0);
         return {
-            partners: results,
-            totalPartners: results.length,
+            partners,
+            totalPartners.length,
             query: { amount, tenure, planType }
         };
     }
@@ -356,42 +352,42 @@ class FinanceAgent extends BaseAgent_1.BaseAgent {
         }
         const applicationId = `LN${Date.now()}`;
         const application = {
-            id: applicationId,
+            id,
             userId,
             partnerId,
             amount,
             tenure,
-            purpose: purpose || 'Medical Expenses',
+            purpose|| 'Medical Expenses',
             status: 'Pending',
-            emiAmount: bestQuote.monthlyPayment,
-            totalAmount: bestQuote.totalAmount,
-            createdAt: new Date(),
-            updatedAt: new Date()
+            emiAmount.monthlyPayment,
+            totalAmount.totalAmount,
+            createdAtDate(),
+            updatedAtDate()
         };
         this.applications.set(applicationId, application);
         return {
             applicationId,
             partner: {
-                name: partner.name,
-                type: partner.type
+                name.name,
+                type.type
             },
             plan: {
-                type: bestQuote.planType,
-                interestRate: bestQuote.interestRate,
-                processingFee: bestQuote.processingFee,
-                monthlyPayment: bestQuote.monthlyPayment,
-                totalAmount: bestQuote.totalAmount
+                type.planType,
+                interestRate.interestRate,
+                processingFee.processingFee,
+                monthlyPayment.monthlyPayment,
+                totalAmount.totalAmount
             },
             amount,
             tenure,
-            purpose: purpose || 'Medical Expenses',
+            purpose|| 'Medical Expenses',
             status: 'Pending',
             nextSteps: [
                 'Wait for approval (typically 24-48 hours)',
                 'Upload required documents',
                 'Complete KYC verification'
             ],
-            createdAt: new Date().toISOString()
+            createdAtDate().toISOString()
         };
     }
     async checkEligibility(payload) {
@@ -434,9 +430,9 @@ class FinanceAgent extends BaseAgent_1.BaseAgent {
                 eligible,
                 reason,
                 partner: {
-                    name: partner.name,
-                    requiredDocuments: eligibility.requiredDocuments,
-                    processingTime: partner.processingTime
+                    name.name,
+                    requiredDocuments.requiredDocuments,
+                    processingTime.processingTime
                 }
             };
         }
@@ -454,18 +450,18 @@ class FinanceAgent extends BaseAgent_1.BaseAgent {
                 }
             }
             return {
-                partner: partner.name,
-                type: partner.type,
+                partner.name,
+                type.type,
                 eligible,
                 reason,
-                processingTime: partner.processingTime,
-                requiredDocuments: eligibility.requiredDocuments
+                processingTime.processingTime,
+                requiredDocuments.requiredDocuments
             };
         });
         return {
-            allPartners: results,
-            eligiblePartners: results.filter(r => r.eligible),
-            totalEligible: results.filter(r => r.eligible).length
+            allPartners,
+            eligiblePartners.filter(r => r.eligible),
+            totalEligible.filter(r => r.eligible).length
         };
     }
     async handleComplexQuery(task, payload) {
@@ -479,9 +475,9 @@ class FinanceAgent extends BaseAgent_1.BaseAgent {
     `;
         const response = await this.providerManager.generate(prompt);
         return {
-            aiResponse: response.content,
-            provider: response.provider,
-            tokensUsed: response.tokensUsed
+            aiResponse.content,
+            provider.provider,
+            tokensUsed.tokensUsed
         };
     }
     getRequiredCapability(task) {
@@ -501,3 +497,5 @@ class FinanceAgent extends BaseAgent_1.BaseAgent {
     }
 }
 exports.FinanceAgent = FinanceAgent;
+
+

@@ -4,54 +4,41 @@ import { AgentRole, AgentStatus, AgentRequest, AgentResponse } from '../../../sh
 import { BaseAgent } from '../base/BaseAgent';
 import { ProviderManager } from '../../providers/ProviderManager';
 
-interface Hospital {
-  id: string;
-  name: string;
-  city: string;
-  specialty: string[];
-  bedsAvailable: number;
-  insuranceAccepted: string[];
-  rating: number;
-  costEstimate: number;
-}
+
 
 export class HospitalAgent extends BaseAgent {
-  private hospitals: Hospital[] = [];
+  private hospitals[] = [];
 
-  constructor(providerManager: ProviderManager) {
+  constructor(providerManager) {
     super(
       {
         name: 'Hospital Agent',
-        role: AgentRole.HOSPITAL,
+        role.HOSPITAL,
         capabilities: [
           {
             name: 'search_hospitals',
             description: 'Search hospitals by location, specialty, or insurance',
             priority: 1,
             estimatedLatency: 200,
-            requiresAuth: false
-          },
+            requiresAuth},
           {
             name: 'compare_hospitals',
             description: 'Compare hospitals based on cost, rating, and availability',
             priority: 2,
             estimatedLatency: 300,
-            requiresAuth: false
-          },
+            requiresAuth},
           {
             name: 'check_beds',
             description: 'Check bed availability in specific hospitals',
             priority: 1,
             estimatedLatency: 100,
-            requiresAuth: false
-          },
+            requiresAuth},
           {
             name: 'estimate_cost',
             description: 'Estimate cost for a procedure at a hospital',
             priority: 2,
             estimatedLatency: 200,
-            requiresAuth: false
-          }
+            requiresAuth}
         ]
       },
       providerManager
@@ -61,7 +48,7 @@ export class HospitalAgent extends BaseAgent {
     this.initializeHospitals();
   }
 
-  private initializeHospitals(): void {
+  private initializeHospitals(){
     this.hospitals = [
       {
         id: 'h1',
@@ -116,20 +103,20 @@ export class HospitalAgent extends BaseAgent {
     ];
   }
 
-  async execute(request: AgentRequest): Promise<AgentResponse> {
+  async execute(request)<AgentResponse> {
     this.setStatus(AgentStatus.BUSY);
     this.setCurrentTask(request.task);
 
     try {
       // Validate request
       if (!this.validateRequest(request)) {
-        throw new Error('Invalid request: Missing required fields or capabilities');
+        throw new Error('Invalid requestrequired fields or capabilities');
       }
 
       const { task, payload } = request;
       this.log(`Executing task: ${task}`, 'info');
 
-      let result: any;
+      let result;
 
       // Route to appropriate handler based on task
       if (task.includes('search') || task.includes('find')) {
@@ -149,10 +136,10 @@ export class HospitalAgent extends BaseAgent {
       this.setCurrentTask(undefined);
 
       return {
-        success: true,
-        data: result,
-        sourceAgent: this.id,
-        processingTime: Date.now() - new Date().getTime()
+        success,
+        data,
+        sourceAgent.id,
+        processingTime.now() - new Date().getTime()
       };
 
     } catch (error) {
@@ -162,7 +149,7 @@ export class HospitalAgent extends BaseAgent {
     }
   }
 
-  private async searchHospitals(payload: any): Promise<any> {
+  private async searchHospitals(payload)<any> {
     const { city, specialty, insurance, maxResults = 10 } = payload;
 
     let results = this.hospitals;
@@ -193,13 +180,13 @@ export class HospitalAgent extends BaseAgent {
     results = results.slice(0, maxResults);
 
     return {
-      hospitals: results,
-      total: results.length,
+      hospitals,
+      total.length,
       query: { city, specialty, insurance }
     };
   }
 
-  private async compareHospitals(payload: any): Promise<any> {
+  private async compareHospitals(payload)<any> {
     const { hospitalIds, criteria } = payload;
 
     let selectedHospitals = this.hospitals;
@@ -219,12 +206,12 @@ export class HospitalAgent extends BaseAgent {
     comparison.sort((a, b) => b.score - a.score);
 
     return {
-      hospitals: comparison,
+      hospitals,
       criteria
     };
   }
 
-  private calculateHospitalScore(hospital: Hospital, criteria?: string[]): number {
+  private calculateHospitalScore(hospital, criteria?[]){
     let score = 0;
 
     // Rating contributes 40%
@@ -241,7 +228,7 @@ export class HospitalAgent extends BaseAgent {
     return Math.round(score);
   }
 
-  private async checkAvailability(payload: any): Promise<any> {
+  private async checkAvailability(payload)<any> {
     const { hospitalId, specialty } = payload;
 
     let targetHospital = this.hospitals;
@@ -250,20 +237,20 @@ export class HospitalAgent extends BaseAgent {
     }
 
     const availability = targetHospital.map(h => ({
-      id: h.id,
-      name: h.name,
-      bedsAvailable: h.bedsAvailable,
-      hasSpecialty: specialty ? h.specialty.some(s => s.toLowerCase().includes(specialty.toLowerCase())) : true,
-      status: h.bedsAvailable > 10 ? 'Available' : h.bedsAvailable > 0 ? 'Limited' : 'Full'
+      id.id,
+      name.name,
+      bedsAvailable.bedsAvailable,
+      hasSpecialty? h.specialty.some(s => s.toLowerCase().includes(specialty.toLowerCase())) ,
+      status.bedsAvailable > 10 ? 'Available' .bedsAvailable > 0 ? 'Limited' : 'Full'
     }));
 
     return {
       availability,
-      timestamp: new Date().toISOString()
+      timestampDate().toISOString()
     };
   }
 
-  private async estimateCost(payload: any): Promise<any> {
+  private async estimateCost(payload)<any> {
     const { hospitalId, procedure, insurance } = payload;
 
     let targetHospitals = this.hospitals;
@@ -276,7 +263,7 @@ export class HospitalAgent extends BaseAgent {
 
       // Adjust based on procedure complexity (simplified)
       if (procedure) {
-        const procedureMultipliers: Record<string, number> = {
+        const procedureMultipliers= {
           'surgery': 3,
           'consultation': 0.5,
           'diagnostic': 0.8,
@@ -293,23 +280,23 @@ export class HospitalAgent extends BaseAgent {
       }
 
       return {
-        id: h.id,
-        name: h.name,
-        baseCost: h.costEstimate,
-        estimatedCost: Math.round(estimatedCost - insuranceDiscount),
-        insuranceDiscount: Math.round(insuranceDiscount),
-        insuranceAccepted: h.insuranceAccepted
+        id.id,
+        name.name,
+        baseCost.costEstimate,
+        estimatedCost.round(estimatedCost - insuranceDiscount),
+        insuranceDiscount.round(insuranceDiscount),
+        insuranceAccepted.insuranceAccepted
       };
     });
 
     return {
       estimates,
       procedure,
-      timestamp: new Date().toISOString()
+      timestampDate().toISOString()
     };
   }
 
-  private async handleComplexQuery(task: string, payload: any): Promise<any> {
+  private async handleComplexQuery(task, payload)<any> {
     // Use AI for complex queries
     const prompt = `
       Task: ${task}
@@ -323,13 +310,13 @@ export class HospitalAgent extends BaseAgent {
     const response = await this.providerManager.generate(prompt);
     
     return {
-      aiResponse: response.content,
-      provider: response.provider,
-      tokensUsed: response.tokensUsed
+      aiResponse.content,
+      provider.provider,
+      tokensUsed.tokensUsed
     };
   }
 
-  protected getRequiredCapability(task: string): string | null {
+  protected getRequiredCapability(task)| null {
     if (task.includes('search') || task.includes('find')) {
       return 'search_hospitals';
     }
@@ -345,3 +332,5 @@ export class HospitalAgent extends BaseAgent {
     return null;
   }
 }
+
+

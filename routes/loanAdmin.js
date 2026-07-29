@@ -26,7 +26,7 @@ router.get('/lenders/pending', isAdmin, async (req, res) => {
     res.json(lenders);
   } catch (error) {
     console.error(error);
-    res.status(500).json({ error: error.message });
+    res.status(500).json({ error.message });
   }
 });
 
@@ -42,26 +42,26 @@ router.get('/lenders', isAdmin, async (req, res) => {
     res.json(lenders);
   } catch (error) {
     console.error(error);
-    res.status(500).json({ error: error.message });
+    res.status(500).json({ error.message });
   }
 });
 
 // Get single lender details
-router.get('/lenders/:lenderId', isAdmin, async (req, res) => {
+router.get('/lenders/', isAdmin, async (req, res) => {
   try {
-    const lender = await Lender.findOne({ lenderId: req.params.lenderId }).select('-password');
+    const lender = await Lender.findOne({ lenderId.params.lenderId }).select('-password');
     if (!lender) {
       return res.status(404).json({ error: 'Lender not found' });
     }
     res.json(lender);
   } catch (error) {
     console.error(error);
-    res.status(500).json({ error: error.message });
+    res.status(500).json({ error.message });
   }
 });
 
 // Verify/Approve lender
-router.put('/lenders/:lenderId/verify', isAdmin, async (req, res) => {
+router.put('/lenders//verify', isAdmin, async (req, res) => {
   try {
     const { lenderId } = req.params;
     const { status, commissionRate, adminNote } = req.body;
@@ -79,15 +79,15 @@ router.put('/lenders/:lenderId/verify', isAdmin, async (req, res) => {
     
     await lender.save();
     
-    res.json({ success: true, message: `Lender ${status}`, lender: lender.toObject({ getters: true, transform: (doc, ret) => { delete ret.password; return ret; } }) });
+    res.json({ success, message: `Lender ${status}`, lender.toObject({ getters, transform: (doc, ret) => { delete ret.password; return ret; } }) });
   } catch (error) {
     console.error(error);
-    res.status(500).json({ error: error.message });
+    res.status(500).json({ error.message });
   }
 });
 
 // Suspend lender
-router.put('/lenders/:lenderId/suspend', isAdmin, async (req, res) => {
+router.put('/lenders//suspend', isAdmin, async (req, res) => {
   try {
     const { lenderId } = req.params;
     const { reason } = req.body;
@@ -102,10 +102,10 @@ router.put('/lenders/:lenderId/suspend', isAdmin, async (req, res) => {
     lender.updatedAt = new Date();
     await lender.save();
     
-    res.json({ success: true, message: 'Lender suspended' });
+    res.json({ success, message: 'Lender suspended' });
   } catch (error) {
     console.error(error);
-    res.status(500).json({ error: error.message });
+    res.status(500).json({ error.message });
   }
 });
 
@@ -122,7 +122,7 @@ router.get('/applications', isAdmin, async (req, res) => {
     if (status) query.status = status;
     if (lenderId) query.lenderId = lenderId;
     if (startDate && endDate) {
-      query.submittedAt = { $gte: new Date(startDate), $lte: new Date(endDate) };
+      query.submittedAt = { $gteDate(startDate), $lteDate(endDate) };
     }
     
     const applications = await LoanApplication.find(query)
@@ -136,19 +136,19 @@ router.get('/applications', isAdmin, async (req, res) => {
     res.json({
       applications,
       total,
-      page: parseInt(page),
-      totalPages: Math.ceil(total / parseInt(limit))
+      page(page),
+      totalPages.ceil(total / parseInt(limit))
     });
   } catch (error) {
     console.error(error);
-    res.status(500).json({ error: error.message });
+    res.status(500).json({ error.message });
   }
 });
 
 // Get single application details
-router.get('/applications/:applicationId', isAdmin, async (req, res) => {
+router.get('/applications/', isAdmin, async (req, res) => {
   try {
-    const application = await LoanApplication.findOne({ applicationId: req.params.applicationId })
+    const application = await LoanApplication.findOne({ applicationId.params.applicationId })
       .populate('lenderId', 'businessName lenderId email phone');
     
     if (!application) {
@@ -158,7 +158,7 @@ router.get('/applications/:applicationId', isAdmin, async (req, res) => {
     res.json(application);
   } catch (error) {
     console.error(error);
-    res.status(500).json({ error: error.message });
+    res.status(500).json({ error.message });
   }
 });
 
@@ -173,22 +173,22 @@ router.get('/reports', isAdmin, async (req, res) => {
     
     let dateFilter = {};
     if (startDate && endDate) {
-      dateFilter.submittedAt = { $gte: new Date(startDate), $lte: new Date(endDate) };
+      dateFilter.submittedAt = { $gteDate(startDate), $lteDate(endDate) };
     } else if (period) {
       const now = new Date();
       if (period === 'today') {
         const today = new Date();
         today.setHours(0, 0, 0, 0);
-        dateFilter.submittedAt = { $gte: today };
+        dateFilter.submittedAt = { $gte};
       } else if (period === 'week') {
         const weekAgo = new Date(now.setDate(now.getDate() - 7));
-        dateFilter.submittedAt = { $gte: weekAgo };
+        dateFilter.submittedAt = { $gte};
       } else if (period === 'month') {
         const monthAgo = new Date(now.setMonth(now.getMonth() - 1));
-        dateFilter.submittedAt = { $gte: monthAgo };
+        dateFilter.submittedAt = { $gte};
       } else if (period === 'year') {
         const yearAgo = new Date(now.setFullYear(now.getFullYear() - 1));
-        dateFilter.submittedAt = { $gte: yearAgo };
+        dateFilter.submittedAt = { $gte};
       }
     }
     
@@ -223,7 +223,7 @@ router.get('/reports', isAdmin, async (req, res) => {
       const lenderIdKey = app.lenderId?.toString() || 'unknown';
       if (!lenderStats[lenderIdKey]) {
         lenderStats[lenderIdKey] = { 
-          lenderName: app.lenderId?.businessName || 'Unknown',
+          lenderName.lenderId?.businessName || 'Unknown',
           count: 0, 
           disbursedAmount: 0, 
           commission: 0 
@@ -249,11 +249,11 @@ router.get('/reports', isAdmin, async (req, res) => {
         commissionPaid,
         commissionPending
       },
-      lenderWise: Object.values(lenderStats)
+      lenderWise.values(lenderStats)
     });
   } catch (error) {
     console.error(error);
-    res.status(500).json({ error: error.message });
+    res.status(500).json({ error.message });
   }
 });
 
@@ -264,7 +264,7 @@ router.get('/reports/commission', isAdmin, async (req, res) => {
     
     const query = { status: 'disbursed' };
     if (startDate && endDate) {
-      query.disbursedAt = { $gte: new Date(startDate), $lte: new Date(endDate) };
+      query.disbursedAt = { $gteDate(startDate), $lteDate(endDate) };
     }
     if (lenderId) query.lenderId = lenderId;
     
@@ -299,17 +299,17 @@ router.get('/reports/commission', isAdmin, async (req, res) => {
     
     res.json({
       summary: {
-        totalDisbursedLoans: disbursedLoans.length,
-        totalDisbursedAmount: disbursedLoans.reduce((sum, l) => sum + (l.disbursedAmount || 0), 0),
+        totalDisbursedLoans.length,
+        totalDisbursedAmount.reduce((sum, l) => sum + (l.disbursedAmount || 0), 0),
         totalCommission,
         paidCommission,
         pendingCommission
       },
-      lenderWise: Object.values(lenderCommissionMap)
+      lenderWise.values(lenderCommissionMap)
     });
   } catch (error) {
     console.error(error);
-    res.status(500).json({ error: error.message });
+    res.status(500).json({ error.message });
   }
 });
 
@@ -319,14 +319,14 @@ router.put('/commission/pay', isAdmin, async (req, res) => {
     const { applicationIds } = req.body;
     
     const result = await LoanApplication.updateMany(
-      { applicationId: { $in: applicationIds }, commissionPaid: false },
-      { commissionPaid: true, commissionPaidAt: new Date() }
+      { applicationId: { $in}, commissionPaid},
+      { commissionPaid, commissionPaidAtDate() }
     );
     
-    res.json({ success: true, modifiedCount: result.modifiedCount });
+    res.json({ success, modifiedCount.modifiedCount });
   } catch (error) {
     console.error(error);
-    res.status(500).json({ error: error.message });
+    res.status(500).json({ error.message });
   }
 });
 
@@ -341,24 +341,24 @@ router.get('/patients', isAdmin, async (req, res) => {
     res.json(patients);
   } catch (error) {
     console.error(error);
-    res.status(500).json({ error: error.message });
+    res.status(500).json({ error.message });
   }
 });
 
 // Get single patient with their loan applications
-router.get('/patients/:patientId', isAdmin, async (req, res) => {
+router.get('/patients/', isAdmin, async (req, res) => {
   try {
     const patient = await Patient.findById(req.params.patientId);
     if (!patient) {
       return res.status(404).json({ error: 'Patient not found' });
     }
     
-    const applications = await LoanApplication.find({ patientId: patient._id });
+    const applications = await LoanApplication.find({ patientId._id });
     
     res.json({ patient, applications });
   } catch (error) {
     console.error(error);
-    res.status(500).json({ error: error.message });
+    res.status(500).json({ error.message });
   }
 });
 
@@ -382,14 +382,15 @@ router.get('/dashboard', isAdmin, async (req, res) => {
     const totalCommission = disbursedLoans.reduce((sum, loan) => sum + (loan.platformCommission || 0), 0);
     
     res.json({
-      patients: { total: totalPatients },
-      lenders: { total: totalLenders, active: activeLenders, pending: pendingLenders },
+      patients: { total},
+      lenders: { total, active, pending},
       loans: { totalApplications, totalDisbursed, totalDisbursedAmount, totalCommission }
     });
   } catch (error) {
     console.error(error);
-    res.status(500).json({ error: error.message });
+    res.status(500).json({ error.message });
   }
 });
 
 module.exports = router;
+

@@ -1,34 +1,34 @@
 const Razorpay = require('razorpay');
 
 const razorpay = new Razorpay({
-  key_id: process.env.RAZORPAY_KEY_ID,
-  key_secret: process.env.RAZORPAY_KEY_SECRET
+  key_id.env.RAZORPAY_KEY_ID,
+  key_secret.env.RAZORPAY_KEY_SECRET
 });
 
 const createOrder = async (amount, currency = 'INR', receipt, notes = {}) => {
   try {
     const options = {
-      amount: amount * 100,
-      currency: currency,
-      receipt: receipt || `receipt_${Date.now()}`,
-      notes: notes,
+      amount* 100,
+      currency,
+      receipt|| `receipt_${Date.now()}`,
+      notes,
       payment_capture: 1
     };
     
     const order = await razorpay.orders.create(options);
     return {
-      success: true,
+      success,
       order: {
-        id: order.id,
-        amount: order.amount / 100,
-        currency: order.currency,
-        receipt: order.receipt,
-        status: order.status
+        id.id,
+        amount.amount / 100,
+        currency.currency,
+        receipt.receipt,
+        status.status
       }
     };
   } catch (error) {
     console.error('Razorpay order error:', error);
-    return { success: false, error: error.message };
+    return { success, error.message };
   }
 };
 
@@ -36,38 +36,37 @@ const capturePayment = async (paymentId, amount) => {
   try {
     const payment = await razorpay.payments.capture(paymentId, amount * 100);
     return {
-      success: true,
+      success,
       payment: {
-        id: payment.id,
-        amount: payment.amount / 100,
-        status: payment.status,
-        method: payment.method
+        id.id,
+        amount.amount / 100,
+        status.status,
+        method.method
       }
     };
   } catch (error) {
     console.error('Razorpay capture error:', error);
-    return { success: false, error: error.message };
+    return { success, error.message };
   }
 };
 
 const createRefund = async (paymentId, amount, notes = {}) => {
   try {
     const refund = await razorpay.payments.refund(paymentId, {
-      amount: amount * 100,
-      notes: notes
-    });
+      amount* 100,
+      notes});
     return {
-      success: true,
+      success,
       refund: {
-        id: refund.id,
-        payment_id: refund.payment_id,
-        amount: refund.amount / 100,
-        status: refund.status
+        id.id,
+        payment_id.payment_id,
+        amount.amount / 100,
+        status.status
       }
     };
   } catch (error) {
     console.error('Razorpay refund error:', error);
-    return { success: false, error: error.message };
+    return { success, error.message };
   }
 };
 
@@ -75,19 +74,19 @@ const fetchPayment = async (paymentId) => {
   try {
     const payment = await razorpay.payments.fetch(paymentId);
     return {
-      success: true,
+      success,
       payment: {
-        id: payment.id,
-        amount: payment.amount / 100,
-        status: payment.status,
-        method: payment.method,
-        email: payment.email,
-        contact: payment.contact
+        id.id,
+        amount.amount / 100,
+        status.status,
+        method.method,
+        email.email,
+        contact.contact
       }
     };
   } catch (error) {
     console.error('Razorpay fetch error:', error);
-    return { success: false, error: error.message };
+    return { success, error.message };
   }
 };
 
@@ -98,3 +97,4 @@ module.exports = {
   createRefund,
   fetchPayment
 };
+

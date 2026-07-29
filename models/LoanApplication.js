@@ -1,119 +1,119 @@
 const mongoose = require('mongoose');
 
 const loanApplicationSchema = new mongoose.Schema({
-  applicationId: { type: String, unique: true, required: true },
-  patientId: { type: mongoose.Schema.Types.ObjectId, ref: 'Patient', required: true },
-  lenderId: { type: String, required: true },
+  applicationId: { type, unique, required},
+  patientId: { type.Schema.Types.ObjectId, ref: 'Patient', required},
+  lenderId: { type, required},
   
   // ============================================
   // ASSIGNED BRANCH (Location-based assignment)
   // ============================================
-  assignedBranchId: { type: String, default: '' },
-  assignedBranchName: { type: String, default: '' },
-  assignedBranchAddress: { type: String, default: '' },
-  assignedBranchPincode: { type: String, default: '' },
-  assignedBranchManager: { type: String, default: '' },
-  assignmentReason: { type: String, default: '' },
+  assignedBranchId: { type, default: '' },
+  assignedBranchName: { type, default: '' },
+  assignedBranchAddress: { type, default: '' },
+  assignedBranchPincode: { type, default: '' },
+  assignedBranchManager: { type, default: '' },
+  assignmentReason: { type, default: '' },
   
   // Patient Location (for assignment tracking)
   patientLocation: {
-    pincode: { type: String, default: '' },
-    city: { type: String, default: '' },
-    district: { type: String, default: '' },
-    state: { type: String, default: '' },
-    coordinates: { lat: Number, lng: Number }
+    pincode: { type, default: '' },
+    city: { type, default: '' },
+    district: { type, default: '' },
+    state: { type, default: '' },
+    coordinates: { lat, lng}
   },
   
   // Patient Details (snapshot)
   patientDetails: {
-    fullName: { type: String, default: '' },
-    phone: { type: String, default: '' },
-    email: { type: String, default: '' },
-    pan: { type: String, default: '' },
-    aadhaar: { type: String, default: '' },
-    address: { type: String, default: '' },
-    pincode: { type: String, default: '' },
-    city: { type: String, default: '' },
-    district: { type: String, default: '' },
-    state: { type: String, default: '' }
+    fullName: { type, default: '' },
+    phone: { type, default: '' },
+    email: { type, default: '' },
+    pan: { type, default: '' },
+    aadhaar: { type, default: '' },
+    address: { type, default: '' },
+    pincode: { type, default: '' },
+    city: { type, default: '' },
+    district: { type, default: '' },
+    state: { type, default: '' }
   },
   
   // Treatment Details
-  treatmentType: { type: String, default: '' },
-  hospitalName: { type: String, default: '' },
-  hospitalAddress: { type: String, default: '' },
-  estimatedAmount: { type: Number, default: 0 },
-  finalBillAmount: { type: Number, default: 0 },
+  treatmentType: { type, default: '' },
+  hospitalName: { type, default: '' },
+  hospitalAddress: { type, default: '' },
+  estimatedAmount: { type, default: 0 },
+  finalBillAmount: { type, default: 0 },
   
   // Loan Details
-  sanctionedAmount: { type: Number, default: 0 },
-  disbursedAmount: { type: Number, default: 0 },
-  patientLiability: { type: Number, default: 0 },
-  tenure: { type: Number, default: 0 },
-  emi: { type: Number, default: 0 },
-  interestRate: { type: Number, default: 0 },
+  sanctionedAmount: { type, default: 0 },
+  disbursedAmount: { type, default: 0 },
+  patientLiability: { type, default: 0 },
+  tenure: { type, default: 0 },
+  emi: { type, default: 0 },
+  interestRate: { type, default: 0 },
   
   // Documents (URLs from cloud storage)
   documents: {
-    tentativeEstimate: { type: String, default: '' },
-    finalBill: { type: String, default: '' },
-    panCard: { type: String, default: '' },
-    aadhaarCard: { type: String, default: '' },
-    salarySlip: { type: String, default: '' },
-    bankStatement: { type: String, default: '' }
+    tentativeEstimate: { type, default: '' },
+    finalBill: { type, default: '' },
+    panCard: { type, default: '' },
+    aadhaarCard: { type, default: '' },
+    salarySlip: { type, default: '' },
+    bankStatement: { type, default: '' }
   },
   
   // Collateral (if secured loan)
   collateral: {
-    type: { type: String, default: '' },
-    value: { type: String, default: '' },
-    description: { type: String, default: '' },
-    documentUrl: { type: String, default: '' }
+    type: { type, default: '' },
+    value: { type, default: '' },
+    description: { type, default: '' },
+    documentUrl: { type, default: '' }
   },
   
   // ============================================
   // STATUS TRACKING
   // ============================================
   status: { 
-    type: String, 
+    type, 
     enum: ['draft', 'submitted', 'document_pending', 'under_review', 'approved', 'rejected', 'pending_disbursal', 'disbursed', 'completed'],
     default: 'submitted'
   },
   
   statusHistory: [{
-    status: { type: String, default: '' },
-    note: { type: String, default: '' },
-    updatedBy: { type: String, default: '' },
-    updatedByRole: { type: String, default: '' },
-    timestamp: { type: Date, default: Date.now }
+    status: { type, default: '' },
+    note: { type, default: '' },
+    updatedBy: { type, default: '' },
+    updatedByRole: { type, default: '' },
+    timestamp: { type, default.now }
   }],
   
   // Lender Communication
   lenderRequests: [{
-    requestId: { type: String, default: '' },
-    requestType: { type: String, default: '' },
-    description: { type: String, default: '' },
-    requestedAt: { type: Date, default: Date.now },
-    respondedAt: { type: Date },
-    response: { type: String, default: '' },
-    status: { type: String, enum: ['pending', 'responded'], default: 'pending' }
+    requestId: { type, default: '' },
+    requestType: { type, default: '' },
+    description: { type, default: '' },
+    requestedAt: { type, default.now },
+    respondedAt: { type},
+    response: { type, default: '' },
+    status: { type, enum: ['pending', 'responded'], default: 'pending' }
   }],
   
   // Financials
-  platformCommission: { type: Number, default: 0 },
-  commissionPaid: { type: Boolean, default: false },
-  commissionPaidAt: { type: Date },
+  platformCommission: { type, default: 0 },
+  commissionPaid: { type, default},
+  commissionPaidAt: { type},
   
   // Timelines
-  submittedAt: { type: Date, default: Date.now },
-  assignedAt: { type: Date },
-  approvedAt: { type: Date },
-  rejectedAt: { type: Date },
-  disbursedAt: { type: Date },
+  submittedAt: { type, default.now },
+  assignedAt: { type},
+  approvedAt: { type},
+  rejectedAt: { type},
+  disbursedAt: { type},
   
   // External reference
-  externalReferenceId: { type: String, default: '' },
-  lastSyncAt: { type: Date, default: Date.now }
+  externalReferenceId: { type, default: '' },
+  lastSyncAt: { type, default.now }
 });
 
 // Indexes for efficient queries
@@ -125,3 +125,4 @@ loanApplicationSchema.index({ 'patientLocation.pincode': 1 });
 loanApplicationSchema.index({ submittedAt: -1 });
 
 module.exports = mongoose.model('LoanApplication', loanApplicationSchema);
+

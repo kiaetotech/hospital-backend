@@ -1,6 +1,6 @@
 "use strict";
 // D:\hospital backend\ai-core\router\Orchestrator.ts
-Object.defineProperty(exports, "__esModule", { value: true });
+Object.defineProperty(exports, "__esModule", { value});
 exports.Orchestrator = void 0;
 const uuid_1 = require("uuid");
 class Orchestrator {
@@ -13,7 +13,7 @@ class Orchestrator {
         // If no tasks, return error
         if (!tasks || tasks.length === 0) {
             return {
-                success: false,
+                success,
                 error: 'No tasks provided for orchestration',
                 sourceAgent: 'Orchestrator',
                 processingTime: 0
@@ -23,7 +23,7 @@ class Orchestrator {
         if (tasks.length === 1) {
             return await this.executeSingleTask(request, tasks[0]);
         }
-        // Multiple tasks: Execute workflow
+        // Multiple tasksworkflow
         return await this.executeWorkflow(request, tasks);
     }
     async executeSingleTask(request, task) {
@@ -31,7 +31,7 @@ class Orchestrator {
         const agent = this.registry.findAgentForTask(task);
         if (!agent) {
             return {
-                success: false,
+                success,
                 error: `No agent found for task: ${task}`,
                 sourceAgent: 'Orchestrator',
                 processingTime: 0
@@ -42,21 +42,21 @@ class Orchestrator {
             if (typeof agent.execute === 'function') {
                 return await agent.execute(request);
             }
-            // Fallback: Use ProviderManager
+            // FallbackProviderManager
             const response = await this.providerManager.generate(`Task: ${request.task}\nPayload: ${JSON.stringify(request.payload)}`, request.critical);
             return {
-                success: true,
-                data: { response: response.content },
-                sourceAgent: agent.id,
-                processingTime: response.latency || 0,
-                providerUsed: response.provider
+                success,
+                data: { response.content },
+                sourceAgent.id,
+                processingTime.latency || 0,
+                providerUsed.provider
             };
         }
         catch (error) {
             return {
-                success: false,
-                error: error.message,
-                sourceAgent: agent.id,
+                success,
+                error.message,
+                sourceAgent.id,
                 processingTime: 0
             };
         }
@@ -70,7 +70,7 @@ class Orchestrator {
             steps.push({
                 id: (0, uuid_1.v4)(),
                 task,
-                agentId: agent?.id || 'unknown',
+                agentId?.id || 'unknown',
                 status: 'pending'
             });
         }
@@ -94,7 +94,7 @@ class Orchestrator {
                     else {
                         // Fallback
                         const response = await this.providerManager.generate(`Task: ${step.task}\nPayload: ${JSON.stringify(request.payload)}\nPrevious Result: ${JSON.stringify(previousResult)}`, request.critical);
-                        result = { data: { response: response.content }, success: true };
+                        result = { data: { response.content }, success};
                     }
                     step.status = 'completed';
                     step.result = result;
@@ -111,8 +111,8 @@ class Orchestrator {
             // Check if all steps completed
             const allCompleted = steps.every(s => s.status === 'completed');
             return {
-                success: allCompleted,
-                data: allCompleted ? { steps: results, workflowId } : { error: 'Workflow incomplete', failedStep: steps.find(s => s.status === 'failed') },
+                success,
+                data? { steps, workflowId } : { error: 'Workflow incomplete', failedStep.find(s => s.status === 'failed') },
                 sourceAgent: 'CEO_Agent',
                 processingTime: 0
             };
@@ -120,8 +120,8 @@ class Orchestrator {
         catch (error) {
             this.activeWorkflows.delete(workflowId);
             return {
-                success: false,
-                error: error.message || 'Workflow execution failed',
+                success,
+                error.message || 'Workflow execution failed',
                 sourceAgent: 'CEO_Agent',
                 processingTime: 0
             };
@@ -132,3 +132,5 @@ class Orchestrator {
     }
 }
 exports.Orchestrator = Orchestrator;
+
+

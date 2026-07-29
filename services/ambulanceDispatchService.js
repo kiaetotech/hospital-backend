@@ -69,12 +69,12 @@ const dispatchEmergencyAmbulance = async (emergencyData) => {
 
   try {
     // ============================================
-    // STEP 1: Validate & enrich patient data
+    // STEP 1& enrich patient data
     // ============================================
     const patientData = await enrichPatientData(emergencyData);
     
     // ============================================
-    // STEP 2: Find nearest hospital with ER & beds
+    // STEP 2nearest hospital with ER & beds
     // ============================================
     const hospitalData = await findDestinationHospital(
       patientData.pickupLat,
@@ -83,64 +83,64 @@ const dispatchEmergencyAmbulance = async (emergencyData) => {
     );
     
     // ============================================
-    // STEP 3: Create emergency booking record
+    // STEP 3emergency booking record
     // ============================================
     const booking = await createEmergencyBooking(patientData, hospitalData);
     
     // ============================================
-    // STEP 4: Calculate fare estimate
+    // STEP 4fare estimate
     // ============================================
     const fareEstimate = calculateEmergencyFare(booking, hospitalData);
     
     // ============================================
-    // STEP 5: Find & dispatch nearest drivers
+    // STEP 5& dispatch nearest drivers
     // ============================================
     const dispatchResult = await findAndDispatchDrivers(booking, fareEstimate);
     
     if (!dispatchResult.success) {
       // No driver found - notify patient to call 108
       await handleNoDriverFound(booking);
-      return { success: false, reason: 'no_driver_available', booking };
+      return { success, reason: 'no_driver_available', booking };
     }
     
     // ============================================
-    // STEP 6: Notify emergency contacts
+    // STEP 6emergency contacts
     // ============================================
     await notifyEmergencyContacts(booking, dispatchResult.driver);
     
     // ============================================
-    // STEP 7: Notify hospital ER
+    // STEP 7hospital ER
     // ============================================
     await notifyHospitalER(booking, dispatchResult.driver);
     
     // ============================================
-    // STEP 8: Share insurance info with hospital
+    // STEP 8insurance info with hospital
     // ============================================
     await shareInsuranceWithHospital(booking);
     
     // ============================================
-    // STEP 9: Create transaction record
+    // STEP 9transaction record
     // ============================================
     await createEmergencyTransaction(booking, fareEstimate);
     
     console.log(`✅ [${dispatchId}] Emergency dispatch successful. Driver: ${dispatchResult.driver.driverName}`);
     
     return {
-      success: true,
+      success,
       booking,
-      driver: dispatchResult.driver,
+      driver.driver,
       fareEstimate,
-      trackingUrl: booking.trackingUrl
+      trackingUrl.trackingUrl
     };
     
   } catch (error) {
     console.error(`❌ [${dispatchId}] Dispatch failed:`, error);
-    return { success: false, reason: 'system_error', error: error.message };
+    return { success, reason: 'system_error', error.message };
   }
 };
 
 // ============================================
-// STEP 1: ENRICH PATIENT DATA
+// STEP 1PATIENT DATA
 // ============================================
 
 /**
@@ -176,17 +176,17 @@ const enrichPatientData = async (emergencyData) => {
       
       // Get medical info
       medicalInfo = {
-        bloodGroup: emergencyProfile.medicalInfo?.bloodGroup,
-        allergies: emergencyProfile.medicalInfo?.allergies?.filter(
+        bloodGroup.medicalInfo?.bloodGroup,
+        allergies.medicalInfo?.allergies?.filter(
           a => a.severity === 'severe' || a.severity === 'life_threatening'
         ),
-        chronicConditions: emergencyProfile.medicalInfo?.chronicConditions?.filter(
+        chronicConditions.medicalInfo?.chronicConditions?.filter(
           c => c.severity === 'severe' || c.severity === 'critical'
         ),
-        currentMedications: emergencyProfile.medicalInfo?.currentMedications,
-        implants: emergencyProfile.medicalInfo?.implants,
-        isPregnant: emergencyProfile.medicalInfo?.isPregnant,
-        doNotResuscitate: emergencyProfile.medicalInfo?.doNotResuscitate
+        currentMedications.medicalInfo?.currentMedications,
+        implants.medicalInfo?.implants,
+        isPregnant.medicalInfo?.isPregnant,
+        doNotResuscitate.medicalInfo?.doNotResuscitate
       };
       
       // Get insurance info
@@ -198,7 +198,7 @@ const enrichPatientData = async (emergencyData) => {
       // Record this emergency
       await emergencyProfile.recordEmergency({
         emergencyType: 'ambulance_emergency',
-        location: { lat: pickupLat, lng: pickupLng, address: pickupAddress },
+        location: { lat, lng, address},
         outcome: 'dispatched'
       });
     }
@@ -223,12 +223,12 @@ const enrichPatientData = async (emergencyData) => {
 };
 
 // ============================================
-// STEP 2: FIND DESTINATION HOSPITAL
+// STEP 2DESTINATION HOSPITAL
 // ============================================
 
 /**
  * Find nearest hospital with emergency department & bed availability
- * Interfaces with: locationCache.hospital
+ * Interfaces with.hospital
  */
 const findDestinationHospital = async (lat, lng, insuranceInfo = null) => {
   console.log(`🏥 Finding nearest hospital with ER near [${lat}, ${lng}]`);
@@ -237,22 +237,22 @@ const findDestinationHospital = async (lat, lng, insuranceInfo = null) => {
   let hospitals = [];
   
   if (insuranceInfo?.primaryInsurance?.provider) {
-    // TODO: Get insurance ID and search network hospitals
+    // TODOinsurance ID and search network hospitals
     // For now, search all hospitals with ER
   }
   
   // Search all hospitals with emergency department and beds
   hospitals = await locationCache.hospital.findNearbyHospitals(lat, lng, 20, {
-    emergencyOnly: true,
-    hasBeds: true,
+    emergencyOnly,
+    hasBeds,
     limit: 5,
     sortBy: 'beds'  // Prioritize hospitals with more available beds
   });
   
   if (!hospitals || hospitals.length === 0) {
-    // Fallback: Any hospital with ER within 50km
+    // Fallbackhospital with ER within 50km
     hospitals = await locationCache.hospital.findNearbyHospitals(lat, lng, 50, {
-      emergencyOnly: true,
+      emergencyOnly,
       limit: 3,
       sortBy: 'distance'
     });
@@ -267,50 +267,50 @@ const findDestinationHospital = async (lat, lng, insuranceInfo = null) => {
   console.log(`✅ Selected hospital: ${selectedHospital.name} (${selectedHospital.distance}km, ${selectedHospital.availableBeds} beds)`);
   
   return {
-    hospitalId: selectedHospital.hospitalId,
-    hospitalName: selectedHospital.name,
-    address: selectedHospital.address,
-    phone: selectedHospital.phone,
+    hospitalId.hospitalId,
+    hospitalName.name,
+    address.address,
+    phone.phone,
     coordinates: {
-      lat: selectedHospital.lat,
-      lng: selectedHospital.lng
+      lat.lat,
+      lng.lng
     },
-    distance: selectedHospital.distance,
+    distance.distance,
     bedAvailability: {
-      general: selectedHospital.availableBeds || 0,
-      icu: selectedHospital.icuBeds || 0,
-      ventilator: selectedHospital.ventilatorBeds || 0
+      general.availableBeds || 0,
+      icu.icuBeds || 0,
+      ventilator.ventilatorBeds || 0
     },
-    emergencyDepartment: selectedHospital.emergencyDepartment || 'Emergency Department'
+    emergencyDepartment.emergencyDepartment || 'Emergency Department'
   };
 };
 
 // ============================================
-// STEP 3: CREATE EMERGENCY BOOKING
+// STEP 3EMERGENCY BOOKING
 // ============================================
 
 /**
  * Create booking record in database
- * Interfaces with: Booking model
+ * Interfaces withmodel
  */
 const createEmergencyBooking = async (patientData, hospitalData) => {
   const bookingData = {
-    userId: patientData.userId || 'guest',
+    userId.userId || 'guest',
     bookingType: 'ambulance_emergency',
-    patientName: patientData.patientName,
-    patientPhone: patientData.patientPhone,
-    patientAge: patientData.patientAge,
-    patientGender: patientData.patientGender,
+    patientName.patientName,
+    patientPhone.patientPhone,
+    patientAge.patientAge,
+    patientGender.patientGender,
     
     // Emergency specific
     emergencyType: 'blitz',
-    patientCondition: patientData.patientCondition,
+    patientCondition.patientCondition,
     
     // Location
-    pickupAddress: patientData.pickupAddress,
+    pickupAddress.pickupAddress,
     pickupCoordinates: {
-      lat: patientData.pickupLat,
-      lng: patientData.pickupLng
+      lat.pickupLat,
+      lng.pickupLng
     },
     location: {
       type: 'Point',
@@ -318,31 +318,30 @@ const createEmergencyBooking = async (patientData, hospitalData) => {
     },
     
     // Hospital
-    hospitalDestination: hospitalData,
+    hospitalDestination,
     
     // Emergency contacts
-    emergencyContacts: patientData.emergencyContacts?.map(c => ({
-      name: c.name,
-      phone: c.phone,
-      relationship: c.relationship,
-      notified: false
-    })) || [],
+    emergencyContacts.emergencyContacts?.map(c => ({
+      name.name,
+      phone.phone,
+      relationship.relationship,
+      notified})) || [],
     
     // Medical info
-    medicalInfo: patientData.medicalInfo,
-    insuranceInfo: patientData.insuranceInfo,
+    medicalInfo.medicalInfo,
+    insuranceInfo.insuranceInfo,
     
     // Initial values
     originalAmount: 0,  // Will be calculated after trip
     finalAmount: 0,
-    appointmentDate: new Date(),
+    appointmentDateDate(),
     status: 'pending',
     priority: 'emergency',
     
     // Tracking
     trackingUrl: `${process.env.FRONTEND_URL || 'https://hospital-frontend-kiaeto.vercel.app'}/ambulance/tracking/`,
     
-    createdAt: new Date()
+    createdAtDate()
   };
 
   const booking = new Booking(bookingData);
@@ -358,13 +357,12 @@ const createEmergencyBooking = async (patientData, hospitalData) => {
 };
 
 // ============================================
-// STEP 4: CALCULATE EMERGENCY FARE
+// STEP 4EMERGENCY FARE
 // ============================================
 
 /**
  * Calculate fare estimate before dispatch
- * Interfaces with: commissionService
- */
+ * Interfaces with*/
 const calculateEmergencyFare = (booking, hospitalData) => {
   const distance = hospitalData.distance || 5;
   const isNightTime = isNightTimeNow();
@@ -372,37 +370,36 @@ const calculateEmergencyFare = (booking, hospitalData) => {
   
   const fareEstimate = commissionService.calculateAmbulanceFare({
     baseFare: 500,
-    distance: distance,
-    isNightTime: isNightTime,
+    distance,
+    isNightTime,
     ambulanceType: 'basic',
-    surgeMultiplier: surgeMultiplier,
-    isEmergency: true
-  });
+    surgeMultiplier,
+    isEmergency});
   
   // Calculate commission
   const commission = commissionService.calculateEmergencyCommission({
     bookingType: 'ambulance_emergency',
     emergencyType: 'blitz',
-    amount: fareEstimate.breakdown.total,
-    isNightTime: isNightTime,
-    isLongDistance: distance > 50
+    amount.breakdown.total,
+    isNightTime,
+    isLongDistance> 50
   });
   
   return {
     ...fareEstimate,
     commission,
     platformFee: 0, // Waived for emergency
-    total: fareEstimate.breakdown.total
+    total.breakdown.total
   };
 };
 
 // ============================================
-// STEP 5: FIND & DISPATCH DRIVERS
+// STEP 5& DISPATCH DRIVERS
 // ============================================
 
 /**
  * Find nearest available drivers and dispatch
- * Interfaces with: locationCache.ambulance
+ * Interfaces with.ambulance
  */
 const findAndDispatchDrivers = async (booking, fareEstimate) => {
   console.log(`🔍 Searching for drivers near [${booking.pickupCoordinates.lat}, ${booking.pickupCoordinates.lng}]`);
@@ -418,13 +415,12 @@ const findAndDispatchDrivers = async (booking, fareEstimate) => {
       booking.pickupCoordinates.lng,
       radius,
       {
-        vehicleType: booking.ambulanceType || 'any',
-        limit: DISPATCH_CONFIG.driversToContact,
-        requireAvailable: true
-      }
+        vehicleType.ambulanceType || 'any',
+        limit_CONFIG.driversToContact,
+        requireAvailable}
     );
     
-    console.log(`   Attempt ${retryCount + 1}: Found ${drivers.length} drivers within ${radius}km`);
+    console.log(`   Attempt ${retryCount + 1}${drivers.length} drivers within ${radius}km`);
     
     if (drivers.length === 0) {
       radius = Math.min(radius * 2, DISPATCH_CONFIG.maxRadiusKm);
@@ -442,7 +438,7 @@ const findAndDispatchDrivers = async (booking, fareEstimate) => {
   }
   
   if (!driverFound) {
-    return { success: false, reason: 'No driver accepted' };
+    return { success, reason: 'No driver accepted' };
   }
   
   // Update booking with driver info
@@ -465,16 +461,16 @@ const findAndDispatchDrivers = async (booking, fareEstimate) => {
   // Notify patient
   await notificationService.sendDriverAcceptedAlert(booking);
   await smsService.sendAmbulanceSMS(booking.patientPhone, 'emergency_driver_accepted', {
-    driverName: driverFound.name,
-    vehicleNumber: driverFound.vehicleNumber,
-    vehicleType: driverFound.vehicleType,
-    eta: Math.round(driverFound.distance * 2), // ~2 min per km
-    trackingUrl: booking.trackingUrl,
-    otp: booking.tripOtp,
-    bookingId: booking.bookingId
+    driverName.name,
+    vehicleNumber.vehicleNumber,
+    vehicleType.vehicleType,
+    eta.round(driverFound.distance * 2), // ~2 min per km
+    trackingUrl.trackingUrl,
+    otp.tripOtp,
+    bookingId.bookingId
   });
   
-  return { success: true, driver: driverFound };
+  return { success, driver};
 };
 
 /**
@@ -486,42 +482,42 @@ const contactDrivers = async (booking, drivers, fareEstimate) => {
     
     // Add to contacted list
     booking.driversContacted.push({
-      driverId: driver.driverId,
-      driverName: driver.name || 'Unknown',
-      accepted: false,
+      driverId.driverId,
+      driverName.name || 'Unknown',
+      accepted,
       responseTime: 0
     });
     
     // Send emergency alert to driver
     const alertSent = await smsService.sendDriverDispatchSMS(driver.phone || driver.driverPhone, {
-      bookingId: booking.bookingId,
-      patientName: booking.patientName,
-      patientCondition: booking.patientCondition?.chiefComplaint || 'Emergency',
-      pickupAddress: booking.pickupAddress,
-      distance: driver.distance,
-      eta: Math.round(driver.distance * 2),
-      estimatedFare: fareEstimate.total,
-      surgeMultiplier: fareEstimate.surgeMultiplier || 1.0,
-      surgeMessage: fareEstimate.surgeMultiplier > 1 ? `⚠️ Surge: ${fareEstimate.surgeMultiplier}x` : ''
+      bookingId.bookingId,
+      patientName.patientName,
+      patientCondition.patientCondition?.chiefComplaint || 'Emergency',
+      pickupAddress.pickupAddress,
+      distance.distance,
+      eta.round(driver.distance * 2),
+      estimatedFare.total,
+      surgeMultiplier.surgeMultiplier || 1.0,
+      surgeMessage.surgeMultiplier > 1 ? `⚠️ Surge: ${fareEstimate.surgeMultiplier}x` : ''
     });
     
     // Send push notification with loud alert
     await notificationService.sendDriverEmergencyAlert(driver.phone, {
-      bookingId: booking.bookingId,
-      patientName: booking.patientName,
-      patientCondition: booking.patientCondition?.chiefComplaint || 'Emergency',
-      pickupAddress: booking.pickupAddress,
-      distance: driver.distance,
-      eta: Math.round(driver.distance * 2),
-      estimatedFare: fareEstimate.total,
-      surgeMultiplier: fareEstimate.surgeMultiplier || 1.0
+      bookingId.bookingId,
+      patientName.patientName,
+      patientCondition.patientCondition?.chiefComplaint || 'Emergency',
+      pickupAddress.pickupAddress,
+      distance.distance,
+      eta.round(driver.distance * 2),
+      estimatedFare.total,
+      surgeMultiplier.surgeMultiplier || 1.0
     });
     
-    // In production: Wait for driver to accept via WebSocket
-    // For now: Auto-accept the first available driver
-    // TODO: Implement real-time accept/reject via WebSocket
+    // In productionfor driver to accept via WebSocket
+    // For now-accept the first available driver
+    // TODOreal-time accept/reject via WebSocket
     
-    // Simulate: Driver accepts (in real system, this comes from WebSocket)
+    // Simulateaccepts (in real system, this comes from WebSocket)
     const driverAccepted = true; // Placeholder
     
     if (driverAccepted) {
@@ -538,12 +534,12 @@ const contactDrivers = async (booking, drivers, fareEstimate) => {
 };
 
 // ============================================
-// STEP 6: NOTIFY EMERGENCY CONTACTS
+// STEP 6EMERGENCY CONTACTS
 // ============================================
 
 /**
  * Send SMS to all emergency contacts
- * Interfaces with: smsService, notificationService
+ * Interfaces with, notificationService
  */
 const notifyEmergencyContacts = async (booking, driver) => {
   const contacts = booking.emergencyContacts || [];
@@ -556,14 +552,14 @@ const notifyEmergencyContacts = async (booking, driver) => {
   console.log(`   📢 Notifying ${contacts.length} emergency contacts...`);
   
   const emergencyData = {
-    patientName: booking.patientName,
-    ambulanceType: booking.vehicleType || 'Emergency',
-    vehicleNumber: booking.vehicleNumber,
-    driverName: booking.driverName,
-    driverPhone: booking.driverPhone,
-    eta: Math.round((driver.distance || 5) * 2),
-    trackingUrl: booking.trackingUrl,
-    hospitalName: booking.hospitalDestination?.hospitalName || 'Nearest hospital'
+    patientName.patientName,
+    ambulanceType.vehicleType || 'Emergency',
+    vehicleNumber.vehicleNumber,
+    driverName.driverName,
+    driverPhone.driverPhone,
+    eta.round((driver.distance || 5) * 2),
+    trackingUrl.trackingUrl,
+    hospitalName.hospitalDestination?.hospitalName || 'Nearest hospital'
   };
   
   // Send to each contact
@@ -575,8 +571,8 @@ const notifyEmergencyContacts = async (booking, driver) => {
   // Mark contacts as notified in booking
   booking.emergencyContacts = contacts.map(c => ({
     ...c,
-    notified: true,
-    notifiedAt: new Date()
+    notified,
+    notifiedAtDate()
   }));
   await booking.save();
   
@@ -593,12 +589,12 @@ const notifyEmergencyContacts = async (booking, driver) => {
 };
 
 // ============================================
-// STEP 7: NOTIFY HOSPITAL ER
+// STEP 7HOSPITAL ER
 // ============================================
 
 /**
  * Alert hospital emergency department
- * Interfaces with: smsService, notificationService, locationCache.hospital
+ * Interfaces with, notificationService, locationCache.hospital
  */
 const notifyHospitalER = async (booking, driver) => {
   const hospital = booking.hospitalDestination;
@@ -610,19 +606,19 @@ const notifyHospitalER = async (booking, driver) => {
   const hospitalDetails = await locationCache.hospital.getHospitalDetails(hospital.hospitalId);
   
   const emergencyData = {
-    bookingId: booking.bookingId,
-    patientName: booking.patientName,
-    patientAge: booking.patientAge,
-    patientGender: booking.patientGender,
-    chiefComplaint: booking.patientCondition?.chiefComplaint || 'Emergency',
+    bookingId.bookingId,
+    patientName.patientName,
+    patientAge.patientAge,
+    patientGender.patientGender,
+    chiefComplaint.patientCondition?.chiefComplaint || 'Emergency',
     patientCondition: `${booking.patientCondition?.isBreathing ? 'Breathing' : 'NOT BREATHING'}, ${booking.patientCondition?.isConscious ? 'Conscious' : 'UNCONSCIOUS'}`,
-    ambulanceType: booking.vehicleType,
-    vehicleNumber: booking.vehicleNumber,
-    eta: Math.round((driver.distance || 5) * 2),
-    driverPhone: booking.driverPhone,
-    vitals: booking.digitalTripSheet?.vitals || null,
-    insuranceProvider: booking.insuranceInfo?.primaryInsurance?.provider || 'None',
-    insurancePolicyNumber: booking.insuranceInfo?.primaryInsurance?.policyNumber || 'N/A'
+    ambulanceType.vehicleType,
+    vehicleNumber.vehicleNumber,
+    eta.round((driver.distance || 5) * 2),
+    driverPhone.driverPhone,
+    vitals.digitalTripSheet?.vitals || null,
+    insuranceProvider.insuranceInfo?.primaryInsurance?.provider || 'None',
+    insurancePolicyNumber.insuranceInfo?.primaryInsurance?.policyNumber || 'N/A'
   };
   
   // Send SMS to hospital
@@ -648,12 +644,12 @@ const notifyHospitalER = async (booking, driver) => {
 };
 
 // ============================================
-// STEP 8: SHARE INSURANCE WITH HOSPITAL
+// STEP 8INSURANCE WITH HOSPITAL
 // ============================================
 
 /**
  * Share patient's insurance card with hospital
- * Interfaces with: EmergencyContact model
+ * Interfaces withmodel
  */
 const shareInsuranceWithHospital = async (booking) => {
   if (!booking.insuranceInfo?.primaryInsurance?.provider) {
@@ -668,49 +664,48 @@ const shareInsuranceWithHospital = async (booking) => {
 };
 
 // ============================================
-// STEP 9: CREATE TRANSACTION
+// STEP 9TRANSACTION
 // ============================================
 
 /**
  * Create payment transaction record
- * Interfaces with: Transaction model
+ * Interfaces withmodel
  */
 const createEmergencyTransaction = async (booking, fareEstimate) => {
   const transaction = new Transaction({
     transactionId: 'TXN_AMB_' + Date.now(),
-    applicationId: booking.bookingId,
+    applicationId.bookingId,
     lenderId: 'platform',
     type: 'ambulance_emergency',
     bookingType: 'ambulance_emergency',
-    bookingId: booking._id,
-    userId: booking.userId,
+    bookingId._id,
+    userId.userId,
     
-    amount: fareEstimate.total,
-    originalAmount: fareEstimate.total,
-    netAmount: fareEstimate.total,
+    amount.total,
+    originalAmount.total,
+    netAmount.total,
     
-    ambulanceId: booking.driverId,
-    ambulanceProviderId: booking.providerId,
-    ambulanceDriverId: booking.driverId,
-    ambulanceDriverName: booking.driverName,
-    ambulanceVehicleNumber: booking.vehicleNumber,
-    ambulanceType: booking.vehicleType,
+    ambulanceId.driverId,
+    ambulanceProviderId.providerId,
+    ambulanceDriverId.driverId,
+    ambulanceDriverName.driverName,
+    ambulanceVehicleNumber.vehicleNumber,
+    ambulanceType.vehicleType,
     
     ambulanceTripDetails: {
       tripType: 'emergency',
-      pickupAddress: booking.pickupAddress,
-      dropAddress: booking.hospitalDestination?.address,
-      hospitalDestination: booking.hospitalDestination?.hospitalName,
-      distance: fareEstimate.breakdown?.distance || 0,
-      isEmergency: true
-    },
+      pickupAddress.pickupAddress,
+      dropAddress.hospitalDestination?.address,
+      hospitalDestination.hospitalDestination?.hospitalName,
+      distance.breakdown?.distance || 0,
+      isEmergency},
     
-    ambulanceFareBreakdown: fareEstimate.breakdown,
-    ambulanceCommission: fareEstimate.commission,
+    ambulanceFareBreakdown.breakdown,
+    ambulanceCommission.commission,
     
     status: 'pending',
     paymentStatus: 'pending',
-    createdAt: new Date()
+    createdAtDate()
   });
   
   await transaction.save();
@@ -734,7 +729,7 @@ const handleNoDriverFound = async (booking) => {
   
   // Notify patient to call 108
   await smsService.sendAmbulanceSMS(booking.patientPhone, 'emergency_no_driver', {
-    bookingId: booking.bookingId
+    bookingId.bookingId
   });
   
   await notificationService.sendNoDriverFoundAlert(booking);
@@ -749,11 +744,11 @@ const handleNoDriverFound = async (booking) => {
  */
 const driverAcceptEmergency = async (driverId, bookingId) => {
   const booking = await Booking.findOne({ bookingId });
-  if (!booking) return { success: false, reason: 'Booking not found' };
+  if (!booking) return { success, reason: 'Booking not found' };
   
   // Check if already assigned to another driver
   if (booking.status === 'driver_assigned' && booking.driverId !== driverId) {
-    return { success: false, reason: 'Already assigned to another driver' };
+    return { success, reason: 'Already assigned to another driver' };
   }
   
   // Get driver details
@@ -772,7 +767,7 @@ const driverAcceptEmergency = async (driverId, bookingId) => {
   // Notify patient
   await notificationService.sendDriverAcceptedAlert(booking);
   
-  return { success: true, booking };
+  return { success, booking };
 };
 
 /**
@@ -780,7 +775,7 @@ const driverAcceptEmergency = async (driverId, bookingId) => {
  */
 const driverArrivedAtPickup = async (bookingId) => {
   const booking = await Booking.findOne({ bookingId });
-  if (!booking) return { success: false, reason: 'Booking not found' };
+  if (!booking) return { success, reason: 'Booking not found' };
   
   booking.status = 'driver_arrived';
   booking.driverReachedAt = new Date();
@@ -789,13 +784,13 @@ const driverArrivedAtPickup = async (bookingId) => {
   // Notify patient
   await notificationService.sendDriverArrivedAlert(booking);
   await smsService.sendAmbulanceSMS(booking.patientPhone, 'emergency_driver_arrived', {
-    driverName: booking.driverName,
-    vehicleNumber: booking.vehicleNumber,
-    otp: booking.tripOtp,
-    bookingId: booking.bookingId
+    driverName.driverName,
+    vehicleNumber.vehicleNumber,
+    otp.tripOtp,
+    bookingId.bookingId
   });
   
-  return { success: true, booking };
+  return { success, booking };
 };
 
 /**
@@ -803,11 +798,11 @@ const driverArrivedAtPickup = async (bookingId) => {
  */
 const patientOnboard = async (bookingId, otp) => {
   const booking = await Booking.findOne({ bookingId });
-  if (!booking) return { success: false, reason: 'Booking not found' };
+  if (!booking) return { success, reason: 'Booking not found' };
   
   // Verify OTP
   const isOtpValid = await booking.verifyTripOtp(otp);
-  if (!isOtpValid) return { success: false, reason: 'Invalid OTP' };
+  if (!isOtpValid) return { success, reason: 'Invalid OTP' };
   
   booking.status = 'patient_onboard';
   booking.patientOnboardAt = new Date();
@@ -817,7 +812,7 @@ const patientOnboard = async (bookingId, otp) => {
   // Notify hospital
   await notificationService.sendPatientOnboardAlert(booking);
   
-  return { success: true, booking };
+  return { success, booking };
 };
 
 /**
@@ -825,7 +820,7 @@ const patientOnboard = async (bookingId, otp) => {
  */
 const arrivedAtHospital = async (bookingId, vitalsData = null) => {
   const booking = await Booking.findOne({ bookingId });
-  if (!booking) return { success: false, reason: 'Booking not found' };
+  if (!booking) return { success, reason: 'Booking not found' };
   
   booking.status = 'arrived_hospital';
   booking.arrivedHospitalAt = new Date();
@@ -840,7 +835,7 @@ const arrivedAtHospital = async (bookingId, vitalsData = null) => {
   // Notify patient
   await notificationService.sendArrivedHospitalAlert(booking);
   
-  return { success: true, booking };
+  return { success, booking };
 };
 
 /**
@@ -848,7 +843,7 @@ const arrivedAtHospital = async (bookingId, vitalsData = null) => {
  */
 const completeEmergencyTrip = async (bookingId, tripData = {}) => {
   const booking = await Booking.findOne({ bookingId });
-  if (!booking) return { success: false, reason: 'Booking not found' };
+  if (!booking) return { success, reason: 'Booking not found' };
   
   // Calculate final fare
   const fareBreakdown = booking.calculateFare();
@@ -861,13 +856,13 @@ const completeEmergencyTrip = async (bookingId, tripData = {}) => {
     if (!booking.digitalTripSheet) booking.digitalTripSheet = {};
     Object.assign(booking.digitalTripSheet, {
       ...tripData,
-      generated: true,
+      generated,
       tripSheetId: 'TRIP' + Date.now(),
-      generatedAt: new Date(),
-      pickupTime: booking.driverAcceptedAt,
-      dropTime: new Date(),
-      distance: tripData.distance || 0,
-      duration: tripData.duration || 0
+      generatedAtDate(),
+      pickupTime.driverAcceptedAt,
+      dropTimeDate(),
+      distance.distance || 0,
+      duration.duration || 0
     });
   }
   
@@ -881,12 +876,12 @@ const completeEmergencyTrip = async (bookingId, tripData = {}) => {
   
   // Update transaction
   await Transaction.findOneAndUpdate(
-    { applicationId: bookingId },
+    { applicationId},
     {
       status: 'completed',
-      completedAt: new Date(),
-      ambulanceFareBreakdown: fareBreakdown,
-      netAmount: fareBreakdown.total
+      completedAtDate(),
+      ambulanceFareBreakdown,
+      netAmount.total
     }
   );
   
@@ -894,7 +889,7 @@ const completeEmergencyTrip = async (bookingId, tripData = {}) => {
   await notificationService.sendTripCompletedAlert(booking);
   await notificationService.sendTripSheetReadyAlert(booking);
   
-  return { success: true, booking, fareBreakdown };
+  return { success, booking, fareBreakdown };
 };
 
 /**
@@ -902,7 +897,7 @@ const completeEmergencyTrip = async (bookingId, tripData = {}) => {
  */
 const cancelEmergency = async (bookingId, reason, cancelledBy = 'patient') => {
   const booking = await Booking.findOne({ bookingId });
-  if (!booking) return { success: false, reason: 'Booking not found' };
+  if (!booking) return { success, reason: 'Booking not found' };
   
   await booking.cancelEmergency(reason, cancelledBy);
   
@@ -917,10 +912,10 @@ const cancelEmergency = async (bookingId, reason, cancelledBy = 'patient') => {
   } else if (cancelledBy === 'driver') {
     await notificationService.sendDriverCancelledAlert(booking);
     // Re-dispatch if driver cancelled
-    // TODO: Auto re-dispatch logic
+    // TODOre-dispatch logic
   }
   
-  return { success: true, booking };
+  return { success, booking };
 };
 
 // ============================================
@@ -955,8 +950,8 @@ const checkSurgePricing = async (lat, lng) => {
   multiplier = Math.min(multiplier, DISPATCH_CONFIG.surgeMultiplierCap);
   
   return {
-    surgeActive: multiplier > 1.0,
-    multiplier: Math.round(multiplier * 10) / 10,
+    surgeActive> 1.0,
+    multiplier.round(multiplier * 10) / 10,
     reasons
   };
 };
@@ -975,7 +970,7 @@ const checkStuckBookings = async () => {
   const stuckBookings = await Booking.find({
     bookingType: 'ambulance_emergency',
     status: { $in: ['driver_assigned', 'driver_en_route'] },
-    driverAcceptedAt: { $lt: new Date(Date.now() - stuckTimeout) }
+    driverAcceptedAt: { $ltDate(Date.now() - stuckTimeout) }
   });
   
   for (const booking of stuckBookings) {
@@ -988,11 +983,11 @@ const checkStuckBookings = async () => {
       // Driver went offline - cancel and re-dispatch
       await cancelEmergency(booking.bookingId, 'Driver disconnected', 'system');
       // Re-dispatch
-      // TODO: Call dispatchEmergencyAmbulance() again
+      // TODOdispatchEmergencyAmbulance() again
     }
   }
   
-  return { checked: stuckBookings.length };
+  return { checked.length };
 };
 
 // ============================================
@@ -1034,3 +1029,4 @@ module.exports = {
   // Config
   DISPATCH_CONFIG
 };
+
