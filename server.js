@@ -59,22 +59,23 @@ app.set('trust proxy', 1);
 let redis = null;
 try {
   redis = new Redis({
-    host.env.REDIS_HOST || 'localhost',
-    port.env.REDIS_PORT || 6379,
-    password.env.REDIS_PASSWORD || '',
-    db.env.REDIS_DB || 0,
+    host: process.env.REDIS_HOST || 'localhost',
+    port: process.env.REDIS_PORT || 6379,
+    password: process.env.REDIS_PASSWORD || '',
+    db: process.env.REDIS_DB || 0,
     maxRetriesPerRequest: 3,
     retryStrategy: (times) => {
       if (times > 10) {
-        console.warn('⚠️ Redisretries reached. Running without cache.');
+        console.warn('⚠️ Redis: Max retries reached. Running without cache.');
         return null;
       }
       return Math.min(times * 200, 2000);
     },
-    lazyConnect});
+    lazyConnect: true
+  });
 
   redis.on('connect', () => console.log('📍 Redis connected'));
-  redis.on('ready', () => console.log('📍 Redis'));
+  redis.on('ready', () => console.log('📍 Redis: Ready'));
   redis.on('error', (err) => console.warn('⚠️ Redis error:', err.message));
 
   redis.connect().catch(() => {
