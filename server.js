@@ -353,12 +353,12 @@ try { employeePortalRoutes = require('./routes/employeePortal'); } catch(e) { co
 // ============================================
 
 // Import AI services
-const { AIRouter } = require('./ai-core/router/AIRouter.ts');
-const { ProviderManager } = require('./ai-core/providers/ProviderManager.ts');
-const { CapabilityRegistry } = require('./ai-core/router/CapabilityRegistry.ts');
-const { Orchestrator } = require('./ai-core/router/Orchestrator.ts');
-const { HealthManager } = require('./ai-core/monitoring/HealthManager.ts');
-const { BudgetManager } = require('./ai-core/monitoring/BudgetManager.ts');
+const { AIRouter } = require('./ai-core/router/AIRouter.js');
+const { ProviderManager } = require('./ai-core/providers/ProviderManager.js');
+const { CapabilityRegistry } = require('./ai-core/router/CapabilityRegistry.js');
+const { Orchestrator } = require('./ai-core/router/Orchestrator.js');
+const { HealthManager } = require('./ai-core/monitoring/HealthManager.js');
+const { BudgetManager } = require('./ai-core/monitoring/BudgetManager.js');
 
 // Initialize AI services
 const budgetManager = new BudgetManager();
@@ -368,27 +368,27 @@ const capabilityRegistry = new CapabilityRegistry();
 const orchestrator = new Orchestrator(capabilityRegistry, providerManager);
 const router = new AIRouter(capabilityRegistry, orchestrator, providerManager, healthManager);
 
-// Import ALL Agents
-const HospitalAgent = require('./ai-core/agents/business/HospitalAgent.ts').HospitalAgent;
-const DoctorAgent = require('./ai-core/agents/business/DoctorAgent.ts').DoctorAgent;
-const DiagnosticsAgent = require('./ai-core/agents/business/DiagnosticsAgent.ts').DiagnosticsAgent;
-const AmbulanceAgent = require('./ai-core/agents/business/AmbulanceAgent.ts').AmbulanceAgent;
-const InsuranceAgent = require('./ai-core/agents/business/InsuranceAgent.ts').InsuranceAgent;
-const CaregiverAgent = require('./ai-core/agents/business/CaregiverAgent.ts').CaregiverAgent;
-const WellnessAgent = require('./ai-core/agents/business/WellnessAgent.ts').WellnessAgent;
-const FinanceAgent = require('./ai-core/agents/operations/FinanceAgent.ts').FinanceAgent;
-const CRMAgent = require('./ai-core/agents/operations/CRMAgent.ts').CRMAgent;
-const MarketingAgent = require('./ai-core/agents/operations/MarketingAgent.ts').MarketingAgent;
-const SupportAgent = require('./ai-core/agents/operations/SupportAgent.ts').SupportAgent;
-const AnalyticsAgent = require('./ai-core/agents/operations/AnalyticsAgent.ts').AnalyticsAgent;
-const CorporateHealthAgent = require('./ai-core/agents/operations/CorporateHealthAgent.ts').CorporateHealthAgent;
-const SearchIntelligenceAgent = require('./ai-core/agents/intelligence/SearchIntelligenceAgent.ts').SearchIntelligenceAgent;
-const RecommendationAgent = require('./ai-core/agents/intelligence/RecommendationAgent.ts').RecommendationAgent;
-const WorkflowAgent = require('./ai-core/agents/intelligence/WorkflowAgent.ts').WorkflowAgent;
-const MemoryAgent = require('./ai-core/agents/intelligence/MemoryAgent.ts').MemoryAgent;
-const NotificationAgent = require('./ai-core/agents/intelligence/NotificationAgent.ts').NotificationAgent;
-const CEOAgent = require('./ai-core/agents/executive/CEOAgent.ts').CEOAgent;
-const StrategyAgent = require('./ai-core/agents/executive/StrategyAgent.ts').StrategyAgent;
+// Import ALL Agents (ALL .ts changed to .js)
+const HospitalAgent = require('./ai-core/agents/business/HospitalAgent.js').HospitalAgent;
+const DoctorAgent = require('./ai-core/agents/business/DoctorAgent.js').DoctorAgent;
+const DiagnosticsAgent = require('./ai-core/agents/business/DiagnosticsAgent.js').DiagnosticsAgent;
+const AmbulanceAgent = require('./ai-core/agents/business/AmbulanceAgent.js').AmbulanceAgent;
+const InsuranceAgent = require('./ai-core/agents/business/InsuranceAgent.js').InsuranceAgent;
+const CaregiverAgent = require('./ai-core/agents/business/CaregiverAgent.js').CaregiverAgent;
+const WellnessAgent = require('./ai-core/agents/business/WellnessAgent.js').WellnessAgent;
+const FinanceAgent = require('./ai-core/agents/operations/FinanceAgent.js').FinanceAgent;
+const CRMAgent = require('./ai-core/agents/operations/CRMAgent.js').CRMAgent;
+const MarketingAgent = require('./ai-core/agents/operations/MarketingAgent.js').MarketingAgent;
+const SupportAgent = require('./ai-core/agents/operations/SupportAgent.js').SupportAgent;
+const AnalyticsAgent = require('./ai-core/agents/operations/AnalyticsAgent.js').AnalyticsAgent;
+const CorporateHealthAgent = require('./ai-core/agents/operations/CorporateHealthAgent.js').CorporateHealthAgent;
+const SearchIntelligenceAgent = require('./ai-core/agents/intelligence/SearchIntelligenceAgent.js').SearchIntelligenceAgent;
+const RecommendationAgent = require('./ai-core/agents/intelligence/RecommendationAgent.js').RecommendationAgent;
+const WorkflowAgent = require('./ai-core/agents/intelligence/WorkflowAgent.js').WorkflowAgent;
+const MemoryAgent = require('./ai-core/agents/intelligence/MemoryAgent.js').MemoryAgent;
+const NotificationAgent = require('./ai-core/agents/intelligence/NotificationAgent.js').NotificationAgent;
+const CEOAgent = require('./ai-core/agents/executive/CEOAgent.js').CEOAgent;
+const StrategyAgent = require('./ai-core/agents/executive/StrategyAgent.js').StrategyAgent;
 
 // Register all 18 agents with the registry
 const hospitalAgent = new HospitalAgent(providerManager);
