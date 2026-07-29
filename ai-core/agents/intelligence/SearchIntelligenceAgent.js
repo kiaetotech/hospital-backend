@@ -1,58 +1,54 @@
-// D:\hospital backend\ai-core\agents\intelligence\SearchIntelligenceAgent.ts
+// D:\hospital backend\ai-core\agents\intelligence\SearchIntelligenceAgent.js
 
-const { AgentRole, AgentStatus, AgentRequest, AgentResponse } = require('../../../shared/types/AgentTypes');
+const { AgentRole, AgentStatus } = require('../../../shared/types/AgentTypes');
 const { BaseAgent } = require('../base/BaseAgent');
-const { ProviderManager } = require('../../providers/ProviderManager');
 
-
-
-
-
-
-
-export class SearchIntelligenceAgent extends BaseAgent {
-  private searchHistory[] = [];
-  private popularSearches<string, number> = new Map();
-
+class SearchIntelligenceAgent extends BaseAgent {
   constructor(providerManager) {
     super(
       {
         name: 'Search Intelligence Agent',
-        role.SEARCH_INTELLIGENCE,
+        role: AgentRole.SEARCH_INTELLIGENCE,
         capabilities: [
           {
             name: 'semantic_search',
             description: 'Perform semantic search across all healthcare services',
             priority: 1,
             estimatedLatency: 300,
-            requiresAuth},
+            requiresAuth: false
+          },
           {
             name: 'understand_query',
             description: 'Understand and parse user search queries',
             priority: 1,
             estimatedLatency: 200,
-            requiresAuth},
+            requiresAuth: false
+          },
           {
             name: 'rank_results',
             description: 'Rank search results by relevance',
             priority: 2,
             estimatedLatency: 150,
-            requiresAuth},
+            requiresAuth: false
+          },
           {
             name: 'autocomplete',
             description: 'Provide autocomplete suggestions',
             priority: 2,
             estimatedLatency: 100,
-            requiresAuth}
+            requiresAuth: false
+          }
         ]
       },
       providerManager
     );
 
+    this.searchHistory = [];
+    this.popularSearches = new Map();
     this.initializePopularSearches();
   }
 
-  private initializePopularSearches(){
+  initializePopularSearches() {
     this.popularSearches.set('cardiologist', 450);
     this.popularSearches.set('orthopedic doctor', 380);
     this.popularSearches.set('blood test', 320);
@@ -65,19 +61,20 @@ export class SearchIntelligenceAgent extends BaseAgent {
     this.popularSearches.set('health insurance', 120);
   }
 
-  async execute(request)<AgentResponse> {
+  async execute(request) {
     this.setStatus(AgentStatus.BUSY);
     this.setCurrentTask(request.task);
 
     try {
       if (!this.validateRequest(request)) {
-        throw new Error('Invalid requestrequired fields or capabilities');
+        throw new Error('Invalid request: missing required fields or capabilities');
       }
 
-      const { task, payload } = request;
-      this.log(`Executing task: ${task}`, 'info');
+      var task = request.task;
+      var payload = request.payload;
+      this.log('Executing task: ' + task, 'info');
 
-      let result;
+      var result;
 
       if (task.includes('search') || task.includes('find')) {
         result = await this.semanticSearch(payload);
@@ -92,34 +89,34 @@ export class SearchIntelligenceAgent extends BaseAgent {
       }
 
       this.setStatus(AgentStatus.IDLE);
-      this.setCurrentTask(undefined);
+      this.setCurrentTask(null);
 
       return {
-        success,
-        data,
-        sourceAgent.id,
-        processingTime.now() - new Date().getTime()
+        success: true,
+        data: result,
+        sourceAgent: this.id,
+        processingTime: Date.now() - new Date().getTime()
       };
 
     } catch (error) {
       this.setStatus(AgentStatus.IDLE);
-      this.setCurrentTask(undefined);
+      this.setCurrentTask(null);
       return this.handleError(error, request);
     }
   }
 
-  private async semanticSearch(payload)<any> {
-    const { query, filters, limit = 10 } = payload;
+  async semanticSearch(payload) {
+    var query = payload.query;
+    var filters = payload.filters;
+    var limit = payload.limit || 10;
 
     if (!query) {
       throw new Error('Search query is required');
     }
 
-    // Understand the query
-    const understood = await this.understandQuery({ query });
+    var understood = await this.understandQuery({ query: query });
 
-    // Simulate search results (in production, this would query databases)
-    const mockResults[] = [
+    var mockResults = [
       {
         id: '1',
         title: 'Apollo Hospital Mumbai',
@@ -162,77 +159,67 @@ export class SearchIntelligenceAgent extends BaseAgent {
       }
     ];
 
-    // Apply filters
-    let results = mockResults;
+    var results = mockResults;
     if (filters) {
       if (filters.type) {
-        results = results.filter(r => r.type === filters.type);
+        results = results.filter(function(r) { return r.type === filters.type; });
       }
       if (filters.city) {
-        results = results.filter(r => r.metadata.city === filters.city);
+        results = results.filter(function(r) { return r.metadata.city === filters.city; });
       }
     }
 
-    // Sort by relevance
-    results.sort((a, b) => b.relevanceScore - a.relevanceScore);
-
-    // Limit results
+    results.sort(function(a, b) { return b.relevanceScore - a.relevanceScore; });
     results = results.slice(0, limit);
 
-    // Record search
     this.searchHistory.push({
-      original,
-      processed.processedQuery,
-      intent.intent,
-      entities.entities,
-      filters|| {}
+      original: query,
+      processed: understood.processedQuery,
+      intent: understood.intent,
+      entities: understood.entities,
+      filters: filters || {}
     });
 
     return {
-      results,
-      total.length,
-      query,
-      timestampDate().toISOString()
+      results: results,
+      total: results.length,
+      query: query,
+      timestamp: new Date().toISOString()
     };
   }
 
-  private async understandQuery(payload)<any> {
-    const { query } = payload;
+  async understandQuery(payload) {
+    var query = payload.query;
 
     if (!query) {
       throw new Error('Query is required');
     }
 
-    // Use AI to understand the query
-    const prompt = `
-      Analyze this healthcare search query: "${query}"
-      
-      Provide:
-      1. Processed query (clean version)
-      2. Intent (find hospital, book doctor, check lab, etc.)
-      3. Entities (specialty, city, type, etc.)
-      4. Confidence score
-    `;
+    var prompt = 'Analyze this healthcare search query: "' + query + '"\n\n' +
+      'Provide:\n' +
+      '1. Processed query (clean version)\n' +
+      '2. Intent (find hospital, book doctor, check lab, etc.)\n' +
+      '3. Entities (specialty, city, type, etc.)\n' +
+      '4. Confidence score';
 
-    const response = await this.providerManager.generate(prompt);
+    var response = await this.providerManager.generate(prompt);
 
-    // Parse response (simplified)
-    const understood = {
-      original,
-      processedQuery.toLowerCase().trim(),
-      intent.detectIntent(query),
-      entities.extractEntities(query),
+    var understood = {
+      original: query,
+      processedQuery: query.toLowerCase().trim(),
+      intent: this.detectIntent(query),
+      entities: this.extractEntities(query),
       filters: {},
       confidence: 85,
-      aiAnalysis.content
+      aiAnalysis: response.content
     };
 
     return understood;
   }
 
-  private detectIntent(query){
-    const lower = query.toLowerCase();
-    
+  detectIntent(query) {
+    var lower = query.toLowerCase();
+
     if (lower.includes('hospital') || lower.includes('clinic')) return 'find_hospital';
     if (lower.includes('doctor') || lower.includes('physician')) return 'find_doctor';
     if (lower.includes('lab') || lower.includes('test') || lower.includes('checkup')) return 'find_lab';
@@ -240,28 +227,26 @@ export class SearchIntelligenceAgent extends BaseAgent {
     if (lower.includes('insurance')) return 'get_insurance';
     if (lower.includes('ayurveda') || lower.includes('homeopathy') || lower.includes('wellness')) return 'find_wellness';
     if (lower.includes('caregiver') || lower.includes('home care')) return 'find_caregiver';
-    
+
     return 'general_search';
   }
 
-  private extractEntities(query){
-    const entities= {};
-    const lower = query.toLowerCase();
+  extractEntities(query) {
+    var entities = {};
+    var lower = query.toLowerCase();
 
-    // Extract city
-    const cities = ['mumbai', 'delhi', 'pune', 'bangalore', 'chennai', 'hyderabad', 'gurugram'];
-    for (const city of cities) {
-      if (lower.includes(city)) {
-        entities.city = city;
+    var cities = ['mumbai', 'delhi', 'pune', 'bangalore', 'chennai', 'hyderabad', 'gurugram'];
+    for (var i = 0; i < cities.length; i++) {
+      if (lower.includes(cities[i])) {
+        entities.city = cities[i];
         break;
       }
     }
 
-    // Extract specialty
-    const specialties = ['cardiology', 'orthopedic', 'neurology', 'dermatology', 'gynecology', 'oncology', 'pediatrics'];
-    for (const specialty of specialties) {
-      if (lower.includes(specialty)) {
-        entities.specialty = specialty;
+    var specialties = ['cardiology', 'orthopedic', 'neurology', 'dermatology', 'gynecology', 'oncology', 'pediatrics'];
+    for (var j = 0; j < specialties.length; j++) {
+      if (lower.includes(specialties[j])) {
+        entities.specialty = specialties[j];
         break;
       }
     }
@@ -269,74 +254,80 @@ export class SearchIntelligenceAgent extends BaseAgent {
     return entities;
   }
 
-  private async rankResults(payload)<any> {
-    const { results, queryContext } = payload;
+  async rankResults(payload) {
+    var results = payload.results;
+    var queryContext = payload.queryContext;
 
     if (!results || !Array.isArray(results)) {
       throw new Error('Results array is required');
     }
 
-    // Simulate ranking logic
-    const rankedResults = results.map((result) => {
-      let score = result.relevanceScore || 50;
+    var rankedResults = results.map(function(result) {
+      var score = result.relevanceScore || 50;
 
-      // Boost by type based on query context
       if (queryContext && queryContext.intent) {
-        const typeBoost= {
+        var typeBoost = {
           'find_hospital': 'Hospital',
           'find_doctor': 'Doctor',
           'find_lab': 'Lab',
           'book_ambulance': 'Ambulance',
           'find_wellness': 'Wellness'
         };
-        const targetType = typeBoost[queryContext.intent];
+        var targetType = typeBoost[queryContext.intent];
         if (result.type === targetType) {
           score += 15;
         }
       }
 
-      // Boost if metadata has rating
       if (result.metadata && result.metadata.rating) {
         score += (result.metadata.rating - 4) * 10;
       }
 
-      return {
-        ...result,
-        relevanceScore.min(score, 100)
-      };
+      var newResult = {};
+      var keys = Object.keys(result);
+      for (var i = 0; i < keys.length; i++) {
+        newResult[keys[i]] = result[keys[i]];
+      }
+      newResult.relevanceScore = Math.min(score, 100);
+      return newResult;
     });
 
-    rankedResults.sort((a, b) => b.relevanceScore - a.relevanceScore);
+    rankedResults.sort(function(a, b) { return b.relevanceScore - a.relevanceScore; });
 
     return {
-      results,
-      total.length,
+      results: rankedResults,
+      total: rankedResults.length,
       method: 'AI-powered ranking'
     };
   }
 
-  private async autocomplete(payload)<any> {
-    const { query, limit = 5 } = payload;
+  async autocomplete(payload) {
+    var query = payload.query;
+    var limit = payload.limit || 5;
 
     if (!query || query.length < 2) {
       return { suggestions: [] };
     }
 
-    const suggestions[] = [];
-    const lowerQuery = query.toLowerCase();
+    var suggestions = [];
+    var lowerQuery = query.toLowerCase();
 
     // Check popular searches
-    for (const [key, count] of this.popularSearches) {
+    var popularEntries = Array.from(this.popularSearches.entries());
+    for (var i = 0; i < popularEntries.length; i++) {
+      var key = popularEntries[i][0];
+      var count = popularEntries[i][1];
       if (key.includes(lowerQuery)) {
         suggestions.push({
-          text,
+          text: key,
           type: 'popular',
-          score});
+          score: count
+        });
       }
     }
 
     // Add service-based suggestions
-    const services = [
+    var services = [
       { text: 'Find Hospital', type: 'service' },
       { text: 'Book Ambulance', type: 'service' },
       { text: 'Consult Doctor', type: 'service' },
@@ -350,50 +341,43 @@ export class SearchIntelligenceAgent extends BaseAgent {
       { text: 'Corporate Health', type: 'service' }
     ];
 
-    for (const service of services) {
-      if (service.text.toLowerCase().includes(lowerQuery)) {
+    for (var j = 0; j < services.length; j++) {
+      if (services[j].text.toLowerCase().includes(lowerQuery)) {
         suggestions.push({
-          text.text,
-          type.type,
+          text: services[j].text,
+          type: services[j].type,
           score: 50
         });
       }
     }
 
-    // Sort by score
-    suggestions.sort((a, b) => b.score - a.score);
-
-    // Limit results
-    const limited = suggestions.slice(0, limit);
+    suggestions.sort(function(a, b) { return b.score - a.score; });
+    var limited = suggestions.slice(0, limit);
 
     return {
-      suggestions,
-      total.length,
-      query
+      suggestions: limited,
+      total: suggestions.length,
+      query: query
     };
   }
 
-  private async handleComplexQuery(task, payload)<any> {
-    const prompt = `
-      Task: ${task}
-      Payload: ${JSON.stringify(payload)}
-      
-      Search History: ${JSON.stringify(this.searchHistory)}
-      Popular Searches: ${JSON.stringify(Array.from(this.popularSearches.entries()))}
-      
-      Please analyze the query and provide a recommendation.
-    `;
+  async handleComplexQuery(task, payload) {
+    var prompt = 'Task: ' + task + '\n' +
+      'Payload: ' + JSON.stringify(payload) + '\n\n' +
+      'Search History: ' + JSON.stringify(this.searchHistory) + '\n' +
+      'Popular Searches: ' + JSON.stringify(Array.from(this.popularSearches.entries())) + '\n\n' +
+      'Please analyze the query and provide a recommendation.';
 
-    const response = await this.providerManager.generate(prompt);
-    
+    var response = await this.providerManager.generate(prompt);
+
     return {
-      aiResponse.content,
-      provider.provider,
-      tokensUsed.tokensUsed
+      aiResponse: response.content,
+      provider: response.provider,
+      tokensUsed: response.tokensUsed
     };
   }
 
-  protected getRequiredCapability(task)| null {
+  getRequiredCapability(task) {
     if (task.includes('search') || task.includes('find')) {
       return 'semantic_search';
     }
@@ -410,5 +394,4 @@ export class SearchIntelligenceAgent extends BaseAgent {
   }
 }
 
-
-
+module.exports = { SearchIntelligenceAgent };

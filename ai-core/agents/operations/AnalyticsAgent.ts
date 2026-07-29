@@ -1,46 +1,10 @@
-// D:\hospital backend\ai-core\agents\operations\AnalyticsAgent.ts
+// D:\hospital backend\ai-core\agents\operations\AnalyticsAgent.js
 
-import { AgentRole, AgentStatus, AgentRequest, AgentResponse } from '../../../shared/types/AgentTypes';
-import { BaseAgent } from '../base/BaseAgent';
-import { ProviderManager } from '../../providers/ProviderManager';
+const { AgentRole, AgentStatus } = require('../../../shared/types/AgentTypes');
+const { BaseAgent } = require('../base/BaseAgent');
 
-interface KPI {
-  id: string;
-  name: string;
-  value: number;
-  target: number;
-  unit: string;
-  category: 'Revenue' | 'Growth' | 'Operations' | 'Satisfaction';
-  trend: 'Up' | 'Down' | 'Stable';
-  percentageChange: number;
-  timestamp: Date;
-}
-
-interface Report {
-  id: string;
-  name: string;
-  type: 'Daily' | 'Weekly' | 'Monthly' | 'Quarterly' | 'Yearly';
-  period: string;
-  data: Record<string, any>;
-  generatedAt: Date;
-  createdBy: string;
-}
-
-interface TrendPrediction {
-  metric: string;
-  currentValue: number;
-  predictedValue: number;
-  confidence: number;
-  timeframe: string;
-  factors: string[];
-}
-
-export class AnalyticsAgent extends BaseAgent {
-  private kpis: KPI[] = [];
-  private reports: Report[] = [];
-  private predictions: TrendPrediction[] = [];
-
-  constructor(providerManager: ProviderManager) {
+class AnalyticsAgent extends BaseAgent {
+  constructor(providerManager) {
     super(
       {
         name: 'Analytics Agent',
@@ -79,10 +43,13 @@ export class AnalyticsAgent extends BaseAgent {
       providerManager
     );
 
+    this.kpis = [];
+    this.reports = [];
+    this.predictions = [];
     this.initializeData();
   }
 
-  private initializeData(): void {
+  initializeData() {
     this.kpis = [
       {
         id: 'k1',
@@ -150,7 +117,7 @@ export class AnalyticsAgent extends BaseAgent {
     ];
   }
 
-  async execute(request: AgentRequest): Promise<AgentResponse> {
+  async execute(request) {
     this.setStatus(AgentStatus.BUSY);
     this.setCurrentTask(request.task);
 
@@ -159,10 +126,11 @@ export class AnalyticsAgent extends BaseAgent {
         throw new Error('Invalid request: Missing required fields or capabilities');
       }
 
-      const { task, payload } = request;
-      this.log(`Executing task: ${task}`, 'info');
+      var task = request.task;
+      var payload = request.payload;
+      this.log('Executing task: ' + task, 'info');
 
-      let result: any;
+      var result;
 
       if (task.includes('kpi')) {
         result = await this.generateKPI(payload);
@@ -177,7 +145,7 @@ export class AnalyticsAgent extends BaseAgent {
       }
 
       this.setStatus(AgentStatus.IDLE);
-      this.setCurrentTask(undefined);
+      this.setCurrentTask(null);
 
       return {
         success: true,
@@ -188,82 +156,94 @@ export class AnalyticsAgent extends BaseAgent {
 
     } catch (error) {
       this.setStatus(AgentStatus.IDLE);
-      this.setCurrentTask(undefined);
+      this.setCurrentTask(null);
       return this.handleError(error, request);
     }
   }
 
-  private async generateKPI(payload: any): Promise<any> {
-    const { category, kpiId } = payload;
+  async generateKPI(payload) {
+    var category = payload.category;
+    var kpiId = payload.kpiId;
 
-    let targetKPIs = this.kpis;
+    var targetKPIs = this.kpis;
 
     if (category) {
-      targetKPIs = this.kpis.filter(k => k.category === category);
+      targetKPIs = this.kpis.filter(function(k) { return k.category === category; });
     }
 
     if (kpiId) {
-      const kpi = this.kpis.find(k => k.id === kpiId);
+      var kpi = this.kpis.find(function(k) { return k.id === kpiId; });
       if (!kpi) {
         throw new Error('KPI not found');
       }
       targetKPIs = [kpi];
     }
 
-    const formatted = targetKPIs.map(k => ({
-      ...k,
-      progress: Math.round((k.value / k.target) * 100),
-      status: k.value >= k.target ? 'On Target' : 'Below Target'
-    }));
+    var formatted = targetKPIs.map(function(k) {
+      var progress = Math.round((k.value / k.target) * 100);
+      var status = k.value >= k.target ? 'On Target' : 'Below Target';
+      return {
+        id: k.id,
+        name: k.name,
+        value: k.value,
+        target: k.target,
+        unit: k.unit,
+        category: k.category,
+        trend: k.trend,
+        percentageChange: k.percentageChange,
+        timestamp: k.timestamp,
+        progress: progress,
+        status: status
+      };
+    });
+
+    var sumProgress = 0;
+    for (var i = 0; i < formatted.length; i++) {
+      sumProgress += formatted[i].progress;
+    }
 
     return {
       kpis: formatted,
       total: formatted.length,
       summary: {
-        averageProgress: Math.round(formatted.reduce((sum, k) => sum + k.progress, 0) / formatted.length),
-        healthyKPIs: formatted.filter(k => k.progress >= 80).length
+        averageProgress: Math.round(sumProgress / formatted.length),
+        healthyKPIs: formatted.filter(function(k) { return k.progress >= 80; }).length
       }
     };
   }
 
-  private async generateReport(payload: any): Promise<any> {
-    const { type, period, reportId } = payload;
+  async generateReport(payload) {
+    var type = payload.type;
+    var period = payload.period;
+    var reportId = payload.reportId;
 
     if (reportId) {
-      const report = this.reports.find(r => r.id === reportId);
-      if (!report) {
+      var existingReport = this.reports.find(function(r) { return r.id === reportId; });
+      if (!existingReport) {
         throw new Error('Report not found');
       }
-      return { report };
+      return { report: existingReport };
     }
 
-    // Generate new report
-    const reportType = type || 'Monthly';
-    const reportPeriod = period || new Date().toISOString().slice(0, 7);
+    var reportType = type || 'Monthly';
+    var reportPeriod = period || new Date().toISOString().slice(0, 7);
+    var kpiData = await this.generateKPI({});
 
-    // Gather all KPIs
-    const kpiData = await this.generateKPI({});
+    var prompt = 'Generate a comprehensive ' + reportType + ' analytics report for ' + reportPeriod + '.\n\n' +
+      'Current KPIs:\n' +
+      JSON.stringify(kpiData.kpis) + '\n\n' +
+      'Provide:\n' +
+      '1. Executive summary\n' +
+      '2. Key trends\n' +
+      '3. Areas of concern\n' +
+      '4. Recommendations';
 
-    // Generate insights using AI
-    const prompt = `
-      Generate a comprehensive ${reportType} analytics report for ${reportPeriod}.
-      
-      Current KPIs:
-      ${JSON.stringify(kpiData.kpis)}
-      
-      Provide:
-      1. Executive summary
-      2. Key trends
-      3. Areas of concern
-      4. Recommendations
-    `;
+    var response = await this.providerManager.generate(prompt);
 
-    const response = await this.providerManager.generate(prompt);
-
-    const report: Report = {
-      id: `r${Date.now()}`,
-      name: `${reportType} Report - ${reportPeriod}`,
-      type: reportType as 'Daily' | 'Weekly' | 'Monthly' | 'Quarterly' | 'Yearly',
+    var report = {
+      id: 'r' + Date.now(),
+      name: reportType + ' Report - ' + reportPeriod,
+      type: reportType,
       period: reportPeriod,
       data: {
         kpis: kpiData.kpis,
@@ -277,38 +257,34 @@ export class AnalyticsAgent extends BaseAgent {
     this.reports.push(report);
 
     return {
-      report,
-      message: `${reportType} report generated successfully`,
+      report: report,
+      message: reportType + ' report generated successfully',
       timestamp: new Date().toISOString()
     };
   }
 
-  private async predictTrend(payload: any): Promise<any> {
-    const { metric } = payload;
+  async predictTrend(payload) {
+    var metric = payload.metric;
 
-    let targetPredictions = this.predictions;
+    var targetPredictions = this.predictions;
 
     if (metric) {
-      targetPredictions = this.predictions.filter(p => 
-        p.metric.toLowerCase().includes(metric.toLowerCase())
-      );
+      targetPredictions = this.predictions.filter(function(p) {
+        return p.metric.toLowerCase().includes(metric.toLowerCase());
+      });
     }
 
-    // Use AI to enhance predictions
     if (targetPredictions.length === 0) {
-      const prompt = `
-        Predict trends for healthcare platform:
-        Current metrics: ${JSON.stringify(this.kpis)}
-        
-        Provide predictions for:
-        1. Revenue
-        2. User growth
-        3. Booking volume
-        4. Satisfaction
-      `;
+      var prompt = 'Predict trends for healthcare platform:\n' +
+        'Current metrics: ' + JSON.stringify(this.kpis) + '\n\n' +
+        'Provide predictions for:\n' +
+        '1. Revenue\n' +
+        '2. User growth\n' +
+        '3. Booking volume\n' +
+        '4. Satisfaction';
 
-      const response = await this.providerManager.generate(prompt);
-      
+      var response = await this.providerManager.generate(prompt);
+
       return {
         predictions: response.content,
         provider: response.provider,
@@ -321,50 +297,43 @@ export class AnalyticsAgent extends BaseAgent {
       predictions: targetPredictions,
       summary: {
         total: targetPredictions.length,
-        highConfidence: targetPredictions.filter(p => p.confidence > 80).length
+        highConfidence: targetPredictions.filter(function(p) { return p.confidence > 80; }).length
       },
       timestamp: new Date().toISOString()
     };
   }
 
-  private async analyzeBusiness(payload: any): Promise<any> {
-    const { perspective } = payload;
+  async analyzeBusiness(payload) {
+    var perspective = payload.perspective;
 
-    // Gather all data
-    const kpiData = await this.generateKPI({});
-    const trendData = await this.predictTrend({});
+    var kpiData = await this.generateKPI({});
+    var trendData = await this.predictTrend({});
 
-    // Build business health assessment
-    const kpis = kpiData.kpis;
-    const revenueKPI = kpis.find(k => k.name === 'Monthly Revenue');
-    const userKPI = kpis.find(k => k.name === 'Active Users');
-    const satisfactionKPI = kpis.find(k => k.name === 'Customer Satisfaction');
+    var kpis = kpiData.kpis;
+    var revenueKPI = kpis.find(function(k) { return k.name === 'Monthly Revenue'; });
+    var userKPI = kpis.find(function(k) { return k.name === 'Active Users'; });
+    var satisfactionKPI = kpis.find(function(k) { return k.name === 'Customer Satisfaction'; });
 
-    const healthScore = [
-      revenueKPI?.progress || 0,
-      userKPI?.progress || 0,
-      satisfactionKPI?.progress || 0
-    ].reduce((sum, val) => sum + val, 0) / 3;
+    var healthScore = (
+      (revenueKPI ? revenueKPI.progress : 0) +
+      (userKPI ? userKPI.progress : 0) +
+      (satisfactionKPI ? satisfactionKPI.progress : 0)
+    ) / 3;
 
-    // Generate business insights
-    const prompt = `
-      Analyze the business health from ${perspective || 'overall'} perspective:
-      
-      Revenue: ${JSON.stringify(revenueKPI)}
-      Users: ${JSON.stringify(userKPI)}
-      Satisfaction: ${JSON.stringify(satisfactionKPI)}
-      Predictions: ${JSON.stringify(trendData)}
-      
-      Provide:
-      1. Business health assessment
-      2. Strengths
-      3. Weaknesses
-      4. Opportunities
-      5. Threats
-      6. Strategic recommendations
-    `;
+    var prompt = 'Analyze the business health from ' + (perspective || 'overall') + ' perspective:\n\n' +
+      'Revenue: ' + JSON.stringify(revenueKPI) + '\n' +
+      'Users: ' + JSON.stringify(userKPI) + '\n' +
+      'Satisfaction: ' + JSON.stringify(satisfactionKPI) + '\n' +
+      'Predictions: ' + JSON.stringify(trendData) + '\n\n' +
+      'Provide:\n' +
+      '1. Business health assessment\n' +
+      '2. Strengths\n' +
+      '3. Weaknesses\n' +
+      '4. Opportunities\n' +
+      '5. Threats\n' +
+      '6. Strategic recommendations';
 
-    const response = await this.providerManager.generate(prompt);
+    var response = await this.providerManager.generate(prompt);
 
     return {
       healthScore: Math.round(healthScore),
@@ -378,21 +347,17 @@ export class AnalyticsAgent extends BaseAgent {
     };
   }
 
-  private async handleComplexQuery(task: string, payload: any): Promise<any> {
-    const prompt = `
-      Task: ${task}
-      Payload: ${JSON.stringify(payload)}
-      
-      Analytics Data:
-      KPIs: ${JSON.stringify(this.kpis)}
-      Reports: ${JSON.stringify(this.reports)}
-      Predictions: ${JSON.stringify(this.predictions)}
-      
-      Please analyze the query and provide a recommendation.
-    `;
+  async handleComplexQuery(task, payload) {
+    var prompt = 'Task: ' + task + '\n' +
+      'Payload: ' + JSON.stringify(payload) + '\n\n' +
+      'Analytics Data:\n' +
+      'KPIs: ' + JSON.stringify(this.kpis) + '\n' +
+      'Reports: ' + JSON.stringify(this.reports) + '\n' +
+      'Predictions: ' + JSON.stringify(this.predictions) + '\n\n' +
+      'Please analyze the query and provide a recommendation.';
 
-    const response = await this.providerManager.generate(prompt);
-    
+    var response = await this.providerManager.generate(prompt);
+
     return {
       aiResponse: response.content,
       provider: response.provider,
@@ -400,7 +365,7 @@ export class AnalyticsAgent extends BaseAgent {
     };
   }
 
-  protected getRequiredCapability(task: string): string | null {
+  getRequiredCapability(task) {
     if (task.includes('kpi')) {
       return 'generate_kpi';
     }
@@ -416,3 +381,5 @@ export class AnalyticsAgent extends BaseAgent {
     return null;
   }
 }
+
+module.exports = { AnalyticsAgent };

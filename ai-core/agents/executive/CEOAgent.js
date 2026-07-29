@@ -1,64 +1,57 @@
-// D:\hospital backend\ai-core\agents\executive\CEOAgent.ts
+// D:\hospital backend\ai-core\agents\executive\CEOAgent.js
 
-const { AgentRole, AgentStatus, AgentRequest, AgentResponse } = require('../../../shared/types/AgentTypes');
+const { AgentRole, AgentStatus } = require('../../../shared/types/AgentTypes');
 const { BaseAgent } = require('../base/BaseAgent');
-const { ProviderManager } = require('../../providers/ProviderManager');
-const { CapabilityRegistry } = require('../../router/CapabilityRegistry');
 
-
-
-
-
-
-
-export class CEOAgent extends BaseAgent {
-  private strategicPlans<string, StrategicPlan> = new Map();
-  private businessReports[] = [];
-  private capabilityRegistry;
-  private activeWorkflows<string, string[]> = new Map();
-
+class CEOAgent extends BaseAgent {
   constructor(providerManager, capabilityRegistry) {
     super(
       {
         name: 'CEO Agent',
-        role.CEO,
+        role: AgentRole.CEO,
         capabilities: [
           {
             name: 'create_strategic_plan',
             description: 'Create and manage strategic plans',
             priority: 1,
             estimatedLatency: 400,
-            requiresAuth},
+            requiresAuth: true
+          },
           {
             name: 'coordinate_workflows',
             description: 'Coordinate complex multi-agent workflows',
             priority: 1,
             estimatedLatency: 500,
-            requiresAuth},
+            requiresAuth: true
+          },
           {
             name: 'generate_report',
             description: 'Generate business reports and insights',
             priority: 2,
             estimatedLatency: 600,
-            requiresAuth},
+            requiresAuth: true
+          },
           {
             name: 'allocate_resources',
             description: 'Allocate resources across agents',
             priority: 2,
             estimatedLatency: 300,
-            requiresAuth}
+            requiresAuth: true
+          }
         ]
       },
       providerManager
     );
 
+    this.strategicPlans = new Map();
+    this.businessReports = [];
     this.capabilityRegistry = capabilityRegistry;
+    this.activeWorkflows = new Map();
     this.initializeData();
   }
 
-  private initializeData(){
-    // Sample strategic plan
-    const samplePlan= {
+  initializeData() {
+    var samplePlan = {
       id: 'plan1',
       name: 'Q3 Growth Strategy',
       description: 'Expand hospital network and increase user acquisition',
@@ -68,7 +61,7 @@ export class CEOAgent extends BaseAgent {
           name: 'Hospital Onboarding',
           description: 'Onboard 50 new hospitals',
           requiredCapabilities: ['search_hospitals', 'compare_hospitals'],
-          agentRole.HOSPITAL,
+          agentRole: AgentRole.HOSPITAL,
           dependencies: [],
           status: 'Pending'
         },
@@ -77,7 +70,7 @@ export class CEOAgent extends BaseAgent {
           name: 'User Acquisition Campaign',
           description: 'Launch marketing campaign for new hospitals',
           requiredCapabilities: ['generate_content', 'create_campaign'],
-          agentRole.MARKETING,
+          agentRole: AgentRole.MARKETING,
           dependencies: ['step1'],
           status: 'Pending'
         },
@@ -86,7 +79,7 @@ export class CEOAgent extends BaseAgent {
           name: 'Analytics Review',
           description: 'Review campaign performance',
           requiredCapabilities: ['generate_kpi', 'generate_report'],
-          agentRole.ANALYTICS,
+          agentRole: AgentRole.ANALYTICS,
           dependencies: ['step2'],
           status: 'Pending'
         }
@@ -94,26 +87,27 @@ export class CEOAgent extends BaseAgent {
       status: 'Draft',
       priority: 'High',
       assignedTo: ['HospitalAgent', 'MarketingAgent', 'AnalyticsAgent'],
-      createdAtDate(),
-      updatedAtDate()
+      createdAt: new Date(),
+      updatedAt: new Date()
     };
 
     this.strategicPlans.set(samplePlan.id, samplePlan);
   }
 
-  async execute(request)<AgentResponse> {
+  async execute(request) {
     this.setStatus(AgentStatus.BUSY);
     this.setCurrentTask(request.task);
 
     try {
       if (!this.validateRequest(request)) {
-        throw new Error('Invalid requestrequired fields or capabilities');
+        throw new Error('Invalid request: missing required fields or capabilities');
       }
 
-      const { task, payload } = request;
-      this.log(`Executing CEO task: ${task}`, 'info');
+      var task = request.task;
+      var payload = request.payload;
+      this.log('Executing CEO task: ' + task, 'info');
 
-      let result;
+      var result;
 
       if (task.includes('strategic') || task.includes('plan')) {
         result = await this.createStrategicPlan(payload);
@@ -128,67 +122,73 @@ export class CEOAgent extends BaseAgent {
       }
 
       this.setStatus(AgentStatus.IDLE);
-      this.setCurrentTask(undefined);
+      this.setCurrentTask(null);
 
       return {
-        success,
-        data,
-        sourceAgent.id,
-        processingTime.now() - new Date().getTime()
+        success: true,
+        data: result,
+        sourceAgent: this.id,
+        processingTime: Date.now() - new Date().getTime()
       };
 
     } catch (error) {
       this.setStatus(AgentStatus.IDLE);
-      this.setCurrentTask(undefined);
+      this.setCurrentTask(null);
       return this.handleError(error, request);
     }
   }
 
-  private async createStrategicPlan(payload)<any> {
-    const { name, description, steps, priority = 'Medium' } = payload;
+  async createStrategicPlan(payload) {
+    var name = payload.name;
+    var description = payload.description;
+    var steps = payload.steps;
+    var priority = payload.priority || 'Medium';
 
     if (!name || !steps || steps.length === 0) {
       throw new Error('Name and steps are required');
     }
 
-    const plan= {
-      id: `plan${Date.now()}`,
-      name,
-      description|| '',
-      steps.map((s, index) => ({
-        id: `step${index}`,
-        name.name,
-        description.description || '',
-        requiredCapabilities.requiredCapabilities || [],
-        agentRole.agentRole,
-        dependencies.dependencies || [],
-        status: 'Pending'
-      })),
+    var plan = {
+      id: 'plan' + Date.now(),
+      name: name,
+      description: description || '',
+      steps: steps.map(function(s, index) {
+        return {
+          id: 'step' + index,
+          name: s.name,
+          description: s.description || '',
+          requiredCapabilities: s.requiredCapabilities || [],
+          agentRole: s.agentRole,
+          dependencies: s.dependencies || [],
+          status: 'Pending'
+        };
+      }),
       status: 'Draft',
-      priority|| 'Medium',
-      assignedTo.getAgentsForSteps(steps),
-      createdAtDate(),
-      updatedAtDate()
+      priority: priority || 'Medium',
+      assignedTo: this.getAgentsForSteps(steps),
+      createdAt: new Date(),
+      updatedAt: new Date()
     };
 
     this.strategicPlans.set(plan.id, plan);
 
     return {
-      planId.id,
-      name.name,
-      steps.steps,
-      status.status,
+      planId: plan.id,
+      name: plan.name,
+      steps: plan.steps,
+      status: plan.status,
       message: 'Strategic plan created successfully',
       nextSteps: 'Review and approve plan for execution'
     };
   }
 
-  private getAgentsForSteps(steps[])[] {
-    const agents = new Set<string>();
-    for (const step of steps) {
+  getAgentsForSteps(steps) {
+    var agents = new Set();
+    for (var i = 0; i < steps.length; i++) {
+      var step = steps[i];
       if (step.agentRole) {
-        const agent = this.capabilityRegistry.findAgentForTask(
-          step.requiredCapabilities?.[0] || 'search',
+        var agent = this.capabilityRegistry.findAgentForTask(
+          (step.requiredCapabilities && step.requiredCapabilities[0]) || 'search',
           step.agentRole
         );
         if (agent) {
@@ -199,14 +199,15 @@ export class CEOAgent extends BaseAgent {
     return Array.from(agents);
   }
 
-  private async coordinateWorkflows(payload)<any> {
-    const { planId, action } = payload;
+  async coordinateWorkflows(payload) {
+    var planId = payload.planId;
+    var action = payload.action;
 
     if (!planId) {
       throw new Error('Plan ID is required');
     }
 
-    const plan = this.strategicPlans.get(planId);
+    var plan = this.strategicPlans.get(planId);
     if (!plan) {
       throw new Error('Strategic plan not found');
     }
@@ -219,7 +220,7 @@ export class CEOAgent extends BaseAgent {
       plan.status = 'InProgress';
       plan.updatedAt = new Date();
       return {
-        planId.id,
+        planId: plan.id,
         status: 'Paused',
         message: 'Plan paused successfully'
       };
@@ -227,7 +228,7 @@ export class CEOAgent extends BaseAgent {
       plan.status = 'InProgress';
       plan.updatedAt = new Date();
       return {
-        planId.id,
+        planId: plan.id,
         status: 'Resumed',
         message: 'Plan resumed successfully'
       };
@@ -236,42 +237,39 @@ export class CEOAgent extends BaseAgent {
     throw new Error('Invalid action');
   }
 
-  private async executePlan(plan)<any> {
+  async executePlan(plan) {
     plan.status = 'InProgress';
     plan.updatedAt = new Date();
 
-    const executionLog[] = [];
-
-    // Build dependency graph and execute steps in order
-    const executedSteps = new Set<string>();
-    let allCompleted = true;
+    var executionLog = [];
+    var executedSteps = new Set();
+    var allCompleted = true;
 
     while (executedSteps.size < plan.steps.length) {
-      let progressMade = false;
+      var progressMade = false;
 
-      for (const step of plan.steps) {
-        // Skip if already executed
+      for (var i = 0; i < plan.steps.length; i++) {
+        var step = plan.steps[i];
+
         if (executedSteps.has(step.id)) continue;
 
-        // Check if dependencies are completed
-        const depsCompleted = step.dependencies.every(depId => {
-          const depStep = plan.steps.find(s => s.id === depId);
+        var depsCompleted = step.dependencies.every(function(depId) {
+          var depStep = plan.steps.find(function(s) { return s.id === depId; });
           return depStep && depStep.status === 'Completed';
         });
 
         if (!depsCompleted) continue;
 
-        // Execute step
         try {
           step.status = 'InProgress';
           step.startedAt = new Date();
-          const result = await this.executeStep(step, plan);
+          var result = await this.executeStep(step, plan);
           step.status = 'Completed';
           step.result = result;
           step.completedAt = new Date();
           executedSteps.add(step.id);
           progressMade = true;
-          executionLog.push(`✅ Step ${step.name} completed`);
+          executionLog.push('✅ Step ' + step.name + ' completed');
 
         } catch (error) {
           step.status = 'Failed';
@@ -279,169 +277,166 @@ export class CEOAgent extends BaseAgent {
           step.completedAt = new Date();
           plan.status = 'Failed';
           plan.updatedAt = new Date();
-          executionLog.push(`❌ Step ${step.name} failed: ${error.message}`);
+          executionLog.push('❌ Step ' + step.name + ' failed: ' + error.message);
 
           return {
-            planId.id,
-            status.status,
-            failedStep,
-            executionLog,
+            planId: plan.id,
+            status: plan.status,
+            failedStep: step,
+            executionLog: executionLog,
             message: 'Plan execution failed'
           };
         }
       }
 
       if (!progressMade) {
-        // Deadlock or circular dependency
         plan.status = 'Failed';
         plan.updatedAt = new Date();
         return {
-          planId.id,
-          status.status,
-          executionLog,
+          planId: plan.id,
+          status: plan.status,
+          executionLog: executionLog,
           message: 'Execution stalled - possible circular dependency'
         };
       }
     }
 
-    // All steps completed
     plan.status = 'Completed';
     plan.completedAt = new Date();
     plan.updatedAt = new Date();
 
     return {
-      planId.id,
-      status.status,
-      executionLog,
+      planId: plan.id,
+      status: plan.status,
+      executionLog: executionLog,
       message: 'Strategic plan completed successfully'
     };
   }
 
-  private async executeStep(step, plan)<any> {
-    this.log(`Executing step: ${step.name}`, 'info');
+  async executeStep(step, plan) {
+    this.log('Executing step: ' + step.name, 'info');
 
-    // Use AI to help with decision making
-    const prompt = `
-      Execute the following strategic step: ${step.name}
-      Description: ${step.description}
-      Required Capabilities: ${step.requiredCapabilities.join(', ')}
-      Agent Role: ${step.agentRole || 'Not specified'}
-      Plan Context: ${plan.name}
-      
-      Provide a detailed execution plan and expected outcome.
-    `;
+    var prompt = 'Execute the following strategic step: ' + step.name + '\n' +
+      'Description: ' + step.description + '\n' +
+      'Required Capabilities: ' + step.requiredCapabilities.join(', ') + '\n' +
+      'Agent Role: ' + (step.agentRole || 'Not specified') + '\n' +
+      'Plan Context: ' + plan.name + '\n\n' +
+      'Provide a detailed execution plan and expected outcome.';
 
-    const response = await this.providerManager.generate(prompt);
+    var response = await this.providerManager.generate(prompt);
 
     return {
-      step.name,
-      execution.content,
-      provider.provider,
-      timestampDate().toISOString()
+      step: step.name,
+      execution: response.content,
+      provider: response.provider,
+      timestamp: new Date().toISOString()
     };
   }
 
-  private getPlanStatus(plan){
-    const totalSteps = plan.steps.length;
-    const completed = plan.steps.filter(s => s.status === 'Completed').length;
-    const failed = plan.steps.filter(s => s.status === 'Failed').length;
-    const inProgress = plan.steps.filter(s => s.status === 'InProgress').length;
+  getPlanStatus(plan) {
+    var totalSteps = plan.steps.length;
+    var completed = plan.steps.filter(function(s) { return s.status === 'Completed'; }).length;
+    var failed = plan.steps.filter(function(s) { return s.status === 'Failed'; }).length;
+    var inProgress = plan.steps.filter(function(s) { return s.status === 'InProgress'; }).length;
 
     return {
-      planId.id,
-      name.name,
-      status.status,
-      progress.round((completed / totalSteps) * 100),
-      totalSteps,
-      completed,
-      failed,
-      inProgress,
-      steps.steps.map(s => ({
-        id.id,
-        name.name,
-        status.status,
-        error.error
-      })),
-      updatedAt.updatedAt
+      planId: plan.id,
+      name: plan.name,
+      status: plan.status,
+      progress: Math.round((completed / totalSteps) * 100),
+      totalSteps: totalSteps,
+      completed: completed,
+      failed: failed,
+      inProgress: inProgress,
+      steps: plan.steps.map(function(s) {
+        return {
+          id: s.id,
+          name: s.name,
+          status: s.status,
+          error: s.error
+        };
+      }),
+      updatedAt: plan.updatedAt
     };
   }
 
-  private async generateReport(payload)<any> {
-    const { type, period, planId } = payload;
+  async generateReport(payload) {
+    var type = payload.type;
+    var period = payload.period;
+    var planId = payload.planId;
 
-    // Gather data from all agents
-    const agentStatuses = this.capabilityRegistry.getAllAgents().map(agent => ({
-      name.name,
-      role.role,
-      status.status,
-      capabilities.capabilities.map(c => c.name)
-    }));
+    var agentStatuses = this.capabilityRegistry.getAllAgents().map(function(agent) {
+      return {
+        name: agent.name,
+        role: agent.role,
+        status: agent.status,
+        capabilities: agent.capabilities.map(function(c) { return c.name; })
+      };
+    });
 
-    // Use AI to generate report
-    const prompt = `
-      Generate a ${type || 'Business'} report for period: ${period || 'current'}.
-      
-      Agent Statuses: ${JSON.stringify(agentStatuses)}
-      Plans: ${planId ? JSON.stringify(this.strategicPlans.get(planId)) : 'No specific plan'}
-      
-      Include:
-      1. Executive summary
-      2. Agent performance
-      3. Strategic initiatives
-      4. Recommendations
-    `;
+    var prompt = 'Generate a ' + (type || 'Business') + ' report for period: ' + (period || 'current') + '.\n\n' +
+      'Agent Statuses: ' + JSON.stringify(agentStatuses) + '\n' +
+      'Plans: ' + (planId ? JSON.stringify(this.strategicPlans.get(planId)) : 'No specific plan') + '\n\n' +
+      'Include:\n' +
+      '1. Executive summary\n' +
+      '2. Agent performance\n' +
+      '3. Strategic initiatives\n' +
+      '4. Recommendations';
 
-    const response = await this.providerManager.generate(prompt);
+    var response = await this.providerManager.generate(prompt);
 
-    const report= {
-      id: `report${Date.now()}`,
-      title: `${type || 'Business'} Report - ${period || new Date().toISOString().slice(0, 7)}`,
-      type|| 'Monthly',
-      summary.content,
+    var report = {
+      id: 'report' + Date.now(),
+      title: (type || 'Business') + ' Report - ' + (period || new Date().toISOString().slice(0, 7)),
+      type: type || 'Monthly',
+      summary: response.content,
       metrics: {
-        activeAgents.length,
-        healthyAgents.filter(a => a.status === 'online').length,
-        plans.strategicPlans.size,
-        activePlans.from(this.strategicPlans.values()).filter(p => p.status === 'InProgress').length
+        activeAgents: agentStatuses.length,
+        healthyAgents: agentStatuses.filter(function(a) { return a.status === 'online'; }).length,
+        plans: this.strategicPlans.size,
+        activePlans: Array.from(this.strategicPlans.values()).filter(function(p) { return p.status === 'InProgress'; }).length
       },
       recommendations: [
         'Review agent performance metrics',
         'Optimize resource allocation',
         'Identify bottlenecks in workflows'
       ],
-      generatedAtDate(),
-      period|| new Date().toISOString().slice(0, 7)
+      generatedAt: new Date(),
+      period: period || new Date().toISOString().slice(0, 7)
     };
 
     this.businessReports.push(report);
 
     return {
-      report,
+      report: report,
       message: 'Report generated successfully',
-      timestampDate().toISOString()
+      timestamp: new Date().toISOString()
     };
   }
 
-  private async allocateResources(payload)<any> {
-    const { planId, agentAssignments } = payload;
+  async allocateResources(payload) {
+    var planId = payload.planId;
+    var agentAssignments = payload.agentAssignments;
 
     if (!planId) {
-      // Return current resource allocation
+      var allAgents = this.capabilityRegistry.getAllAgents();
       return {
         resources: {
-          totalAgents.capabilityRegistry.getAllAgents().length,
-          activeAgents.capabilityRegistry.getAllAgents().filter(a => a.status === 'online').length,
-          plans.from(this.strategicPlans.values()).map(p => ({
-            id.id,
-            name.name,
-            status.status,
-            assignedTo.assignedTo
-          }))
+          totalAgents: allAgents.length,
+          activeAgents: allAgents.filter(function(a) { return a.status === 'online'; }).length,
+          plans: Array.from(this.strategicPlans.values()).map(function(p) {
+            return {
+              id: p.id,
+              name: p.name,
+              status: p.status,
+              assignedTo: p.assignedTo
+            };
+          })
         }
       };
     }
 
-    const plan = this.strategicPlans.get(planId);
+    var plan = this.strategicPlans.get(planId);
     if (!plan) {
       throw new Error('Strategic plan not found');
     }
@@ -451,44 +446,39 @@ export class CEOAgent extends BaseAgent {
       plan.updatedAt = new Date();
 
       return {
-        planId.id,
-        assignedTo.assignedTo,
+        planId: plan.id,
+        assignedTo: plan.assignedTo,
         message: 'Resources allocated successfully'
       };
     }
 
-    // Get recommended allocation
-    const availableAgents = this.capabilityRegistry.getAllAgents().filter(a => a.status === 'online');
-    const recommended = availableAgents.slice(0, Math.min(3, availableAgents.length)).map(a => a.name);
+    var availableAgents = this.capabilityRegistry.getAllAgents().filter(function(a) { return a.status === 'online'; });
+    var recommended = availableAgents.slice(0, Math.min(3, availableAgents.length)).map(function(a) { return a.name; });
 
     return {
-      planId.id,
-      recommendedAllocation,
-      availableAgents.map(a => a.name)
+      planId: plan.id,
+      recommendedAllocation: recommended,
+      availableAgents: availableAgents.map(function(a) { return a.name; })
     };
   }
 
-  private async handleComplexQuery(task, payload)<any> {
-    const prompt = `
-      Task: ${task}
-      Payload: ${JSON.stringify(payload)}
-      
-      Strategic Plans: ${JSON.stringify(Array.from(this.strategicPlans.entries()))}
-      Business Reports: ${JSON.stringify(this.businessReports)}
-      
-      Please analyze the query and provide a recommendation.
-    `;
+  async handleComplexQuery(task, payload) {
+    var prompt = 'Task: ' + task + '\n' +
+      'Payload: ' + JSON.stringify(payload) + '\n\n' +
+      'Strategic Plans: ' + JSON.stringify(Array.from(this.strategicPlans.entries())) + '\n' +
+      'Business Reports: ' + JSON.stringify(this.businessReports) + '\n\n' +
+      'Please analyze the query and provide a recommendation.';
 
-    const response = await this.providerManager.generate(prompt);
-    
+    var response = await this.providerManager.generate(prompt);
+
     return {
-      aiResponse.content,
-      provider.provider,
-      tokensUsed.tokensUsed
+      aiResponse: response.content,
+      provider: response.provider,
+      tokensUsed: response.tokensUsed
     };
   }
 
-  protected getRequiredCapability(task)| null {
+  getRequiredCapability(task) {
     if (task.includes('strategic') || task.includes('plan')) {
       return 'create_strategic_plan';
     }
@@ -505,5 +495,4 @@ export class CEOAgent extends BaseAgent {
   }
 }
 
-
-
+module.exports = { CEOAgent };

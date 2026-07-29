@@ -1,58 +1,54 @@
-// D:\hospital backend\ai-core\agents\business\InsuranceAgent.ts
+// D:\hospital backend\ai-core\agents\business\InsuranceAgent.js
 
-const { AgentRole, AgentStatus, AgentRequest, AgentResponse } = require('../../../shared/types/AgentTypes');
+const { AgentRole, AgentStatus } = require('../../../shared/types/AgentTypes');
 const { BaseAgent } = require('../base/BaseAgent');
-const { ProviderManager } = require('../../providers/ProviderManager');
 
-
-
-
-
-
-
-export class InsuranceAgent extends BaseAgent {
-  private policies[] = [];
-  private claims<string, ClaimStatus> = new Map();
-
+class InsuranceAgent extends BaseAgent {
   constructor(providerManager) {
     super(
       {
         name: 'Insurance Agent',
-        role.INSURANCE,
+        role: AgentRole.INSURANCE,
         capabilities: [
           {
             name: 'compare_policies',
             description: 'Compare health insurance policies based on coverage and premium',
             priority: 1,
             estimatedLatency: 300,
-            requiresAuth},
+            requiresAuth: false
+          },
           {
             name: 'check_claim',
             description: 'Check claim eligibility and status',
             priority: 1,
             estimatedLatency: 200,
-            requiresAuth},
+            requiresAuth: true
+          },
           {
             name: 'find_cashless_hospitals',
             description: 'Find hospitals that accept cashless insurance',
             priority: 2,
             estimatedLatency: 150,
-            requiresAuth},
+            requiresAuth: false
+          },
           {
             name: 'estimate_premium',
             description: 'Estimate insurance premium based on age and coverage',
             priority: 2,
             estimatedLatency: 200,
-            requiresAuth}
+            requiresAuth: false
+          }
         ]
       },
       providerManager
     );
 
+    this.policies = [];
+    this.claims = new Map();
     this.initializePolicies();
   }
 
-  private initializePolicies(){
+  initializePolicies() {
     this.policies = [
       {
         id: 'pol1',
@@ -63,9 +59,9 @@ export class InsuranceAgent extends BaseAgent {
         premium: 12000,
         cashlessHospitals: ['Apollo Hospital', 'Fortis Hospital', 'Max Hospital'],
         waitingPeriod: 3,
-        preExistingCoverage,
-        maternityCoverage,
-        criticalIllnessCoverage,
+        preExistingCoverage: true,
+        maternityCoverage: true,
+        criticalIllnessCoverage: true,
         roomRentLimit: 5000,
         coPay: 10,
         networkHospitals: 4500,
@@ -80,9 +76,9 @@ export class InsuranceAgent extends BaseAgent {
         premium: 18000,
         cashlessHospitals: ['Apollo Hospital', 'AIIMS Delhi', 'Medanta Hospital'],
         waitingPeriod: 2,
-        preExistingCoverage,
-        maternityCoverage,
-        criticalIllnessCoverage,
+        preExistingCoverage: true,
+        maternityCoverage: false,
+        criticalIllnessCoverage: true,
         roomRentLimit: 8000,
         coPay: 5,
         networkHospitals: 6000,
@@ -97,9 +93,9 @@ export class InsuranceAgent extends BaseAgent {
         premium: 15000,
         cashlessHospitals: ['Fortis Hospital', 'Max Hospital', 'Medanta Hospital'],
         waitingPeriod: 3,
-        preExistingCoverage,
-        maternityCoverage,
-        criticalIllnessCoverage,
+        preExistingCoverage: true,
+        maternityCoverage: true,
+        criticalIllnessCoverage: false,
         roomRentLimit: 6000,
         coPay: 15,
         networkHospitals: 3800,
@@ -114,9 +110,9 @@ export class InsuranceAgent extends BaseAgent {
         premium: 25000,
         cashlessHospitals: ['Apollo Hospital', 'AIIMS Delhi'],
         waitingPeriod: 6,
-        preExistingCoverage,
-        maternityCoverage,
-        criticalIllnessCoverage,
+        preExistingCoverage: true,
+        maternityCoverage: false,
+        criticalIllnessCoverage: true,
         roomRentLimit: 4000,
         coPay: 20,
         networkHospitals: 2500,
@@ -131,9 +127,9 @@ export class InsuranceAgent extends BaseAgent {
         premium: 14000,
         cashlessHospitals: ['Fortis Hospital', 'Max Hospital'],
         waitingPeriod: 2,
-        preExistingCoverage,
-        maternityCoverage,
-        criticalIllnessCoverage,
+        preExistingCoverage: true,
+        maternityCoverage: false,
+        criticalIllnessCoverage: true,
         roomRentLimit: 7000,
         coPay: 10,
         networkHospitals: 5000,
@@ -142,19 +138,20 @@ export class InsuranceAgent extends BaseAgent {
     ];
   }
 
-  async execute(request)<AgentResponse> {
+  async execute(request) {
     this.setStatus(AgentStatus.BUSY);
     this.setCurrentTask(request.task);
 
     try {
       if (!this.validateRequest(request)) {
-        throw new Error('Invalid requestrequired fields or capabilities');
+        throw new Error('Invalid request: missing required fields or capabilities');
       }
 
-      const { task, payload } = request;
-      this.log(`Executing task: ${task}`, 'info');
+      var task = request.task;
+      var payload = request.payload;
+      this.log('Executing task: ' + task, 'info');
 
-      let result;
+      var result;
 
       if (task.includes('compare') || task.includes('policy')) {
         result = await this.comparePolicies(payload);
@@ -169,70 +166,90 @@ export class InsuranceAgent extends BaseAgent {
       }
 
       this.setStatus(AgentStatus.IDLE);
-      this.setCurrentTask(undefined);
+      this.setCurrentTask(null);
 
       return {
-        success,
-        data,
-        sourceAgent.id,
-        processingTime.now() - new Date().getTime()
+        success: true,
+        data: result,
+        sourceAgent: this.id,
+        processingTime: Date.now() - new Date().getTime()
       };
 
     } catch (error) {
       this.setStatus(AgentStatus.IDLE);
-      this.setCurrentTask(undefined);
+      this.setCurrentTask(null);
       return this.handleError(error, request);
     }
   }
 
-  private async comparePolicies(payload)<any> {
-    const { type, coverageRange, maxPremium, minRating = 0 } = payload;
+  async comparePolicies(payload) {
+    var type = payload.type;
+    var coverageRange = payload.coverageRange;
+    var maxPremium = payload.maxPremium;
+    var minRating = payload.minRating || 0;
 
-    let results = this.policies;
+    var results = this.policies.slice();
 
     if (type) {
-      results = results.filter(p => p.type === type);
+      results = results.filter(function(p) { return p.type === type; });
     }
 
     if (coverageRange) {
-      results = results.filter(p => 
-        p.coverageAmount >= coverageRange.min && p.coverageAmount <= coverageRange.max
-      );
+      results = results.filter(function(p) {
+        return p.coverageAmount >= coverageRange.min && p.coverageAmount <= coverageRange.max;
+      });
     }
 
     if (maxPremium) {
-      results = results.filter(p => p.premium <= maxPremium);
+      results = results.filter(function(p) { return p.premium <= maxPremium; });
     }
 
     if (minRating) {
-      results = results.filter(p => p.rating >= minRating);
+      results = results.filter(function(p) { return p.rating >= minRating; });
     }
 
-    // Sort by rating (highest first)
-    results.sort((a, b) => b.rating - a.rating);
+    results.sort(function(a, b) { return b.rating - a.rating; });
 
-    // Calculate value score (coverage per premium)
-    results = results.map(p => ({
-      ...p,
-      valueScore.round((p.coverageAmount / p.premium) * 100) / 100,
-      monthlyPremium.round(p.premium / 12)
-    }));
+    results = results.map(function(p) {
+      var newP = {};
+      var keys = Object.keys(p);
+      for (var i = 0; i < keys.length; i++) {
+        newP[keys[i]] = p[keys[i]];
+      }
+      newP.valueScore = Math.round((p.coverageAmount / p.premium) * 100) / 100;
+      newP.monthlyPremium = Math.round(p.premium / 12);
+      return newP;
+    });
 
-    // Sort by value score
-    results.sort((a, b) => b.valueScore - a.valueScore);
+    results.sort(function(a, b) { return b.valueScore - a.valueScore; });
+
+    var recommendation = null;
+    if (results.length > 0) {
+      var bestOverall = results[0];
+      var bestValue = results.reduce(function(a, b) { return a.valueScore > b.valueScore ? a : b; }, results[0]);
+      recommendation = {
+        bestOverall: bestOverall.name,
+        bestValue: bestValue.name
+      };
+    }
 
     return {
-      policies,
-      total.length,
-      query: { type, coverageRange, maxPremium, minRating },
-      recommendation.length > 0 ? {
-        bestOverall[0].name,
-        bestValue.reduce((a, b) => a.valueScore > b.valueScore ? a ).name
-      } };
+      policies: results,
+      total: results.length,
+      query: { type: type, coverageRange: coverageRange, maxPremium: maxPremium, minRating: minRating },
+      recommendation: recommendation
+    };
   }
 
-  private async handleClaim(payload)<any> {
-    const { action, ...data } = payload;
+  async handleClaim(payload) {
+    var action = payload.action;
+    var data = {};
+    var keys = Object.keys(payload);
+    for (var i = 0; i < keys.length; i++) {
+      if (keys[i] !== 'action') {
+        data[keys[i]] = payload[keys[i]];
+      }
+    }
 
     if (action === 'check') {
       return this.checkClaim(data);
@@ -245,122 +262,124 @@ export class InsuranceAgent extends BaseAgent {
     throw new Error('Invalid claim action');
   }
 
-  private async checkClaim(payload)<any> {
-    const { policyId, diagnosis, estimatedCost } = payload;
+  async checkClaim(payload) {
+    var policyId = payload.policyId;
+    var diagnosis = payload.diagnosis;
+    var estimatedCost = payload.estimatedCost;
 
-    const policy = this.policies.find(p => p.id === policyId);
+    var policy = this.policies.find(function(p) { return p.id === policyId; });
     if (!policy) {
       throw new Error('Policy not found');
     }
 
-    // Check if treatment is covered
-    const isCovered = this.isTreatmentCovered(diagnosis, policy);
-    const estimatedCoverage = isCovered ? Math.min(estimatedCost, policy.coverageAmount) : 0;
+    var isCovered = this.isTreatmentCovered(diagnosis, policy);
+    var estimatedCoverage = isCovered ? Math.min(estimatedCost, policy.coverageAmount) : 0;
+    var patientShare = estimatedCoverage > 0 ? Math.max(0, estimatedCost - estimatedCoverage) : estimatedCost;
 
     return {
       policy: {
-        id.id,
-        name.name,
-        provider.provider,
-        coverageAmount.coverageAmount
+        id: policy.id,
+        name: policy.name,
+        provider: policy.provider,
+        coverageAmount: policy.coverageAmount
       },
-      diagnosis,
-      estimatedCost,
-      isCovered,
-      estimatedCoverage,
-      patientShare? Math.max(0, estimatedCost - estimatedCoverage) ,
-      waitingPeriod.waitingPeriod,
-      preExistingCoverage.preExistingCoverage,
-      coPay.coPay,
-      requiresPreAuthorization> 50000 || diagnosis.includes('surgery')
+      diagnosis: diagnosis,
+      estimatedCost: estimatedCost,
+      isCovered: isCovered,
+      estimatedCoverage: estimatedCoverage,
+      patientShare: patientShare,
+      waitingPeriod: policy.waitingPeriod,
+      preExistingCoverage: policy.preExistingCoverage,
+      coPay: policy.coPay,
+      requiresPreAuthorization: estimatedCost > 50000 || diagnosis.includes('surgery')
     };
   }
 
-  private isTreatmentCovered(diagnosis, policy){
-    // Check if diagnosis includes critical illness
-    const criticalIllnessKeywords = ['cancer', 'heart', 'stroke', 'kidney', 'liver'];
-    const isCritical = criticalIllnessKeywords.some(k => 
-      diagnosis.toLowerCase().includes(k)
-    );
+  isTreatmentCovered(diagnosis, policy) {
+    var criticalIllnessKeywords = ['cancer', 'heart', 'stroke', 'kidney', 'liver'];
+    var isCritical = criticalIllnessKeywords.some(function(k) {
+      return diagnosis.toLowerCase().includes(k);
+    });
 
-    // Check if coverage available
     if (isCritical && !policy.criticalIllnessCoverage) {
       return false;
     }
 
-    // Check maternity coverage
-    const maternityKeywords = ['pregnancy', 'delivery', 'maternity'];
-    const isMaternity = maternityKeywords.some(k => 
-      diagnosis.toLowerCase().includes(k)
-    );
+    var maternityKeywords = ['pregnancy', 'delivery', 'maternity'];
+    var isMaternity = maternityKeywords.some(function(k) {
+      return diagnosis.toLowerCase().includes(k);
+    });
 
     if (isMaternity && !policy.maternityCoverage) {
       return false;
     }
 
-    // General coverage
     return true;
   }
 
-  private async submitClaim(payload)<any> {
-    const { policyId, patientName, hospital, diagnosis, treatmentDate, estimatedCost, documents } = payload;
+  async submitClaim(payload) {
+    var policyId = payload.policyId;
+    var patientName = payload.patientName;
+    var hospital = payload.hospital;
+    var diagnosis = payload.diagnosis;
+    var treatmentDate = payload.treatmentDate;
+    var estimatedCost = payload.estimatedCost;
+    var documents = payload.documents;
 
-    const policy = this.policies.find(p => p.id === policyId);
+    var policy = this.policies.find(function(p) { return p.id === policyId; });
     if (!policy) {
       throw new Error('Policy not found');
     }
 
-    // Check if hospital is cashless
-    const isCashless = policy.cashlessHospitals.some(h => 
-      hospital.toLowerCase().includes(h.toLowerCase())
-    );
+    var isCashless = policy.cashlessHospitals.some(function(h) {
+      return hospital.toLowerCase().includes(h.toLowerCase());
+    });
 
-    // Generate claim ID
-    const claimId = `CLM${Date.now()}`;
+    var claimId = 'CLM' + Date.now();
 
-    const claimStatus= {
-      claimId,
-      policyId,
-      patientName,
-      hospital,
-      amount,
+    var claimStatus = {
+      claimId: claimId,
+      policyId: policyId,
+      patientName: patientName,
+      hospital: hospital,
+      amount: estimatedCost,
       status: 'Pending',
       decision: 'Under review',
-      processedAtDate().toISOString()
+      processedAt: new Date().toISOString()
     };
 
     this.claims.set(claimId, claimStatus);
 
     return {
-      claimId,
+      claimId: claimId,
       status: 'Submitted',
-      isCashless,
+      isCashless: isCashless,
       policy: {
-        id.id,
-        name.name,
-        provider.provider
+        id: policy.id,
+        name: policy.name,
+        provider: policy.provider
       },
       patient: {
-        name,
-        hospital
+        name: patientName,
+        hospital: hospital
       },
-      diagnosis,
-      estimatedCost,
-      nextSteps? 
-        'Hospital will handle claim processing. Please carry your policy document.' :
-        'Pay at hospital and submit reimbursement claim with all bills.',
-      expectedProcessingTime? '24-48 hours' : '7-10 days'
+      diagnosis: diagnosis,
+      estimatedCost: estimatedCost,
+      nextSteps: isCashless
+        ? 'Hospital will handle claim processing. Please carry your policy document.'
+        : 'Pay at hospital and submit reimbursement claim with all bills.',
+      expectedProcessingTime: isCashless ? '24-48 hours' : '7-10 days'
     };
   }
 
-  private async getClaimStatus(payload)<any> {
-    const { claimId } = payload;
+  async getClaimStatus(payload) {
+    var claimId = payload.claimId;
 
     if (!claimId) {
       throw new Error('Claim ID is required');
     }
 
-    const claim = this.claims.get(claimId);
+    var claim = this.claims.get(claimId);
     if (!claim) {
       throw new Error('Claim not found');
     }
@@ -368,19 +387,19 @@ export class InsuranceAgent extends BaseAgent {
     return claim;
   }
 
-  private async findCashlessHospitals(payload)<any> {
-    const { city, policyId } = payload;
+  async findCashlessHospitals(payload) {
+    var city = payload.city;
+    var policyId = payload.policyId;
 
-    let policy| null = null;
+    var policy = null;
     if (policyId) {
-      policy = this.policies.find(p => p.id === policyId) || null;
+      policy = this.policies.find(function(p) { return p.id === policyId; }) || null;
       if (!policy) {
         throw new Error('Policy not found');
       }
     }
 
-    // In production, this would query a database of hospitals
-    const cashlessHospitals = policy ? policy.cashlessHospitals : [
+    var cashlessHospitals = policy ? policy.cashlessHospitals : [
       'Apollo Hospital',
       'Fortis Hospital',
       'Max Hospital',
@@ -388,65 +407,67 @@ export class InsuranceAgent extends BaseAgent {
       'AIIMS Delhi'
     ];
 
+    var hospitals = cashlessHospitals.map(function(h) {
+      return {
+        name: h,
+        address: h + ', ' + (city || 'All Cities'),
+        cashless: true,
+        network: policy ? policy.provider + ' Network' : 'Multiple Networks'
+      };
+    });
+
     return {
-      hospitals.map(h => ({
-        name,
-        address: `${h}, ${city || 'All Cities'}`,
-        cashless,
-        network? `${policy.provider} Network` : 'Multiple Networks'
-      })),
-      total.length,
-      query: { city, policyId }
+      hospitals: hospitals,
+      total: hospitals.length,
+      query: { city: city, policyId: policyId }
     };
   }
 
-  private async estimatePremium(payload)<any> {
-    const { age, coverage, type = 'Individual', smoker = false } = payload;
+  async estimatePremium(payload) {
+    var age = payload.age;
+    var coverage = payload.coverage;
+    var type = payload.type || 'Individual';
+    var smoker = payload.smoker || false;
 
     if (!age || !coverage) {
       throw new Error('Age and coverage amount are required');
     }
 
-    // Base premium calculation
-    let basePremium = coverage * 0.02; // 2% of coverage
+    var basePremium = coverage * 0.02;
 
-    // Age adjustment
     if (age < 30) basePremium *= 0.8;
     else if (age < 40) basePremium *= 1.0;
     else if (age < 50) basePremium *= 1.3;
     else if (age < 60) basePremium *= 1.8;
     else basePremium *= 2.5;
 
-    // Type adjustment
     if (type === 'Family') basePremium *= 1.5;
     else if (type === 'SeniorCitizen') basePremium *= 2.0;
     else if (type === 'Corporate') basePremium *= 1.2;
 
-    // Smoker adjustment
     if (smoker) basePremium *= 1.2;
 
-    // Round to nearest 100
-    const annualPremium = Math.round(basePremium / 100) * 100;
-    const monthlyPremium = Math.round(annualPremium / 12);
+    var annualPremium = Math.round(basePremium / 100) * 100;
+    var monthlyPremium = Math.round(annualPremium / 12);
 
-    // Get recommended policies
-    const recommended = this.policies.filter(p => 
-      p.type === type && 
-      p.coverageAmount >= coverage &&
-      p.premium <= annualPremium * 1.2
-    );
+    var recommended = this.policies.filter(function(p) {
+      return p.type === type &&
+        p.coverageAmount >= coverage &&
+        p.premium <= annualPremium * 1.2;
+    });
 
     return {
       estimatedPremium: {
-        annual,
-        monthly},
-      factors: {
-        age,
-        coverage,
-        type,
-        smoker
+        annual: annualPremium,
+        monthly: monthlyPremium
       },
-      recommendedPolicies.slice(0, 3),
+      factors: {
+        age: age,
+        coverage: coverage,
+        type: type,
+        smoker: smoker
+      },
+      recommendedPolicies: recommended.slice(0, 3),
       tips: [
         'Consider increasing coverage for better protection',
         'Check for family floater plans if adding family members',
@@ -455,26 +476,22 @@ export class InsuranceAgent extends BaseAgent {
     };
   }
 
-  private async handleComplexQuery(task, payload)<any> {
-    const prompt = `
-      Task: ${task}
-      Payload: ${JSON.stringify(payload)}
-      
-      Available policies: ${JSON.stringify(this.policies)}
-      
-      Please analyze the query and provide a recommendation.
-    `;
+  async handleComplexQuery(task, payload) {
+    var prompt = 'Task: ' + task + '\n' +
+      'Payload: ' + JSON.stringify(payload) + '\n\n' +
+      'Available policies: ' + JSON.stringify(this.policies) + '\n\n' +
+      'Please analyze the query and provide a recommendation.';
 
-    const response = await this.providerManager.generate(prompt);
-    
+    var response = await this.providerManager.generate(prompt);
+
     return {
-      aiResponse.content,
-      provider.provider,
-      tokensUsed.tokensUsed
+      aiResponse: response.content,
+      provider: response.provider,
+      tokensUsed: response.tokensUsed
     };
   }
 
-  protected getRequiredCapability(task)| null {
+  getRequiredCapability(task) {
     if (task.includes('compare') || task.includes('policy')) {
       return 'compare_policies';
     }
@@ -491,5 +508,4 @@ export class InsuranceAgent extends BaseAgent {
   }
 }
 
-
-
+module.exports = { InsuranceAgent };

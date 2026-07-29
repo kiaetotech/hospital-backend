@@ -1,54 +1,53 @@
-// D:\hospital backend\ai-core\agents\business\HospitalAgent.ts
+// D:\hospital backend\ai-core\agents\business\HospitalAgent.js
 
-const { AgentRole, AgentStatus, AgentRequest, AgentResponse } = require('../../../shared/types/AgentTypes');
+const { AgentRole, AgentStatus } = require('../../../shared/types/AgentTypes');
 const { BaseAgent } = require('../base/BaseAgent');
-const { ProviderManager } = require('../../providers/ProviderManager');
 
-
-
-export class HospitalAgent extends BaseAgent {
-  private hospitals[] = [];
-
+class HospitalAgent extends BaseAgent {
   constructor(providerManager) {
     super(
       {
         name: 'Hospital Agent',
-        role.HOSPITAL,
+        role: AgentRole.HOSPITAL,
         capabilities: [
           {
             name: 'search_hospitals',
             description: 'Search hospitals by location, specialty, or insurance',
             priority: 1,
             estimatedLatency: 200,
-            requiresAuth},
+            requiresAuth: false
+          },
           {
             name: 'compare_hospitals',
             description: 'Compare hospitals based on cost, rating, and availability',
             priority: 2,
             estimatedLatency: 300,
-            requiresAuth},
+            requiresAuth: false
+          },
           {
             name: 'check_beds',
             description: 'Check bed availability in specific hospitals',
             priority: 1,
             estimatedLatency: 100,
-            requiresAuth},
+            requiresAuth: false
+          },
           {
             name: 'estimate_cost',
             description: 'Estimate cost for a procedure at a hospital',
             priority: 2,
             estimatedLatency: 200,
-            requiresAuth}
+            requiresAuth: false
+          }
         ]
       },
       providerManager
     );
 
-    // Seed with sample data
+    this.hospitals = [];
     this.initializeHospitals();
   }
 
-  private initializeHospitals(){
+  initializeHospitals() {
     this.hospitals = [
       {
         id: 'h1',
@@ -103,22 +102,21 @@ export class HospitalAgent extends BaseAgent {
     ];
   }
 
-  async execute(request)<AgentResponse> {
+  async execute(request) {
     this.setStatus(AgentStatus.BUSY);
     this.setCurrentTask(request.task);
 
     try {
-      // Validate request
       if (!this.validateRequest(request)) {
-        throw new Error('Invalid requestrequired fields or capabilities');
+        throw new Error('Invalid request: missing required fields or capabilities');
       }
 
-      const { task, payload } = request;
-      this.log(`Executing task: ${task}`, 'info');
+      var task = request.task;
+      var payload = request.payload;
+      this.log('Executing task: ' + task, 'info');
 
-      let result;
+      var result;
 
-      // Route to appropriate handler based on task
       if (task.includes('search') || task.includes('find')) {
         result = await this.searchHospitals(payload);
       } else if (task.includes('compare')) {
@@ -128,195 +126,213 @@ export class HospitalAgent extends BaseAgent {
       } else if (task.includes('cost') || task.includes('estimate')) {
         result = await this.estimateCost(payload);
       } else {
-        // Use AI for complex queries
         result = await this.handleComplexQuery(task, payload);
       }
 
       this.setStatus(AgentStatus.IDLE);
-      this.setCurrentTask(undefined);
+      this.setCurrentTask(null);
 
       return {
-        success,
-        data,
-        sourceAgent.id,
-        processingTime.now() - new Date().getTime()
+        success: true,
+        data: result,
+        sourceAgent: this.id,
+        processingTime: Date.now() - new Date().getTime()
       };
 
     } catch (error) {
       this.setStatus(AgentStatus.IDLE);
-      this.setCurrentTask(undefined);
+      this.setCurrentTask(null);
       return this.handleError(error, request);
     }
   }
 
-  private async searchHospitals(payload)<any> {
-    const { city, specialty, insurance, maxResults = 10 } = payload;
+  async searchHospitals(payload) {
+    var city = payload.city;
+    var specialty = payload.specialty;
+    var insurance = payload.insurance;
+    var maxResults = payload.maxResults || 10;
 
-    let results = this.hospitals;
+    var results = this.hospitals.slice();
 
-    // Filter by city
     if (city) {
-      results = results.filter(h => h.city.toLowerCase().includes(city.toLowerCase()));
+      results = results.filter(function(h) {
+        return h.city.toLowerCase().includes(city.toLowerCase());
+      });
     }
 
-    // Filter by specialty
     if (specialty) {
-      results = results.filter(h => 
-        h.specialty.some(s => s.toLowerCase().includes(specialty.toLowerCase()))
-      );
+      results = results.filter(function(h) {
+        return h.specialty.some(function(s) {
+          return s.toLowerCase().includes(specialty.toLowerCase());
+        });
+      });
     }
 
-    // Filter by insurance
     if (insurance) {
-      results = results.filter(h => 
-        h.insuranceAccepted.some(i => i.toLowerCase().includes(insurance.toLowerCase()))
-      );
+      results = results.filter(function(h) {
+        return h.insuranceAccepted.some(function(i) {
+          return i.toLowerCase().includes(insurance.toLowerCase());
+        });
+      });
     }
 
-    // Sort by rating
-    results.sort((a, b) => b.rating - a.rating);
-
-    // Limit results
+    results.sort(function(a, b) { return b.rating - a.rating; });
     results = results.slice(0, maxResults);
 
     return {
-      hospitals,
-      total.length,
-      query: { city, specialty, insurance }
+      hospitals: results,
+      total: results.length,
+      query: { city: city, specialty: specialty, insurance: insurance }
     };
   }
 
-  private async compareHospitals(payload)<any> {
-    const { hospitalIds, criteria } = payload;
+  async compareHospitals(payload) {
+    var hospitalIds = payload.hospitalIds;
+    var criteria = payload.criteria;
 
-    let selectedHospitals = this.hospitals;
+    var selectedHospitals = this.hospitals;
     if (hospitalIds && hospitalIds.length > 0) {
-      selectedHospitals = this.hospitals.filter(h => hospitalIds.includes(h.id));
+      selectedHospitals = this.hospitals.filter(function(h) {
+        return hospitalIds.includes(h.id);
+      });
     }
 
-    const comparison = selectedHospitals.map(hospital => {
-      const score = this.calculateHospitalScore(hospital, criteria);
+    var self = this;
+    var comparison = selectedHospitals.map(function(hospital) {
+      var score = self.calculateHospitalScore(hospital, criteria);
       return {
-        ...hospital,
-        score
+        id: hospital.id,
+        name: hospital.name,
+        city: hospital.city,
+        specialty: hospital.specialty,
+        bedsAvailable: hospital.bedsAvailable,
+        insuranceAccepted: hospital.insuranceAccepted,
+        rating: hospital.rating,
+        costEstimate: hospital.costEstimate,
+        score: score
       };
     });
 
-    // Sort by score
-    comparison.sort((a, b) => b.score - a.score);
+    comparison.sort(function(a, b) { return b.score - a.score; });
 
     return {
-      hospitals,
-      criteria
+      hospitals: comparison,
+      criteria: criteria
     };
   }
 
-  private calculateHospitalScore(hospital, criteria?[]){
-    let score = 0;
-
-    // Rating contributes 40%
+  calculateHospitalScore(hospital, criteria) {
+    var score = 0;
     score += (hospital.rating / 5) * 40;
-
-    // Bed availability contributes 30%
-    const bedScore = Math.min(hospital.bedsAvailable / 50, 1);
+    var bedScore = Math.min(hospital.bedsAvailable / 50, 1);
     score += bedScore * 30;
-
-    // Cost contributes 30% (lower cost = higher score)
-    const costScore = Math.max(0, 1 - (hospital.costEstimate / 50000));
+    var costScore = Math.max(0, 1 - (hospital.costEstimate / 50000));
     score += costScore * 30;
-
     return Math.round(score);
   }
 
-  private async checkAvailability(payload)<any> {
-    const { hospitalId, specialty } = payload;
+  async checkAvailability(payload) {
+    var hospitalId = payload.hospitalId;
+    var specialty = payload.specialty;
 
-    let targetHospital = this.hospitals;
+    var targetHospital = this.hospitals;
     if (hospitalId) {
-      targetHospital = this.hospitals.filter(h => h.id === hospitalId);
+      targetHospital = this.hospitals.filter(function(h) {
+        return h.id === hospitalId;
+      });
     }
 
-    const availability = targetHospital.map(h => ({
-      id.id,
-      name.name,
-      bedsAvailable.bedsAvailable,
-      hasSpecialty? h.specialty.some(s => s.toLowerCase().includes(specialty.toLowerCase())) ,
-      status.bedsAvailable > 10 ? 'Available' .bedsAvailable > 0 ? 'Limited' : 'Full'
-    }));
+    var availability = targetHospital.map(function(h) {
+      var hasSpecialty = specialty
+        ? h.specialty.some(function(s) {
+            return s.toLowerCase().includes(specialty.toLowerCase());
+          })
+        : true;
 
-    return {
-      availability,
-      timestampDate().toISOString()
-    };
-  }
-
-  private async estimateCost(payload)<any> {
-    const { hospitalId, procedure, insurance } = payload;
-
-    let targetHospitals = this.hospitals;
-    if (hospitalId) {
-      targetHospitals = this.hospitals.filter(h => h.id === hospitalId);
-    }
-
-    const estimates = targetHospitals.map(h => {
-      let estimatedCost = h.costEstimate;
-
-      // Adjust based on procedure complexity (simplified)
-      if (procedure) {
-        const procedureMultipliers= {
-          'surgery': 3,
-          'consultation': 0.5,
-          'diagnostic': 0.8,
-          'emergency': 1.5
-        };
-        const multiplier = procedureMultipliers[procedure.toLowerCase()] || 1;
-        estimatedCost *= multiplier;
-      }
-
-      // Insurance discount
-      let insuranceDiscount = 0;
-      if (insurance && h.insuranceAccepted.some(i => i.toLowerCase().includes(insurance.toLowerCase()))) {
-        insuranceDiscount = estimatedCost * 0.2; // 20% discount
-      }
+      var status = h.bedsAvailable > 10 ? 'Available' : h.bedsAvailable > 0 ? 'Limited' : 'Full';
 
       return {
-        id.id,
-        name.name,
-        baseCost.costEstimate,
-        estimatedCost.round(estimatedCost - insuranceDiscount),
-        insuranceDiscount.round(insuranceDiscount),
-        insuranceAccepted.insuranceAccepted
+        id: h.id,
+        name: h.name,
+        bedsAvailable: h.bedsAvailable,
+        hasSpecialty: hasSpecialty,
+        status: status
       };
     });
 
     return {
-      estimates,
-      procedure,
-      timestampDate().toISOString()
+      availability: availability,
+      timestamp: new Date().toISOString()
     };
   }
 
-  private async handleComplexQuery(task, payload)<any> {
-    // Use AI for complex queries
-    const prompt = `
-      Task: ${task}
-      Payload: ${JSON.stringify(payload)}
-      
-      Available hospitals: ${JSON.stringify(this.hospitals)}
-      
-      Please analyze the query and provide a recommendation.
-    `;
+  async estimateCost(payload) {
+    var hospitalId = payload.hospitalId;
+    var procedure = payload.procedure;
+    var insurance = payload.insurance;
 
-    const response = await this.providerManager.generate(prompt);
-    
+    var targetHospitals = this.hospitals;
+    if (hospitalId) {
+      targetHospitals = this.hospitals.filter(function(h) {
+        return h.id === hospitalId;
+      });
+    }
+
+    var procedureMultipliers = {
+      'surgery': 3,
+      'consultation': 0.5,
+      'diagnostic': 0.8,
+      'emergency': 1.5
+    };
+
+    var estimates = targetHospitals.map(function(h) {
+      var estimatedCost = h.costEstimate;
+
+      if (procedure) {
+        var multiplier = procedureMultipliers[procedure.toLowerCase()] || 1;
+        estimatedCost *= multiplier;
+      }
+
+      var insuranceDiscount = 0;
+      if (insurance && h.insuranceAccepted.some(function(i) {
+        return i.toLowerCase().includes(insurance.toLowerCase());
+      })) {
+        insuranceDiscount = estimatedCost * 0.2;
+      }
+
+      return {
+        id: h.id,
+        name: h.name,
+        baseCost: h.costEstimate,
+        estimatedCost: Math.round(estimatedCost - insuranceDiscount),
+        insuranceDiscount: Math.round(insuranceDiscount),
+        insuranceAccepted: h.insuranceAccepted
+      };
+    });
+
     return {
-      aiResponse.content,
-      provider.provider,
-      tokensUsed.tokensUsed
+      estimates: estimates,
+      procedure: procedure,
+      timestamp: new Date().toISOString()
     };
   }
 
-  protected getRequiredCapability(task)| null {
+  async handleComplexQuery(task, payload) {
+    var prompt = 'Task: ' + task + '\n' +
+      'Payload: ' + JSON.stringify(payload) + '\n\n' +
+      'Available hospitals: ' + JSON.stringify(this.hospitals) + '\n\n' +
+      'Please analyze the query and provide a recommendation.';
+
+    var response = await this.providerManager.generate(prompt);
+
+    return {
+      aiResponse: response.content,
+      provider: response.provider,
+      tokensUsed: response.tokensUsed
+    };
+  }
+
+  getRequiredCapability(task) {
     if (task.includes('search') || task.includes('find')) {
       return 'search_hospitals';
     }
@@ -333,5 +349,4 @@ export class HospitalAgent extends BaseAgent {
   }
 }
 
-
-
+module.exports = { HospitalAgent };

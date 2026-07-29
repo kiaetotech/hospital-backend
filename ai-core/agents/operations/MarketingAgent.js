@@ -1,61 +1,54 @@
-// D:\hospital backend\ai-core\agents\operations\MarketingAgent.ts
+// D:\hospital backend\ai-core\agents\operations\MarketingAgent.js
 
-const { AgentRole, AgentStatus, AgentRequest, AgentResponse } = require('../../../shared/types/AgentTypes');
+const { AgentRole, AgentStatus } = require('../../../shared/types/AgentTypes');
 const { BaseAgent } = require('../base/BaseAgent');
-const { ProviderManager } = require('../../providers/ProviderManager');
 
-;
-  startDate;
-  endDate;
-  createdAt;
-  updatedAt;
-}
-
-
-
-export class MarketingAgent extends BaseAgent {
-  private campaigns[] = [];
-  private contentSuggestions[] = [];
-
+class MarketingAgent extends BaseAgent {
   constructor(providerManager) {
     super(
       {
         name: 'Marketing Agent',
-        role.MARKETING,
+        role: AgentRole.MARKETING,
         capabilities: [
           {
             name: 'generate_content',
             description: 'Generate SEO blogs, social posts, email campaigns',
             priority: 1,
             estimatedLatency: 400,
-            requiresAuth},
+            requiresAuth: false
+          },
           {
             name: 'create_campaign',
             description: 'Create and manage marketing campaigns',
             priority: 1,
             estimatedLatency: 250,
-            requiresAuth},
+            requiresAuth: true
+          },
           {
             name: 'analyze_campaign',
             description: 'Analyze campaign performance',
             priority: 2,
             estimatedLatency: 200,
-            requiresAuth},
+            requiresAuth: true
+          },
           {
             name: 'suggest_optimizations',
             description: 'Suggest SEO and campaign optimizations',
             priority: 2,
             estimatedLatency: 300,
-            requiresAuth}
+            requiresAuth: true
+          }
         ]
       },
       providerManager
     );
 
+    this.campaigns = [];
+    this.contentSuggestions = [];
     this.initializeData();
   }
 
-  private initializeData(){
+  initializeData() {
     this.campaigns = [
       {
         id: 'cam1',
@@ -73,10 +66,10 @@ export class MarketingAgent extends BaseAgent {
           conversionRate: 5.0,
           roi: 250
         },
-        startDateDate('2026-07-01'),
-        endDateDate('2026-07-31'),
-        createdAtDate('2026-06-15'),
-        updatedAtDate('2026-07-15')
+        startDate: new Date('2026-07-01'),
+        endDate: new Date('2026-07-31'),
+        createdAt: new Date('2026-06-15'),
+        updatedAt: new Date('2026-07-15')
       },
       {
         id: 'cam2',
@@ -94,10 +87,10 @@ export class MarketingAgent extends BaseAgent {
           conversionRate: 0,
           roi: 0
         },
-        startDateDate('2026-08-01'),
-        endDateDate('2026-08-15'),
-        createdAtDate('2026-07-20'),
-        updatedAtDate('2026-07-20')
+        startDate: new Date('2026-08-01'),
+        endDate: new Date('2026-08-15'),
+        createdAt: new Date('2026-07-20'),
+        updatedAt: new Date('2026-07-20')
       }
     ];
 
@@ -112,7 +105,7 @@ export class MarketingAgent extends BaseAgent {
         tone: 'Informative',
         suggestedLength: '1500-2000 words',
         seoScore: 85,
-        createdAtDate('2026-07-10')
+        createdAt: new Date('2026-07-10')
       },
       {
         id: 'cs2',
@@ -124,24 +117,25 @@ export class MarketingAgent extends BaseAgent {
         tone: 'Encouraging',
         suggestedLength: '150-200 words',
         seoScore: 75,
-        createdAtDate('2026-07-12')
+        createdAt: new Date('2026-07-12')
       }
     ];
   }
 
-  async execute(request)<AgentResponse> {
+  async execute(request) {
     this.setStatus(AgentStatus.BUSY);
     this.setCurrentTask(request.task);
 
     try {
       if (!this.validateRequest(request)) {
-        throw new Error('Invalid requestrequired fields or capabilities');
+        throw new Error('Invalid request: Missing required fields or capabilities');
       }
 
-      const { task, payload } = request;
-      this.log(`Executing task: ${task}`, 'info');
+      var task = request.task;
+      var payload = request.payload;
+      this.log('Executing task: ' + task, 'info');
 
-      let result;
+      var result;
 
       if (task.includes('generate') || task.includes('content')) {
         result = await this.generateContent(payload);
@@ -156,64 +150,67 @@ export class MarketingAgent extends BaseAgent {
       }
 
       this.setStatus(AgentStatus.IDLE);
-      this.setCurrentTask(undefined);
+      this.setCurrentTask(null);
 
       return {
-        success,
-        data,
-        sourceAgent.id,
-        processingTime.now() - new Date().getTime()
+        success: true,
+        data: result,
+        sourceAgent: this.id,
+        processingTime: Date.now() - new Date().getTime()
       };
 
     } catch (error) {
       this.setStatus(AgentStatus.IDLE);
-      this.setCurrentTask(undefined);
+      this.setCurrentTask(null);
       return this.handleError(error, request);
     }
   }
 
-  private async generateContent(payload)<any> {
-    const { topic, type, keywords } = payload;
+  async generateContent(payload) {
+    var topic = payload.topic;
+    var type = payload.type;
+    var keywords = payload.keywords;
 
-    // Use AI to generate content
-    const prompt = `
-      Generate a ${type || 'blog'} about ${topic || 'health and wellness'}.
-      Keywords: ${keywords ? keywords.join(', ') : 'general health'}
-      
-      Please provide:
-      1. Title
-      2. Brief outline
-      3. Key points
-      4. SEO meta description
-      5. Suggested hashtags
-    `;
+    var prompt = 'Generate a ' + (type || 'blog') + ' about ' + (topic || 'health and wellness') + '.\n' +
+      'Keywords: ' + (keywords ? keywords.join(', ') : 'general health') + '\n\n' +
+      'Please provide:\n' +
+      '1. Title\n' +
+      '2. Brief outline\n' +
+      '3. Key points\n' +
+      '4. SEO meta description\n' +
+      '5. Suggested hashtags';
 
-    const response = await this.providerManager.generate(prompt);
+    var response = await this.providerManager.generate(prompt);
 
     return {
-      content.content,
-      type|| 'Blog',
-      topic|| 'Health & Wellness',
-      generatedAtDate().toISOString(),
-      provider.provider,
-      tokensUsed.tokensUsed
+      content: response.content,
+      type: type || 'Blog',
+      topic: topic || 'Health & Wellness',
+      generatedAt: new Date().toISOString(),
+      provider: response.provider,
+      tokensUsed: response.tokensUsed
     };
   }
 
-  private async createCampaign(payload)<any> {
-    const { name, type, audience, budget, startDate, endDate } = payload;
+  async createCampaign(payload) {
+    var name = payload.name;
+    var type = payload.type;
+    var audience = payload.audience;
+    var budget = payload.budget;
+    var startDate = payload.startDate;
+    var endDate = payload.endDate;
 
     if (!name || !type || !budget) {
       throw new Error('Name, type, and budget are required');
     }
 
-    const campaign= {
-      id: `cam${Date.now()}`,
-      name,
-      type,
+    var campaign = {
+      id: 'cam' + Date.now(),
+      name: name,
+      type: type,
       status: 'Draft',
-      audience|| ['All Customers'],
-      budget,
+      audience: audience || ['All Customers'],
+      budget: budget,
       spent: 0,
       metrics: {
         impressions: 0,
@@ -223,16 +220,16 @@ export class MarketingAgent extends BaseAgent {
         conversionRate: 0,
         roi: 0
       },
-      startDate|| new Date(),
-      endDate|| new Date(Date.now() + 30 * 24 * 60 * 60 * 1000),
-      createdAtDate(),
-      updatedAtDate()
+      startDate: startDate || new Date(),
+      endDate: endDate || new Date(Date.now() + 30 * 24 * 60 * 60 * 1000),
+      createdAt: new Date(),
+      updatedAt: new Date()
     };
 
     this.campaigns.push(campaign);
 
     return {
-      campaign,
+      campaign: campaign,
       message: 'Campaign created successfully',
       nextSteps: [
         'Review campaign details',
@@ -243,41 +240,47 @@ export class MarketingAgent extends BaseAgent {
     };
   }
 
-  private async analyzeCampaign(payload)<any> {
-    const { campaignId } = payload;
+  async analyzeCampaign(payload) {
+    var campaignId = payload.campaignId;
 
-    let targetCampaigns = this.campaigns;
+    var targetCampaigns = this.campaigns;
     if (campaignId) {
-      targetCampaigns = this.campaigns.filter(c => c.id === campaignId);
+      targetCampaigns = this.campaigns.filter(function(c) { return c.id === campaignId; });
     }
 
-    const analysis = targetCampaigns.map(c => {
-      const roi = c.metrics.roi || 0;
-      const performance = roi > 200 ? 'Excellent' > 100 ? 'Good' > 50 ? 'Average' : 'Poor';
+    var self = this;
+    var analysis = targetCampaigns.map(function(c) {
+      var roi = c.metrics.roi || 0;
+      var performance = roi > 200 ? 'Excellent' : roi > 100 ? 'Good' : roi > 50 ? 'Average' : 'Poor';
 
       return {
-        campaign.name,
-        type.type,
-        status.status,
-        metrics.metrics,
-        roi,
-        performance,
-        recommendations.getCampaignRecommendations(c)
+        campaign: c.name,
+        type: c.type,
+        status: c.status,
+        metrics: c.metrics,
+        roi: roi,
+        performance: performance,
+        recommendations: self.getCampaignRecommendations(c)
       };
     });
 
+    var sumROI = 0;
+    for (var i = 0; i < targetCampaigns.length; i++) {
+      sumROI += targetCampaigns[i].metrics.roi;
+    }
+
     return {
-      analysis,
+      analysis: analysis,
       summary: {
-        totalCampaigns.length,
-        activeCampaigns.filter(c => c.status === 'Running').length,
-        averageROI.reduce((sum, c) => sum + c.metrics.roi, 0) / targetCampaigns.length || 0
+        totalCampaigns: targetCampaigns.length,
+        activeCampaigns: targetCampaigns.filter(function(c) { return c.status === 'Running'; }).length,
+        averageROI: targetCampaigns.length > 0 ? sumROI / targetCampaigns.length : 0
       }
     };
   }
 
-  private getCampaignRecommendations(campaign)[] {
-    const recommendations[] = [];
+  getCampaignRecommendations(campaign) {
+    var recommendations = [];
 
     if (campaign.metrics.ctr < 3) {
       recommendations.push('Improve subject lines and preview text');
@@ -299,53 +302,48 @@ export class MarketingAgent extends BaseAgent {
     return recommendations.length ? recommendations : ['Campaign performing well. Continue current strategy.'];
   }
 
-  private async suggestOptimizations(payload)<any> {
-    const { url, topic } = payload;
+  async suggestOptimizations(payload) {
+    var url = payload.url;
+    var topic = payload.topic;
 
-    // Use AI to suggest SEO optimizations
-    const prompt = `
-      Analyze the following topic and suggest SEO optimizations: ${topic || 'Healthcare platform'}
-      URL: ${url || 'N/A'}
-      
-      Please provide:
-      1. Keyword suggestions
-      2. Meta description
-      3. Title tag suggestions
-      4. Content structure recommendations
-      5. Internal linking suggestions
-    `;
+    var prompt = 'Analyze the following topic and suggest SEO optimizations:\n' +
+      'Topic: ' + (topic || 'Healthcare platform') + '\n' +
+      'URL: ' + (url || 'N/A') + '\n\n' +
+      'Please provide:\n' +
+      '1. Keyword suggestions\n' +
+      '2. Meta description\n' +
+      '3. Title tag suggestions\n' +
+      '4. Content structure recommendations\n' +
+      '5. Internal linking suggestions';
 
-    const response = await this.providerManager.generate(prompt);
+    var response = await this.providerManager.generate(prompt);
 
     return {
-      optimizations.content,
-      provider.provider,
-      tokensUsed.tokensUsed,
-      timestampDate().toISOString()
+      optimizations: response.content,
+      provider: response.provider,
+      tokensUsed: response.tokensUsed,
+      timestamp: new Date().toISOString()
     };
   }
 
-  private async handleComplexQuery(task, payload)<any> {
-    const prompt = `
-      Task: ${task}
-      Payload: ${JSON.stringify(payload)}
-      
-      Marketing Data: ${JSON.stringify(this.campaigns)}
-      Content Suggestions: ${JSON.stringify(this.contentSuggestions)}
-      
-      Please analyze the query and provide a recommendation.
-    `;
+  async handleComplexQuery(task, payload) {
+    var prompt = 'Task: ' + task + '\n' +
+      'Payload: ' + JSON.stringify(payload) + '\n\n' +
+      'Marketing Data:\n' +
+      'Campaigns: ' + JSON.stringify(this.campaigns) + '\n' +
+      'Content Suggestions: ' + JSON.stringify(this.contentSuggestions) + '\n\n' +
+      'Please analyze the query and provide a recommendation.';
 
-    const response = await this.providerManager.generate(prompt);
-    
+    var response = await this.providerManager.generate(prompt);
+
     return {
-      aiResponse.content,
-      provider.provider,
-      tokensUsed.tokensUsed
+      aiResponse: response.content,
+      provider: response.provider,
+      tokensUsed: response.tokensUsed
     };
   }
 
-  protected getRequiredCapability(task)| null {
+  getRequiredCapability(task) {
     if (task.includes('generate') || task.includes('content')) {
       return 'generate_content';
     }
@@ -362,5 +360,4 @@ export class MarketingAgent extends BaseAgent {
   }
 }
 
-
-
+module.exports = { MarketingAgent };

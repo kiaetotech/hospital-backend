@@ -2,7 +2,7 @@
 
 const { ProviderType, LLMResponse } = require('../ProviderManager');
 
-export class OpenRouterAdapter {
+class OpenRouterAdapter {
   private apiKey;
   private baseUrl= 'https://openrouter.ai/api/v1';
   private quotaRemaining= 20; // OpenRouter free tier: 20 requests/day
@@ -82,6 +82,7 @@ export class OpenRouterAdapter {
     return 350; // Average latency in ms
   }
 }
+
 
 
 

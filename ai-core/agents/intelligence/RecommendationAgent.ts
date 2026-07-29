@@ -1,35 +1,10 @@
-// D:\hospital backend\ai-core\agents\intelligence\RecommendationAgent.ts
+// D:\hospital backend\ai-core\agents\intelligence\RecommendationAgent.js
 
-import { AgentRole, AgentStatus, AgentRequest, AgentResponse } from '../../../shared/types/AgentTypes';
-import { BaseAgent } from '../base/BaseAgent';
-import { ProviderManager } from '../../providers/ProviderManager';
+const { AgentRole, AgentStatus } = require('../../../shared/types/AgentTypes');
+const { BaseAgent } = require('../base/BaseAgent');
 
-interface UserProfile {
-  id: string;
-  preferences: string[];
-  pastBookings: string[];
-  location: string;
-  age: number;
-  gender: string;
-  medicalHistory: string[];
-  engagementScore: number;
-  lastActive: Date;
-}
-
-interface Recommendation {
-  id: string;
-  type: 'Hospital' | 'Doctor' | 'Lab' | 'Wellness' | 'Insurance' | 'Package';
-  name: string;
-  description: string;
-  matchScore: number;
-  reason: string;
-  metadata: Record<string, any>;
-}
-
-export class RecommendationAgent extends BaseAgent {
-  private userProfiles: Map<string, UserProfile> = new Map();
-
-  constructor(providerManager: ProviderManager) {
+class RecommendationAgent extends BaseAgent {
+  constructor(providerManager) {
     super(
       {
         name: 'Recommendation Agent',
@@ -68,10 +43,11 @@ export class RecommendationAgent extends BaseAgent {
       providerManager
     );
 
+    this.userProfiles = new Map();
     this.initializeUserProfiles();
   }
 
-  private initializeUserProfiles(): void {
+  initializeUserProfiles() {
     this.userProfiles.set('user1', {
       id: 'user1',
       preferences: ['Cardiology', 'Orthopedics', 'Wellness'],
@@ -97,7 +73,7 @@ export class RecommendationAgent extends BaseAgent {
     });
   }
 
-  async execute(request: AgentRequest): Promise<AgentResponse> {
+  async execute(request) {
     this.setStatus(AgentStatus.BUSY);
     this.setCurrentTask(request.task);
 
@@ -106,10 +82,11 @@ export class RecommendationAgent extends BaseAgent {
         throw new Error('Invalid request: Missing required fields or capabilities');
       }
 
-      const { task, payload } = request;
-      this.log(`Executing task: ${task}`, 'info');
+      var task = request.task;
+      var payload = request.payload;
+      this.log('Executing task: ' + task, 'info');
 
-      let result: any;
+      var result;
 
       if (task.includes('personalize')) {
         result = await this.personalizeRecommendations(payload);
@@ -124,7 +101,7 @@ export class RecommendationAgent extends BaseAgent {
       }
 
       this.setStatus(AgentStatus.IDLE);
-      this.setCurrentTask(undefined);
+      this.setCurrentTask(null);
 
       return {
         success: true,
@@ -135,61 +112,60 @@ export class RecommendationAgent extends BaseAgent {
 
     } catch (error) {
       this.setStatus(AgentStatus.IDLE);
-      this.setCurrentTask(undefined);
+      this.setCurrentTask(null);
       return this.handleError(error, request);
     }
   }
 
-  private async personalizeRecommendations(payload: any): Promise<any> {
-    const { userId, limit = 5 } = payload;
+  async personalizeRecommendations(payload) {
+    var userId = payload.userId;
+    var limit = payload.limit || 5;
 
-    const userProfile = this.userProfiles.get(userId);
+    var userProfile = this.userProfiles.get(userId);
     if (!userProfile) {
       throw new Error('User not found');
     }
 
-    // Get all recommendations
-    const hospitalSuggestions = await this.suggestHospitals({ userId, limit: 3 });
-    const doctorSuggestions = await this.suggestDoctors({ userId, limit: 3 });
-    const packageSuggestions = await this.suggestPackages({ userId, limit: 2 });
+    var hospitalSuggestions = await this.suggestHospitals({ userId: userId, limit: 3 });
+    var doctorSuggestions = await this.suggestDoctors({ userId: userId, limit: 3 });
+    var packageSuggestions = await this.suggestPackages({ userId: userId, limit: 2 });
 
-    // Combine and sort by match score
-    const allRecommendations: Recommendation[] = [
-      ...(hospitalSuggestions.recommendations || []),
-      ...(doctorSuggestions.recommendations || []),
-      ...(packageSuggestions.recommendations || [])
-    ];
+    var allRecommendations = [];
+    var hospRecs = hospitalSuggestions.recommendations || [];
+    var docRecs = doctorSuggestions.recommendations || [];
+    var pkgRecs = packageSuggestions.recommendations || [];
 
-    allRecommendations.sort((a, b) => b.matchScore - a.matchScore);
+    for (var i = 0; i < hospRecs.length; i++) allRecommendations.push(hospRecs[i]);
+    for (var j = 0; j < docRecs.length; j++) allRecommendations.push(docRecs[j]);
+    for (var k = 0; k < pkgRecs.length; k++) allRecommendations.push(pkgRecs[k]);
 
-    // Use AI to refine recommendations
-    const prompt = `
-      User Profile: ${JSON.stringify(userProfile)}
-      Recommendations: ${JSON.stringify(allRecommendations.slice(0, limit))}
-      
-      Provide personalized recommendations for this user.
-    `;
+    allRecommendations.sort(function(a, b) { return b.matchScore - a.matchScore; });
 
-    const response = await this.providerManager.generate(prompt);
+    var prompt = 'User Profile: ' + JSON.stringify(userProfile) + '\n' +
+      'Recommendations: ' + JSON.stringify(allRecommendations.slice(0, limit)) + '\n\n' +
+      'Provide personalized recommendations for this user.';
+
+    var response = await this.providerManager.generate(prompt);
 
     return {
       recommendations: allRecommendations.slice(0, limit),
-      userProfile,
+      userProfile: userProfile,
       aiInsights: response.content,
       total: allRecommendations.length,
       timestamp: new Date().toISOString()
     };
   }
 
-  private async suggestHospitals(payload: any): Promise<any> {
-    const { userId, limit = 5 } = payload;
+  async suggestHospitals(payload) {
+    var userId = payload.userId;
+    var limit = payload.limit || 5;
 
-    const userProfile = this.userProfiles.get(userId);
+    var userProfile = this.userProfiles.get(userId);
     if (!userProfile) {
       throw new Error('User not found');
     }
 
-    const mockHospitals: Recommendation[] = [
+    var mockHospitals = [
       {
         id: 'h1',
         type: 'Hospital',
@@ -219,17 +195,15 @@ export class RecommendationAgent extends BaseAgent {
       }
     ];
 
-    // Filter by location
-    let results = mockHospitals.filter(h => 
-      h.metadata.city === userProfile.location
-    );
+    var results = mockHospitals.filter(function(h) {
+      return h.metadata.city === userProfile.location;
+    });
 
-    // If no results in city, show nearby
     if (results.length === 0) {
       results = mockHospitals;
     }
 
-    results.sort((a, b) => b.matchScore - a.matchScore);
+    results.sort(function(a, b) { return b.matchScore - a.matchScore; });
 
     return {
       recommendations: results.slice(0, limit),
@@ -238,15 +212,16 @@ export class RecommendationAgent extends BaseAgent {
     };
   }
 
-  private async suggestDoctors(payload: any): Promise<any> {
-    const { userId, limit = 5 } = payload;
+  async suggestDoctors(payload) {
+    var userId = payload.userId;
+    var limit = payload.limit || 5;
 
-    const userProfile = this.userProfiles.get(userId);
+    var userProfile = this.userProfiles.get(userId);
     if (!userProfile) {
       throw new Error('User not found');
     }
 
-    const mockDoctors: Recommendation[] = [
+    var mockDoctors = [
       {
         id: 'd1',
         type: 'Doctor',
@@ -276,23 +251,21 @@ export class RecommendationAgent extends BaseAgent {
       }
     ];
 
-    let results = mockDoctors;
-    
-    // Filter by user preferences
+    var results = mockDoctors;
+
     if (userProfile.preferences.length > 0) {
-      results = results.filter(d => 
-        userProfile.preferences.some(p => 
-          d.metadata.specialty.toLowerCase().includes(p.toLowerCase())
-        )
-      );
+      results = results.filter(function(d) {
+        return userProfile.preferences.some(function(p) {
+          return d.metadata.specialty.toLowerCase().includes(p.toLowerCase());
+        });
+      });
     }
 
-    // If no results, show all
     if (results.length === 0) {
       results = mockDoctors;
     }
 
-    results.sort((a, b) => b.matchScore - a.matchScore);
+    results.sort(function(a, b) { return b.matchScore - a.matchScore; });
 
     return {
       recommendations: results.slice(0, limit),
@@ -300,15 +273,16 @@ export class RecommendationAgent extends BaseAgent {
     };
   }
 
-  private async suggestPackages(payload: any): Promise<any> {
-    const { userId, limit = 5 } = payload;
+  async suggestPackages(payload) {
+    var userId = payload.userId;
+    var limit = payload.limit || 5;
 
-    const userProfile = this.userProfiles.get(userId);
+    var userProfile = this.userProfiles.get(userId);
     if (!userProfile) {
       throw new Error('User not found');
     }
 
-    const mockPackages: Recommendation[] = [
+    var mockPackages = [
       {
         id: 'p1',
         type: 'Package',
@@ -338,23 +312,22 @@ export class RecommendationAgent extends BaseAgent {
       }
     ];
 
-    let results = mockPackages;
+    var results = mockPackages;
 
-    // Filter by user preferences
     if (userProfile.preferences.length > 0) {
-      results = results.filter(p => 
-        userProfile.preferences.some(pref => 
-          p.name.toLowerCase().includes(pref.toLowerCase()) ||
-          p.description.toLowerCase().includes(pref.toLowerCase())
-        )
-      );
+      results = results.filter(function(p) {
+        return userProfile.preferences.some(function(pref) {
+          return p.name.toLowerCase().includes(pref.toLowerCase()) ||
+            p.description.toLowerCase().includes(pref.toLowerCase());
+        });
+      });
     }
 
     if (results.length === 0) {
       results = mockPackages;
     }
 
-    results.sort((a, b) => b.matchScore - a.matchScore);
+    results.sort(function(a, b) { return b.matchScore - a.matchScore; });
 
     return {
       recommendations: results.slice(0, limit),
@@ -362,18 +335,14 @@ export class RecommendationAgent extends BaseAgent {
     };
   }
 
-  private async handleComplexQuery(task: string, payload: any): Promise<any> {
-    const prompt = `
-      Task: ${task}
-      Payload: ${JSON.stringify(payload)}
-      
-      User Profiles: ${JSON.stringify(Array.from(this.userProfiles.entries()))}
-      
-      Please analyze the query and provide a recommendation.
-    `;
+  async handleComplexQuery(task, payload) {
+    var prompt = 'Task: ' + task + '\n' +
+      'Payload: ' + JSON.stringify(payload) + '\n\n' +
+      'User Profiles: ' + JSON.stringify(Array.from(this.userProfiles.entries())) + '\n\n' +
+      'Please analyze the query and provide a recommendation.';
 
-    const response = await this.providerManager.generate(prompt);
-    
+    var response = await this.providerManager.generate(prompt);
+
     return {
       aiResponse: response.content,
       provider: response.provider,
@@ -381,7 +350,7 @@ export class RecommendationAgent extends BaseAgent {
     };
   }
 
-  protected getRequiredCapability(task: string): string | null {
+  getRequiredCapability(task) {
     if (task.includes('personalize')) {
       return 'personalize_recommendations';
     }
@@ -397,3 +366,5 @@ export class RecommendationAgent extends BaseAgent {
     return null;
   }
 }
+
+module.exports = { RecommendationAgent };

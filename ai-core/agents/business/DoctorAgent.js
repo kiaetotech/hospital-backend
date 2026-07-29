@@ -1,54 +1,53 @@
-// D:\hospital backend\ai-core\agents\business\DoctorAgent.ts
+// D:\hospital backend\ai-core\agents\business\DoctorAgent.js
 
-const { AgentRole, AgentStatus, AgentRequest, AgentResponse } = require('../../../shared/types/AgentTypes');
+const { AgentRole, AgentStatus } = require('../../../shared/types/AgentTypes');
 const { BaseAgent } = require('../base/BaseAgent');
-const { ProviderManager } = require('../../providers/ProviderManager');
 
-
-
-export class DoctorAgent extends BaseAgent {
-  private doctors[] = [];
-
+class DoctorAgent extends BaseAgent {
   constructor(providerManager) {
     super(
       {
         name: 'Doctor Agent',
-        role.DOCTOR,
+        role: AgentRole.DOCTOR,
         capabilities: [
           {
             name: 'find_doctor',
             description: 'Find doctors by specialty, location, or availability',
             priority: 1,
             estimatedLatency: 200,
-            requiresAuth},
+            requiresAuth: false
+          },
           {
             name: 'book_consultation',
             description: 'Book a consultation with a doctor',
             priority: 1,
             estimatedLatency: 300,
-            requiresAuth},
+            requiresAuth: true
+          },
           {
             name: 'check_availability',
             description: 'Check doctor availability for online or in-person consultation',
             priority: 1,
             estimatedLatency: 150,
-            requiresAuth},
+            requiresAuth: false
+          },
           {
             name: 'get_doctor_profile',
             description: 'Get detailed doctor profile including experience and ratings',
             priority: 2,
             estimatedLatency: 100,
-            requiresAuth}
+            requiresAuth: false
+          }
         ]
       },
       providerManager
     );
 
-    // Seed with sample data
+    this.doctors = [];
     this.initializeDoctors();
   }
 
-  private initializeDoctors(){
+  initializeDoctors() {
     this.doctors = [
       {
         id: 'd1',
@@ -60,7 +59,7 @@ export class DoctorAgent extends BaseAgent {
         rating: 4.9,
         consultationFee: 800,
         availableSlots: ['10:00 AM', '11:30 AM', '2:00 PM', '4:30 PM'],
-        onlineAvailable,
+        onlineAvailable: true,
         languages: ['English', 'Hindi', 'Marathi']
       },
       {
@@ -73,7 +72,7 @@ export class DoctorAgent extends BaseAgent {
         rating: 4.7,
         consultationFee: 700,
         availableSlots: ['9:00 AM', '1:00 PM', '3:30 PM', '5:00 PM'],
-        onlineAvailable,
+        onlineAvailable: true,
         languages: ['English', 'Hindi']
       },
       {
@@ -86,7 +85,7 @@ export class DoctorAgent extends BaseAgent {
         rating: 4.9,
         consultationFee: 1200,
         availableSlots: ['10:30 AM', '12:00 PM', '3:00 PM'],
-        onlineAvailable,
+        onlineAvailable: true,
         languages: ['English', 'Hindi', 'Gujarati']
       },
       {
@@ -99,7 +98,7 @@ export class DoctorAgent extends BaseAgent {
         rating: 4.8,
         consultationFee: 1500,
         availableSlots: ['9:30 AM', '11:00 AM', '2:30 PM', '5:30 PM'],
-        onlineAvailable,
+        onlineAvailable: true,
         languages: ['English', 'Hindi']
       },
       {
@@ -112,7 +111,7 @@ export class DoctorAgent extends BaseAgent {
         rating: 4.6,
         consultationFee: 600,
         availableSlots: ['8:30 AM', '10:00 AM', '1:30 PM', '4:00 PM'],
-        onlineAvailable,
+        onlineAvailable: true,
         languages: ['English', 'Tamil', 'Hindi']
       },
       {
@@ -125,27 +124,27 @@ export class DoctorAgent extends BaseAgent {
         rating: 4.5,
         consultationFee: 500,
         availableSlots: ['9:00 AM', '11:30 AM', '2:00 PM'],
-        onlineAvailable,
+        onlineAvailable: true,
         languages: ['English', 'Hindi']
       }
     ];
   }
 
-  async execute(request)<AgentResponse> {
+  async execute(request) {
     this.setStatus(AgentStatus.BUSY);
     this.setCurrentTask(request.task);
 
     try {
       if (!this.validateRequest(request)) {
-        throw new Error('Invalid requestrequired fields or capabilities');
+        throw new Error('Invalid request: missing required fields or capabilities');
       }
 
-      const { task, payload } = request;
-      this.log(`Executing task: ${task}`, 'info');
+      var task = request.task;
+      var payload = request.payload;
+      this.log('Executing task: ' + task, 'info');
 
-      let result;
+      var result;
 
-      // Route to appropriate handler
       if (task.includes('find') || task.includes('search')) {
         result = await this.findDoctors(payload);
       } else if (task.includes('book') || task.includes('appointment')) {
@@ -155,176 +154,179 @@ export class DoctorAgent extends BaseAgent {
       } else if (task.includes('profile') || task.includes('details')) {
         result = await this.getDoctorProfile(payload);
       } else {
-        // Use AI for complex queries
         result = await this.handleComplexQuery(task, payload);
       }
 
       this.setStatus(AgentStatus.IDLE);
-      this.setCurrentTask(undefined);
+      this.setCurrentTask(null);
 
       return {
-        success,
-        data,
-        sourceAgent.id,
-        processingTime.now() - new Date().getTime()
+        success: true,
+        data: result,
+        sourceAgent: this.id,
+        processingTime: Date.now() - new Date().getTime()
       };
 
     } catch (error) {
       this.setStatus(AgentStatus.IDLE);
-      this.setCurrentTask(undefined);
+      this.setCurrentTask(null);
       return this.handleError(error, request);
     }
   }
 
-  private async findDoctors(payload)<any> {
-    const { specialty, city, hospital, maxResults = 10, onlineOnly = false } = payload;
+  async findDoctors(payload) {
+    var specialty = payload.specialty;
+    var city = payload.city;
+    var hospital = payload.hospital;
+    var maxResults = payload.maxResults || 10;
+    var onlineOnly = payload.onlineOnly || false;
 
-    let results = this.doctors;
+    var results = this.doctors.slice();
 
-    // Filter by specialty
     if (specialty) {
-      results = results.filter(d => 
-        d.specialty.toLowerCase().includes(specialty.toLowerCase())
-      );
+      results = results.filter(function(d) {
+        return d.specialty.toLowerCase().includes(specialty.toLowerCase());
+      });
     }
 
-    // Filter by city
     if (city) {
-      results = results.filter(d => 
-        d.city.toLowerCase().includes(city.toLowerCase())
-      );
+      results = results.filter(function(d) {
+        return d.city.toLowerCase().includes(city.toLowerCase());
+      });
     }
 
-    // Filter by hospital
     if (hospital) {
-      results = results.filter(d => 
-        d.hospital.toLowerCase().includes(hospital.toLowerCase())
-      );
+      results = results.filter(function(d) {
+        return d.hospital.toLowerCase().includes(hospital.toLowerCase());
+      });
     }
 
-    // Filter online only
     if (onlineOnly) {
-      results = results.filter(d => d.onlineAvailable);
+      results = results.filter(function(d) { return d.onlineAvailable; });
     }
 
-    // Sort by rating
-    results.sort((a, b) => b.rating - a.rating);
-
-    // Limit results
+    results.sort(function(a, b) { return b.rating - a.rating; });
     results = results.slice(0, maxResults);
 
     return {
-      doctors,
-      total.length,
-      query: { specialty, city, hospital, onlineOnly }
+      doctors: results,
+      total: results.length,
+      query: { specialty: specialty, city: city, hospital: hospital, onlineOnly: onlineOnly }
     };
   }
 
-  private async bookConsultation(payload)<any> {
-    const { doctorId, patientName, patientContact, slot, type = 'online' } = payload;
+  async bookConsultation(payload) {
+    var doctorId = payload.doctorId;
+    var patientName = payload.patientName;
+    var patientContact = payload.patientContact;
+    var slot = payload.slot;
+    var type = payload.type || 'online';
 
-    const doctor = this.doctors.find(d => d.id === doctorId);
+    var doctor = this.doctors.find(function(d) { return d.id === doctorId; });
     if (!doctor) {
       throw new Error('Doctor not found');
     }
 
-    // Check if slot is available
     if (!doctor.availableSlots.includes(slot)) {
       throw new Error('Selected slot is not available');
     }
 
-    // Check online availability
     if (type === 'online' && !doctor.onlineAvailable) {
       throw new Error('Doctor is not available for online consultation');
     }
 
-    // Generate booking confirmation
-    const bookingId = `BKG${Date.now()}`;
-    
-    // Remove the booked slot
-    doctor.availableSlots = doctor.availableSlots.filter(s => s !== slot);
+    var bookingId = 'BKG' + Date.now();
+    doctor.availableSlots = doctor.availableSlots.filter(function(s) { return s !== slot; });
 
     return {
-      bookingId,
+      bookingId: bookingId,
       doctor: {
-        id.id,
-        name.name,
-        specialty.specialty,
-        hospital.hospital
+        id: doctor.id,
+        name: doctor.name,
+        specialty: doctor.specialty,
+        hospital: doctor.hospital
       },
       patient: {
-        name,
-        contact},
-      slot,
-      type,
-      consultationFee.consultationFee,
+        name: patientName,
+        contact: patientContact
+      },
+      slot: slot,
+      type: type,
+      consultationFee: doctor.consultationFee,
       status: 'Confirmed',
-      timestampDate().toISOString(),
+      timestamp: new Date().toISOString(),
       instructions: 'Please arrive 15 minutes before the scheduled time. Carry your medical reports.'
     };
   }
 
-  private async checkDoctorAvailability(payload)<any> {
-    const { doctorId, date } = payload;
+  async checkDoctorAvailability(payload) {
+    var doctorId = payload.doctorId;
+    var date = payload.date;
 
-    let targetDoctors = this.doctors;
+    var targetDoctors = this.doctors;
     if (doctorId) {
-      targetDoctors = this.doctors.filter(d => d.id === doctorId);
+      targetDoctors = this.doctors.filter(function(d) { return d.id === doctorId; });
     }
 
-    const availability = targetDoctors.map(d => ({
-      id.id,
-      name.name,
-      specialty.specialty,
-      onlineAvailable.onlineAvailable,
-      availableSlots.availableSlots,
-      date|| new Date().toISOString().split('T')[0]
-    }));
+    var availability = targetDoctors.map(function(d) {
+      return {
+        id: d.id,
+        name: d.name,
+        specialty: d.specialty,
+        onlineAvailable: d.onlineAvailable,
+        availableSlots: d.availableSlots,
+        date: date || new Date().toISOString().split('T')[0]
+      };
+    });
 
     return {
-      availability,
-      timestampDate().toISOString()
+      availability: availability,
+      timestamp: new Date().toISOString()
     };
   }
 
-  private async getDoctorProfile(payload)<any> {
-    const { doctorId } = payload;
+  async getDoctorProfile(payload) {
+    var doctorId = payload.doctorId;
 
-    const doctor = this.doctors.find(d => d.id === doctorId);
+    var doctor = this.doctors.find(function(d) { return d.id === doctorId; });
     if (!doctor) {
       throw new Error('Doctor not found');
     }
 
     return {
       doctor: {
-        ...doctor,
-        consultationFee: `₹${doctor.consultationFee}`,
-        experience: `${doctor.experience} years`,
-        availableSlotsCount.availableSlots.length
+        id: doctor.id,
+        name: doctor.name,
+        specialty: doctor.specialty,
+        hospital: doctor.hospital,
+        city: doctor.city,
+        experience: doctor.experience + ' years',
+        rating: doctor.rating,
+        consultationFee: '₹' + doctor.consultationFee,
+        availableSlots: doctor.availableSlots,
+        availableSlotsCount: doctor.availableSlots.length,
+        onlineAvailable: doctor.onlineAvailable,
+        languages: doctor.languages
       }
     };
   }
 
-  private async handleComplexQuery(task, payload)<any> {
-    const prompt = `
-      Task: ${task}
-      Payload: ${JSON.stringify(payload)}
-      
-      Available doctors: ${JSON.stringify(this.doctors)}
-      
-      Please analyze the query and provide a recommendation.
-    `;
+  async handleComplexQuery(task, payload) {
+    var prompt = 'Task: ' + task + '\n' +
+      'Payload: ' + JSON.stringify(payload) + '\n\n' +
+      'Available doctors: ' + JSON.stringify(this.doctors) + '\n\n' +
+      'Please analyze the query and provide a recommendation.';
 
-    const response = await this.providerManager.generate(prompt);
-    
+    var response = await this.providerManager.generate(prompt);
+
     return {
-      aiResponse.content,
-      provider.provider,
-      tokensUsed.tokensUsed
+      aiResponse: response.content,
+      provider: response.provider,
+      tokensUsed: response.tokensUsed
     };
   }
 
-  protected getRequiredCapability(task)| null {
+  getRequiredCapability(task) {
     if (task.includes('find') || task.includes('search')) {
       return 'find_doctor';
     }
@@ -341,5 +343,4 @@ export class DoctorAgent extends BaseAgent {
   }
 }
 
-
-
+module.exports = { DoctorAgent };

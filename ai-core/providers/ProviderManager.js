@@ -91,7 +91,6 @@ class ProviderManager {
       };
     }
 
-    // Fallback
     return this.generate(prompt, critical);
   }
 

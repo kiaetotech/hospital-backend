@@ -2,7 +2,7 @@
 
 const { ProviderType, LLMResponse } = require('../ProviderManager');
 
-export class GeminiAdapter {
+class GeminiAdapter {
   private apiKey;
   private quotaRemaining= 60; // Gemini free tier: 60 requests/min
   private lastCheck= new Date();
@@ -80,6 +80,7 @@ export class GeminiAdapter {
     return 300; // Average latency in ms
   }
 }
+
 
 
 

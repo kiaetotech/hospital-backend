@@ -1,56 +1,54 @@
-// D:\hospital backend\ai-core\agents\operations\CRMAgent.ts
+// D:\hospital backend\ai-core\agents\operations\CRMAgent.js
 
-const { AgentRole, AgentStatus, AgentRequest, AgentResponse } = require('../../../shared/types/AgentTypes');
+const { AgentRole, AgentStatus } = require('../../../shared/types/AgentTypes');
 const { BaseAgent } = require('../base/BaseAgent');
-const { ProviderManager } = require('../../providers/ProviderManager');
 
-
-
-
-
-export class CRMAgent extends BaseAgent {
-  private customers[] = [];
-  private leads[] = [];
-
+class CRMAgent extends BaseAgent {
   constructor(providerManager) {
     super(
       {
         name: 'CRM Agent',
-        role.CRM,
+        role: AgentRole.CRM,
         capabilities: [
           {
             name: 'track_customer',
             description: 'Track customer activity and engagement',
             priority: 1,
             estimatedLatency: 150,
-            requiresAuth},
+            requiresAuth: true
+          },
           {
             name: 'score_lead',
             description: 'Score and qualify leads',
             priority: 2,
             estimatedLatency: 200,
-            requiresAuth},
+            requiresAuth: true
+          },
           {
             name: 'segment_customers',
             description: 'Segment customers by behavior and preferences',
             priority: 2,
             estimatedLatency: 250,
-            requiresAuth},
+            requiresAuth: true
+          },
           {
             name: 'predict_churn',
             description: 'Predict customer churn risk',
             priority: 2,
             estimatedLatency: 300,
-            requiresAuth}
+            requiresAuth: true
+          }
         ]
       },
       providerManager
     );
 
+    this.customers = [];
+    this.leads = [];
     this.initializeData();
   }
 
-  private initializeData(){
+  initializeData() {
     this.customers = [
       {
         id: 'c1',
@@ -60,7 +58,7 @@ export class CRMAgent extends BaseAgent {
         city: 'Mumbai',
         totalBookings: 12,
         totalSpent: 45000,
-        lastVisitDate('2026-07-20'),
+        lastVisit: new Date('2026-07-20'),
         preferences: ['Cardiology', 'Orthopedics'],
         loyaltyTier: 'Gold',
         engagementScore: 85
@@ -73,7 +71,7 @@ export class CRMAgent extends BaseAgent {
         city: 'Delhi',
         totalBookings: 5,
         totalSpent: 12000,
-        lastVisitDate('2026-07-15'),
+        lastVisit: new Date('2026-07-15'),
         preferences: ['Dermatology', 'Wellness'],
         loyaltyTier: 'Silver',
         engagementScore: 60
@@ -86,7 +84,7 @@ export class CRMAgent extends BaseAgent {
         city: 'Mumbai',
         totalBookings: 1,
         totalSpent: 1500,
-        lastVisitDate('2026-07-01'),
+        lastVisit: new Date('2026-07-01'),
         preferences: ['General Medicine'],
         loyaltyTier: 'Bronze',
         engagementScore: 25
@@ -102,8 +100,8 @@ export class CRMAgent extends BaseAgent {
         source: 'Website',
         status: 'Qualified',
         score: 75,
-        createdAtDate('2026-07-10'),
-        updatedAtDate('2026-07-15')
+        createdAt: new Date('2026-07-10'),
+        updatedAt: new Date('2026-07-15')
       },
       {
         id: 'l2',
@@ -113,25 +111,26 @@ export class CRMAgent extends BaseAgent {
         source: 'Referral',
         status: 'New',
         score: 40,
-        createdAtDate('2026-07-18'),
-        updatedAtDate('2026-07-18')
+        createdAt: new Date('2026-07-18'),
+        updatedAt: new Date('2026-07-18')
       }
     ];
   }
 
-  async execute(request)<AgentResponse> {
+  async execute(request) {
     this.setStatus(AgentStatus.BUSY);
     this.setCurrentTask(request.task);
 
     try {
       if (!this.validateRequest(request)) {
-        throw new Error('Invalid requestrequired fields or capabilities');
+        throw new Error('Invalid request: missing required fields or capabilities');
       }
 
-      const { task, payload } = request;
-      this.log(`Executing task: ${task}`, 'info');
+      var task = request.task;
+      var payload = request.payload;
+      this.log('Executing task: ' + task, 'info');
 
-      let result;
+      var result;
 
       if (task.includes('track') || task.includes('customer')) {
         result = await this.trackCustomer(payload);
@@ -146,94 +145,93 @@ export class CRMAgent extends BaseAgent {
       }
 
       this.setStatus(AgentStatus.IDLE);
-      this.setCurrentTask(undefined);
+      this.setCurrentTask(null);
 
       return {
-        success,
-        data,
-        sourceAgent.id,
-        processingTime.now() - new Date().getTime()
+        success: true,
+        data: result,
+        sourceAgent: this.id,
+        processingTime: Date.now() - new Date().getTime()
       };
 
     } catch (error) {
       this.setStatus(AgentStatus.IDLE);
-      this.setCurrentTask(undefined);
+      this.setCurrentTask(null);
       return this.handleError(error, request);
     }
   }
 
-  private async trackCustomer(payload)<any> {
-    const { customerId, customerData } = payload;
+  async trackCustomer(payload) {
+    var customerId = payload.customerId;
+    var customerData = payload.customerData;
 
     if (customerId) {
-      const customer = this.customers.find(c => c.id === customerId);
+      var customer = this.customers.find(function(c) { return c.id === customerId; });
       if (!customer) {
         throw new Error('Customer not found');
       }
 
       return {
-        customer,
+        customer: customer,
         activitySummary: {
-          totalBookings.totalBookings,
-          totalSpent.totalSpent,
-          loyaltyTier.loyaltyTier,
-          engagementScore.engagementScore,
-          lastVisit.lastVisit
+          totalBookings: customer.totalBookings,
+          totalSpent: customer.totalSpent,
+          loyaltyTier: customer.loyaltyTier,
+          engagementScore: customer.engagementScore,
+          lastVisit: customer.lastVisit
         }
       };
     }
 
     if (customerData) {
-      // Add new customer
-      const newCustomer= {
-        id: `c${Date.now()}`,
-        name.name,
-        email.email,
-        phone.phone,
-        city.city,
+      var newCustomer = {
+        id: 'c' + Date.now(),
+        name: customerData.name,
+        email: customerData.email,
+        phone: customerData.phone,
+        city: customerData.city,
         totalBookings: 0,
         totalSpent: 0,
-        lastVisitDate(),
-        preferences.preferences || [],
+        lastVisit: new Date(),
+        preferences: customerData.preferences || [],
         loyaltyTier: 'Bronze',
         engagementScore: 0
       };
 
       this.customers.push(newCustomer);
       return {
-        customer,
+        customer: newCustomer,
         message: 'Customer added successfully'
       };
     }
 
     return {
-      customers.customers,
-      total.customers.length
+      customers: this.customers,
+      total: this.customers.length
     };
   }
 
-  private async scoreLead(payload)<any> {
-    const { leadId, leadData } = payload;
+  async scoreLead(payload) {
+    var leadId = payload.leadId;
+    var leadData = payload.leadData;
 
     if (leadId) {
-      const lead = this.leads.find(l => l.id === leadId);
+      var lead = this.leads.find(function(l) { return l.id === leadId; });
       if (!lead) {
         throw new Error('Lead not found');
       }
 
       return {
-        lead,
-        score.score,
-        status.status
+        lead: lead,
+        score: lead.score,
+        status: lead.status
       };
     }
 
     if (leadData) {
-      // Calculate lead score based on various factors
-      let score = 0;
-      
-      // Source scoring
-      const sourceScores= {
+      var score = 0;
+
+      var sourceScores = {
         'Referral': 20,
         'Website': 10,
         'Social Media': 8,
@@ -242,93 +240,99 @@ export class CRMAgent extends BaseAgent {
       };
       score += sourceScores[leadData.source] || 5;
 
-      // Add points for complete information
       if (leadData.name) score += 10;
       if (leadData.email) score += 10;
       if (leadData.phone) score += 10;
 
-      // Add points for specific interests
       if (leadData.interests) {
         score += leadData.interests.length * 5;
       }
 
-      const newLead= {
-        id: `l${Date.now()}`,
-        name.name,
-        email.email,
-        phone.phone,
-        source.source || 'Other',
+      var newLead = {
+        id: 'l' + Date.now(),
+        name: leadData.name,
+        email: leadData.email,
+        phone: leadData.phone,
+        source: leadData.source || 'Other',
         status: 'New',
-        score.min(score, 100),
-        createdAtDate(),
-        updatedAtDate()
+        score: Math.min(score, 100),
+        createdAt: new Date(),
+        updatedAt: new Date()
       };
 
       this.leads.push(newLead);
       return {
-        lead,
+        lead: newLead,
         message: 'Lead scored successfully'
       };
     }
 
     return {
-      leads.leads,
-      total.leads.length,
-      qualifiedLeads.leads.filter(l => l.status === 'Qualified').length
+      leads: this.leads,
+      total: this.leads.length,
+      qualifiedLeads: this.leads.filter(function(l) { return l.status === 'Qualified'; }).length
     };
   }
 
-  private async segmentCustomers(payload)<any> {
-    const { segmentBy } = payload;
+  async segmentCustomers(payload) {
+    var segmentBy = payload.segmentBy;
 
-    const segments= {
-      byLoyalty: {
-        Bronze.customers.filter(c => c.loyaltyTier === 'Bronze'),
-        Silver.customers.filter(c => c.loyaltyTier === 'Silver'),
-        Gold.customers.filter(c => c.loyaltyTier === 'Gold'),
-        Platinum.customers.filter(c => c.loyaltyTier === 'Platinum')
-      },
-      byCity: {} as Record<string, Customer[]>,
-      byEngagement: {
-        High.customers.filter(c => c.engagementScore > 70),
-        Medium.customers.filter(c => c.engagementScore > 40 && c.engagementScore <= 70),
-        Low.customers.filter(c => c.engagementScore <= 40)
-      }
-    };
+    var bronzeCustomers = this.customers.filter(function(c) { return c.loyaltyTier === 'Bronze'; });
+    var silverCustomers = this.customers.filter(function(c) { return c.loyaltyTier === 'Silver'; });
+    var goldCustomers = this.customers.filter(function(c) { return c.loyaltyTier === 'Gold'; });
+    var platinumCustomers = this.customers.filter(function(c) { return c.loyaltyTier === 'Platinum'; });
 
-    // Group by city
-    this.customers.forEach(c => {
-      if (!segments.byCity[c.city]) {
-        segments.byCity[c.city] = [];
+    var highEngagement = this.customers.filter(function(c) { return c.engagementScore > 70; });
+    var mediumEngagement = this.customers.filter(function(c) { return c.engagementScore > 40 && c.engagementScore <= 70; });
+    var lowEngagement = this.customers.filter(function(c) { return c.engagementScore <= 40; });
+
+    var byCity = {};
+    this.customers.forEach(function(c) {
+      if (!byCity[c.city]) {
+        byCity[c.city] = [];
       }
-      segments.byCity[c.city].push(c);
+      byCity[c.city].push(c);
     });
 
+    var segments = {
+      byLoyalty: {
+        Bronze: bronzeCustomers,
+        Silver: silverCustomers,
+        Gold: goldCustomers,
+        Platinum: platinumCustomers
+      },
+      byCity: byCity,
+      byEngagement: {
+        High: highEngagement,
+        Medium: mediumEngagement,
+        Low: lowEngagement
+      }
+    };
+
     return {
-      segments,
+      segments: segments,
       summary: {
-        totalCustomers.customers.length,
-        goldCustomers.byLoyalty.Gold.length,
-        highEngagement.byEngagement.High.length
+        totalCustomers: this.customers.length,
+        goldCustomers: goldCustomers.length,
+        highEngagement: highEngagement.length
       }
     };
   }
 
-  private async predictChurn(payload)<any> {
-    const { customerId } = payload;
+  async predictChurn(payload) {
+    var customerId = payload.customerId;
 
-    let targetCustomers = this.customers;
+    var targetCustomers = this.customers;
     if (customerId) {
-      targetCustomers = this.customers.filter(c => c.id === customerId);
+      targetCustomers = this.customers.filter(function(c) { return c.id === customerId; });
     }
 
-    const churnAnalysis = targetCustomers.map(c => {
-      // Calculate churn risk based on various factors
-      let riskScore = 0;
-      let riskFactors[] = [];
+    var self = this;
+    var churnAnalysis = targetCustomers.map(function(c) {
+      var riskScore = 0;
+      var riskFactors = [];
 
-      // Factor 1since last visit
-      const daysSinceLastVisit = Math.floor((Date.now() - c.lastVisit.getTime()) / (1000 * 60 * 60 * 24));
+      var daysSinceLastVisit = Math.floor((Date.now() - c.lastVisit.getTime()) / (1000 * 60 * 60 * 24));
       if (daysSinceLastVisit > 30) {
         riskScore += 20;
         riskFactors.push('No visit in last 30 days');
@@ -338,48 +342,45 @@ export class CRMAgent extends BaseAgent {
         riskFactors.push('No visit in last 60 days');
       }
 
-      // Factor 2score
       if (c.engagementScore < 30) {
         riskScore += 20;
         riskFactors.push('Low engagement score');
       }
 
-      // Factor 3bookings
       if (c.totalBookings < 2) {
         riskScore += 15;
         riskFactors.push('Few total bookings');
       }
 
-      // Factor 4spent
       if (c.totalSpent < 1000) {
         riskScore += 10;
         riskFactors.push('Low spending');
       }
 
-      const riskLevel = riskScore > 60 ? 'High' > 30 ? 'Medium' : 'Low';
+      var riskLevel = riskScore > 60 ? 'High' : riskScore > 30 ? 'Medium' : 'Low';
 
       return {
-        customerId.id,
-        customerName.name,
-        riskScore,
-        riskLevel,
-        riskFactors,
-        recommendations.getChurnRecommendations(riskLevel, riskFactors)
+        customerId: c.id,
+        customerName: c.name,
+        riskScore: riskScore,
+        riskLevel: riskLevel,
+        riskFactors: riskFactors,
+        recommendations: self.getChurnRecommendations(riskLevel, riskFactors)
       };
     });
 
     return {
-      churnAnalysis,
+      churnAnalysis: churnAnalysis,
       summary: {
-        highRisk.filter(c => c.riskLevel === 'High').length,
-        mediumRisk.filter(c => c.riskLevel === 'Medium').length,
-        lowRisk.filter(c => c.riskLevel === 'Low').length
+        highRisk: churnAnalysis.filter(function(c) { return c.riskLevel === 'High'; }).length,
+        mediumRisk: churnAnalysis.filter(function(c) { return c.riskLevel === 'Medium'; }).length,
+        lowRisk: churnAnalysis.filter(function(c) { return c.riskLevel === 'Low'; }).length
       }
     };
   }
 
-  private getChurnRecommendations(riskLevel, riskFactors[])[] {
-    const recommendations[] = [];
+  getChurnRecommendations(riskLevel, riskFactors) {
+    var recommendations = [];
 
     if (riskLevel === 'High') {
       recommendations.push('Immediate outreach required');
@@ -387,17 +388,17 @@ export class CRMAgent extends BaseAgent {
       recommendations.push('Personalized re-engagement campaign');
     }
 
-    if (riskFactors.some(f => f.includes('30 days'))) {
+    if (riskFactors.some(function(f) { return f.includes('30 days'); })) {
       recommendations.push('Send re-engagement email');
       recommendations.push('Offer free health checkup');
     }
 
-    if (riskFactors.some(f => f.includes('engagement'))) {
+    if (riskFactors.some(function(f) { return f.includes('engagement'); })) {
       recommendations.push('Increase communication frequency');
       recommendations.push('Send personalized health tips');
     }
 
-    if (riskFactors.some(f => f.includes('bookings'))) {
+    if (riskFactors.some(function(f) { return f.includes('bookings'); })) {
       recommendations.push('New user onboarding campaign');
       recommendations.push('Offer welcome discount');
     }
@@ -405,27 +406,23 @@ export class CRMAgent extends BaseAgent {
     return recommendations.length ? recommendations : ['Continue regular engagement'];
   }
 
-  private async handleComplexQuery(task, payload)<any> {
-    const prompt = `
-      Task: ${task}
-      Payload: ${JSON.stringify(payload)}
-      
-      CRM Data: ${JSON.stringify(this.customers)}
-      Leads: ${JSON.stringify(this.leads)}
-      
-      Please analyze the query and provide a recommendation.
-    `;
+  async handleComplexQuery(task, payload) {
+    var prompt = 'Task: ' + task + '\n' +
+      'Payload: ' + JSON.stringify(payload) + '\n\n' +
+      'CRM Data: ' + JSON.stringify(this.customers) + '\n' +
+      'Leads: ' + JSON.stringify(this.leads) + '\n\n' +
+      'Please analyze the query and provide a recommendation.';
 
-    const response = await this.providerManager.generate(prompt);
-    
+    var response = await this.providerManager.generate(prompt);
+
     return {
-      aiResponse.content,
-      provider.provider,
-      tokensUsed.tokensUsed
+      aiResponse: response.content,
+      provider: response.provider,
+      tokensUsed: response.tokensUsed
     };
   }
 
-  protected getRequiredCapability(task)| null {
+  getRequiredCapability(task) {
     if (task.includes('track') || task.includes('customer')) {
       return 'track_customer';
     }
@@ -442,5 +439,4 @@ export class CRMAgent extends BaseAgent {
   }
 }
 
-
-
+module.exports = { CRMAgent };

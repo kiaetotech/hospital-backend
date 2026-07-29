@@ -14,7 +14,7 @@ const { QueueManager } = require('./QueueManager');
 
 
 
-export class MonitoringAggregationService {
+class MonitoringAggregationService {
   private clients[] = [];
   private registry;
   private providerManager;
@@ -147,6 +147,7 @@ export class MonitoringAggregationService {
     }
   }
 }
+
 
 
 

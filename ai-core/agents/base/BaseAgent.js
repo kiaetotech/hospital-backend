@@ -1,191 +1,108 @@
-// D:\hospital backend\ai-core\agents\base\BaseAgent.ts
+// D:\hospital backend\ai-core\agents\base\BaseAgent.js
 
-const { 
-  AgentRole, 
-  AgentStatus, 
-  AgentCapability, 
-  AgentRegistration,
-  AgentRequest,
-  AgentResponse 
-} = require('../../../shared/types/AgentTypes');
-const { ProviderManager } = require('../../providers/ProviderManager');
-const { v4 as uuidv4 } = require('uuid');
+const { v4: uuidv4 } = require('uuid');
 
-export 
-
-export abstract class BaseAgent {
-  public id;
-  public name;
-  public role;
-  public status;
-  public capabilities[];
-  public metadata;
-  public lastActive;
-  public currentTask?;
-
-  protected providerManager;
-
+class BaseAgent {
   constructor(config, providerManager) {
     this.id = config.id || uuidv4();
     this.name = config.name;
     this.role = config.role;
-    this.status = AgentStatus.IDLE;
-    this.capabilities = config.capabilities;
+    this.status = 'idle';
+    this.capabilities = config.capabilities || [];
     this.metadata = config.metadata || {};
     this.lastActive = new Date();
+    this.currentTask = null;
     this.providerManager = providerManager;
   }
 
-  /**
-   * Main execution method - must be implemented by all agents
-   */
-  abstract execute(request)<AgentResponse>;
-
-  /**
-   * Get agent registration for capability registry
-   */
-  getRegistration(){
+  getRegistration() {
     return {
-      id.id,
-      name.name,
-      role.role,
-      status.status,
-      capabilities.capabilities,
-      currentTask.currentTask,
-      lastActive.lastActive,
-      metadata.metadata
+      id: this.id,
+      name: this.name,
+      role: this.role,
+      status: this.status,
+      capabilities: this.capabilities,
+      currentTask: this.currentTask,
+      lastActive: this.lastActive,
+      metadata: this.metadata
     };
   }
 
-  /**
-   * Update agent status
-   */
-  setStatus(status){
+  setStatus(status) {
     this.status = status;
     this.lastActive = new Date();
   }
 
-  /**
-   * Set current task
-   */
-  setCurrentTask(task?){
+  setCurrentTask(task) {
     this.currentTask = task;
     this.lastActive = new Date();
   }
 
-  /**
-   * Check if agent has a specific capability
-   */
-  hasCapability(capabilityName){
+  hasCapability(capabilityName) {
     return this.capabilities.some(c => c.name === capabilityName);
   }
 
-  /**
-   * Get capability by name
-   */
-  getCapability(capabilityName)| undefined {
+  getCapability(capabilityName) {
     return this.capabilities.find(c => c.name === capabilityName);
   }
 
-  /**
-   * Validate request before execution
-   */
-  protected validateRequest(request){
-    // Check if request has required fields
+  validateRequest(request) {
     if (!request.task || !request.payload) {
       return false;
     }
-
-    // Check if agent has required capability
     const requiredCapability = this.getRequiredCapability(request.task);
     if (requiredCapability && !this.hasCapability(requiredCapability)) {
       return false;
     }
-
     return true;
   }
 
-  /**
-   * Get required capability for a task
-   * Override this in child classes
-   */
-  protected getRequiredCapability(task)| null {
-    // Default implementation - can be overridden
+  getRequiredCapability(task) {
     return null;
   }
 
-  /**
-   * Handle errors gracefully
-   */
-  protected handleError(error, request){
+  handleError(error, request) {
     console.error(`[${this.name}] Error:`, error.message);
-    
     return {
-      success,
-      error.message,
-      sourceAgent.id,
+      success: false,
+      error: error.message,
+      sourceAgent: this.id,
       processingTime: 0
     };
   }
 
-  /**
-   * Log agent activity
-   */
-  protected log(message, level: 'info' | 'warn' | 'error' = 'info'){
+  log(message, level = 'info') {
     const timestamp = new Date().toISOString();
     console.log(`[${timestamp}] [${this.name}] [${level.toUpperCase()}] ${message}`);
   }
 
-  /**
-   * Update metadata
-   */
-  updateMetadata(key, value){
+  updateMetadata(key, value) {
     this.metadata[key] = value;
   }
 
-  /**
-   * Get metadata
-   */
-  getMetadata<T>(key)| undefined {
-    return this.metadata[key] as T;
+  getMetadata(key) {
+    return this.metadata[key];
   }
 
-  /**
-   * Get agent health status
-   */
-  getHealthStatus(): {
-    status;
-    lastActive;
-    capabilities[];
-    currentTask?;
-    metadata;
-  } {
+  getHealthStatus() {
     return {
-      status.status,
-      lastActive.lastActive,
-      capabilities.capabilities.map(c => c.name),
-      currentTask.currentTask,
-      metadata.metadata
+      status: this.status,
+      lastActive: this.lastActive,
+      capabilities: this.capabilities.map(c => c.name),
+      currentTask: this.currentTask,
+      metadata: this.metadata
     };
   }
 
-  /**
-   * Check if agent is healthy
-   */
-  isHealthy(){
-    // Check if agent is online or busy
-    return this.status === AgentStatus.ONLINE || this.status === AgentStatus.BUSY;
+  isHealthy() {
+    return this.status === 'online' || this.status === 'busy';
   }
 
-  /**
-   * Reset agent state
-   */
-  reset(){
-    this.status = AgentStatus.IDLE;
-    this.currentTask = undefined;
+  reset() {
+    this.status = 'idle';
+    this.currentTask = null;
     this.lastActive = new Date();
   }
 }
 
-
-
+module.exports = { BaseAgent };

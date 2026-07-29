@@ -1,59 +1,53 @@
-// D:\hospital backend\ai-core\agents\business\DiagnosticsAgent.ts
+// D:\hospital backend\ai-core\agents\business\DiagnosticsAgent.js
 
-const { AgentRole, AgentStatus, AgentRequest, AgentResponse } = require('../../../shared/types/AgentTypes');
+const { AgentRole, AgentStatus } = require('../../../shared/types/AgentTypes');
 const { BaseAgent } = require('../base/BaseAgent');
-const { ProviderManager } = require('../../providers/ProviderManager');
 
-;
-  accredited;
-}
-
-
-
-
-
-export class DiagnosticsAgent extends BaseAgent {
-  private labs[] = [];
-
+class DiagnosticsAgent extends BaseAgent {
   constructor(providerManager) {
     super(
       {
         name: 'Diagnostics Agent',
-        role.DIAGNOSTICS,
+        role: AgentRole.DIAGNOSTICS,
         capabilities: [
           {
             name: 'find_lab',
             description: 'Find diagnostic labs by location and test availability',
             priority: 1,
             estimatedLatency: 200,
-            requiresAuth},
+            requiresAuth: false
+          },
           {
             name: 'compare_packages',
             description: 'Compare diagnostic packages from different labs',
             priority: 2,
             estimatedLatency: 300,
-            requiresAuth},
+            requiresAuth: false
+          },
           {
             name: 'book_test',
             description: 'Book a diagnostic test or package',
             priority: 1,
             estimatedLatency: 300,
-            requiresAuth},
+            requiresAuth: true
+          },
           {
             name: 'interpret_results',
             description: 'Interpret diagnostic test results with AI',
             priority: 2,
             estimatedLatency: 500,
-            requiresAuth}
+            requiresAuth: true
+          }
         ]
       },
       providerManager
     );
 
+    this.labs = [];
     this.initializeLabs();
   }
 
-  private initializeLabs(){
+  initializeLabs() {
     this.labs = [
       {
         id: 'l1',
@@ -81,7 +75,8 @@ export class DiagnosticsAgent extends BaseAgent {
         rating: 4.8,
         turnaroundTime: 24,
         priceRange: { min: 499, max: 9999 },
-        accredited},
+        accredited: true
+      },
       {
         id: 'l2',
         name: 'Thyrocare',
@@ -108,7 +103,8 @@ export class DiagnosticsAgent extends BaseAgent {
         rating: 4.6,
         turnaroundTime: 48,
         priceRange: { min: 399, max: 7999 },
-        accredited},
+        accredited: true
+      },
       {
         id: 'l3',
         name: 'Metropolis Lab',
@@ -135,7 +131,8 @@ export class DiagnosticsAgent extends BaseAgent {
         rating: 4.7,
         turnaroundTime: 36,
         priceRange: { min: 299, max: 14999 },
-        accredited},
+        accredited: true
+      },
       {
         id: 'l4',
         name: 'Dr. Lal PathLabs',
@@ -154,7 +151,8 @@ export class DiagnosticsAgent extends BaseAgent {
         rating: 4.9,
         turnaroundTime: 24,
         priceRange: { min: 499, max: 8999 },
-        accredited},
+        accredited: true
+      },
       {
         id: 'l5',
         name: 'Suburban Diagnostics',
@@ -173,23 +171,25 @@ export class DiagnosticsAgent extends BaseAgent {
         rating: 4.5,
         turnaroundTime: 48,
         priceRange: { min: 399, max: 5999 },
-        accredited}
+        accredited: true
+      }
     ];
   }
 
-  async execute(request)<AgentResponse> {
+  async execute(request) {
     this.setStatus(AgentStatus.BUSY);
     this.setCurrentTask(request.task);
 
     try {
       if (!this.validateRequest(request)) {
-        throw new Error('Invalid requestrequired fields or capabilities');
+        throw new Error('Invalid request: missing required fields or capabilities');
       }
 
-      const { task, payload } = request;
-      this.log(`Executing task: ${task}`, 'info');
+      var task = request.task;
+      var payload = request.payload;
+      this.log('Executing task: ' + task, 'info');
 
-      let result;
+      var result;
 
       if (task.includes('find') || task.includes('search') || task.includes('lab')) {
         result = await this.findLabs(payload);
@@ -204,98 +204,118 @@ export class DiagnosticsAgent extends BaseAgent {
       }
 
       this.setStatus(AgentStatus.IDLE);
-      this.setCurrentTask(undefined);
+      this.setCurrentTask(null);
 
       return {
-        success,
-        data,
-        sourceAgent.id,
-        processingTime.now() - new Date().getTime()
+        success: true,
+        data: result,
+        sourceAgent: this.id,
+        processingTime: Date.now() - new Date().getTime()
       };
 
     } catch (error) {
       this.setStatus(AgentStatus.IDLE);
-      this.setCurrentTask(undefined);
+      this.setCurrentTask(null);
       return this.handleError(error, request);
     }
   }
 
-  private async findLabs(payload)<any> {
-    const { city, test, maxResults = 10 } = payload;
+  async findLabs(payload) {
+    var city = payload.city;
+    var test = payload.test;
+    var maxResults = payload.maxResults || 10;
 
-    let results = this.labs;
+    var results = this.labs.slice();
 
     if (city) {
-      results = results.filter(l => l.city.toLowerCase().includes(city.toLowerCase()));
+      results = results.filter(function(l) { return l.city.toLowerCase().includes(city.toLowerCase()); });
     }
 
     if (test) {
-      results = results.filter(l => 
-        l.tests.some(t => t.toLowerCase().includes(test.toLowerCase())) ||
-        l.packages.some(p => p.tests.some(t => t.toLowerCase().includes(test.toLowerCase())))
-      );
+      results = results.filter(function(l) {
+        return l.tests.some(function(t) { return t.toLowerCase().includes(test.toLowerCase()); }) ||
+          l.packages.some(function(p) { return p.tests.some(function(t) { return t.toLowerCase().includes(test.toLowerCase()); }); });
+      });
     }
 
-    results.sort((a, b) => b.rating - a.rating);
+    results.sort(function(a, b) { return b.rating - a.rating; });
     results = results.slice(0, maxResults);
 
     return {
-      labs,
-      total.length,
-      query: { city, test }
+      labs: results,
+      total: results.length,
+      query: { city: city, test: test }
     };
   }
 
-  private async comparePackages(payload)<any> {
-    const { labIds, packageIds } = payload;
+  async comparePackages(payload) {
+    var labIds = payload.labIds;
+    var packageIds = payload.packageIds;
 
-    let selectedLabs = this.labs;
+    var selectedLabs = this.labs;
     if (labIds && labIds.length > 0) {
-      selectedLabs = this.labs.filter(l => labIds.includes(l.id));
+      selectedLabs = this.labs.filter(function(l) { return labIds.includes(l.id); });
     }
 
-    let packages = selectedLabs.flatMap(l => 
-      l.packages.map(p => ({
-        ...p,
-        labName.name,
-        labId.id,
-        rating.rating,
-        turnaroundTime.turnaroundTime
-      }))
-    );
+    var packages = [];
+    for (var i = 0; i < selectedLabs.length; i++) {
+      var l = selectedLabs[i];
+      for (var j = 0; j < l.packages.length; j++) {
+        var p = l.packages[j];
+        packages.push({
+          id: p.id,
+          name: p.name,
+          tests: p.tests,
+          price: p.price,
+          discount: p.discount,
+          preparation: p.preparation,
+          labName: l.name,
+          labId: l.id,
+          rating: l.rating,
+          turnaroundTime: l.turnaroundTime
+        });
+      }
+    }
 
     if (packageIds && packageIds.length > 0) {
-      packages = packages.filter(p => packageIds.includes(p.id));
+      packages = packages.filter(function(p) { return packageIds.includes(p.id); });
     }
 
-    // Sort by price
-    packages.sort((a, b) => a.price - b.price);
+    packages.sort(function(a, b) { return a.price - b.price; });
 
     return {
-      packages,
-      total.length
+      packages: packages,
+      total: packages.length
     };
   }
 
-  private async bookTest(payload)<any> {
-    const { labId, packageId, testName, patientName, patientContact, date, time } = payload;
+  async bookTest(payload) {
+    var labId = payload.labId;
+    var packageId = payload.packageId;
+    var testName = payload.testName;
+    var patientName = payload.patientName;
+    var patientContact = payload.patientContact;
+    var date = payload.date;
+    var time = payload.time;
 
-    const lab = this.labs.find(l => l.id === labId);
+    var lab = this.labs.find(function(l) { return l.id === labId; });
     if (!lab) {
       throw new Error('Lab not found');
     }
 
-    let testPackage = lab.packages.find(p => p.id === packageId);
-    let selectedTests[] = [];
-    let price = 0;
+    var testPackage = lab.packages.find(function(p) { return p.id === packageId; });
+    var selectedTests = [];
+    var price = 0;
+    var preparation = 'Follow standard preparation guidelines';
 
     if (testPackage) {
       selectedTests = testPackage.tests;
       price = testPackage.price - (testPackage.price * testPackage.discount / 100);
+      preparation = testPackage.preparation;
     } else if (testName) {
       if (lab.tests.includes(testName)) {
         selectedTests = [testName];
-        price = lab.priceRange.min + 500; // Estimate
+        price = lab.priceRange.min + 500;
       } else {
         throw new Error('Test not available at this lab');
       }
@@ -303,81 +323,78 @@ export class DiagnosticsAgent extends BaseAgent {
       throw new Error('Either packageId or testName is required');
     }
 
-    const bookingId = `DIA${Date.now()}`;
+    var bookingId = 'DIA' + Date.now();
 
-    return {
-      bookingId,
+    var result = {
+      bookingId: bookingId,
       lab: {
-        id.id,
-        name.name,
-        address: `${lab.city}, India`
+        id: lab.id,
+        name: lab.name,
+        address: lab.city + ', India'
       },
-      tests,
-      package? {
-        id.id,
-        name.name,
-        discount.discount
-      } ,
-      price,
+      tests: selectedTests,
+      price: price,
       patient: {
-        name,
-        contact},
-      date|| new Date().toISOString().split('T')[0],
-      time|| '9:00 AM',
-      preparation?.preparation || 'Follow standard preparation guidelines',
+        name: patientName,
+        contact: patientContact
+      },
+      date: date || new Date().toISOString().split('T')[0],
+      time: time || '9:00 AM',
+      preparation: preparation,
       status: 'Confirmed',
-      timestampDate().toISOString()
+      timestamp: new Date().toISOString()
     };
+
+    if (testPackage) {
+      result.package = {
+        id: testPackage.id,
+        name: testPackage.name,
+        discount: testPackage.discount
+      };
+    }
+
+    return result;
   }
 
-  private async interpretResults(payload)<any> {
-    const { results } = payload;
+  async interpretResults(payload) {
+    var results = payload.results;
 
-    // Use AI to interpret results
-    const prompt = `
-      Given the following test results:
-      ${JSON.stringify(results)}
-      
-      Please interpret the results and provide:
-      1. Normal vs Abnormal findings
-      2. Possible causes for abnormal results
-      3. Lifestyle recommendations
-      4. What to do next (if further tests needed, consult a doctor, etc.)
-      
-      IMPORTANTrecommend consulting a doctor for abnormal results.
-    `;
+    var prompt = 'Given the following test results:\n' +
+      JSON.stringify(results) + '\n\n' +
+      'Please interpret the results and provide:\n' +
+      '1. Normal vs Abnormal findings\n' +
+      '2. Possible causes for abnormal results\n' +
+      '3. Lifestyle recommendations\n' +
+      '4. What to do next (if further tests needed, consult a doctor, etc.)\n\n' +
+      'IMPORTANT: recommend consulting a doctor for abnormal results.';
 
-    const response = await this.providerManager.generate(prompt);
+    var response = await this.providerManager.generate(prompt);
 
     return {
-      results,
-      interpretation.content,
-      provider.provider,
-      tokensUsed.tokensUsed,
+      results: results,
+      interpretation: response.content,
+      provider: response.provider,
+      tokensUsed: response.tokensUsed,
       disclaimer: 'This interpretation is AI-generated and should not replace professional medical advice. Please consult your doctor.'
     };
   }
 
-  private async handleComplexQuery(task, payload)<any> {
-    const prompt = `
-      Task: ${task}
-      Payload: ${JSON.stringify(payload)}
-      
-      Available labs: ${JSON.stringify(this.labs)}
-      
-      Please analyze the query and provide a recommendation.
-    `;
+  async handleComplexQuery(task, payload) {
+    var prompt = 'Task: ' + task + '\n' +
+      'Payload: ' + JSON.stringify(payload) + '\n\n' +
+      'Available labs: ' + JSON.stringify(this.labs) + '\n\n' +
+      'Please analyze the query and provide a recommendation.';
 
-    const response = await this.providerManager.generate(prompt);
-    
+    var response = await this.providerManager.generate(prompt);
+
     return {
-      aiResponse.content,
-      provider.provider,
-      tokensUsed.tokensUsed
+      aiResponse: response.content,
+      provider: response.provider,
+      tokensUsed: response.tokensUsed
     };
   }
 
-  protected getRequiredCapability(task)| null {
+  getRequiredCapability(task) {
     if (task.includes('find') || task.includes('search') || task.includes('lab')) {
       return 'find_lab';
     }
@@ -394,5 +411,4 @@ export class DiagnosticsAgent extends BaseAgent {
   }
 }
 
-
-
+module.exports = { DiagnosticsAgent };

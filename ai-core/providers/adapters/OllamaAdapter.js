@@ -2,7 +2,7 @@
 
 const { ProviderType, LLMResponse } = require('../ProviderManager');
 
-export class OllamaAdapter {
+class OllamaAdapter {
   private baseUrl;
   private isHealthy= true;
   private lastCheck= new Date();
@@ -69,6 +69,7 @@ export class OllamaAdapter {
     return 450; // Average latency in ms (slower than cloud)
   }
 }
+
 
 
 

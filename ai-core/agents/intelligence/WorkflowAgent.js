@@ -1,65 +1,65 @@
-// D:\hospital backend\ai-core\agents\intelligence\WorkflowAgent.ts
+// D:\hospital backend\ai-core\agents\intelligence\WorkflowAgent.js
 
-const { AgentRole, AgentStatus, AgentRequest, AgentResponse } = require('../../../shared/types/AgentTypes');
+const { AgentRole, AgentStatus } = require('../../../shared/types/AgentTypes');
 const { BaseAgent } = require('../base/BaseAgent');
-const { ProviderManager } = require('../../providers/ProviderManager');
 
-
-
-
-
-export class WorkflowAgent extends BaseAgent {
-  private workflows<string, Workflow> = new Map();
-
+class WorkflowAgent extends BaseAgent {
   constructor(providerManager) {
     super(
       {
         name: 'Workflow Agent',
-        role.WORKFLOW,
+        role: AgentRole.WORKFLOW,
         capabilities: [
           {
             name: 'create_workflow',
             description: 'Create a new workflow from steps',
             priority: 1,
             estimatedLatency: 200,
-            requiresAuth},
+            requiresAuth: true
+          },
           {
             name: 'execute_workflow',
             description: 'Execute an existing workflow',
             priority: 1,
             estimatedLatency: 500,
-            requiresAuth},
+            requiresAuth: true
+          },
           {
             name: 'get_workflow_status',
             description: 'Get workflow execution status',
             priority: 2,
             estimatedLatency: 100,
-            requiresAuth},
+            requiresAuth: true
+          },
           {
             name: 'pause_workflow',
             description: 'Pause a running workflow',
             priority: 2,
             estimatedLatency: 100,
-            requiresAuth}
+            requiresAuth: true
+          }
         ]
       },
       providerManager
     );
+
+    this.workflows = new Map();
   }
 
-  async execute(request)<AgentResponse> {
+  async execute(request) {
     this.setStatus(AgentStatus.BUSY);
     this.setCurrentTask(request.task);
 
     try {
       if (!this.validateRequest(request)) {
-        throw new Error('Invalid requestrequired fields or capabilities');
+        throw new Error('Invalid request: Missing required fields or capabilities');
       }
 
-      const { task, payload } = request;
-      this.log(`Executing task: ${task}`, 'info');
+      var task = request.task;
+      var payload = request.payload;
+      this.log('Executing task: ' + task, 'info');
 
-      let result;
+      var result;
 
       if (task.includes('create')) {
         result = await this.createWorkflow(payload);
@@ -74,68 +74,75 @@ export class WorkflowAgent extends BaseAgent {
       }
 
       this.setStatus(AgentStatus.IDLE);
-      this.setCurrentTask(undefined);
+      this.setCurrentTask(null);
 
       return {
-        success,
-        data,
-        sourceAgent.id,
-        processingTime.now() - new Date().getTime()
+        success: true,
+        data: result,
+        sourceAgent: this.id,
+        processingTime: Date.now() - new Date().getTime()
       };
 
     } catch (error) {
       this.setStatus(AgentStatus.IDLE);
-      this.setCurrentTask(undefined);
+      this.setCurrentTask(null);
       return this.handleError(error, request);
     }
   }
 
-  private async createWorkflow(payload)<any> {
-    const { name, steps, context } = payload;
+  async createWorkflow(payload) {
+    var name = payload.name;
+    var steps = payload.steps;
+    var context = payload.context;
 
     if (!name || !steps || steps.length === 0) {
       throw new Error('Name and steps are required');
     }
 
-    const workflow= {
-      id: `wf${Date.now()}`,
-      name,
-      steps.map((s, index) => ({
-        id: `step${index}`,
-        name.name,
-        type.type || 'Action',
-        action.action,
-        agent.agent,
-        payload.payload || {},
-        nextSteps.nextSteps || [],
+    var mappedSteps = steps.map(function(s, index) {
+      return {
+        id: 'step' + index,
+        name: s.name,
+        type: s.type || 'Action',
+        action: s.action,
+        agent: s.agent,
+        payload: s.payload || {},
+        nextSteps: s.nextSteps || [],
         status: 'Pending'
-      })),
+      };
+    });
+
+    var workflow = {
+      id: 'wf' + Date.now(),
+      name: name,
+      steps: mappedSteps,
       currentStepIndex: 0,
       status: 'Created',
-      context|| {},
-      createdAtDate(),
-      updatedAtDate()
+      context: context || {},
+      createdAt: new Date(),
+      updatedAt: new Date()
     };
 
     this.workflows.set(workflow.id, workflow);
 
     return {
-      workflowId.id,
-      name.name,
-      steps.steps,
-      status.status,
+      workflowId: workflow.id,
+      name: workflow.name,
+      steps: workflow.steps,
+      status: workflow.status,
       message: 'Workflow created successfully'
     };
   }
 
-  private async executeWorkflow(payload)<any> {
-    const { workflowId, stepId } = payload;
+  async executeWorkflow(payload) {
+    var workflowId = payload.workflowId;
+    var stepId = payload.stepId;
 
     if (!workflowId) {
       throw new Error('Workflow ID is required');
     }
 
-    const workflow = this.workflows.get(workflowId);
+    var workflow = this.workflows.get(workflowId);
     if (!workflow) {
       throw new Error('Workflow not found');
     }
@@ -147,31 +154,35 @@ export class WorkflowAgent extends BaseAgent {
     workflow.status = 'Running';
     workflow.updatedAt = new Date();
 
-    // Execute from specific step or from beginning
-    let startIndex = 0;
+    var startIndex = 0;
     if (stepId) {
-      const index = workflow.steps.findIndex(s => s.id === stepId);
-      if (index !== -1) {
-        startIndex = index;
+      var foundIndex = -1;
+      for (var i = 0; i < workflow.steps.length; i++) {
+        if (workflow.steps[i].id === stepId) {
+          foundIndex = i;
+          break;
+        }
+      }
+      if (foundIndex !== -1) {
+        startIndex = foundIndex;
       }
     }
 
     try {
-      for (let i = startIndex; i < workflow.steps.length; i++) {
-        const step = workflow.steps[i];
+      for (var i = startIndex; i < workflow.steps.length; i++) {
+        var step = workflow.steps[i];
         step.status = 'Running';
         step.startedAt = new Date();
 
         try {
-          const result = await this.executeStep(step, workflow.context);
+          var result = await this.executeStep(step, workflow.context);
           step.status = 'Completed';
           step.result = result;
           step.completedAt = new Date();
           workflow.currentStepIndex = i + 1;
 
-          // Update context with result
           if (result) {
-            workflow.context[`step_${step.id}`] = result;
+            workflow.context['step_' + step.id] = result;
           }
 
         } catch (error) {
@@ -180,12 +191,12 @@ export class WorkflowAgent extends BaseAgent {
           step.completedAt = new Date();
           workflow.status = 'Failed';
           workflow.updatedAt = new Date();
-          
+
           return {
-            workflowId,
-            status.status,
-            failedStep,
-            error.message,
+            workflowId: workflowId,
+            status: workflow.status,
+            failedStep: step,
+            error: error.message,
             message: 'Workflow execution failed'
           };
         }
@@ -195,10 +206,10 @@ export class WorkflowAgent extends BaseAgent {
       workflow.updatedAt = new Date();
 
       return {
-        workflowId,
-        status.status,
-        steps.steps,
-        context.context,
+        workflowId: workflowId,
+        status: workflow.status,
+        steps: workflow.steps,
+        context: workflow.context,
         message: 'Workflow completed successfully'
       };
 
@@ -209,105 +220,107 @@ export class WorkflowAgent extends BaseAgent {
     }
   }
 
-  private async executeStep(step, context)<any> {
-    this.log(`Executing step: ${step.name}`, 'info');
+  async executeStep(step, context) {
+    this.log('Executing step: ' + step.name, 'info');
 
-    // Simulate different step types
     switch (step.type) {
-      case 'Action'this.executeActionStep(step, context);
-      case 'Decision'this.executeDecisionStep(step, context);
-      case 'Parallel'this.executeParallelStep(step, context);
-      case 'Join'this.executeJoinStep(step, context);
-      defaultnew Error(`Unknown step type: ${step.type}`);
+      case 'Action':
+        return this.executeActionStep(step, context);
+      case 'Decision':
+        return this.executeDecisionStep(step, context);
+      case 'Parallel':
+        return this.executeParallelStep(step, context);
+      case 'Join':
+        return this.executeJoinStep(step, context);
+      default:
+        throw new Error('Unknown step type: ' + step.type);
     }
   }
 
-  private async executeActionStep(step, context)<any> {
-    // Simulate action execution
-    await new Promise(resolve => setTimeout(resolve, 500));
+  async executeActionStep(step, context) {
+    await new Promise(function(resolve) { setTimeout(resolve, 500); });
 
     return {
-      action.action || 'default_action',
+      action: step.action || 'default_action',
       status: 'success',
-      timestampDate().toISOString(),
+      timestamp: new Date().toISOString(),
       data: {
-        message: `Action ${step.action || 'default'} executed successfully`,
-        context
+        message: 'Action ' + (step.action || 'default') + ' executed successfully',
+        context: context
       }
     };
   }
 
-  private async executeDecisionStep(step, context)<any> {
-    // Simulate decision logic
-    const decision = Math.random() > 0.5 ? 'approved' : 'pending';
+  async executeDecisionStep(step, context) {
+    var decision = Math.random() > 0.5 ? 'approved' : 'pending';
 
     return {
-      decision,
-      timestampDate().toISOString(),
-      nextStep=== 'approved' ? 'proceed' : 'review'
+      decision: decision,
+      timestamp: new Date().toISOString(),
+      nextStep: decision === 'approved' ? 'proceed' : 'review'
     };
   }
 
-  private async executeParallelStep(step, context)<any> {
-    // Simulate parallel execution
-    const tasks = step.payload?.tasks || ['task1', 'task2', 'task3'];
-    const results = await Promise.all(
-      tasks.map(async (task) => {
-        await new Promise(resolve => setTimeout(resolve, 300));
-        return { task, status: 'completed' };
-      })
-    );
+  async executeParallelStep(step, context) {
+    var tasks = (step.payload && step.payload.tasks) || ['task1', 'task2', 'task3'];
+    var results = [];
+
+    for (var i = 0; i < tasks.length; i++) {
+      await new Promise(function(resolve) { setTimeout(resolve, 300); });
+      results.push({ task: tasks[i], status: 'completed' });
+    }
 
     return {
-      parallelResults,
-      timestampDate().toISOString()
+      parallelResults: results,
+      timestamp: new Date().toISOString()
     };
   }
 
-  private async executeJoinStep(step, context)<any> {
+  async executeJoinStep(step, context) {
     return {
-      join,
-      timestampDate().toISOString(),
+      join: true,
+      timestamp: new Date().toISOString(),
       message: 'All parallel tasks completed'
     };
   }
 
-  private async getWorkflowStatus(payload)<any> {
-    const { workflowId } = payload;
+  async getWorkflowStatus(payload) {
+    var workflowId = payload.workflowId;
 
     if (!workflowId) {
+      var allWorkflows = Array.from(this.workflows.values());
       return {
-        workflows.from(this.workflows.values()),
-        total.workflows.size
+        workflows: allWorkflows,
+        total: this.workflows.size
       };
     }
 
-    const workflow = this.workflows.get(workflowId);
+    var workflow = this.workflows.get(workflowId);
     if (!workflow) {
       throw new Error('Workflow not found');
     }
 
     return {
-      workflowId.id,
-      name.name,
-      status.status,
-      currentStepIndex.currentStepIndex,
-      totalSteps.steps.length,
-      steps.steps,
-      context.context,
-      createdAt.createdAt,
-      updatedAt.updatedAt
+      workflowId: workflow.id,
+      name: workflow.name,
+      status: workflow.status,
+      currentStepIndex: workflow.currentStepIndex,
+      totalSteps: workflow.steps.length,
+      steps: workflow.steps,
+      context: workflow.context,
+      createdAt: workflow.createdAt,
+      updatedAt: workflow.updatedAt
     };
   }
 
-  private async pauseWorkflow(payload)<any> {
-    const { workflowId } = payload;
+  async pauseWorkflow(payload) {
+    var workflowId = payload.workflowId;
 
     if (!workflowId) {
       throw new Error('Workflow ID is required');
     }
 
-    const workflow = this.workflows.get(workflowId);
+    var workflow = this.workflows.get(workflowId);
     if (!workflow) {
       throw new Error('Workflow not found');
     }
@@ -320,32 +333,28 @@ export class WorkflowAgent extends BaseAgent {
     workflow.updatedAt = new Date();
 
     return {
-      workflowId,
-      status.status,
+      workflowId: workflowId,
+      status: workflow.status,
       message: 'Workflow paused successfully'
     };
   }
 
-  private async handleComplexQuery(task, payload)<any> {
-    const prompt = `
-      Task: ${task}
-      Payload: ${JSON.stringify(payload)}
-      
-      Workflows: ${JSON.stringify(Array.from(this.workflows.entries()))}
-      
-      Please analyze the query and provide a recommendation.
-    `;
+  async handleComplexQuery(task, payload) {
+    var prompt = 'Task: ' + task + '\n' +
+      'Payload: ' + JSON.stringify(payload) + '\n\n' +
+      'Workflows: ' + JSON.stringify(Array.from(this.workflows.entries())) + '\n\n' +
+      'Please analyze the query and provide a recommendation.';
 
-    const response = await this.providerManager.generate(prompt);
-    
+    var response = await this.providerManager.generate(prompt);
+
     return {
-      aiResponse.content,
-      provider.provider,
-      tokensUsed.tokensUsed
+      aiResponse: response.content,
+      provider: response.provider,
+      tokensUsed: response.tokensUsed
     };
   }
 
-  protected getRequiredCapability(task)| null {
+  getRequiredCapability(task) {
     if (task.includes('create')) {
       return 'create_workflow';
     }
@@ -362,5 +371,4 @@ export class WorkflowAgent extends BaseAgent {
   }
 }
 
-
-
+module.exports = { WorkflowAgent };

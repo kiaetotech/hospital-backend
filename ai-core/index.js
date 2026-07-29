@@ -1,51 +1,69 @@
-// D:\hospital backend\ai-core\index.ts
+// D:\hospital backend\ai-core\index.js
 
-module.exports = {  AIRouter  }; from './router/AIRouter';
-module.exports = {  Orchestrator  }; from './router/Orchestrator';
-module.exports = {  CapabilityRegistry  }; from './router/CapabilityRegistry';
+const { AIRouter } = require('./router/AIRouter.js');
+const { Orchestrator } = require('./router/Orchestrator.js');
+const { CapabilityRegistry } = require('./router/CapabilityRegistry.js');
+const { ProviderManager } = require('./providers/ProviderManager.js');
+const { BaseAgent } = require('./agents/base/BaseAgent.js');
+const { HospitalAgent } = require('./agents/business/HospitalAgent.js');
+const { DoctorAgent } = require('./agents/business/DoctorAgent.js');
+const { DiagnosticsAgent } = require('./agents/business/DiagnosticsAgent.js');
+const { AmbulanceAgent } = require('./agents/business/AmbulanceAgent.js');
+const { InsuranceAgent } = require('./agents/business/InsuranceAgent.js');
+const { CaregiverAgent } = require('./agents/business/CaregiverAgent.js');
+const { WellnessAgent } = require('./agents/business/WellnessAgent.js');
+const { FinanceAgent } = require('./agents/operations/FinanceAgent.js');
+const { CRMAgent } = require('./agents/operations/CRMAgent.js');
+const { MarketingAgent } = require('./agents/operations/MarketingAgent.js');
+const { SupportAgent } = require('./agents/operations/SupportAgent.js');
+const { AnalyticsAgent } = require('./agents/operations/AnalyticsAgent.js');
+const { CorporateHealthAgent } = require('./agents/operations/CorporateHealthAgent.js');
+const { SearchIntelligenceAgent } = require('./agents/intelligence/SearchIntelligenceAgent.js');
+const { RecommendationAgent } = require('./agents/intelligence/RecommendationAgent.js');
+const { WorkflowAgent } = require('./agents/intelligence/WorkflowAgent.js');
+const { MemoryAgent } = require('./agents/intelligence/MemoryAgent.js');
+const { NotificationAgent } = require('./agents/intelligence/NotificationAgent.js');
+const { CEOAgent } = require('./agents/executive/CEOAgent.js');
+const { StrategyAgent } = require('./agents/executive/StrategyAgent.js');
+const { MonitoringAggregationService } = require('./monitoring/MonitoringAggregationService.js');
+const { HealthManager } = require('./monitoring/HealthManager.js');
+const { BudgetManager } = require('./monitoring/BudgetManager.js');
+const { QueueManager } = require('./monitoring/QueueManager.js');
+const { CircuitBreaker } = require('./recovery/CircuitBreaker.js');
+const { RetryPolicy } = require('./recovery/RetryPolicy.js');
+const { FallbackHandler } = require('./recovery/FallbackHandler.js');
 
-module.exports = {  ProviderManager  }; from './providers/ProviderManager';
-
-module.exports = {  BaseAgent  }; from './agents/base/BaseAgent';
-
-// Business Agents
-module.exports = {  HospitalAgent  }; from './agents/business/HospitalAgent';
-module.exports = {  DoctorAgent  }; from './agents/business/DoctorAgent';
-module.exports = {  DiagnosticsAgent  }; from './agents/business/DiagnosticsAgent';
-module.exports = {  AmbulanceAgent  }; from './agents/business/AmbulanceAgent';
-module.exports = {  InsuranceAgent  }; from './agents/business/InsuranceAgent';
-module.exports = {  PharmacyAgent  }; from './agents/business/PharmacyAgent';
-module.exports = {  CaregiverAgent  }; from './agents/business/CaregiverAgent';
-module.exports = {  WellnessAgent  }; from './agents/business/WellnessAgent';
-
-// Operations Agents
-module.exports = {  FinanceAgent  }; from './agents/operations/FinanceAgent';
-module.exports = {  CRMAgent  }; from './agents/operations/CRMAgent';
-module.exports = {  MarketingAgent  }; from './agents/operations/MarketingAgent';
-module.exports = {  SupportAgent  }; from './agents/operations/SupportAgent';
-module.exports = {  AnalyticsAgent  }; from './agents/operations/AnalyticsAgent';
-
-// Intelligence Agents
-module.exports = {  SearchIntelligenceAgent  }; from './agents/intelligence/SearchIntelligenceAgent';
-module.exports = {  RecommendationAgent  }; from './agents/intelligence/RecommendationAgent';
-module.exports = {  WorkflowAgent  }; from './agents/intelligence/WorkflowAgent';
-module.exports = {  MemoryAgent  }; from './agents/intelligence/MemoryAgent';
-module.exports = {  NotificationAgent  }; from './agents/intelligence/NotificationAgent';
-
-// Executive Agents
-module.exports = {  CEOAgent  }; from './agents/executive/CEOAgent';
-module.exports = {  StrategyAgent  }; from './agents/executive/StrategyAgent';
-
-// Monitoring
-module.exports = {  MonitoringAggregationService  }; from './monitoring/MonitoringAggregationService';
-module.exports = {  HealthManager  }; from './monitoring/HealthManager';
-module.exports = {  BudgetManager  }; from './monitoring/BudgetManager';
-module.exports = {  QueueManager  }; from './monitoring/QueueManager';
-
-// Recovery
-module.exports = {  CircuitBreaker  }; from './recovery/CircuitBreaker';
-module.exports = {  RetryPolicy  }; from './recovery/RetryPolicy';
-module.exports = {  FallbackHandler  }; from './recovery/FallbackHandler';
-
-
-
+module.exports = {
+    AIRouter,
+    Orchestrator,
+    CapabilityRegistry,
+    ProviderManager,
+    BaseAgent,
+    HospitalAgent,
+    DoctorAgent,
+    DiagnosticsAgent,
+    AmbulanceAgent,
+    InsuranceAgent,
+    CaregiverAgent,
+    WellnessAgent,
+    FinanceAgent,
+    CRMAgent,
+    MarketingAgent,
+    SupportAgent,
+    AnalyticsAgent,
+    CorporateHealthAgent,
+    SearchIntelligenceAgent,
+    RecommendationAgent,
+    WorkflowAgent,
+    MemoryAgent,
+    NotificationAgent,
+    CEOAgent,
+    StrategyAgent,
+    MonitoringAggregationService,
+    HealthManager,
+    BudgetManager,
+    QueueManager,
+    CircuitBreaker,
+    RetryPolicy,
+    FallbackHandler
+};

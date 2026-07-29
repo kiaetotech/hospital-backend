@@ -1,52 +1,10 @@
-// D:\hospital backend\ai-core\agents\operations\SupportAgent.ts
+// D:\hospital backend\ai-core\agents\operations\SupportAgent.js
 
-import { AgentRole, AgentStatus, AgentRequest, AgentResponse } from '../../../shared/types/AgentTypes';
-import { BaseAgent } from '../base/BaseAgent';
-import { ProviderManager } from '../../providers/ProviderManager';
+const { AgentRole, AgentStatus } = require('../../../shared/types/AgentTypes');
+const { BaseAgent } = require('../base/BaseAgent');
 
-interface Ticket {
-  id: string;
-  userId: string;
-  subject: string;
-  description: string;
-  category: 'Booking' | 'Payment' | 'Doctor' | 'Hospital' | 'Insurance' | 'Technical' | 'General';
-  priority: 'Low' | 'Medium' | 'High' | 'Urgent';
-  status: 'Open' | 'InProgress' | 'Resolved' | 'Closed';
-  assignedTo: string;
-  createdAt: Date;
-  updatedAt: Date;
-  resolvedAt?: Date;
-  satisfactionScore?: number;
-}
-
-interface FAQ {
-  id: string;
-  question: string;
-  answer: string;
-  category: string;
-  tags: string[];
-  helpfulCount: number;
-  notHelpfulCount: number;
-  createdAt: Date;
-  updatedAt: Date;
-}
-
-interface ChatMessage {
-  id: string;
-  userId: string;
-  sessionId: string;
-  message: string;
-  isBot: boolean;
-  confidence?: number;
-  createdAt: Date;
-}
-
-export class SupportAgent extends BaseAgent {
-  private tickets: Ticket[] = [];
-  private faqs: FAQ[] = [];
-  private chatSessions: Map<string, ChatMessage[]> = new Map();
-
-  constructor(providerManager: ProviderManager) {
+class SupportAgent extends BaseAgent {
+  constructor(providerManager) {
     super(
       {
         name: 'Support Agent',
@@ -85,10 +43,13 @@ export class SupportAgent extends BaseAgent {
       providerManager
     );
 
+    this.tickets = [];
+    this.faqs = [];
+    this.chatSessions = new Map();
     this.initializeData();
   }
 
-  private initializeData(): void {
+  initializeData() {
     this.tickets = [
       {
         id: 't1',
@@ -153,7 +114,7 @@ export class SupportAgent extends BaseAgent {
     ];
   }
 
-  async execute(request: AgentRequest): Promise<AgentResponse> {
+  async execute(request) {
     this.setStatus(AgentStatus.BUSY);
     this.setCurrentTask(request.task);
 
@@ -162,10 +123,11 @@ export class SupportAgent extends BaseAgent {
         throw new Error('Invalid request: Missing required fields or capabilities');
       }
 
-      const { task, payload } = request;
-      this.log(`Executing task: ${task}`, 'info');
+      var task = request.task;
+      var payload = request.payload;
+      this.log('Executing task: ' + task, 'info');
 
-      let result: any;
+      var result;
 
       if (task.includes('classify') || task.includes('ticket')) {
         result = await this.classifyTicket(payload);
@@ -180,7 +142,7 @@ export class SupportAgent extends BaseAgent {
       }
 
       this.setStatus(AgentStatus.IDLE);
-      this.setCurrentTask(undefined);
+      this.setCurrentTask(null);
 
       return {
         success: true,
@@ -191,38 +153,35 @@ export class SupportAgent extends BaseAgent {
 
     } catch (error) {
       this.setStatus(AgentStatus.IDLE);
-      this.setCurrentTask(undefined);
+      this.setCurrentTask(null);
       return this.handleError(error, request);
     }
   }
 
-  private async classifyTicket(payload: any): Promise<any> {
-    const { subject, description } = payload;
+  async classifyTicket(payload) {
+    var subject = payload.subject;
+    var description = payload.description;
 
     if (!subject || !description) {
       throw new Error('Subject and description are required');
     }
 
-    // Use AI to classify
-    const prompt = `
-      Classify this support ticket:
-      Subject: ${subject}
-      Description: ${description}
-      
-      Provide:
-      1. Category (Booking/Payment/Doctor/Hospital/Insurance/Technical/General)
-      2. Priority (Low/Medium/High/Urgent)
-      3. Suggested department
-      4. Keywords
-    `;
+    var prompt = 'Classify this support ticket:\n' +
+      'Subject: ' + subject + '\n' +
+      'Description: ' + description + '\n\n' +
+      'Provide:\n' +
+      '1. Category (Booking/Payment/Doctor/Hospital/Insurance/Technical/General)\n' +
+      '2. Priority (Low/Medium/High/Urgent)\n' +
+      '3. Suggested department\n' +
+      '4. Keywords';
 
-    const response = await this.providerManager.generate(prompt);
+    var response = await this.providerManager.generate(prompt);
 
-    const ticket: Ticket = {
-      id: `t${Date.now()}`,
+    var ticket = {
+      id: 't' + Date.now(),
       userId: payload.userId || 'unknown',
-      subject,
-      description,
+      subject: subject,
+      description: description,
       category: 'General',
       priority: 'Medium',
       status: 'Open',
@@ -234,7 +193,7 @@ export class SupportAgent extends BaseAgent {
     this.tickets.push(ticket);
 
     return {
-      ticket,
+      ticket: ticket,
       classification: response.content,
       provider: response.provider,
       tokensUsed: response.tokensUsed,
@@ -242,19 +201,19 @@ export class SupportAgent extends BaseAgent {
     };
   }
 
-  private async answerFAQ(payload: any): Promise<any> {
-    const { question } = payload;
+  async answerFAQ(payload) {
+    var question = payload.question;
 
     if (!question) {
       throw new Error('Question is required');
     }
 
-    // Search for matching FAQ
-    let bestMatch: FAQ | null = null;
-    let bestScore = 0;
+    var bestMatch = null;
+    var bestScore = 0;
 
-    for (const faq of this.faqs) {
-      const score = this.calculateFAQMatch(question, faq);
+    for (var i = 0; i < this.faqs.length; i++) {
+      var faq = this.faqs[i];
+      var score = this.calculateFAQMatch(question, faq);
       if (score > bestScore) {
         bestScore = score;
         bestMatch = faq;
@@ -270,14 +229,10 @@ export class SupportAgent extends BaseAgent {
       };
     }
 
-    // If no FAQ matches, use AI
-    const prompt = `
-      Question: ${question}
-      
-      Provide a helpful answer. If you're not sure, suggest reaching out to support.
-    `;
+    var prompt = 'Question: ' + question + '\n\n' +
+      'Provide a helpful answer. If you\'re not sure, suggest reaching out to support.';
 
-    const response = await this.providerManager.generate(prompt);
+    var response = await this.providerManager.generate(prompt);
 
     return {
       answer: response.content,
@@ -288,23 +243,20 @@ export class SupportAgent extends BaseAgent {
     };
   }
 
-  private calculateFAQMatch(question: string, faq: FAQ): number {
-    let score = 0;
-    const qLower = question.toLowerCase();
+  calculateFAQMatch(question, faq) {
+    var score = 0;
+    var qLower = question.toLowerCase();
 
-    // Check question match
     if (faq.question.toLowerCase().includes(qLower) || qLower.includes(faq.question.toLowerCase())) {
       score += 40;
     }
 
-    // Check tag match
-    for (const tag of faq.tags) {
-      if (qLower.includes(tag.toLowerCase())) {
+    for (var i = 0; i < faq.tags.length; i++) {
+      if (qLower.includes(faq.tags[i].toLowerCase())) {
         score += 10;
       }
     }
 
-    // Check category match
     if (qLower.includes(faq.category.toLowerCase())) {
       score += 20;
     }
@@ -312,21 +264,22 @@ export class SupportAgent extends BaseAgent {
     return Math.min(score, 100);
   }
 
-  private async chatSupport(payload: any): Promise<any> {
-    const { userId, sessionId, message } = payload;
+  async chatSupport(payload) {
+    var userId = payload.userId;
+    var sessionId = payload.sessionId;
+    var message = payload.message;
 
     if (!userId || !message) {
       throw new Error('User ID and message are required');
     }
 
-    const sessionKey = sessionId || userId;
-    
-    // Store user message
-    const userMessage: ChatMessage = {
-      id: `msg${Date.now()}`,
-      userId,
+    var sessionKey = sessionId || userId;
+
+    var userMessage = {
+      id: 'msg' + Date.now(),
+      userId: userId,
       sessionId: sessionKey,
-      message,
+      message: message,
       isBot: false,
       createdAt: new Date()
     };
@@ -334,24 +287,21 @@ export class SupportAgent extends BaseAgent {
     if (!this.chatSessions.has(sessionKey)) {
       this.chatSessions.set(sessionKey, []);
     }
-    this.chatSessions.get(sessionKey)!.push(userMessage);
+    this.chatSessions.get(sessionKey).push(userMessage);
 
-    // Generate bot response
-    const isGreeting = message.toLowerCase().includes('hello') || message.toLowerCase().includes('hi');
-    
-    let botResponse: string;
+    var isGreeting = message.toLowerCase().includes('hello') || message.toLowerCase().includes('hi');
+    var botResponse;
 
     if (isGreeting) {
       botResponse = 'Hello! I\'m your support assistant. How can I help you today? 😊';
     } else {
-      // Try FAQ first
-      const faqResult = await this.answerFAQ({ question: message });
+      var faqResult = await this.answerFAQ({ question: message });
       botResponse = faqResult.answer;
     }
 
-    const botMessage: ChatMessage = {
-      id: `msg${Date.now() + 1}`,
-      userId,
+    var botMessage = {
+      id: 'msg' + (Date.now() + 1),
+      userId: userId,
       sessionId: sessionKey,
       message: botResponse,
       isBot: true,
@@ -359,7 +309,7 @@ export class SupportAgent extends BaseAgent {
       createdAt: new Date()
     };
 
-    this.chatSessions.get(sessionKey)!.push(botMessage);
+    this.chatSessions.get(sessionKey).push(botMessage);
 
     return {
       response: botResponse,
@@ -369,16 +319,15 @@ export class SupportAgent extends BaseAgent {
     };
   }
 
-  private async routeTicket(payload: any): Promise<any> {
-    const { ticketId } = payload;
+  async routeTicket(payload) {
+    var ticketId = payload.ticketId;
 
-    const ticket = this.tickets.find(t => t.id === ticketId);
+    var ticket = this.tickets.find(function(t) { return t.id === ticketId; });
     if (!ticket) {
       throw new Error('Ticket not found');
     }
 
-    // Routing logic based on category
-    const routingMap: Record<string, string> = {
+    var routingMap = {
       'Booking': 'Operations Team',
       'Payment': 'Finance Team',
       'Doctor': 'Doctor Coordination Team',
@@ -388,21 +337,21 @@ export class SupportAgent extends BaseAgent {
       'General': 'Support Team'
     };
 
-    const assignedTeam = routingMap[ticket.category] || 'Support Team';
+    var assignedTeam = routingMap[ticket.category] || 'Support Team';
     ticket.assignedTo = assignedTeam;
     ticket.status = 'InProgress';
     ticket.updatedAt = new Date();
 
     return {
-      ticket,
-      assignedTeam,
-      message: `Ticket routed to ${assignedTeam}`,
+      ticket: ticket,
+      assignedTeam: assignedTeam,
+      message: 'Ticket routed to ' + assignedTeam,
       estimatedResponseTime: this.getEstimatedResponseTime(ticket.priority)
     };
   }
 
-  private getEstimatedResponseTime(priority: string): string {
-    const times: Record<string, string> = {
+  getEstimatedResponseTime(priority) {
+    var times = {
       'Urgent': 'Within 2 hours',
       'High': 'Within 4 hours',
       'Medium': 'Within 12 hours',
@@ -411,20 +360,16 @@ export class SupportAgent extends BaseAgent {
     return times[priority] || 'Within 24 hours';
   }
 
-  private async handleComplexQuery(task: string, payload: any): Promise<any> {
-    const prompt = `
-      Task: ${task}
-      Payload: ${JSON.stringify(payload)}
-      
-      Support Data:
-      Tickets: ${JSON.stringify(this.tickets)}
-      FAQs: ${JSON.stringify(this.faqs)}
-      
-      Please analyze the query and provide a recommendation.
-    `;
+  async handleComplexQuery(task, payload) {
+    var prompt = 'Task: ' + task + '\n' +
+      'Payload: ' + JSON.stringify(payload) + '\n\n' +
+      'Support Data:\n' +
+      'Tickets: ' + JSON.stringify(this.tickets) + '\n' +
+      'FAQs: ' + JSON.stringify(this.faqs) + '\n\n' +
+      'Please analyze the query and provide a recommendation.';
 
-    const response = await this.providerManager.generate(prompt);
-    
+    var response = await this.providerManager.generate(prompt);
+
     return {
       aiResponse: response.content,
       provider: response.provider,
@@ -432,7 +377,7 @@ export class SupportAgent extends BaseAgent {
     };
   }
 
-  protected getRequiredCapability(task: string): string | null {
+  getRequiredCapability(task) {
     if (task.includes('classify') || task.includes('ticket')) {
       return 'classify_ticket';
     }
@@ -448,3 +393,5 @@ export class SupportAgent extends BaseAgent {
     return null;
   }
 }
+
+module.exports = { SupportAgent };

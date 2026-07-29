@@ -2,7 +2,7 @@
 
 const { ProviderType, LLMResponse } = require('../ProviderManager');
 
-export class GroqAdapter {
+class GroqAdapter {
   private apiKey;
   private baseUrl= 'https://api.groq.com/openai/v1';
   private quotaRemaining= 14500; // Groq free tier: 14,500 requests/day
@@ -80,6 +80,7 @@ export class GroqAdapter {
     return 120; // Average latency in ms
   }
 }
+
 
 
 

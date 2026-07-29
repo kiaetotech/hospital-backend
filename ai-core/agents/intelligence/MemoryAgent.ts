@@ -1,39 +1,10 @@
-// D:\hospital backend\ai-core\agents\intelligence\MemoryAgent.ts
+// D:\hospital backend\ai-core\agents\intelligence\MemoryAgent.js
 
-import { AgentRole, AgentStatus, AgentRequest, AgentResponse } from '../../../shared/types/AgentTypes';
-import { BaseAgent } from '../base/BaseAgent';
-import { ProviderManager } from '../../providers/ProviderManager';
+const { AgentRole, AgentStatus } = require('../../../shared/types/AgentTypes');
+const { BaseAgent } = require('../base/BaseAgent');
 
-interface MemoryEntry {
-  id: string;
-  userId: string;
-  type: 'Preference' | 'Search' | 'Booking' | 'Interaction' | 'Feedback';
-  key: string;
-  value: any;
-  context: Record<string, any>;
-  importance: number;
-  timestamp: Date;
-  expiresAt?: Date;
-}
-
-interface ConversationMemory {
-  sessionId: string;
-  userId: string;
-  messages: {
-    role: 'user' | 'assistant' | 'system';
-    content: string;
-    timestamp: Date;
-  }[];
-  context: Record<string, any>;
-  lastUpdated: Date;
-}
-
-export class MemoryAgent extends BaseAgent {
-  private memories: Map<string, MemoryEntry[]> = new Map();
-  private conversations: Map<string, ConversationMemory> = new Map();
-  private preferences: Map<string, Record<string, any>> = new Map();
-
-  constructor(providerManager: ProviderManager) {
+class MemoryAgent extends BaseAgent {
+  constructor(providerManager) {
     super(
       {
         name: 'Memory Agent',
@@ -72,12 +43,14 @@ export class MemoryAgent extends BaseAgent {
       providerManager
     );
 
+    this.memories = new Map();
+    this.conversations = new Map();
+    this.preferences = new Map();
     this.initializeData();
   }
 
-  private initializeData(): void {
-    // Initialize with sample data
-    const samplePreferences: Record<string, any> = {
+  initializeData() {
+    var samplePreferences = {
       language: 'English',
       city: 'Mumbai',
       notifications: true,
@@ -86,7 +59,7 @@ export class MemoryAgent extends BaseAgent {
     this.preferences.set('user1', samplePreferences);
   }
 
-  async execute(request: AgentRequest): Promise<AgentResponse> {
+  async execute(request) {
     this.setStatus(AgentStatus.BUSY);
     this.setCurrentTask(request.task);
 
@@ -95,10 +68,11 @@ export class MemoryAgent extends BaseAgent {
         throw new Error('Invalid request: Missing required fields or capabilities');
       }
 
-      const { task, payload } = request;
-      this.log(`Executing task: ${task}`, 'info');
+      var task = request.task;
+      var payload = request.payload;
+      this.log('Executing task: ' + task, 'info');
 
-      let result: any;
+      var result;
 
       if (task.includes('store')) {
         result = await this.storeMemory(payload);
@@ -113,7 +87,7 @@ export class MemoryAgent extends BaseAgent {
       }
 
       this.setStatus(AgentStatus.IDLE);
-      this.setCurrentTask(undefined);
+      this.setCurrentTask(null);
 
       return {
         success: true,
@@ -124,124 +98,138 @@ export class MemoryAgent extends BaseAgent {
 
     } catch (error) {
       this.setStatus(AgentStatus.IDLE);
-      this.setCurrentTask(undefined);
+      this.setCurrentTask(null);
       return this.handleError(error, request);
     }
   }
 
-  private async storeMemory(payload: any): Promise<any> {
-    const { userId, type, key, value, context, importance = 50 } = payload;
+  async storeMemory(payload) {
+    var userId = payload.userId;
+    var type = payload.type;
+    var key = payload.key;
+    var value = payload.value;
+    var context = payload.context;
+    var importance = payload.importance || 50;
 
     if (!userId || !type || !key) {
       throw new Error('UserId, type, and key are required');
     }
 
-    const entry: MemoryEntry = {
-      id: `mem${Date.now()}`,
-      userId,
-      type,
-      key,
-      value,
+    var entry = {
+      id: 'mem' + Date.now(),
+      userId: userId,
+      type: type,
+      key: key,
+      value: value,
       context: context || {},
-      importance,
+      importance: importance,
       timestamp: new Date()
     };
 
     if (!this.memories.has(userId)) {
       this.memories.set(userId, []);
     }
-    this.memories.get(userId)!.push(entry);
+    this.memories.get(userId).push(entry);
 
-    // Update preferences if applicable
     if (type === 'Preference') {
       if (!this.preferences.has(userId)) {
         this.preferences.set(userId, {});
       }
-      this.preferences.get(userId)![key] = value;
+      this.preferences.get(userId)[key] = value;
     }
 
     return {
       memoryId: entry.id,
-      userId,
-      type,
-      key,
+      userId: userId,
+      type: type,
+      key: key,
       stored: true,
       timestamp: new Date().toISOString()
     };
   }
 
-  private async retrieveMemory(payload: any): Promise<any> {
-    const { userId, key, type, limit = 10, minImportance = 0 } = payload;
+  async retrieveMemory(payload) {
+    var userId = payload.userId;
+    var key = payload.key;
+    var type = payload.type;
+    var limit = payload.limit || 10;
+    var minImportance = payload.minImportance || 0;
 
     if (!userId) {
       throw new Error('UserId is required');
     }
 
-    const userMemories = this.memories.get(userId) || [];
-    let results = userMemories;
+    var userMemories = this.memories.get(userId) || [];
+    var results = userMemories.slice();
 
     if (key) {
-      results = results.filter(m => m.key === key);
+      results = results.filter(function(m) { return m.key === key; });
     }
 
     if (type) {
-      results = results.filter(m => m.type === type);
+      results = results.filter(function(m) { return m.type === type; });
     }
 
     if (minImportance) {
-      results = results.filter(m => m.importance >= minImportance);
+      results = results.filter(function(m) { return m.importance >= minImportance; });
     }
 
-    // Sort by importance and recency
-    results.sort((a, b) => {
-      const importanceDiff = b.importance - a.importance;
+    results.sort(function(a, b) {
+      var importanceDiff = b.importance - a.importance;
       if (importanceDiff !== 0) return importanceDiff;
       return b.timestamp.getTime() - a.timestamp.getTime();
     });
 
-    // Get user preferences
-    const preferences = this.preferences.get(userId) || {};
+    var preferences = this.preferences.get(userId) || {};
 
     return {
       memories: results.slice(0, limit),
-      preferences,
+      preferences: preferences,
       total: results.length,
-      userId,
+      userId: userId,
       timestamp: new Date().toISOString()
     };
   }
 
-  private async handleConversationMemory(payload: any): Promise<any> {
-    const { action, userId, sessionId, message, role = 'user', context } = payload;
+  async handleConversationMemory(payload) {
+    var action = payload.action;
+    var userId = payload.userId;
+    var sessionId = payload.sessionId;
+    var message = payload.message;
+    var role = payload.role || 'user';
+    var context = payload.context;
 
     if (!userId) {
       throw new Error('UserId is required');
     }
 
-    const sessionKey = sessionId || userId;
+    var sessionKey = sessionId || userId;
 
     if (action === 'add') {
-      // Add message to conversation
       if (!this.conversations.has(sessionKey)) {
         this.conversations.set(sessionKey, {
           sessionId: sessionKey,
-          userId,
+          userId: userId,
           messages: [],
           context: context || {},
           lastUpdated: new Date()
         });
       }
 
-      const conversation = this.conversations.get(sessionKey)!;
+      var conversation = this.conversations.get(sessionKey);
       conversation.messages.push({
-        role,
+        role: role,
         content: message,
         timestamp: new Date()
       });
       conversation.lastUpdated = new Date();
 
       if (context) {
-        conversation.context = { ...conversation.context, ...context };
+        var existingContext = conversation.context;
+        var contextKeys = Object.keys(context);
+        for (var i = 0; i < contextKeys.length; i++) {
+          existingContext[contextKeys[i]] = context[contextKeys[i]];
+        }
       }
 
       return {
@@ -252,8 +240,8 @@ export class MemoryAgent extends BaseAgent {
       };
 
     } else if (action === 'get') {
-      const conversation = this.conversations.get(sessionKey);
-      if (!conversation) {
+      var conv = this.conversations.get(sessionKey);
+      if (!conv) {
         return {
           sessionId: sessionKey,
           messages: [],
@@ -264,10 +252,10 @@ export class MemoryAgent extends BaseAgent {
 
       return {
         sessionId: sessionKey,
-        messages: conversation.messages,
-        context: conversation.context,
-        messageCount: conversation.messages.length,
-        lastUpdated: conversation.lastUpdated
+        messages: conv.messages,
+        context: conv.context,
+        messageCount: conv.messages.length,
+        lastUpdated: conv.lastUpdated
       };
 
     } else if (action === 'clear') {
@@ -282,66 +270,62 @@ export class MemoryAgent extends BaseAgent {
     throw new Error('Invalid conversation action');
   }
 
-  private async forgetMemory(payload: any): Promise<any> {
-    const { userId, memoryId, type, olderThan } = payload;
+  async forgetMemory(payload) {
+    var userId = payload.userId;
+    var memoryId = payload.memoryId;
+    var type = payload.type;
+    var olderThan = payload.olderThan;
 
     if (!userId) {
       throw new Error('UserId is required');
     }
 
-    const userMemories = this.memories.get(userId) || [];
-    let removed = 0;
+    var userMemories = this.memories.get(userId) || [];
+    var removed = 0;
 
     if (memoryId) {
-      // Remove specific memory
-      const index = userMemories.findIndex(m => m.id === memoryId);
+      var index = -1;
+      for (var i = 0; i < userMemories.length; i++) {
+        if (userMemories[i].id === memoryId) {
+          index = i;
+          break;
+        }
+      }
       if (index !== -1) {
         userMemories.splice(index, 1);
         removed = 1;
       }
     } else if (type) {
-      // Remove by type
-      const originalLength = userMemories.length;
-      this.memories.set(
-        userId,
-        userMemories.filter(m => m.type !== type)
-      );
-      removed = originalLength - userMemories.length;
+      var originalLength = userMemories.length;
+      this.memories.set(userId, userMemories.filter(function(m) { return m.type !== type; }));
+      removed = originalLength - (this.memories.get(userId) || []).length;
     } else if (olderThan) {
-      // Remove memories older than specified date
-      const date = new Date(olderThan);
-      const originalLength = userMemories.length;
-      this.memories.set(
-        userId,
-        userMemories.filter(m => m.timestamp > date)
-      );
-      removed = originalLength - userMemories.length;
+      var date = new Date(olderThan);
+      var origLen = userMemories.length;
+      this.memories.set(userId, userMemories.filter(function(m) { return m.timestamp > date; }));
+      removed = origLen - (this.memories.get(userId) || []).length;
     } else {
       throw new Error('Either memoryId, type, or olderThan is required');
     }
 
     return {
-      userId,
-      removed,
+      userId: userId,
+      removed: removed,
       remaining: (this.memories.get(userId) || []).length,
       timestamp: new Date().toISOString()
     };
   }
 
-  private async handleComplexQuery(task: string, payload: any): Promise<any> {
-    const prompt = `
-      Task: ${task}
-      Payload: ${JSON.stringify(payload)}
-      
-      Memories: ${JSON.stringify(Array.from(this.memories.entries()))}
-      Conversations: ${JSON.stringify(Array.from(this.conversations.entries()))}
-      Preferences: ${JSON.stringify(Array.from(this.preferences.entries()))}
-      
-      Please analyze the query and provide a recommendation.
-    `;
+  async handleComplexQuery(task, payload) {
+    var prompt = 'Task: ' + task + '\n' +
+      'Payload: ' + JSON.stringify(payload) + '\n\n' +
+      'Memories: ' + JSON.stringify(Array.from(this.memories.entries())) + '\n' +
+      'Conversations: ' + JSON.stringify(Array.from(this.conversations.entries())) + '\n' +
+      'Preferences: ' + JSON.stringify(Array.from(this.preferences.entries())) + '\n\n' +
+      'Please analyze the query and provide a recommendation.';
 
-    const response = await this.providerManager.generate(prompt);
-    
+    var response = await this.providerManager.generate(prompt);
+
     return {
       aiResponse: response.content,
       provider: response.provider,
@@ -349,7 +333,7 @@ export class MemoryAgent extends BaseAgent {
     };
   }
 
-  protected getRequiredCapability(task: string): string | null {
+  getRequiredCapability(task) {
     if (task.includes('store')) {
       return 'store_memory';
     }
@@ -365,3 +349,5 @@ export class MemoryAgent extends BaseAgent {
     return null;
   }
 }
+
+module.exports = { MemoryAgent };

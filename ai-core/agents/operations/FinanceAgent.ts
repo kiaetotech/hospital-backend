@@ -1,55 +1,10 @@
-// D:\hospital backend\ai-core\agents\operations\FinanceAgent.ts
+// D:\hospital backend\ai-core\agents\operations\FinanceAgent.js
 
-import { AgentRole, AgentStatus, AgentRequest, AgentResponse } from '../../../shared/types/AgentTypes';
-import { BaseAgent } from '../base/BaseAgent';
-import { ProviderManager } from '../../providers/ProviderManager';
+const { AgentRole, AgentStatus } = require('../../../shared/types/AgentTypes');
+const { BaseAgent } = require('../base/BaseAgent');
 
-interface EMIPartner {
-  id: string;
-  name: string;
-  type: 'Bank' | 'NBFC' | 'Fintech';
-  logo: string;
-  rating: number;
-  plans: EMIPlan[];
-  eligibility: {
-    minCreditScore: number;
-    minIncome: number;
-    ageRange: { min: number; max: number };
-    requiredDocuments: string[];
-  };
-  processingTime: string;
-}
-
-interface EMIPlan {
-  name: string;
-  type: '0% EMI' | 'Low Interest' | 'No Cost EMI';
-  minAmount: number;
-  maxAmount: number;
-  tenures: number[];
-  interestRate: number;
-  processingFee: number;
-  applicableOn: string[];
-}
-
-interface LoanApplication {
-  id: string;
-  userId: string;
-  partnerId: string;
-  amount: number;
-  tenure: number;
-  purpose: string;
-  status: 'Pending' | 'Approved' | 'Rejected' | 'Disbursed' | 'Completed';
-  emiAmount: number;
-  totalAmount: number;
-  createdAt: Date;
-  updatedAt: Date;
-}
-
-export class FinanceAgent extends BaseAgent {
-  private partners: EMIPartner[] = [];
-  private applications: Map<string, LoanApplication> = new Map();
-
-  constructor(providerManager: ProviderManager) {
+class FinanceAgent extends BaseAgent {
+  constructor(providerManager) {
     super(
       {
         name: 'Finance Agent',
@@ -88,10 +43,12 @@ export class FinanceAgent extends BaseAgent {
       providerManager
     );
 
+    this.partners = [];
+    this.applications = new Map();
     this.initializePartners();
   }
 
-  private initializePartners(): void {
+  initializePartners() {
     this.partners = [
       {
         id: 'emi1',
@@ -266,7 +223,7 @@ export class FinanceAgent extends BaseAgent {
     ];
   }
 
-  async execute(request: AgentRequest): Promise<AgentResponse> {
+  async execute(request) {
     this.setStatus(AgentStatus.BUSY);
     this.setCurrentTask(request.task);
 
@@ -275,10 +232,11 @@ export class FinanceAgent extends BaseAgent {
         throw new Error('Invalid request: Missing required fields or capabilities');
       }
 
-      const { task, payload } = request;
-      this.log(`Executing task: ${task}`, 'info');
+      var task = request.task;
+      var payload = request.payload;
+      this.log('Executing task: ' + task, 'info');
 
-      let result: any;
+      var result;
 
       if (task.includes('calculate') || task.includes('emi')) {
         result = await this.calculateEMI(payload);
@@ -293,7 +251,7 @@ export class FinanceAgent extends BaseAgent {
       }
 
       this.setStatus(AgentStatus.IDLE);
-      this.setCurrentTask(undefined);
+      this.setCurrentTask(null);
 
       return {
         success: true,
@@ -304,42 +262,46 @@ export class FinanceAgent extends BaseAgent {
 
     } catch (error) {
       this.setStatus(AgentStatus.IDLE);
-      this.setCurrentTask(undefined);
+      this.setCurrentTask(null);
       return this.handleError(error, request);
     }
   }
 
-  private async calculateEMI(payload: any): Promise<any> {
-    const { amount, tenure, partnerId } = payload;
+  async calculateEMI(payload) {
+    var amount = payload.amount;
+    var tenure = payload.tenure;
+    var partnerId = payload.partnerId;
 
     if (!amount || !tenure) {
       throw new Error('Amount and tenure are required');
     }
 
-    let targetPartners = this.partners;
+    var targetPartners = this.partners;
     if (partnerId) {
-      targetPartners = this.partners.filter(p => p.id === partnerId);
+      targetPartners = this.partners.filter(function(p) { return p.id === partnerId; });
     }
 
-    const quotes: any[] = [];
+    var quotes = [];
 
-    for (const partner of targetPartners) {
-      for (const plan of partner.plans) {
+    for (var i = 0; i < targetPartners.length; i++) {
+      var partner = targetPartners[i];
+      for (var j = 0; j < partner.plans.length; j++) {
+        var plan = partner.plans[j];
         if (amount < plan.minAmount || amount > plan.maxAmount) continue;
         if (!plan.tenures.includes(tenure)) continue;
 
-        const totalInterest = amount * (plan.interestRate / 100) * (tenure / 12);
-        const processingFee = plan.processingFee;
-        const totalAmount = amount + totalInterest + processingFee;
-        const monthlyPayment = totalAmount / tenure;
+        var totalInterest = amount * (plan.interestRate / 100) * (tenure / 12);
+        var processingFee = plan.processingFee;
+        var totalAmount = amount + totalInterest + processingFee;
+        var monthlyPayment = totalAmount / tenure;
 
         quotes.push({
-          amount,
-          tenure,
+          amount: amount,
+          tenure: tenure,
           interestRate: plan.interestRate,
-          processingFee,
-          totalInterest,
-          totalAmount,
+          processingFee: processingFee,
+          totalInterest: totalInterest,
+          totalAmount: totalAmount,
           monthlyPayment: Math.round(monthlyPayment * 100) / 100,
           partner: partner.name,
           planType: plan.type
@@ -347,87 +309,113 @@ export class FinanceAgent extends BaseAgent {
       }
     }
 
-    quotes.sort((a, b) => a.totalAmount - b.totalAmount);
+    quotes.sort(function(a, b) { return a.totalAmount - b.totalAmount; });
 
     return {
-      quotes,
+      quotes: quotes,
       summary: {
         bestDeal: quotes[0] || null,
         totalOptions: quotes.length,
-        amount,
-        tenure
+        amount: amount,
+        tenure: tenure
       }
     };
   }
 
-  private async comparePartners(payload: any): Promise<any> {
-    const { amount, tenure, planType } = payload;
+  async comparePartners(payload) {
+    var amount = payload.amount;
+    var tenure = payload.tenure;
+    var planType = payload.planType;
 
-    let results = this.partners.map(partner => {
-      const availablePlans = partner.plans.filter(plan => {
-        const amountCheck = amount >= plan.minAmount && amount <= plan.maxAmount;
-        const tenureCheck = plan.tenures.includes(tenure);
-        const typeCheck = planType ? plan.type === planType : true;
+    var results = this.partners.map(function(partner) {
+      var availablePlans = partner.plans.filter(function(plan) {
+        var amountCheck = amount >= plan.minAmount && amount <= plan.maxAmount;
+        var tenureCheck = plan.tenures.includes(tenure);
+        var typeCheck = planType ? plan.type === planType : true;
         return amountCheck && tenureCheck && typeCheck;
       });
 
+      var mappedPlans = availablePlans.map(function(plan) {
+        var totalPayment = amount + (amount * plan.interestRate / 100) * (tenure / 12) + plan.processingFee;
+        var monthlyPayment = totalPayment / tenure;
+        return {
+          name: plan.name,
+          type: plan.type,
+          minAmount: plan.minAmount,
+          maxAmount: plan.maxAmount,
+          tenures: plan.tenures,
+          interestRate: plan.interestRate,
+          processingFee: plan.processingFee,
+          applicableOn: plan.applicableOn,
+          monthlyPayment: Math.round(monthlyPayment * 100) / 100,
+          totalPayment: Math.round(totalPayment * 100) / 100
+        };
+      });
+
       return {
-        ...partner,
-        availablePlans: availablePlans.map(plan => ({
-          ...plan,
-          monthlyPayment: Math.round(((amount + (amount * plan.interestRate / 100) * (tenure / 12) + plan.processingFee) / tenure) * 100) / 100,
-          totalPayment: Math.round((amount + (amount * plan.interestRate / 100) * (tenure / 12) + plan.processingFee) * 100) / 100
-        }))
+        id: partner.id,
+        name: partner.name,
+        type: partner.type,
+        logo: partner.logo,
+        rating: partner.rating,
+        eligibility: partner.eligibility,
+        processingTime: partner.processingTime,
+        availablePlans: mappedPlans
       };
     });
 
-    results = results.filter(p => p.availablePlans.length > 0);
+    results = results.filter(function(p) { return p.availablePlans.length > 0; });
 
     return {
       partners: results,
       totalPartners: results.length,
-      query: { amount, tenure, planType }
+      query: { amount: amount, tenure: tenure, planType: planType }
     };
   }
 
-  private async applyLoan(payload: any): Promise<any> {
-    const { userId, partnerId, amount, tenure, purpose, userDetails } = payload;
+  async applyLoan(payload) {
+    var userId = payload.userId;
+    var partnerId = payload.partnerId;
+    var amount = payload.amount;
+    var tenure = payload.tenure;
+    var purpose = payload.purpose;
+    var userDetails = payload.userDetails;
 
     if (!userId || !partnerId || !amount || !tenure) {
       throw new Error('User ID, Partner ID, Amount, and Tenure are required');
     }
 
-    const partner = this.partners.find(p => p.id === partnerId);
+    var partner = this.partners.find(function(p) { return p.id === partnerId; });
     if (!partner) {
       throw new Error('Partner not found');
     }
 
-    const quoteResult = await this.calculateEMI({ amount, tenure, partnerId });
-    const bestQuote = quoteResult.quotes[0];
+    var quoteResult = await this.calculateEMI({ amount: amount, tenure: tenure, partnerId: partnerId });
+    var bestQuote = quoteResult.quotes[0];
 
     if (!bestQuote) {
       throw new Error('No suitable plan found for the given amount and tenure');
     }
 
-    const eligibility = await this.checkEligibility({
-      userId,
-      partnerId,
-      amount,
-      userDetails
+    var eligibility = await this.checkEligibility({
+      userId: userId,
+      partnerId: partnerId,
+      amount: amount,
+      userDetails: userDetails
     });
 
     if (!eligibility.eligible) {
-      throw new Error(`Not eligible: ${eligibility.reason}`);
+      throw new Error('Not eligible: ' + eligibility.reason);
     }
 
-    const applicationId = `LN${Date.now()}`;
+    var applicationId = 'LN' + Date.now();
 
-    const application: LoanApplication = {
+    var application = {
       id: applicationId,
-      userId,
-      partnerId,
-      amount,
-      tenure,
+      userId: userId,
+      partnerId: partnerId,
+      amount: amount,
+      tenure: tenure,
       purpose: purpose || 'Medical Expenses',
       status: 'Pending',
       emiAmount: bestQuote.monthlyPayment,
@@ -439,7 +427,7 @@ export class FinanceAgent extends BaseAgent {
     this.applications.set(applicationId, application);
 
     return {
-      applicationId,
+      applicationId: applicationId,
       partner: {
         name: partner.name,
         type: partner.type
@@ -451,8 +439,8 @@ export class FinanceAgent extends BaseAgent {
         monthlyPayment: bestQuote.monthlyPayment,
         totalAmount: bestQuote.totalAmount
       },
-      amount,
-      tenure,
+      amount: amount,
+      tenure: tenure,
       purpose: purpose || 'Medical Expenses',
       status: 'Pending',
       nextSteps: [
@@ -464,45 +452,48 @@ export class FinanceAgent extends BaseAgent {
     };
   }
 
-  private async checkEligibility(payload: any): Promise<any> {
-    const { userId, partnerId, amount, userDetails } = payload;
+  async checkEligibility(payload) {
+    var userId = payload.userId;
+    var partnerId = payload.partnerId;
+    var amount = payload.amount;
+    var userDetails = payload.userDetails;
 
     if (partnerId) {
-      const partner = this.partners.find(p => p.id === partnerId);
+      var partner = this.partners.find(function(p) { return p.id === partnerId; });
       if (!partner) {
         throw new Error('Partner not found');
       }
 
-      const eligibility = partner.eligibility;
-      let eligible = true;
-      let reason = '';
+      var eligibility = partner.eligibility;
+      var eligible = true;
+      var reason = '';
 
       if (!userDetails) {
         eligible = false;
         reason = 'User details required';
       } else {
-        const creditScore = userDetails.creditScore || 700;
+        var creditScore = userDetails.creditScore || 700;
         if (creditScore < eligibility.minCreditScore) {
           eligible = false;
-          reason = `Credit score ${creditScore} is below minimum ${eligibility.minCreditScore}`;
+          reason = 'Credit score ' + creditScore + ' is below minimum ' + eligibility.minCreditScore;
         }
 
-        const income = userDetails.monthlyIncome || 25000;
+        var income = userDetails.monthlyIncome || 25000;
         if (income < eligibility.minIncome) {
           eligible = false;
-          reason = `Income ${income} is below minimum ${eligibility.minIncome}`;
+          reason = 'Income ' + income + ' is below minimum ' + eligibility.minIncome;
         }
 
-        const age = userDetails.age || 30;
+        var age = userDetails.age || 30;
         if (age < eligibility.ageRange.min || age > eligibility.ageRange.max) {
           eligible = false;
-          reason = `Age ${age} is outside range ${eligibility.ageRange.min}-${eligibility.ageRange.max}`;
+          reason = 'Age ' + age + ' is outside range ' + eligibility.ageRange.min + '-' + eligibility.ageRange.max;
         }
       }
 
       return {
-        eligible,
-        reason,
+        eligible: eligible,
+        reason: reason,
         partner: {
           name: partner.name,
           requiredDocuments: eligibility.requiredDocuments,
@@ -511,48 +502,44 @@ export class FinanceAgent extends BaseAgent {
       };
     }
 
-    const results = this.partners.map(partner => {
-      const eligibility = partner.eligibility;
-      let eligible = true;
-      let reason = '';
+    var results = this.partners.map(function(p) {
+      var elig = p.eligibility;
+      var isEligible = true;
+      var reasonText = '';
 
       if (userDetails) {
-        const creditScore = userDetails.creditScore || 700;
-        if (creditScore < eligibility.minCreditScore) {
-          eligible = false;
-          reason = `Credit score ${creditScore} below ${eligibility.minCreditScore}`;
+        var cs = userDetails.creditScore || 700;
+        if (cs < elig.minCreditScore) {
+          isEligible = false;
+          reasonText = 'Credit score ' + cs + ' below ' + elig.minCreditScore;
         }
       }
 
       return {
-        partner: partner.name,
-        type: partner.type,
-        eligible,
-        reason,
-        processingTime: partner.processingTime,
-        requiredDocuments: eligibility.requiredDocuments
+        partner: p.name,
+        type: p.type,
+        eligible: isEligible,
+        reason: reasonText,
+        processingTime: p.processingTime,
+        requiredDocuments: elig.requiredDocuments
       };
     });
 
     return {
       allPartners: results,
-      eligiblePartners: results.filter(r => r.eligible),
-      totalEligible: results.filter(r => r.eligible).length
+      eligiblePartners: results.filter(function(r) { return r.eligible; }),
+      totalEligible: results.filter(function(r) { return r.eligible; }).length
     };
   }
 
-  private async handleComplexQuery(task: string, payload: any): Promise<any> {
-    const prompt = `
-      Task: ${task}
-      Payload: ${JSON.stringify(payload)}
-      
-      Available EMI Partners: ${JSON.stringify(this.partners)}
-      
-      Please analyze the query and provide a recommendation.
-    `;
+  async handleComplexQuery(task, payload) {
+    var prompt = 'Task: ' + task + '\n' +
+      'Payload: ' + JSON.stringify(payload) + '\n\n' +
+      'Available EMI Partners: ' + JSON.stringify(this.partners) + '\n\n' +
+      'Please analyze the query and provide a recommendation.';
 
-    const response = await this.providerManager.generate(prompt);
-    
+    var response = await this.providerManager.generate(prompt);
+
     return {
       aiResponse: response.content,
       provider: response.provider,
@@ -560,7 +547,7 @@ export class FinanceAgent extends BaseAgent {
     };
   }
 
-  protected getRequiredCapability(task: string): string | null {
+  getRequiredCapability(task) {
     if (task.includes('calculate') || task.includes('emi')) {
       return 'calculate_emi';
     }
@@ -576,3 +563,5 @@ export class FinanceAgent extends BaseAgent {
     return null;
   }
 }
+
+module.exports = { FinanceAgent };

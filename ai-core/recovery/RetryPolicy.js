@@ -1,24 +1,13 @@
-// D:\hospital backend\ai-core\recovery\RetryPolicy.ts
+// D:\hospital backend\ai-core\recovery\RetryPolicy.js
 
-export 
-
-export 
-
-export 
-
-export class RetryPolicy {
-  private config;
-  private attemptCount= 0;
-  private errors[] = [];
-
+class RetryPolicy {
   constructor(config) {
     this.config = config;
+    this.attemptCount = 0;
+    this.errors = [];
   }
 
-  /**
-   * Execute a function with retry logic
-   */
-  async execute<T>(fn: () => Promise<T>)<T> {
+  async execute(fn) {
     this.attemptCount = 0;
     this.errors = [];
 
@@ -28,16 +17,14 @@ export class RetryPolicy {
         this.onSuccess();
         return result;
       } catch (error) {
-        const err = error as Error;
+        const err = error;
         this.errors.push(err);
 
-        // Check if we should retry
         if (!this.shouldRetry(err)) {
           this.onFailure(err);
           throw err;
         }
 
-        // Check if max attempts reached
         if (this.attemptCount >= this.config.maxAttempts - 1) {
           const finalError = new Error(
             `Max retry attempts (${this.config.maxAttempts}) exceeded. Last error: ${err.message}`
@@ -47,11 +34,8 @@ export class RetryPolicy {
           throw finalError;
         }
 
-        // Calculate delay
         const delay = this.calculateDelay();
         this.onRetry(delay, err);
-
-        // Wait before next attempt
         await this.sleep(delay);
       }
     }
@@ -59,53 +43,45 @@ export class RetryPolicy {
     throw new Error('Retry policy execution completed without result');
   }
 
-  /**
-   * Calculate delay based on backoff strategy
-   */
-  private calculateDelay(){
+  calculateDelay() {
     const attempt = this.attemptCount + 1;
     let delay;
 
     switch (this.config.backoffStrategy) {
-      case 'fixed'= this.config.initialDelay;
+      case 'fixed':
+        delay = this.config.initialDelay;
         break;
 
-      case 'exponential'= this.config.initialDelay * Math.pow(2, attempt - 1);
+      case 'exponential':
+        delay = this.config.initialDelay * Math.pow(2, attempt - 1);
         break;
 
-      case 'linear'= this.config.initialDelay * attempt;
+      case 'linear':
+        delay = this.config.initialDelay * attempt;
         break;
 
-      case 'jitter'baseDelay = this.config.initialDelay * Math.pow(2, attempt - 1);
+      case 'jitter':
+        const baseDelay = this.config.initialDelay * Math.pow(2, attempt - 1);
         const jitter = baseDelay * 0.2 * (Math.random() - 0.5);
         delay = baseDelay + jitter;
         break;
 
-      default= this.config.initialDelay;
+      default:
+        delay = this.config.initialDelay;
     }
 
-    // Cap at maxDelay
     return Math.min(delay, this.config.maxDelay);
   }
 
-  /**
-   * Check if we should retry based on error
-   */
-  private shouldRetry(error){
+  shouldRetry(error) {
     return this.config.retryOn(error);
   }
 
-  /**
-   * Sleep for the specified duration
-   */
-  private sleep(ms)<void> {
+  sleep(ms) {
     return new Promise(resolve => setTimeout(resolve, ms));
   }
 
-  /**
-   * Called on retry attempt
-   */
-  private onRetry(delay, error){
+  onRetry(delay, error) {
     this.attemptCount++;
     if (this.config.onRetry) {
       this.config.onRetry(this.attemptCount, delay, error);
@@ -113,65 +89,42 @@ export class RetryPolicy {
     console.log(`🔄 Retry attempt ${this.attemptCount}/${this.config.maxAttempts} after ${delay}ms`);
   }
 
-  /**
-   * Called on success
-   */
-  private onSuccess(){
+  onSuccess() {
     if (this.config.onSuccess) {
       this.config.onSuccess(this.attemptCount);
     }
     console.log(`✅ Operation succeeded after ${this.attemptCount} attempts`);
   }
 
-  /**
-   * Called on final failure
-   */
-  private onFailure(error){
+  onFailure(error) {
     if (this.config.onFailure) {
       this.config.onFailure(error, this.attemptCount);
     }
     console.error(`❌ Operation failed after ${this.attemptCount} attempts: ${error.message}`);
   }
 
-  /**
-   * Get retry statistics
-   */
-  getStats(): {
-    attempts;
-    errors[];
-    successRate;
-  } {
+  getStats() {
     return {
-      attempts.attemptCount,
-      errors.errors,
-      successRate.errors.length === 0 ? 100 : (this.attemptCount - this.errors.length) / this.attemptCount * 100
+      attempts: this.attemptCount,
+      errors: this.errors,
+      successRate: this.errors.length === 0 ? 100 : (this.attemptCount - this.errors.length) / this.attemptCount * 100
     };
   }
 
-  /**
-   * Reset retry state
-   */
-  reset(){
+  reset() {
     this.attemptCount = 0;
     this.errors = [];
   }
 }
 
-/**
- * Predefined retry policies
- */
-export class RetryPolicies {
-  /**
-   * Default retry policy - exponential backoff
-   */
-  static default(){
+class RetryPolicies {
+  static default() {
     return new RetryPolicy({
       maxAttempts: 3,
       initialDelay: 1000,
       backoffStrategy: 'exponential',
       maxDelay: 30000,
       retryOn: (error) => {
-        // Retry on network errors and 5xx status codes
         const isNetworkError = error.message.includes('network') ||
                                error.message.includes('timeout') ||
                                error.message.includes('ECONNREFUSED') ||
@@ -185,42 +138,29 @@ export class RetryPolicies {
     });
   }
 
-  /**
-   * Aggressive retry policy - for critical operations
-   */
-  static aggressive(){
+  static aggressive() {
     return new RetryPolicy({
       maxAttempts: 5,
       initialDelay: 500,
       backoffStrategy: 'exponential',
       maxDelay: 60000,
-      retryOn: (error) => {
-        // Retry on almost any error
-        return true;
-      }
+      retryOn: () => true
     });
   }
 
-  /**
-   * Conservative retry policy - for non-critical operations
-   */
-  static conservative(){
+  static conservative() {
     return new RetryPolicy({
       maxAttempts: 2,
       initialDelay: 2000,
       backoffStrategy: 'fixed',
       maxDelay: 10000,
       retryOn: (error) => {
-        // Retry only on timeout errors
         return error.message.includes('timeout') || error.message.includes('ECONNREFUSED');
       }
     });
   }
 
-  /**
-   * No retry policy
-   */
-  static none(){
+  static none() {
     return new RetryPolicy({
       maxAttempts: 1,
       initialDelay: 0,
@@ -230,43 +170,29 @@ export class RetryPolicies {
     });
   }
 
-  /**
-   * Custom retry policy with options
-   */
-  static custom(options){
+  static custom(options) {
     return new RetryPolicy({
-      maxAttempts.attempts || 3,
-      initialDelay.initialDelay || 1000,
-      backoffStrategy.backoff || 'exponential',
-      maxDelay.maxDelay || 30000,
-      retryOn.retryOn || ((error) => {
+      maxAttempts: options.attempts || 3,
+      initialDelay: options.initialDelay || 1000,
+      backoffStrategy: options.backoff || 'exponential',
+      maxDelay: options.maxDelay || 30000,
+      retryOn: options.retryOn || ((error) => {
         return error.message.includes('timeout') || error.message.includes('network');
       })
     });
   }
 }
 
-/**
- * Retryable function wrapper
- */
-export async function withRetry<T>(
-  fn: () => Promise<T>,
-  policy?)<T> {
+async function withRetry(fn, policy) {
   const retryPolicy = policy || RetryPolicies.default();
   return await retryPolicy.execute(fn);
 }
 
-/**
- * Retry decorator for class methods
- */
-export function Retryable(policy?) {
-  return function (
-    target,
-    propertyKey,
-    descriptor) {
+function Retryable(policy) {
+  return function (target, propertyKey, descriptor) {
     const originalMethod = descriptor.value;
 
-    descriptor.value = async function (...args[]) {
+    descriptor.value = async function (...args) {
       const retryPolicy = policy || RetryPolicies.default();
       return await retryPolicy.execute(() => originalMethod.apply(this, args));
     };
@@ -275,5 +201,9 @@ export function Retryable(policy?) {
   };
 }
 
-
-
+module.exports = {
+  RetryPolicy,
+  RetryPolicies,
+  withRetry,
+  Retryable
+};

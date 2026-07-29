@@ -1,62 +1,10 @@
-// D:\hospital backend\ai-core\agents\operations\CorporateHealthAgent.ts
+// D:\hospital backend\ai-core\agents\operations\CorporateHealthAgent.js
 
-import { AgentRole, AgentStatus, AgentRequest, AgentResponse } from '../../../shared/types/AgentTypes';
-import { BaseAgent } from '../base/BaseAgent';
-import { ProviderManager } from '../../providers/ProviderManager';
+const { AgentRole, AgentStatus } = require('../../../shared/types/AgentTypes');
+const { BaseAgent } = require('../base/BaseAgent');
 
-interface CorporatePlan {
-  id: string;
-  name: string;
-  provider: string;
-  type: 'Comprehensive' | 'Basic' | 'Custom' | 'Enterprise';
-  coverage: {
-    hospitalCoverage: boolean;
-    doctorConsultation: boolean;
-    diagnosticTests: boolean;
-    wellnessPrograms: boolean;
-    mentalHealth: boolean;
-    dental: boolean;
-    vision: boolean;
-    maternity: boolean;
-    emergency: boolean;
-  };
-  pricing: {
-    perEmployeeAnnual: number;
-    perEmployeeMonthly: number;
-    minEmployees: number;
-    maxEmployees: number;
-  };
-  network: {
-    hospitals: number;
-    doctors: number;
-    labs: number;
-    wellnessCenters: number;
-  };
-  features: string[];
-  insurancePartner: string;
-}
-
-interface CompanyEnrollment {
-  id: string;
-  companyName: string;
-  employeeCount: number;
-  planId: string;
-  planName: string;
-  contactPerson: string;
-  contactEmail: string;
-  contactPhone: string;
-  status: 'Pending' | 'Approved' | 'Active' | 'Suspended' | 'Completed';
-  totalAnnualCost: number;
-  totalMonthlyCost: number;
-  enrolledAt: Date;
-  expiresAt: Date;
-}
-
-export class CorporateHealthAgent extends BaseAgent {
-  private corporatePlans: CorporatePlan[] = [];
-  private enrollments: CompanyEnrollment[] = [];
-
-  constructor(providerManager: ProviderManager) {
+class CorporateHealthAgent extends BaseAgent {
+  constructor(providerManager) {
     super(
       {
         name: 'Corporate Health Agent',
@@ -95,10 +43,12 @@ export class CorporateHealthAgent extends BaseAgent {
       providerManager
     );
 
+    this.corporatePlans = [];
+    this.enrollments = [];
     this.initializeCorporatePlans();
   }
 
-  private initializeCorporatePlans(): void {
+  initializeCorporatePlans() {
     this.corporatePlans = [
       {
         id: 'cp1',
@@ -289,7 +239,7 @@ export class CorporateHealthAgent extends BaseAgent {
     ];
   }
 
-  async execute(request: AgentRequest): Promise<AgentResponse> {
+  async execute(request) {
     this.setStatus(AgentStatus.BUSY);
     this.setCurrentTask(request.task);
 
@@ -298,10 +248,11 @@ export class CorporateHealthAgent extends BaseAgent {
         throw new Error('Invalid request: Missing required fields or capabilities');
       }
 
-      const { task, payload } = request;
-      this.log(`Executing task: ${task}`, 'info');
+      var task = request.task;
+      var payload = request.payload;
+      this.log('Executing task: ' + task, 'info');
 
-      let result: any;
+      var result;
 
       if (task.includes('get') || task.includes('list')) {
         result = await this.getCorporatePlans(payload);
@@ -316,7 +267,7 @@ export class CorporateHealthAgent extends BaseAgent {
       }
 
       this.setStatus(AgentStatus.IDLE);
-      this.setCurrentTask(undefined);
+      this.setCurrentTask(null);
 
       return {
         success: true,
@@ -327,121 +278,137 @@ export class CorporateHealthAgent extends BaseAgent {
 
     } catch (error) {
       this.setStatus(AgentStatus.IDLE);
-      this.setCurrentTask(undefined);
+      this.setCurrentTask(null);
       return this.handleError(error, request);
     }
   }
 
-  private async getCorporatePlans(payload: any): Promise<any> {
-    const { type, minEmployees, maxBudget } = payload;
+  async getCorporatePlans(payload) {
+    var type = payload.type;
+    var minEmployees = payload.minEmployees;
+    var maxBudget = payload.maxBudget;
 
-    let results = this.corporatePlans;
+    var results = this.corporatePlans.slice();
 
     if (type) {
-      results = results.filter(p => p.type === type);
+      results = results.filter(function(p) { return p.type === type; });
     }
 
     if (minEmployees) {
-      results = results.filter(p => p.pricing.minEmployees <= minEmployees);
+      results = results.filter(function(p) { return p.pricing.minEmployees <= minEmployees; });
     }
 
     if (maxBudget) {
-      results = results.filter(p => p.pricing.perEmployeeAnnual <= maxBudget);
+      results = results.filter(function(p) { return p.pricing.perEmployeeAnnual <= maxBudget; });
     }
 
     return {
       plans: results,
       total: results.length,
-      query: { type, minEmployees, maxBudget },
-      recommendation: results.length > 0 ? `Recommended: ${results[0].name}` : 'No matching plans found'
+      query: { type: type, minEmployees: minEmployees, maxBudget: maxBudget },
+      recommendation: results.length > 0 ? 'Recommended: ' + results[0].name : 'No matching plans found'
     };
   }
 
-  private async comparePlans(payload: any): Promise<any> {
-    const { planIds } = payload;
+  async comparePlans(payload) {
+    var planIds = payload.planIds;
 
-    let selectedPlans = this.corporatePlans;
+    var selectedPlans = this.corporatePlans;
     if (planIds && planIds.length > 0) {
-      selectedPlans = this.corporatePlans.filter(p => planIds.includes(p.id));
+      selectedPlans = this.corporatePlans.filter(function(p) { return planIds.includes(p.id); });
     }
 
-    const comparison = selectedPlans.map(plan => ({
-      name: plan.name,
-      provider: plan.provider,
-      type: plan.type,
-      perEmployeeCost: `₹${plan.pricing.perEmployeeAnnual}`,
-      minEmployees: plan.pricing.minEmployees,
-      coverage: Object.entries(plan.coverage)
-        .filter(([_, covered]) => covered)
-        .map(([key]) => key)
-        .join(', '),
-      network: {
-        hospitals: plan.network.hospitals,
-        doctors: plan.network.doctors,
-        labs: plan.network.labs
-      },
-      features: plan.features.slice(0, 3).join(', '),
-      insurancePartner: plan.insurancePartner
-    }));
+    var comparison = selectedPlans.map(function(plan) {
+      var coverageEntries = Object.entries(plan.coverage);
+      var coveredItems = [];
+      for (var i = 0; i < coverageEntries.length; i++) {
+        if (coverageEntries[i][1]) {
+          coveredItems.push(coverageEntries[i][0]);
+        }
+      }
+
+      return {
+        name: plan.name,
+        provider: plan.provider,
+        type: plan.type,
+        perEmployeeCost: '₹' + plan.pricing.perEmployeeAnnual,
+        minEmployees: plan.pricing.minEmployees,
+        coverage: coveredItems.join(', '),
+        network: {
+          hospitals: plan.network.hospitals,
+          doctors: plan.network.doctors,
+          labs: plan.network.labs
+        },
+        features: plan.features.slice(0, 3).join(', '),
+        insurancePartner: plan.insurancePartner
+      };
+    });
+
+    var bestValue = comparison.reduce(function(a, b) {
+      var aCost = parseInt(a.perEmployeeCost.replace('₹', ''));
+      var bCost = parseInt(b.perEmployeeCost.replace('₹', ''));
+      return aCost < bCost ? a : b;
+    }, comparison[0]);
 
     return {
-      comparison,
+      comparison: comparison,
       totalPlans: comparison.length,
-      bestValue: comparison.reduce((a, b) => {
-        const aCost = parseInt(a.perEmployeeCost.replace('₹', ''));
-        const bCost = parseInt(b.perEmployeeCost.replace('₹', ''));
-        return aCost < bCost ? a : b;
-      }, comparison[0])
+      bestValue: bestValue
     };
   }
 
-  private async enrollEmployees(payload: any): Promise<any> {
-    const { companyName, employeeCount, planId, contactPerson, contactEmail, contactPhone, planType } = payload;
+  async enrollEmployees(payload) {
+    var companyName = payload.companyName;
+    var employeeCount = payload.employeeCount;
+    var planId = payload.planId;
+    var contactPerson = payload.contactPerson;
+    var contactEmail = payload.contactEmail;
+    var contactPhone = payload.contactPhone;
+    var planType = payload.planType;
 
     if (!companyName || !employeeCount || !planId) {
       throw new Error('Company name, employee count, and plan ID are required');
     }
 
-    const plan = this.corporatePlans.find(p => p.id === planId);
+    var plan = this.corporatePlans.find(function(p) { return p.id === planId; });
     if (!plan) {
       throw new Error('Plan not found');
     }
 
     if (employeeCount < plan.pricing.minEmployees) {
-      throw new Error(`Minimum ${plan.pricing.minEmployees} employees required for this plan`);
+      throw new Error('Minimum ' + plan.pricing.minEmployees + ' employees required for this plan');
     }
 
-    const totalAnnualCost = employeeCount * plan.pricing.perEmployeeAnnual;
-    const totalMonthlyCost = employeeCount * plan.pricing.perEmployeeMonthly;
+    var totalAnnualCost = employeeCount * plan.pricing.perEmployeeAnnual;
+    var totalMonthlyCost = employeeCount * plan.pricing.perEmployeeMonthly;
+    var enrollmentId = 'ENR' + Date.now();
 
-    const enrollmentId = `ENR${Date.now()}`;
-
-    const enrollment: CompanyEnrollment = {
+    var enrollment = {
       id: enrollmentId,
-      companyName,
-      employeeCount,
+      companyName: companyName,
+      employeeCount: employeeCount,
       planId: plan.id,
       planName: plan.name,
-      contactPerson,
-      contactEmail,
-      contactPhone,
+      contactPerson: contactPerson,
+      contactEmail: contactEmail,
+      contactPhone: contactPhone,
       status: 'Pending',
-      totalAnnualCost,
-      totalMonthlyCost,
+      totalAnnualCost: totalAnnualCost,
+      totalMonthlyCost: totalMonthlyCost,
       enrolledAt: new Date(),
-      expiresAt: new Date(Date.now() + 365 * 24 * 60 * 60 * 1000) // 1 year
+      expiresAt: new Date(Date.now() + 365 * 24 * 60 * 60 * 1000)
     };
 
     this.enrollments.push(enrollment);
 
     return {
-      enrollmentId,
+      enrollmentId: enrollmentId,
       company: {
         name: companyName,
-        employeeCount,
-        contactPerson,
-        contactEmail,
-        contactPhone
+        employeeCount: employeeCount,
+        contactPerson: contactPerson,
+        contactEmail: contactEmail,
+        contactPhone: contactPhone
       },
       plan: {
         name: plan.name,
@@ -450,10 +417,10 @@ export class CorporateHealthAgent extends BaseAgent {
         insurancePartner: plan.insurancePartner
       },
       cost: {
-        perEmployeeAnnual: `₹${plan.pricing.perEmployeeAnnual}`,
-        perEmployeeMonthly: `₹${plan.pricing.perEmployeeMonthly}`,
-        totalAnnualCost: `₹${totalAnnualCost.toLocaleString()}`,
-        totalMonthlyCost: `₹${totalMonthlyCost.toLocaleString()}`
+        perEmployeeAnnual: '₹' + plan.pricing.perEmployeeAnnual,
+        perEmployeeMonthly: '₹' + plan.pricing.perEmployeeMonthly,
+        totalAnnualCost: '₹' + totalAnnualCost.toLocaleString(),
+        totalMonthlyCost: '₹' + totalMonthlyCost.toLocaleString()
       },
       status: 'Pending',
       nextSteps: [
@@ -466,13 +433,14 @@ export class CorporateHealthAgent extends BaseAgent {
     };
   }
 
-  private async getEnrollmentStatus(payload: any): Promise<any> {
-    const { enrollmentId, companyName } = payload;
+  async getEnrollmentStatus(payload) {
+    var enrollmentId = payload.enrollmentId;
+    var companyName = payload.companyName;
 
-    let targetEnrollments = this.enrollments;
+    var targetEnrollments = this.enrollments;
 
     if (enrollmentId) {
-      const enrollment = this.enrollments.find(e => e.id === enrollmentId);
+      var enrollment = this.enrollments.find(function(e) { return e.id === enrollmentId; });
       if (!enrollment) {
         throw new Error('Enrollment not found');
       }
@@ -480,35 +448,36 @@ export class CorporateHealthAgent extends BaseAgent {
     }
 
     if (companyName) {
-      targetEnrollments = this.enrollments.filter(e => 
-        e.companyName.toLowerCase().includes(companyName.toLowerCase())
-      );
+      targetEnrollments = this.enrollments.filter(function(e) {
+        return e.companyName.toLowerCase().includes(companyName.toLowerCase());
+      });
+    }
+
+    var totalEmployees = 0;
+    for (var i = 0; i < targetEnrollments.length; i++) {
+      totalEmployees += targetEnrollments[i].employeeCount;
     }
 
     return {
       enrollments: targetEnrollments,
       total: targetEnrollments.length,
       summary: {
-        active: targetEnrollments.filter(e => e.status === 'Active').length,
-        pending: targetEnrollments.filter(e => e.status === 'Pending').length,
-        totalEmployees: targetEnrollments.reduce((sum, e) => sum + e.employeeCount, 0)
+        active: targetEnrollments.filter(function(e) { return e.status === 'Active'; }).length,
+        pending: targetEnrollments.filter(function(e) { return e.status === 'Pending'; }).length,
+        totalEmployees: totalEmployees
       }
     };
   }
 
-  private async handleComplexQuery(task: string, payload: any): Promise<any> {
-    const prompt = `
-      Task: ${task}
-      Payload: ${JSON.stringify(payload)}
-      
-      Available Corporate Plans: ${JSON.stringify(this.corporatePlans)}
-      Enrollments: ${JSON.stringify(this.enrollments)}
-      
-      Please analyze the query and provide a recommendation.
-    `;
+  async handleComplexQuery(task, payload) {
+    var prompt = 'Task: ' + task + '\n' +
+      'Payload: ' + JSON.stringify(payload) + '\n\n' +
+      'Available Corporate Plans: ' + JSON.stringify(this.corporatePlans) + '\n' +
+      'Enrollments: ' + JSON.stringify(this.enrollments) + '\n\n' +
+      'Please analyze the query and provide a recommendation.';
 
-    const response = await this.providerManager.generate(prompt);
-    
+    var response = await this.providerManager.generate(prompt);
+
     return {
       aiResponse: response.content,
       provider: response.provider,
@@ -516,7 +485,7 @@ export class CorporateHealthAgent extends BaseAgent {
     };
   }
 
-  protected getRequiredCapability(task: string): string | null {
+  getRequiredCapability(task) {
     if (task.includes('get') || task.includes('list')) {
       return 'get_corporate_plans';
     }
@@ -532,3 +501,5 @@ export class CorporateHealthAgent extends BaseAgent {
     return null;
   }
 }
+
+module.exports = { CorporateHealthAgent };

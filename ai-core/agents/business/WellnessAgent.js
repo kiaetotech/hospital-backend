@@ -1,62 +1,56 @@
-// D:\hospital backend\ai-core\agents\business\WellnessAgent.ts
+// D:\hospital backend\ai-core\agents\business\WellnessAgent.js
 
-const { AgentRole, AgentStatus, AgentRequest, AgentResponse } = require('../../../shared/types/AgentTypes');
+const { AgentRole, AgentStatus } = require('../../../shared/types/AgentTypes');
 const { BaseAgent } = require('../base/BaseAgent');
-const { ProviderManager } = require('../../providers/ProviderManager');
 
-
-
-
-
-export class WellnessAgent extends BaseAgent {
-  private practitioners[] = [];
-  private packages[] = [];
-
+class WellnessAgent extends BaseAgent {
   constructor(providerManager) {
     super(
       {
         name: 'Wellness Agent',
-        role.WELLNESS,
+        role: AgentRole.WELLNESS,
         capabilities: [
           {
             name: 'find_practitioner',
             description: 'Find Ayurveda, Homeopathy, or Mental Wellness practitioners',
             priority: 1,
             estimatedLatency: 200,
-            requiresAuth},
+            requiresAuth: false
+          },
           {
             name: 'book_consultation',
             description: 'Book a wellness consultation',
             priority: 1,
             estimatedLatency: 300,
-            requiresAuth},
+            requiresAuth: true
+          },
           {
             name: 'get_packages',
             description: 'Get wellness packages and treatments',
             priority: 2,
             estimatedLatency: 150,
-            requiresAuth},
+            requiresAuth: false
+          },
           {
             name: 'check_availability',
             description: 'Check practitioner availability',
             priority: 1,
             estimatedLatency: 150,
-            requiresAuth}
+            requiresAuth: false
+          }
         ]
       },
       providerManager
     );
 
+    this.practitioners = [];
+    this.packages = [];
     this.initializePractitioners();
     this.initializePackages();
   }
 
-  private initializePractitioners(){
+  initializePractitioners() {
     this.practitioners = [
-      // ============================================
-      // AYURVEDA & WELLNESS (450+ Doctors)
-      // Service& Wellness
-      // ============================================
       {
         id: 'w1',
         name: 'Dr. Anjali Sharma',
@@ -67,7 +61,7 @@ export class WellnessAgent extends BaseAgent {
         rating: 4.9,
         consultationFee: 600,
         availableSlots: ['9:00 AM', '10:30 AM', '2:00 PM', '4:30 PM'],
-        onlineAvailable,
+        onlineAvailable: true,
         languages: ['English', 'Hindi', 'Sanskrit'],
         qualifications: ['BAMS', 'MD Ayurveda', 'Panchakarma Specialist'],
         about: 'Specializing in traditional Ayurvedic treatments for digestive disorders and detoxification.'
@@ -82,7 +76,7 @@ export class WellnessAgent extends BaseAgent {
         rating: 4.7,
         consultationFee: 500,
         availableSlots: ['9:30 AM', '11:00 AM', '3:00 PM', '5:00 PM'],
-        onlineAvailable,
+        onlineAvailable: true,
         languages: ['English', 'Hindi', 'Marathi'],
         qualifications: ['BAMS', 'MD Ayurveda', 'Dermatology'],
         about: 'Expert in Ayurvedic solutions for skin and hair problems with natural remedies.'
@@ -97,7 +91,7 @@ export class WellnessAgent extends BaseAgent {
         rating: 4.9,
         consultationFee: 800,
         availableSlots: ['10:00 AM', '1:00 PM', '3:30 PM'],
-        onlineAvailable,
+        onlineAvailable: true,
         languages: ['English', 'Hindi', 'Tamil'],
         qualifications: ['BAMS', 'MD Ayurveda', 'Gynecology'],
         about: 'Specializing in women\'s health, pregnancy care, and post-natal Ayurvedic treatments.'
@@ -112,7 +106,7 @@ export class WellnessAgent extends BaseAgent {
         rating: 4.8,
         consultationFee: 700,
         availableSlots: ['9:00 AM', '11:30 AM', '2:30 PM', '4:00 PM'],
-        onlineAvailable,
+        onlineAvailable: true,
         languages: ['English', 'Hindi'],
         qualifications: ['BAMS', 'MD Ayurveda', 'Orthopedics'],
         about: 'Expert in treating joint disorders, arthritis, and chronic back pain using Ayurvedic methods.'
@@ -127,16 +121,11 @@ export class WellnessAgent extends BaseAgent {
         rating: 4.6,
         consultationFee: 450,
         availableSlots: ['10:30 AM', '12:00 PM', '3:00 PM', '6:00 PM'],
-        onlineAvailable,
+        onlineAvailable: true,
         languages: ['English', 'Hindi', 'Gujarati'],
         qualifications: ['BAMS', 'MD Ayurveda', 'Psychology'],
         about: 'Helping patients manage stress, anxiety, and sleep disorders through Ayurvedic therapies.'
       },
-
-      // ============================================
-      // HOMEOPATHY CARE (300+ Doctors)
-      // ServiceCare
-      // ============================================
       {
         id: 'w6',
         name: 'Dr. Amit Shah',
@@ -147,7 +136,7 @@ export class WellnessAgent extends BaseAgent {
         rating: 4.7,
         consultationFee: 400,
         availableSlots: ['9:00 AM', '10:30 AM', '2:00 PM', '5:30 PM'],
-        onlineAvailable,
+        onlineAvailable: true,
         languages: ['English', 'Hindi', 'Gujarati'],
         qualifications: ['BHMS', 'MD Homeopathy', 'Dermatology'],
         about: 'Specializing in treating allergies, skin diseases, and respiratory conditions with homeopathy.'
@@ -162,7 +151,7 @@ export class WellnessAgent extends BaseAgent {
         rating: 4.8,
         consultationFee: 350,
         availableSlots: ['9:30 AM', '11:30 AM', '1:30 PM', '4:00 PM'],
-        onlineAvailable,
+        onlineAvailable: true,
         languages: ['English', 'Hindi'],
         qualifications: ['BHMS', 'MD Homeopathy', 'Pediatrics'],
         about: 'Focusing on children\'s health, childhood illnesses, and behavioral issues using homeopathy.'
@@ -177,7 +166,7 @@ export class WellnessAgent extends BaseAgent {
         rating: 4.9,
         consultationFee: 600,
         availableSlots: ['10:00 AM', '12:00 PM', '3:00 PM'],
-        onlineAvailable,
+        onlineAvailable: true,
         languages: ['English', 'Hindi', 'Malayalam'],
         qualifications: ['BHMS', 'MD Homeopathy', 'Immunology'],
         about: 'Expert in treating chronic diseases, autoimmune disorders, and complex medical conditions.'
@@ -192,16 +181,11 @@ export class WellnessAgent extends BaseAgent {
         rating: 4.7,
         consultationFee: 500,
         availableSlots: ['9:00 AM', '11:00 AM', '2:30 PM', '5:00 PM'],
-        onlineAvailable,
+        onlineAvailable: true,
         languages: ['English', 'Hindi', 'Telugu'],
         qualifications: ['BHMS', 'MD Homeopathy', 'Gynecology'],
         about: 'Specializing in women\'s health, hormonal imbalances, and reproductive health.'
       },
-
-      // ============================================
-      // MENTAL WELLNESS (150+ Therapists)
-      // ServiceWellness
-      // ============================================
       {
         id: 'w10',
         name: 'Dr. Ravi Malhotra',
@@ -212,7 +196,7 @@ export class WellnessAgent extends BaseAgent {
         rating: 4.8,
         consultationFee: 800,
         availableSlots: ['9:00 AM', '11:00 AM', '2:00 PM', '4:30 PM'],
-        onlineAvailable,
+        onlineAvailable: true,
         languages: ['English', 'Hindi'],
         qualifications: ['MBBS', 'MD Psychiatry', 'Cognitive Behavioral Therapy'],
         about: 'Helping patients overcome anxiety, depression, and stress through evidence-based therapies.'
@@ -227,7 +211,7 @@ export class WellnessAgent extends BaseAgent {
         rating: 4.6,
         consultationFee: 700,
         availableSlots: ['10:00 AM', '12:00 PM', '3:00 PM', '6:00 PM'],
-        onlineAvailable,
+        onlineAvailable: true,
         languages: ['English', 'Hindi', 'Punjabi'],
         qualifications: ['MA Psychology', 'PhD Clinical Psychology'],
         about: 'Providing relationship counseling, marriage therapy, and family counseling services.'
@@ -242,7 +226,7 @@ export class WellnessAgent extends BaseAgent {
         rating: 4.9,
         consultationFee: 900,
         availableSlots: ['9:30 AM', '11:30 AM', '2:30 PM', '5:30 PM'],
-        onlineAvailable,
+        onlineAvailable: true,
         languages: ['English', 'Hindi'],
         qualifications: ['MBBS', 'MD Psychiatry', 'Trauma Therapy'],
         about: 'Expert in treating trauma, PTSD, grief, and loss through specialized therapeutic approaches.'
@@ -257,7 +241,7 @@ export class WellnessAgent extends BaseAgent {
         rating: 4.7,
         consultationFee: 750,
         availableSlots: ['9:00 AM', '10:30 AM', '1:00 PM', '3:30 PM'],
-        onlineAvailable,
+        onlineAvailable: true,
         languages: ['English', 'Hindi', 'Tamil'],
         qualifications: ['MA Psychology', 'PhD Child Psychology', 'ADHD Specialist'],
         about: 'Specializing in child psychology, ADHD, autism spectrum disorders, and developmental issues.'
@@ -272,7 +256,7 @@ export class WellnessAgent extends BaseAgent {
         rating: 4.8,
         consultationFee: 850,
         availableSlots: ['10:00 AM', '12:30 PM', '3:00 PM', '6:30 PM'],
-        onlineAvailable,
+        onlineAvailable: true,
         languages: ['English', 'Hindi'],
         qualifications: ['MBBS', 'MD Psychiatry', 'Addiction Specialist'],
         about: 'Helping patients overcome addiction, substance abuse, and behavioral issues with comprehensive care.'
@@ -280,9 +264,8 @@ export class WellnessAgent extends BaseAgent {
     ];
   }
 
-  private initializePackages(){
+  initializePackages() {
     this.packages = [
-      // Ayurveda Packages
       {
         id: 'wp1',
         name: 'Panchakarma Detox',
@@ -303,8 +286,6 @@ export class WellnessAgent extends BaseAgent {
         discount: 5,
         includes: ['Abhyanga', 'Shirodhara', 'Herbal Steam', 'Meditation']
       },
-      
-      // Homeopathy Packages
       {
         id: 'wp3',
         name: 'Chronic Care Homeopathy',
@@ -325,8 +306,6 @@ export class WellnessAgent extends BaseAgent {
         discount: 0,
         includes: ['Allergy Assessment', 'Custom Remedies', 'Dietary Guidance', 'Follow-up']
       },
-
-      // Mental Wellness Packages
       {
         id: 'wp5',
         name: 'Anxiety & Stress Program',
@@ -350,19 +329,20 @@ export class WellnessAgent extends BaseAgent {
     ];
   }
 
-  async execute(request)<AgentResponse> {
+  async execute(request) {
     this.setStatus(AgentStatus.BUSY);
     this.setCurrentTask(request.task);
 
     try {
       if (!this.validateRequest(request)) {
-        throw new Error('Invalid requestrequired fields or capabilities');
+        throw new Error('Invalid request: missing required fields or capabilities');
       }
 
-      const { task, payload } = request;
-      this.log(`Executing task: ${task}`, 'info');
+      var task = request.task;
+      var payload = request.payload;
+      this.log('Executing task: ' + task, 'info');
 
-      let result;
+      var result;
 
       if (task.includes('find') || task.includes('search') || task.includes('practitioner')) {
         result = await this.findPractitioners(payload);
@@ -377,217 +357,214 @@ export class WellnessAgent extends BaseAgent {
       }
 
       this.setStatus(AgentStatus.IDLE);
-      this.setCurrentTask(undefined);
+      this.setCurrentTask(null);
 
       return {
-        success,
-        data,
-        sourceAgent.id,
-        processingTime.now() - new Date().getTime()
+        success: true,
+        data: result,
+        sourceAgent: this.id,
+        processingTime: Date.now() - new Date().getTime()
       };
 
     } catch (error) {
       this.setStatus(AgentStatus.IDLE);
-      this.setCurrentTask(undefined);
+      this.setCurrentTask(null);
       return this.handleError(error, request);
     }
   }
 
-  private async findPractitioners(payload)<any> {
-    const { 
-      type,           // 'Ayurveda' | 'Homeopathy' | 'MentalHealth'
-      city, 
-      specialization,
-      onlineOnly = false,
-      maxResults = 10 
-    } = payload;
+  async findPractitioners(payload) {
+    var type = payload.type;
+    var city = payload.city;
+    var specialization = payload.specialization;
+    var onlineOnly = payload.onlineOnly || false;
+    var maxResults = payload.maxResults || 10;
 
-    let results = this.practitioners;
+    var results = this.practitioners.slice();
 
-    // Filter by wellness type
     if (type) {
-      results = results.filter(p => p.type === type);
+      results = results.filter(function(p) { return p.type === type; });
     }
 
-    // Filter by city
     if (city) {
-      results = results.filter(p => p.city.toLowerCase().includes(city.toLowerCase()));
+      results = results.filter(function(p) { return p.city.toLowerCase().includes(city.toLowerCase()); });
     }
 
-    // Filter by specialization
     if (specialization) {
-      results = results.filter(p => 
-        p.specialization.toLowerCase().includes(specialization.toLowerCase())
-      );
+      results = results.filter(function(p) {
+        return p.specialization.toLowerCase().includes(specialization.toLowerCase());
+      });
     }
 
-    // Filter online only
     if (onlineOnly) {
-      results = results.filter(p => p.onlineAvailable);
+      results = results.filter(function(p) { return p.onlineAvailable; });
     }
 
-    // Sort by rating
-    results.sort((a, b) => b.rating - a.rating);
-
-    // Limit results
+    results.sort(function(a, b) { return b.rating - a.rating; });
     results = results.slice(0, maxResults);
 
-    // Add type labels
-    const typeLabels= {
+    var typeLabels = {
       'Ayurveda': 'Ayurveda & Wellness',
       'Homeopathy': 'Homeopathy Care',
       'MentalHealth': 'Mental Wellness'
     };
 
+    var mappedResults = results.map(function(p) {
+      var newP = {};
+      var keys = Object.keys(p);
+      for (var i = 0; i < keys.length; i++) {
+        newP[keys[i]] = p[keys[i]];
+      }
+      newP.serviceType = typeLabels[p.type] || p.type;
+      newP.consultationFee = '₹' + p.consultationFee;
+      return newP;
+    });
+
     return {
-      practitioners.map(p => ({
-        ...p,
-        serviceType[p.type] || p.type,
-        consultationFee: `₹${p.consultationFee}`
-      })),
-      total.length,
-      query: { type, city, specialization, onlineOnly },
+      practitioners: mappedResults,
+      total: results.length,
+      query: { type: type, city: city, specialization: specialization, onlineOnly: onlineOnly },
       serviceCounts: {
-        ayurveda.practitioners.filter(p => p.type === 'Ayurveda').length,
-        homeopathy.practitioners.filter(p => p.type === 'Homeopathy').length,
-        mentalHealth.practitioners.filter(p => p.type === 'MentalHealth').length
+        ayurveda: this.practitioners.filter(function(p) { return p.type === 'Ayurveda'; }).length,
+        homeopathy: this.practitioners.filter(function(p) { return p.type === 'Homeopathy'; }).length,
+        mentalHealth: this.practitioners.filter(function(p) { return p.type === 'MentalHealth'; }).length
       }
     };
   }
 
-  private async bookConsultation(payload)<any> {
-    const { 
-      practitionerId, 
-      patientName, 
-      patientContact, 
-      slot, 
-      type = 'online' 
-    } = payload;
+  async bookConsultation(payload) {
+    var practitionerId = payload.practitionerId;
+    var patientName = payload.patientName;
+    var patientContact = payload.patientContact;
+    var slot = payload.slot;
+    var type = payload.type || 'online';
 
-    const practitioner = this.practitioners.find(p => p.id === practitionerId);
+    var practitioner = this.practitioners.find(function(p) { return p.id === practitionerId; });
     if (!practitioner) {
       throw new Error('Practitioner not found');
     }
 
-    // Check if slot is available
     if (!practitioner.availableSlots.includes(slot)) {
       throw new Error('Selected slot is not available');
     }
 
-    // Check online availability
     if (type === 'online' && !practitioner.onlineAvailable) {
       throw new Error('Practitioner is not available for online consultation');
     }
 
-    // Generate booking confirmation
-    const bookingId = `WLN${Date.now()}`;
-    
-    // Remove the booked slot
-    practitioner.availableSlots = practitioner.availableSlots.filter(s => s !== slot);
+    var bookingId = 'WLN' + Date.now();
+    practitioner.availableSlots = practitioner.availableSlots.filter(function(s) { return s !== slot; });
 
-    const typeLabels= {
+    var typeLabels = {
       'Ayurveda': 'Ayurveda & Wellness',
       'Homeopathy': 'Homeopathy Care',
       'MentalHealth': 'Mental Wellness'
     };
 
     return {
-      bookingId,
+      bookingId: bookingId,
       practitioner: {
-        id.id,
-        name.name,
-        type.type,
-        serviceType[practitioner.type] || practitioner.type,
-        specialization.specialization,
-        qualification.qualifications[0]
+        id: practitioner.id,
+        name: practitioner.name,
+        type: practitioner.type,
+        serviceType: typeLabels[practitioner.type] || practitioner.type,
+        specialization: practitioner.specialization,
+        qualification: practitioner.qualifications[0]
       },
       patient: {
-        name,
-        contact},
-      slot,
-      type,
-      consultationFee: `₹${practitioner.consultationFee}`,
+        name: patientName,
+        contact: patientContact
+      },
+      slot: slot,
+      type: type,
+      consultationFee: '₹' + practitioner.consultationFee,
       status: 'Confirmed',
-      timestampDate().toISOString(),
-      instructions=== 'online' 
+      timestamp: new Date().toISOString(),
+      instructions: type === 'online'
         ? 'You will receive a video call link 10 minutes before the session.'
         : 'Please arrive 15 minutes before the scheduled time.'
     };
   }
 
-  private async getPackages(payload)<any> {
-    const { type } = payload;
+  async getPackages(payload) {
+    var type = payload.type;
 
-    let results = this.packages;
+    var results = this.packages.slice();
 
     if (type) {
-      results = results.filter(p => p.type === type);
+      results = results.filter(function(p) { return p.type === type; });
     }
 
-    const typeLabels= {
+    var typeLabels = {
       'Ayurveda': 'Ayurveda & Wellness',
       'Homeopathy': 'Homeopathy Care',
       'MentalHealth': 'Mental Wellness'
     };
 
+    var mappedPackages = results.map(function(p) {
+      var newP = {};
+      var keys = Object.keys(p);
+      for (var i = 0; i < keys.length; i++) {
+        newP[keys[i]] = p[keys[i]];
+      }
+      newP.serviceType = typeLabels[p.type] || p.type;
+      newP.finalPrice = p.price - (p.price * p.discount / 100);
+      newP.price = '₹' + p.price;
+      newP.discount = p.discount > 0 ? p.discount + '% off' : 'No discount';
+      return newP;
+    });
+
     return {
-      packages.map(p => ({
-        ...p,
-        serviceType[p.type] || p.type,
-        finalPrice.price - (p.price * p.discount / 100),
-        price: `₹${p.price}`,
-        discount.discount > 0 ? `${p.discount}% off` : 'No discount'
-      })),
-      total.length,
-      query: { type }
+      packages: mappedPackages,
+      total: results.length,
+      query: { type: type }
     };
   }
 
-  private async checkPractitionerAvailability(payload)<any> {
-    const { practitionerId, date } = payload;
+  async checkPractitionerAvailability(payload) {
+    var practitionerId = payload.practitionerId;
+    var date = payload.date;
 
-    let targetPractitioners = this.practitioners;
+    var targetPractitioners = this.practitioners;
     if (practitionerId) {
-      targetPractitioners = this.practitioners.filter(p => p.id === practitionerId);
+      targetPractitioners = this.practitioners.filter(function(p) { return p.id === practitionerId; });
     }
 
-    const availability = targetPractitioners.map(p => ({
-      id.id,
-      name.name,
-      type.type,
-      onlineAvailable.onlineAvailable,
-      availableSlots.availableSlots,
-      date|| new Date().toISOString().split('T')[0],
-      consultationFee: `₹${p.consultationFee}`
-    }));
+    var availability = targetPractitioners.map(function(p) {
+      return {
+        id: p.id,
+        name: p.name,
+        type: p.type,
+        onlineAvailable: p.onlineAvailable,
+        availableSlots: p.availableSlots,
+        date: date || new Date().toISOString().split('T')[0],
+        consultationFee: '₹' + p.consultationFee
+      };
+    });
 
     return {
-      availability,
-      timestampDate().toISOString()
+      availability: availability,
+      timestamp: new Date().toISOString()
     };
   }
 
-  private async handleComplexQuery(task, payload)<any> {
-    const prompt = `
-      Task: ${task}
-      Payload: ${JSON.stringify(payload)}
-      
-      Available practitioners: ${JSON.stringify(this.practitioners)}
-      Available packages: ${JSON.stringify(this.packages)}
-      
-      Please analyze the query and provide a recommendation.
-    `;
+  async handleComplexQuery(task, payload) {
+    var prompt = 'Task: ' + task + '\n' +
+      'Payload: ' + JSON.stringify(payload) + '\n\n' +
+      'Available practitioners: ' + JSON.stringify(this.practitioners) + '\n' +
+      'Available packages: ' + JSON.stringify(this.packages) + '\n\n' +
+      'Please analyze the query and provide a recommendation.';
 
-    const response = await this.providerManager.generate(prompt);
-    
+    var response = await this.providerManager.generate(prompt);
+
     return {
-      aiResponse.content,
-      provider.provider,
-      tokensUsed.tokensUsed
+      aiResponse: response.content,
+      provider: response.provider,
+      tokensUsed: response.tokensUsed
     };
   }
 
-  protected getRequiredCapability(task)| null {
+  getRequiredCapability(task) {
     if (task.includes('find') || task.includes('search') || task.includes('practitioner')) {
       return 'find_practitioner';
     }
@@ -604,5 +581,4 @@ export class WellnessAgent extends BaseAgent {
   }
 }
 
-
-
+module.exports = { WellnessAgent };

@@ -1,147 +1,137 @@
-// D:\hospital backend\ai-core\agents\intelligence\NotificationAgent.ts
+// D:\hospital backend\ai-core\agents\intelligence\NotificationAgent.js
 
-const { AgentRole, AgentStatus, AgentRequest, AgentResponse } = require('../../../shared/types/AgentTypes');
+const { AgentRole, AgentStatus } = require('../../../shared/types/AgentTypes');
 const { BaseAgent } = require('../base/BaseAgent');
-const { ProviderManager } = require('../../providers/ProviderManager');
 
-
-
-
-
-;
-  preferences: {
-    marketing;
-    transactional;
-    reminders;
-    alerts;
-  };
-  language;
-  timezone;
-}
-
-export class NotificationAgent extends BaseAgent {
-  private notifications<string, Notification[]> = new Map();
-  private channels<string, NotificationChannel> = new Map();
-  private userPreferences<string, UserNotificationPreferences> = new Map();
-
+class NotificationAgent extends BaseAgent {
   constructor(providerManager) {
     super(
       {
         name: 'Notification Agent',
-        role.NOTIFICATION,
+        role: AgentRole.NOTIFICATION,
         capabilities: [
           {
             name: 'send_notification',
             description: 'Send notification via optimal channel',
             priority: 1,
             estimatedLatency: 300,
-            requiresAuth},
+            requiresAuth: true
+          },
           {
             name: 'get_preferences',
             description: 'Get user notification preferences',
             priority: 2,
             estimatedLatency: 150,
-            requiresAuth},
+            requiresAuth: true
+          },
           {
             name: 'update_preferences',
             description: 'Update user notification preferences',
             priority: 2,
             estimatedLatency: 150,
-            requiresAuth},
+            requiresAuth: true
+          },
           {
             name: 'get_history',
             description: 'Get notification history',
             priority: 2,
             estimatedLatency: 100,
-            requiresAuth}
+            requiresAuth: true
+          }
         ]
       },
       providerManager
     );
 
+    this.notifications = new Map();
+    this.channels = new Map();
+    this.userPreferences = new Map();
     this.initializeChannels();
     this.initializeUserPreferences();
   }
 
-  private initializeChannels(){
+  initializeChannels() {
     this.channels.set('email', {
       name: 'email',
-      enabled,
+      enabled: true,
       rateLimit: 1000,
       costPerMessage: 0.001,
       quotaRemaining: 5000,
-      quotaResetDate(Date.now() + 24 * 60 * 60 * 1000)
+      quotaReset: new Date(Date.now() + 24 * 60 * 60 * 1000)
     });
 
     this.channels.set('sms', {
       name: 'sms',
-      enabled,
+      enabled: true,
       rateLimit: 100,
       costPerMessage: 0.05,
       quotaRemaining: 500,
-      quotaResetDate(Date.now() + 24 * 60 * 60 * 1000)
+      quotaReset: new Date(Date.now() + 24 * 60 * 60 * 1000)
     });
 
     this.channels.set('push', {
       name: 'push',
-      enabled,
+      enabled: true,
       rateLimit: 10000,
       costPerMessage: 0,
       quotaRemaining: 10000,
-      quotaResetDate(Date.now() + 24 * 60 * 60 * 1000)
+      quotaReset: new Date(Date.now() + 24 * 60 * 60 * 1000)
     });
 
     this.channels.set('whatsapp', {
       name: 'whatsapp',
-      enabled,
+      enabled: true,
       rateLimit: 50,
       costPerMessage: 0.01,
       quotaRemaining: 250,
-      quotaResetDate(Date.now() + 24 * 60 * 60 * 1000)
+      quotaReset: new Date(Date.now() + 24 * 60 * 60 * 1000)
     });
 
     this.channels.set('inApp', {
       name: 'inApp',
-      enabled,
+      enabled: true,
       rateLimit: 100000,
       costPerMessage: 0,
       quotaRemaining: 100000,
-      quotaResetDate(Date.now() + 24 * 60 * 60 * 1000)
+      quotaReset: new Date(Date.now() + 24 * 60 * 60 * 1000)
     });
   }
 
-  private initializeUserPreferences(){
+  initializeUserPreferences() {
     this.userPreferences.set('user1', {
       userId: 'user1',
       channels: {
-        email,
-        sms,
-        push,
-        whatsapp,
-        inApp},
+        email: true,
+        sms: true,
+        push: true,
+        whatsapp: false,
+        inApp: true
+      },
       preferences: {
-        marketing,
-        transactional,
-        reminders,
-        alerts},
+        marketing: false,
+        transactional: true,
+        reminders: true,
+        alerts: true
+      },
       language: 'en',
       timezone: 'Asia/Kolkata'
     });
   }
 
-  async execute(request)<AgentResponse> {
+  async execute(request) {
     this.setStatus(AgentStatus.BUSY);
     this.setCurrentTask(request.task);
 
     try {
       if (!this.validateRequest(request)) {
-        throw new Error('Invalid requestrequired fields or capabilities');
+        throw new Error('Invalid request: Missing required fields or capabilities');
       }
 
-      const { task, payload } = request;
-      this.log(`Executing task: ${task}`, 'info');
+      var task = request.task;
+      var payload = request.payload;
+      this.log('Executing task: ' + task, 'info');
 
-      let result;
+      var result;
 
       if (task.includes('send')) {
         result = await this.sendNotification(payload);
@@ -154,74 +144,73 @@ export class NotificationAgent extends BaseAgent {
       }
 
       this.setStatus(AgentStatus.IDLE);
-      this.setCurrentTask(undefined);
+      this.setCurrentTask(null);
 
       return {
-        success,
-        data,
-        sourceAgent.id,
-        processingTime.now() - new Date().getTime()
+        success: true,
+        data: result,
+        sourceAgent: this.id,
+        processingTime: Date.now() - new Date().getTime()
       };
 
     } catch (error) {
       this.setStatus(AgentStatus.IDLE);
-      this.setCurrentTask(undefined);
+      this.setCurrentTask(null);
       return this.handleError(error, request);
     }
   }
 
-  private async sendNotification(payload)<any> {
-    const { userId, title, body, priority = 'Medium', type, data } = payload;
+  async sendNotification(payload) {
+    var userId = payload.userId;
+    var title = payload.title;
+    var body = payload.body;
+    var priority = payload.priority || 'Medium';
+    var type = payload.type;
+    var data = payload.data;
 
     if (!userId || !title || !body) {
       throw new Error('UserId, title, and body are required');
     }
 
-    // Get user preferences
-    const preferences = this.userPreferences.get(userId) || {
-      userId,
-      channels: { email, sms, push, whatsapp, inApp},
-      preferences: { marketing, transactional, reminders, alerts},
+    var preferences = this.userPreferences.get(userId) || {
+      userId: userId,
+      channels: { email: true, sms: false, push: true, whatsapp: false, inApp: true },
+      preferences: { marketing: true, transactional: true, reminders: true, alerts: true },
       language: 'en',
       timezone: 'Asia/Kolkata'
     };
 
-    // Determine best channel based on priority and user preferences
-    const channel = this.selectOptimalChannel(priority, preferences, type);
+    var channel = this.selectOptimalChannel(priority, preferences, type);
 
     if (!channel) {
       throw new Error('No available channel for this notification');
     }
 
-    // Check channel quota
-    const channelConfig = this.channels.get(channel);
+    var channelConfig = this.channels.get(channel);
     if (!channelConfig || channelConfig.quotaRemaining <= 0) {
-      throw new Error(`Channel ${channel} quota exhausted`);
+      throw new Error('Channel ' + channel + ' quota exhausted');
     }
 
-    // Create notification
-    const notification= {
-      id: `notif${Date.now()}`,
-      userId,
-      type.getNotificationType(channel),
-      title,
-      body,
-      data|| {},
-      priority,
+    var notification = {
+      id: 'notif' + Date.now(),
+      userId: userId,
+      type: this.getNotificationType(channel),
+      title: title,
+      body: body,
+      data: data || {},
+      priority: priority,
       status: 'Pending',
-      channel,
+      channel: channel,
       retryCount: 0,
-      createdAtDate()
+      createdAt: new Date()
     };
 
-    // Store notification
     if (!this.notifications.has(userId)) {
       this.notifications.set(userId, []);
     }
-    this.notifications.get(userId)!.push(notification);
+    this.notifications.get(userId).push(notification);
 
-    // Simulate sending
-    const sent = await this.sendViaChannel(channel, notification);
+    var sent = await this.sendViaChannel(channel, notification);
 
     if (sent) {
       notification.status = 'Sent';
@@ -232,49 +221,43 @@ export class NotificationAgent extends BaseAgent {
     }
 
     return {
-      notificationId.id,
-      status.status,
-      channel,
-      timestampDate().toISOString(),
-      channelQuotaRemaining.quotaRemaining
+      notificationId: notification.id,
+      status: notification.status,
+      channel: channel,
+      timestamp: new Date().toISOString(),
+      channelQuotaRemaining: channelConfig.quotaRemaining
     };
   }
 
-  private selectOptimalChannel(
-    priority,
-    preferences,
-    type?)| null {
-    const channels = ['inApp', 'push', 'email', 'whatsapp', 'sms'];
+  selectOptimalChannel(priority, preferences, type) {
+    var channels = ['inApp', 'push', 'email', 'whatsapp', 'sms'];
 
-    // Filter enabled channels
-    const enabledChannels = channels.filter(ch => 
-      preferences.channels[ch as keyof typeof preferences.channels]
-    );
+    var enabledChannels = channels.filter(function(ch) {
+      return preferences.channels[ch];
+    });
 
-    // For high priority, prefer SMS or WhatsApp
     if (priority === 'High') {
-      if (preferences.channels.whatsapp && enabledChannels.includes('whatsapp')) {
+      if (preferences.channels.whatsapp && enabledChannels.indexOf('whatsapp') !== -1) {
         return 'whatsapp';
       }
-      if (preferences.channels.sms && enabledChannels.includes('sms')) {
+      if (preferences.channels.sms && enabledChannels.indexOf('sms') !== -1) {
         return 'sms';
       }
     }
 
-    // Check quotas
-    for (const ch of enabledChannels) {
-      const config = this.channels.get(ch);
+    for (var i = 0; i < enabledChannels.length; i++) {
+      var ch = enabledChannels[i];
+      var config = this.channels.get(ch);
       if (config && config.quotaRemaining > 0) {
         return ch;
       }
     }
 
-    // Fallback to first available
-    return enabledChannels.length > 0 ? enabledChannels[0] ;
+    return enabledChannels.length > 0 ? enabledChannels[0] : null;
   }
 
-  private getNotificationType(channel)['type'] {
-    const map= {
+  getNotificationType(channel) {
+    var map = {
       'email': 'Email',
       'sms': 'SMS',
       'push': 'Push',
@@ -284,37 +267,37 @@ export class NotificationAgent extends BaseAgent {
     return map[channel] || 'InApp';
   }
 
-  private async sendViaChannel(channel, notification)<boolean> {
-    // Simulate channel sending
-    console.log(`📤 Sending notification via ${channel}: ${notification.title}`);
+  async sendViaChannel(channel, notification) {
+    console.log('📤 Sending notification via ' + channel + ': ' + notification.title);
 
-    // Simulate success/failure (90% success rate)
-    const success = Math.random() < 0.9;
+    var success = Math.random() < 0.9;
 
     if (success) {
       notification.deliveredAt = new Date();
     }
 
-    await new Promise(resolve => setTimeout(resolve, 100));
+    await new Promise(function(resolve) { setTimeout(resolve, 100); });
 
     return success;
   }
 
-  private async handlePreferences(payload)<any> {
-    const { action, userId, preferences } = payload;
+  async handlePreferences(payload) {
+    var action = payload.action;
+    var userId = payload.userId;
+    var preferences = payload.preferences;
 
     if (!userId) {
       throw new Error('UserId is required');
     }
 
     if (action === 'get') {
-      const userPrefs = this.userPreferences.get(userId);
+      var userPrefs = this.userPreferences.get(userId);
       if (!userPrefs) {
         return {
-          userId,
+          userId: userId,
           preferences: {
-            channels: { email, sms, push, whatsapp, inApp},
-            preferences: { marketing, transactional, reminders, alerts},
+            channels: { email: true, sms: false, push: true, whatsapp: false, inApp: true },
+            preferences: { marketing: true, transactional: true, reminders: true, alerts: true },
             language: 'en',
             timezone: 'Asia/Kolkata'
           }
@@ -328,101 +311,100 @@ export class NotificationAgent extends BaseAgent {
         throw new Error('Preferences are required for update');
       }
 
-      let userPrefs = this.userPreferences.get(userId);
-      if (!userPrefs) {
-        userPrefs = {
-          userId,
-          channels: { email, sms, push, whatsapp, inApp},
-          preferences: { marketing, transactional, reminders, alerts},
+      var up = this.userPreferences.get(userId);
+      if (!up) {
+        up = {
+          userId: userId,
+          channels: { email: true, sms: false, push: true, whatsapp: false, inApp: true },
+          preferences: { marketing: true, transactional: true, reminders: true, alerts: true },
           language: 'en',
           timezone: 'Asia/Kolkata'
         };
       }
 
-      // Update channels
       if (preferences.channels) {
-        userPrefs.channels = { ...userPrefs.channels, ...preferences.channels };
+        var chanKeys = Object.keys(preferences.channels);
+        for (var i = 0; i < chanKeys.length; i++) {
+          up.channels[chanKeys[i]] = preferences.channels[chanKeys[i]];
+        }
       }
 
-      // Update preferences
       if (preferences.preferences) {
-        userPrefs.preferences = { ...userPrefs.preferences, ...preferences.preferences };
+        var prefKeys = Object.keys(preferences.preferences);
+        for (var j = 0; j < prefKeys.length; j++) {
+          up.preferences[prefKeys[j]] = preferences.preferences[prefKeys[j]];
+        }
       }
 
-      // Update language
       if (preferences.language) {
-        userPrefs.language = preferences.language;
+        up.language = preferences.language;
       }
 
-      // Update timezone
       if (preferences.timezone) {
-        userPrefs.timezone = preferences.timezone;
+        up.timezone = preferences.timezone;
       }
 
-      this.userPreferences.set(userId, userPrefs);
+      this.userPreferences.set(userId, up);
 
       return {
-        userId,
-        preferences,
-        updated,
-        timestampDate().toISOString()
+        userId: userId,
+        preferences: up,
+        updated: true,
+        timestamp: new Date().toISOString()
       };
     }
 
     throw new Error('Invalid preferences action');
   }
 
-  private async getHistory(payload)<any> {
-    const { userId, limit = 20, status } = payload;
+  async getHistory(payload) {
+    var userId = payload.userId;
+    var limit = payload.limit || 20;
+    var status = payload.status;
 
     if (!userId) {
       throw new Error('UserId is required');
     }
 
-    const userNotifications = this.notifications.get(userId) || [];
-    let results = userNotifications;
+    var userNotifications = this.notifications.get(userId) || [];
+    var results = userNotifications.slice();
 
     if (status) {
-      results = results.filter(n => n.status === status);
+      results = results.filter(function(n) { return n.status === status; });
     }
 
-    // Sort by createdAt descending
-    results.sort((a, b) => b.createdAt.getTime() - a.createdAt.getTime());
+    results.sort(function(a, b) { return b.createdAt.getTime() - a.createdAt.getTime(); });
 
     return {
-      notifications.slice(0, limit),
-      total.length,
-      userId,
+      notifications: results.slice(0, limit),
+      total: results.length,
+      userId: userId,
       summary: {
-        sent.filter(n => n.status === 'Sent').length,
-        failed.filter(n => n.status === 'Failed').length,
-        pending.filter(n => n.status === 'Pending').length
+        sent: userNotifications.filter(function(n) { return n.status === 'Sent'; }).length,
+        failed: userNotifications.filter(function(n) { return n.status === 'Failed'; }).length,
+        pending: userNotifications.filter(function(n) { return n.status === 'Pending'; }).length
       }
     };
   }
 
-  private async handleComplexQuery(task, payload)<any> {
-    const prompt = `
-      Task: ${task}
-      Payload: ${JSON.stringify(payload)}
-      
-      Notifications: ${JSON.stringify(Array.from(this.notifications.entries()))}
-      Channels: ${JSON.stringify(Array.from(this.channels.entries()))}
-      User Preferences: ${JSON.stringify(Array.from(this.userPreferences.entries()))}
-      
-      Please analyze the query and provide a recommendation.
-    `;
+  async handleComplexQuery(task, payload) {
+    var prompt = 'Task: ' + task + '\n' +
+      'Payload: ' + JSON.stringify(payload) + '\n\n' +
+      'Notifications: ' + JSON.stringify(Array.from(this.notifications.entries())) + '\n' +
+      'Channels: ' + JSON.stringify(Array.from(this.channels.entries())) + '\n' +
+      'User Preferences: ' + JSON.stringify(Array.from(this.userPreferences.entries())) + '\n\n' +
+      'Please analyze the query and provide a recommendation.';
 
-    const response = await this.providerManager.generate(prompt);
-    
+    var response = await this.providerManager.generate(prompt);
+
     return {
-      aiResponse.content,
-      provider.provider,
-      tokensUsed.tokensUsed
+      aiResponse: response.content,
+      provider: response.provider,
+      tokensUsed: response.tokensUsed
     };
   }
 
-  protected getRequiredCapability(task)| null {
+  getRequiredCapability(task) {
     if (task.includes('send')) {
       return 'send_notification';
     }
@@ -439,5 +421,4 @@ export class NotificationAgent extends BaseAgent {
   }
 }
 
-
-
+module.exports = { NotificationAgent };

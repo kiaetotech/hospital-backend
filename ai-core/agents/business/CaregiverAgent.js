@@ -1,56 +1,54 @@
-// D:\hospital backend\ai-core\agents\business\CaregiverAgent.ts
+// D:\hospital backend\ai-core\agents\business\CaregiverAgent.js
 
-const { AgentRole, AgentStatus, AgentRequest, AgentResponse } = require('../../../shared/types/AgentTypes');
+const { AgentRole, AgentStatus } = require('../../../shared/types/AgentTypes');
 const { BaseAgent } = require('../base/BaseAgent');
-const { ProviderManager } = require('../../providers/ProviderManager');
 
-
-
-
-
-export class CaregiverAgent extends BaseAgent {
-  private caregivers[] = [];
-  private carePlans<string, CarePlan> = new Map();
-
+class CaregiverAgent extends BaseAgent {
   constructor(providerManager) {
     super(
       {
         name: 'Caregiver Agent',
-        role.CAREGIVER,
+        role: AgentRole.CAREGIVER,
         capabilities: [
           {
             name: 'find_caregiver',
             description: 'Find caregivers for home care services',
             priority: 1,
             estimatedLatency: 200,
-            requiresAuth},
+            requiresAuth: false
+          },
           {
             name: 'book_caregiver',
             description: 'Book a caregiver for home care',
             priority: 1,
             estimatedLatency: 300,
-            requiresAuth},
+            requiresAuth: true
+          },
           {
             name: 'create_care_plan',
             description: 'Create a personalized care plan',
             priority: 2,
             estimatedLatency: 300,
-            requiresAuth},
+            requiresAuth: true
+          },
           {
             name: 'check_availability',
             description: 'Check caregiver availability',
             priority: 1,
             estimatedLatency: 150,
-            requiresAuth}
+            requiresAuth: false
+          }
         ]
       },
       providerManager
     );
 
+    this.caregivers = [];
+    this.carePlans = new Map();
     this.initializeCaregivers();
   }
 
-  private initializeCaregivers(){
+  initializeCaregivers() {
     this.caregivers = [
       {
         id: 'cg1',
@@ -65,8 +63,9 @@ export class CaregiverAgent extends BaseAgent {
         certifications: ['GNM', 'BSc Nursing', 'Critical Care'],
         specialties: ['Wound Care', 'Medication Management', 'Vital Monitoring'],
         about: 'Experienced nurse with 8 years of experience in home care and critical care.',
-        verified,
-        availableNow},
+        verified: true,
+        availableNow: true
+      },
       {
         id: 'cg2',
         name: 'Sunita Patel',
@@ -80,8 +79,9 @@ export class CaregiverAgent extends BaseAgent {
         certifications: ['GNM', 'Post Basic Nursing', 'Geriatric Care'],
         specialties: ['Elderly Care', 'Dementia Care', 'Palliative Care'],
         about: 'Specializing in elderly care, dementia management, and palliative care services.',
-        verified,
-        availableNow},
+        verified: true,
+        availableNow: true
+      },
       {
         id: 'cg3',
         name: 'Rahul Singh',
@@ -95,8 +95,9 @@ export class CaregiverAgent extends BaseAgent {
         certifications: ['GNM', 'BSc Nursing'],
         specialties: ['Post-Surgery Care', 'Wound Care', 'Patient Education'],
         about: 'Dedicated nurse with experience in post-operative care and patient education.',
-        verified,
-        availableNow},
+        verified: true,
+        availableNow: true
+      },
       {
         id: 'cg4',
         name: 'Deepa Reddy',
@@ -110,8 +111,9 @@ export class CaregiverAgent extends BaseAgent {
         certifications: ['BSc Nursing', 'MSc Nursing', 'Critical Care'],
         specialties: ['ICU Care', 'Ventilator Care', 'Critical Patient Management'],
         about: 'Expert in critical care nursing with 15 years of experience in ICU and home care.',
-        verified,
-        availableNow},
+        verified: true,
+        availableNow: true
+      },
       {
         id: 'cg5',
         name: 'Mohan Kumar',
@@ -125,8 +127,9 @@ export class CaregiverAgent extends BaseAgent {
         certifications: ['Patient Care Assistant', 'First Aid'],
         specialties: ['Daily Living Assistance', 'Mobility Support', 'Feeding Assistance'],
         about: 'Compassionate attendant providing daily living assistance and mobility support.',
-        verified,
-        availableNow},
+        verified: true,
+        availableNow: true
+      },
       {
         id: 'cg6',
         name: 'Ramesh Yadav',
@@ -140,8 +143,9 @@ export class CaregiverAgent extends BaseAgent {
         certifications: ['Patient Care Assistant'],
         specialties: ['Bathing Assistance', 'Dressing Assistance', 'Companionship'],
         about: 'Caring attendant with experience in personal care and companionship services.',
-        verified,
-        availableNow},
+        verified: true,
+        availableNow: true
+      },
       {
         id: 'cg7',
         name: 'Radhika Krishnan',
@@ -155,8 +159,9 @@ export class CaregiverAgent extends BaseAgent {
         certifications: ['Geriatric Care', 'Dementia Care', 'Senior Care'],
         specialties: ['Elderly Care', 'Dementia Support', "Alzheimer's Care"],
         about: 'Specialist in elderly care with 10 years of experience in dementia and Alzheimer\'s care.',
-        verified,
-        availableNow},
+        verified: true,
+        availableNow: true
+      },
       {
         id: 'cg8',
         name: 'Gurpreet Kaur',
@@ -170,8 +175,9 @@ export class CaregiverAgent extends BaseAgent {
         certifications: ['Geriatric Care', 'Senior Care'],
         specialties: ['Elderly Care', 'Palliative Care', 'Companionship'],
         about: 'Experienced caregiver providing compassionate care for the elderly.',
-        verified,
-        availableNow},
+        verified: true,
+        availableNow: true
+      },
       {
         id: 'cg9',
         name: 'Ananya Verma',
@@ -185,8 +191,9 @@ export class CaregiverAgent extends BaseAgent {
         certifications: ['Special Education', 'Behavioral Therapy', 'Speech Therapy'],
         specialties: ['Autism Support', 'Developmental Disorders', 'Behavioral Management'],
         about: 'Specialist in autism care and developmental disorders with behavioral therapy training.',
-        verified,
-        availableNow},
+        verified: true,
+        availableNow: true
+      },
       {
         id: 'cg10',
         name: 'Suresh Nair',
@@ -200,8 +207,9 @@ export class CaregiverAgent extends BaseAgent {
         certifications: ['Special Education', 'Occupational Therapy'],
         specialties: ['Cerebral Palsy Care', 'Mobility Support', 'Therapy Assistance'],
         about: 'Experienced in caring for individuals with cerebral palsy and other special needs.',
-        verified,
-        availableNow},
+        verified: true,
+        availableNow: true
+      },
       {
         id: 'cg11',
         name: 'Kavita Joshi',
@@ -215,8 +223,9 @@ export class CaregiverAgent extends BaseAgent {
         certifications: ['BSc Nursing', 'Surgical Nursing', 'Wound Care'],
         specialties: ['Post-Operative Care', 'Wound Management', 'Pain Management'],
         about: 'Expert in post-operative care with 9 years of experience in surgical recovery.',
-        verified,
-        availableNow},
+        verified: true,
+        availableNow: true
+      },
       {
         id: 'cg12',
         name: 'Manish Gupta',
@@ -230,8 +239,9 @@ export class CaregiverAgent extends BaseAgent {
         certifications: ['GNM', 'Surgical Nursing'],
         specialties: ['Wound Care', 'Suture Removal', 'Physical Therapy Assistance'],
         about: 'Compassionate caregiver with expertise in post-surgical recovery and wound care.',
-        verified,
-        availableNow},
+        verified: true,
+        availableNow: true
+      },
       {
         id: 'cg13',
         name: 'Nalini Menon',
@@ -245,8 +255,9 @@ export class CaregiverAgent extends BaseAgent {
         certifications: ['Palliative Care', 'Hospice Care', 'Pain Management'],
         specialties: ['Palliative Care', 'Pain Management', 'End of Life Care'],
         about: 'Specialist in palliative care with 12 years of experience in hospice and pain management.',
-        verified,
-        availableNow},
+        verified: true,
+        availableNow: true
+      },
       {
         id: 'cg14',
         name: 'Vijay Singh',
@@ -260,24 +271,26 @@ export class CaregiverAgent extends BaseAgent {
         certifications: ['Palliative Care', 'Hospice Care'],
         specialties: ['Pain Management', 'Emotional Support', 'Family Support'],
         about: 'Dedicated palliative caregiver providing compassionate end-of-life care and support.',
-        verified,
-        availableNow}
+        verified: true,
+        availableNow: true
+      }
     ];
   }
 
-  async execute(request)<AgentResponse> {
+  async execute(request) {
     this.setStatus(AgentStatus.BUSY);
     this.setCurrentTask(request.task);
 
     try {
       if (!this.validateRequest(request)) {
-        throw new Error('Invalid requestrequired fields or capabilities');
+        throw new Error('Invalid request: missing required fields or capabilities');
       }
 
-      const { task, payload } = request;
-      this.log(`Executing task: ${task}`, 'info');
+      var task = request.task;
+      var payload = request.payload;
+      this.log('Executing task: ' + task, 'info');
 
-      let result;
+      var result;
 
       if (task.includes('find') || task.includes('search')) {
         result = await this.findCaregivers(payload);
@@ -292,77 +305,102 @@ export class CaregiverAgent extends BaseAgent {
       }
 
       this.setStatus(AgentStatus.IDLE);
-      this.setCurrentTask(undefined);
+      this.setCurrentTask(null);
 
       return {
-        success,
-        data,
-        sourceAgent.id,
-        processingTime.now() - new Date().getTime()
+        success: true,
+        data: result,
+        sourceAgent: this.id,
+        processingTime: Date.now() - new Date().getTime()
       };
 
     } catch (error) {
       this.setStatus(AgentStatus.IDLE);
-      this.setCurrentTask(undefined);
+      this.setCurrentTask(null);
       return this.handleError(error, request);
     }
   }
 
-  private async findCaregivers(payload)<any> {
-    const {
-      type, city, experience, minRating = 0,
-      availableNow = false, language, maxResults = 10
-    } = payload;
+  async findCaregivers(payload) {
+    var type = payload.type;
+    var city = payload.city;
+    var experience = payload.experience;
+    var minRating = payload.minRating || 0;
+    var availableNow = payload.availableNow || false;
+    var language = payload.language;
+    var maxResults = payload.maxResults || 10;
 
-    let results = this.caregivers;
+    var results = this.caregivers.slice();
 
     if (type) {
-      results = results.filter(c => c.type === type);
+      results = results.filter(function(c) { return c.type === type; });
     }
     if (city) {
-      results = results.filter(c => c.city.toLowerCase().includes(city.toLowerCase()));
+      results = results.filter(function(c) { return c.city.toLowerCase().includes(city.toLowerCase()); });
     }
     if (experience) {
-      results = results.filter(c => c.experience >= experience);
+      results = results.filter(function(c) { return c.experience >= experience; });
     }
     if (minRating) {
-      results = results.filter(c => c.rating >= minRating);
+      results = results.filter(function(c) { return c.rating >= minRating; });
     }
     if (availableNow) {
-      results = results.filter(c => c.availableNow);
+      results = results.filter(function(c) { return c.availableNow; });
     }
     if (language) {
-      results = results.filter(c => c.languages.some(l => l.toLowerCase().includes(language.toLowerCase())));
+      results = results.filter(function(c) {
+        return c.languages.some(function(l) { return l.toLowerCase().includes(language.toLowerCase()); });
+      });
     }
 
-    results.sort((a, b) => b.rating - a.rating);
+    results.sort(function(a, b) { return b.rating - a.rating; });
     results = results.slice(0, maxResults);
 
-    const typeCounts= {};
-    for (const c of this.caregivers) {
+    var typeCounts = {};
+    for (var i = 0; i < this.caregivers.length; i++) {
+      var c = this.caregivers[i];
       typeCounts[c.type] = (typeCounts[c.type] || 0) + 1;
     }
 
+    var mappedResults = results.map(function(c) {
+      return {
+        id: c.id,
+        name: c.name,
+        type: c.type,
+        city: c.city,
+        experience: c.experience + ' years',
+        rating: c.rating,
+        hourlyRate: '₹' + c.hourlyRate + '/hour',
+        availableSlots: c.availableSlots,
+        languages: c.languages.join(', '),
+        certifications: c.certifications.join(', '),
+        specialties: c.specialties.join(', '),
+        about: c.about,
+        verified: c.verified,
+        availableNow: c.availableNow
+      };
+    });
+
     return {
-      caregivers.map(c => ({
-        ...c,
-        hourlyRate: `₹${c.hourlyRate}/hour`,
-        experience: `${c.experience} years`,
-        certifications.certifications.join(', '),
-        specialties.specialties.join(', '),
-        languages.languages.join(', ')
-      })),
-      total.length,
-      query: { type, city, experience, minRating, availableNow, language },
-      typeCounts,
+      caregivers: mappedResults,
+      total: results.length,
+      query: { type: type, city: city, experience: experience, minRating: minRating, availableNow: availableNow, language: language },
+      typeCounts: typeCounts,
       serviceName: 'Home Care'
     };
   }
 
-  private async bookCaregiver(payload)<any> {
-    const { caregiverId, patientName, patientContact, patientAddress, startDate, hoursPerDay, daysPerWeek, notes } = payload;
+  async bookCaregiver(payload) {
+    var caregiverId = payload.caregiverId;
+    var patientName = payload.patientName;
+    var patientContact = payload.patientContact;
+    var patientAddress = payload.patientAddress;
+    var startDate = payload.startDate;
+    var hoursPerDay = payload.hoursPerDay;
+    var daysPerWeek = payload.daysPerWeek;
+    var notes = payload.notes;
 
-    const caregiver = this.caregivers.find(c => c.id === caregiverId);
+    var caregiver = this.caregivers.find(function(c) { return c.id === caregiverId; });
     if (!caregiver) {
       throw new Error('Caregiver not found');
     }
@@ -371,124 +409,143 @@ export class CaregiverAgent extends BaseAgent {
       throw new Error('Caregiver is not available at the moment');
     }
 
-    const dailyCost = caregiver.hourlyRate * hoursPerDay;
-    const weeklyCost = dailyCost * daysPerWeek;
-    const monthlyCost = weeklyCost * 4;
-
-    const bookingId = `HMC${Date.now()}`;
+    var dailyCost = caregiver.hourlyRate * hoursPerDay;
+    var weeklyCost = dailyCost * daysPerWeek;
+    var monthlyCost = weeklyCost * 4;
+    var bookingId = 'HMC' + Date.now();
 
     return {
-      bookingId,
+      bookingId: bookingId,
       caregiver: {
-        id.id,
-        name.name,
-        type.type,
-        rating.rating,
-        hourlyRate: `₹${caregiver.hourlyRate}/hour`
+        id: caregiver.id,
+        name: caregiver.name,
+        type: caregiver.type,
+        rating: caregiver.rating,
+        hourlyRate: '₹' + caregiver.hourlyRate + '/hour'
       },
       patient: {
-        name,
-        contact,
-        address},
+        name: patientName,
+        contact: patientContact,
+        address: patientAddress
+      },
       schedule: {
-        startDate,
-        hoursPerDay,
-        daysPerWeek
+        startDate: startDate,
+        hoursPerDay: hoursPerDay,
+        daysPerWeek: daysPerWeek
       },
       cost: {
-        daily: `₹${dailyCost}`,
-        weekly: `₹${weeklyCost}`,
-        monthly: `₹${monthlyCost}`
+        daily: '₹' + dailyCost,
+        weekly: '₹' + weeklyCost,
+        monthly: '₹' + monthlyCost
       },
-      notes|| '',
+      notes: notes || '',
       status: 'Confirmed',
-      timestampDate().toISOString(),
-      instructions: `Caregiver will arrive at the scheduled time. Please ensure all necessary supplies are available.`
+      timestamp: new Date().toISOString(),
+      instructions: 'Caregiver will arrive at the scheduled time. Please ensure all necessary supplies are available.'
     };
   }
 
-  private async createCarePlan(payload)<any> {
-    const { patientName, caregiverId, type, startDate, endDate, schedule, hoursPerDay, tasks } = payload;
+  async createCarePlan(payload) {
+    var patientName = payload.patientName;
+    var caregiverId = payload.caregiverId;
+    var type = payload.type;
+    var startDate = payload.startDate;
+    var endDate = payload.endDate;
+    var schedule = payload.schedule;
+    var hoursPerDay = payload.hoursPerDay;
+    var tasks = payload.tasks;
 
-    const caregiver = this.caregivers.find(c => c.id === caregiverId);
+    var caregiver = this.caregivers.find(function(c) { return c.id === caregiverId; });
     if (!caregiver) {
       throw new Error('Caregiver not found');
     }
 
-    const carePlanId = `PLN${Date.now()}`;
+    var carePlanId = 'PLN' + Date.now();
 
-    const carePlan= {
-      id,
-      patientName,
-      caregiverId,
-      type|| 'General',
-      startDate,
-      endDate|| undefined,
-      schedule|| 'Daily',
-      hoursPerDay|| 4,
-      tasks|| ['Personal Care', 'Medication Reminders', 'Companionship'],
+    var carePlan = {
+      id: carePlanId,
+      patientName: patientName,
+      caregiverId: caregiverId,
+      type: type || 'General',
+      startDate: startDate,
+      endDate: endDate || undefined,
+      schedule: schedule || 'Daily',
+      hoursPerDay: hoursPerDay || 4,
+      tasks: tasks || ['Personal Care', 'Medication Reminders', 'Companionship'],
       status: 'Pending'
     };
 
     this.carePlans.set(carePlanId, carePlan);
 
+    var result = {
+      id: carePlan.id,
+      patientName: carePlan.patientName,
+      caregiverId: carePlan.caregiverId,
+      caregiverName: caregiver.name,
+      caregiverType: caregiver.type,
+      type: carePlan.type,
+      startDate: carePlan.startDate,
+      endDate: carePlan.endDate,
+      schedule: carePlan.schedule,
+      hoursPerDay: carePlan.hoursPerDay,
+      tasks: carePlan.tasks,
+      status: carePlan.status
+    };
+
     return {
-      carePlan: {
-        ...carePlan,
-        caregiverName.name,
-        caregiverType.type
-      },
+      carePlan: result,
       dailySchedule: {
-        tasks|| ['Personal Care', 'Medication Reminders', 'Companionship'],
-        hoursPerDay|| 4,
-        schedule|| 'Daily'
+        tasks: tasks || ['Personal Care', 'Medication Reminders', 'Companionship'],
+        hoursPerDay: hoursPerDay || 4,
+        schedule: schedule || 'Daily'
       },
-      timestampDate().toISOString()
+      timestamp: new Date().toISOString()
     };
   }
 
-  private async checkAvailability(payload)<any> {
-    const { caregiverId, date } = payload;
+  async checkAvailability(payload) {
+    var caregiverId = payload.caregiverId;
+    var date = payload.date;
 
-    let targetCaregivers = this.caregivers;
+    var targetCaregivers = this.caregivers;
     if (caregiverId) {
-      targetCaregivers = this.caregivers.filter(c => c.id === caregiverId);
+      targetCaregivers = this.caregivers.filter(function(c) { return c.id === caregiverId; });
     }
 
-    const availability = targetCaregivers.map(c => ({
-      id.id,
-      name.name,
-      type.type,
-      availableNow.availableNow,
-      availableSlots.availableSlots,
-      date|| new Date().toISOString().split('T')[0],
-      hourlyRate: `₹${c.hourlyRate}/hour`
-    }));
+    var availability = targetCaregivers.map(function(c) {
+      return {
+        id: c.id,
+        name: c.name,
+        type: c.type,
+        availableNow: c.availableNow,
+        availableSlots: c.availableSlots,
+        date: date || new Date().toISOString().split('T')[0],
+        hourlyRate: '₹' + c.hourlyRate + '/hour'
+      };
+    });
 
     return {
-      availability,
-      timestampDate().toISOString()
+      availability: availability,
+      timestamp: new Date().toISOString()
     };
   }
 
-  private async handleComplexQuery(task, payload)<any> {
-    const prompt = `
-      Task: ${task}
-      Payload: ${JSON.stringify(payload)}
-      Available caregivers: ${JSON.stringify(this.caregivers)}
-      Please analyze the query and provide a recommendation.
-    `;
+  async handleComplexQuery(task, payload) {
+    var prompt = 'Task: ' + task + '\n' +
+      'Payload: ' + JSON.stringify(payload) + '\n' +
+      'Available caregivers: ' + JSON.stringify(this.caregivers) + '\n' +
+      'Please analyze the query and provide a recommendation.';
 
-    const response = await this.providerManager.generate(prompt);
-    
+    var response = await this.providerManager.generate(prompt);
+
     return {
-      aiResponse.content,
-      provider.provider,
-      tokensUsed.tokensUsed
+      aiResponse: response.content,
+      provider: response.provider,
+      tokensUsed: response.tokensUsed
     };
   }
 
-  protected getRequiredCapability(task)| null {
+  getRequiredCapability(task) {
     if (task.includes('find') || task.includes('search')) {
       return 'find_caregiver';
     }
@@ -505,5 +562,4 @@ export class CaregiverAgent extends BaseAgent {
   }
 }
 
-
-
+module.exports = { CaregiverAgent };

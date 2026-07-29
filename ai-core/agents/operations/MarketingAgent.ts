@@ -1,49 +1,10 @@
-// D:\hospital backend\ai-core\agents\operations\MarketingAgent.ts
+// D:\hospital backend\ai-core\agents\operations\MarketingAgent.js
 
-import { AgentRole, AgentStatus, AgentRequest, AgentResponse } from '../../../shared/types/AgentTypes';
-import { BaseAgent } from '../base/BaseAgent';
-import { ProviderManager } from '../../providers/ProviderManager';
+const { AgentRole, AgentStatus } = require('../../../shared/types/AgentTypes');
+const { BaseAgent } = require('../base/BaseAgent');
 
-interface Campaign {
-  id: string;
-  name: string;
-  type: 'Email' | 'SMS' | 'WhatsApp' | 'Social' | 'SEO' | 'Display';
-  status: 'Draft' | 'Scheduled' | 'Running' | 'Paused' | 'Completed';
-  audience: string[];
-  budget: number;
-  spent: number;
-  metrics: {
-    impressions: number;
-    clicks: number;
-    conversions: number;
-    ctr: number;
-    conversionRate: number;
-    roi: number;
-  };
-  startDate: Date;
-  endDate: Date;
-  createdAt: Date;
-  updatedAt: Date;
-}
-
-interface ContentSuggestion {
-  id: string;
-  title: string;
-  type: 'Blog' | 'SocialPost' | 'Email' | 'AdCopy' | 'LandingPage';
-  topic: string;
-  keywords: string[];
-  targetAudience: string[];
-  tone: string;
-  suggestedLength: string;
-  seoScore: number;
-  createdAt: Date;
-}
-
-export class MarketingAgent extends BaseAgent {
-  private campaigns: Campaign[] = [];
-  private contentSuggestions: ContentSuggestion[] = [];
-
-  constructor(providerManager: ProviderManager) {
+class MarketingAgent extends BaseAgent {
+  constructor(providerManager) {
     super(
       {
         name: 'Marketing Agent',
@@ -82,10 +43,12 @@ export class MarketingAgent extends BaseAgent {
       providerManager
     );
 
+    this.campaigns = [];
+    this.contentSuggestions = [];
     this.initializeData();
   }
 
-  private initializeData(): void {
+  initializeData() {
     this.campaigns = [
       {
         id: 'cam1',
@@ -159,7 +122,7 @@ export class MarketingAgent extends BaseAgent {
     ];
   }
 
-  async execute(request: AgentRequest): Promise<AgentResponse> {
+  async execute(request) {
     this.setStatus(AgentStatus.BUSY);
     this.setCurrentTask(request.task);
 
@@ -168,10 +131,11 @@ export class MarketingAgent extends BaseAgent {
         throw new Error('Invalid request: Missing required fields or capabilities');
       }
 
-      const { task, payload } = request;
-      this.log(`Executing task: ${task}`, 'info');
+      var task = request.task;
+      var payload = request.payload;
+      this.log('Executing task: ' + task, 'info');
 
-      let result: any;
+      var result;
 
       if (task.includes('generate') || task.includes('content')) {
         result = await this.generateContent(payload);
@@ -186,7 +150,7 @@ export class MarketingAgent extends BaseAgent {
       }
 
       this.setStatus(AgentStatus.IDLE);
-      this.setCurrentTask(undefined);
+      this.setCurrentTask(null);
 
       return {
         success: true,
@@ -197,28 +161,26 @@ export class MarketingAgent extends BaseAgent {
 
     } catch (error) {
       this.setStatus(AgentStatus.IDLE);
-      this.setCurrentTask(undefined);
+      this.setCurrentTask(null);
       return this.handleError(error, request);
     }
   }
 
-  private async generateContent(payload: any): Promise<any> {
-    const { topic, type, keywords } = payload;
+  async generateContent(payload) {
+    var topic = payload.topic;
+    var type = payload.type;
+    var keywords = payload.keywords;
 
-    // Use AI to generate content
-    const prompt = `
-      Generate a ${type || 'blog'} about ${topic || 'health and wellness'}.
-      Keywords: ${keywords ? keywords.join(', ') : 'general health'}
-      
-      Please provide:
-      1. Title
-      2. Brief outline
-      3. Key points
-      4. SEO meta description
-      5. Suggested hashtags
-    `;
+    var prompt = 'Generate a ' + (type || 'blog') + ' about ' + (topic || 'health and wellness') + '.\n' +
+      'Keywords: ' + (keywords ? keywords.join(', ') : 'general health') + '\n\n' +
+      'Please provide:\n' +
+      '1. Title\n' +
+      '2. Brief outline\n' +
+      '3. Key points\n' +
+      '4. SEO meta description\n' +
+      '5. Suggested hashtags';
 
-    const response = await this.providerManager.generate(prompt);
+    var response = await this.providerManager.generate(prompt);
 
     return {
       content: response.content,
@@ -230,20 +192,25 @@ export class MarketingAgent extends BaseAgent {
     };
   }
 
-  private async createCampaign(payload: any): Promise<any> {
-    const { name, type, audience, budget, startDate, endDate } = payload;
+  async createCampaign(payload) {
+    var name = payload.name;
+    var type = payload.type;
+    var audience = payload.audience;
+    var budget = payload.budget;
+    var startDate = payload.startDate;
+    var endDate = payload.endDate;
 
     if (!name || !type || !budget) {
       throw new Error('Name, type, and budget are required');
     }
 
-    const campaign: Campaign = {
-      id: `cam${Date.now()}`,
-      name,
-      type,
+    var campaign = {
+      id: 'cam' + Date.now(),
+      name: name,
+      type: type,
       status: 'Draft',
       audience: audience || ['All Customers'],
-      budget,
+      budget: budget,
       spent: 0,
       metrics: {
         impressions: 0,
@@ -262,7 +229,7 @@ export class MarketingAgent extends BaseAgent {
     this.campaigns.push(campaign);
 
     return {
-      campaign,
+      campaign: campaign,
       message: 'Campaign created successfully',
       nextSteps: [
         'Review campaign details',
@@ -273,41 +240,47 @@ export class MarketingAgent extends BaseAgent {
     };
   }
 
-  private async analyzeCampaign(payload: any): Promise<any> {
-    const { campaignId } = payload;
+  async analyzeCampaign(payload) {
+    var campaignId = payload.campaignId;
 
-    let targetCampaigns = this.campaigns;
+    var targetCampaigns = this.campaigns;
     if (campaignId) {
-      targetCampaigns = this.campaigns.filter(c => c.id === campaignId);
+      targetCampaigns = this.campaigns.filter(function(c) { return c.id === campaignId; });
     }
 
-    const analysis = targetCampaigns.map(c => {
-      const roi = c.metrics.roi || 0;
-      const performance = roi > 200 ? 'Excellent' : roi > 100 ? 'Good' : roi > 50 ? 'Average' : 'Poor';
+    var self = this;
+    var analysis = targetCampaigns.map(function(c) {
+      var roi = c.metrics.roi || 0;
+      var performance = roi > 200 ? 'Excellent' : roi > 100 ? 'Good' : roi > 50 ? 'Average' : 'Poor';
 
       return {
         campaign: c.name,
         type: c.type,
         status: c.status,
         metrics: c.metrics,
-        roi,
-        performance,
-        recommendations: this.getCampaignRecommendations(c)
+        roi: roi,
+        performance: performance,
+        recommendations: self.getCampaignRecommendations(c)
       };
     });
 
+    var sumROI = 0;
+    for (var i = 0; i < targetCampaigns.length; i++) {
+      sumROI += targetCampaigns[i].metrics.roi;
+    }
+
     return {
-      analysis,
+      analysis: analysis,
       summary: {
         totalCampaigns: targetCampaigns.length,
-        activeCampaigns: targetCampaigns.filter(c => c.status === 'Running').length,
-        averageROI: targetCampaigns.reduce((sum, c) => sum + c.metrics.roi, 0) / targetCampaigns.length || 0
+        activeCampaigns: targetCampaigns.filter(function(c) { return c.status === 'Running'; }).length,
+        averageROI: targetCampaigns.length > 0 ? sumROI / targetCampaigns.length : 0
       }
     };
   }
 
-  private getCampaignRecommendations(campaign: Campaign): string[] {
-    const recommendations: string[] = [];
+  getCampaignRecommendations(campaign) {
+    var recommendations = [];
 
     if (campaign.metrics.ctr < 3) {
       recommendations.push('Improve subject lines and preview text');
@@ -329,24 +302,21 @@ export class MarketingAgent extends BaseAgent {
     return recommendations.length ? recommendations : ['Campaign performing well. Continue current strategy.'];
   }
 
-  private async suggestOptimizations(payload: any): Promise<any> {
-    const { url, topic } = payload;
+  async suggestOptimizations(payload) {
+    var url = payload.url;
+    var topic = payload.topic;
 
-    // Use AI to suggest SEO optimizations
-    const prompt = `
-      Analyze the following topic and suggest SEO optimizations:
-      Topic: ${topic || 'Healthcare platform'}
-      URL: ${url || 'N/A'}
-      
-      Please provide:
-      1. Keyword suggestions
-      2. Meta description
-      3. Title tag suggestions
-      4. Content structure recommendations
-      5. Internal linking suggestions
-    `;
+    var prompt = 'Analyze the following topic and suggest SEO optimizations:\n' +
+      'Topic: ' + (topic || 'Healthcare platform') + '\n' +
+      'URL: ' + (url || 'N/A') + '\n\n' +
+      'Please provide:\n' +
+      '1. Keyword suggestions\n' +
+      '2. Meta description\n' +
+      '3. Title tag suggestions\n' +
+      '4. Content structure recommendations\n' +
+      '5. Internal linking suggestions';
 
-    const response = await this.providerManager.generate(prompt);
+    var response = await this.providerManager.generate(prompt);
 
     return {
       optimizations: response.content,
@@ -356,20 +326,16 @@ export class MarketingAgent extends BaseAgent {
     };
   }
 
-  private async handleComplexQuery(task: string, payload: any): Promise<any> {
-    const prompt = `
-      Task: ${task}
-      Payload: ${JSON.stringify(payload)}
-      
-      Marketing Data:
-      Campaigns: ${JSON.stringify(this.campaigns)}
-      Content Suggestions: ${JSON.stringify(this.contentSuggestions)}
-      
-      Please analyze the query and provide a recommendation.
-    `;
+  async handleComplexQuery(task, payload) {
+    var prompt = 'Task: ' + task + '\n' +
+      'Payload: ' + JSON.stringify(payload) + '\n\n' +
+      'Marketing Data:\n' +
+      'Campaigns: ' + JSON.stringify(this.campaigns) + '\n' +
+      'Content Suggestions: ' + JSON.stringify(this.contentSuggestions) + '\n\n' +
+      'Please analyze the query and provide a recommendation.';
 
-    const response = await this.providerManager.generate(prompt);
-    
+    var response = await this.providerManager.generate(prompt);
+
     return {
       aiResponse: response.content,
       provider: response.provider,
@@ -377,7 +343,7 @@ export class MarketingAgent extends BaseAgent {
     };
   }
 
-  protected getRequiredCapability(task: string): string | null {
+  getRequiredCapability(task) {
     if (task.includes('generate') || task.includes('content')) {
       return 'generate_content';
     }
@@ -393,3 +359,5 @@ export class MarketingAgent extends BaseAgent {
     return null;
   }
 }
+
+module.exports = { MarketingAgent };

@@ -1,64 +1,54 @@
-// D:\hospital backend\ai-core\agents\operations\FinanceAgent.ts
+// D:\hospital backend\ai-core\agents\operations\FinanceAgent.js
 
-const { AgentRole, AgentStatus, AgentRequest, AgentResponse } = require('../../../shared/types/AgentTypes');
+const { AgentRole, AgentStatus } = require('../../../shared/types/AgentTypes');
 const { BaseAgent } = require('../base/BaseAgent');
-const { ProviderManager } = require('../../providers/ProviderManager');
 
-;
-    requiredDocuments[];
-  };
-  processingTime;
-}
-
-
-
-
-
-
-
-export class FinanceAgent extends BaseAgent {
-  private partners[] = [];
-  private applications<string, LoanApplication> = new Map();
-
+class FinanceAgent extends BaseAgent {
   constructor(providerManager) {
     super(
       {
         name: 'Finance Agent',
-        role.FINANCE,
+        role: AgentRole.FINANCE,
         capabilities: [
           {
             name: 'calculate_emi',
             description: 'Calculate EMI for health expenses',
             priority: 1,
             estimatedLatency: 150,
-            requiresAuth},
+            requiresAuth: false
+          },
           {
             name: 'compare_emi_partners',
             description: 'Compare EMI partners and plans',
             priority: 1,
             estimatedLatency: 200,
-            requiresAuth},
+            requiresAuth: false
+          },
           {
             name: 'apply_loan',
             description: 'Apply for health EMI loan',
             priority: 1,
             estimatedLatency: 300,
-            requiresAuth},
+            requiresAuth: true
+          },
           {
             name: 'check_eligibility',
             description: 'Check eligibility for EMI',
             priority: 2,
             estimatedLatency: 200,
-            requiresAuth}
+            requiresAuth: false
+          }
         ]
       },
       providerManager
     );
 
+    this.partners = [];
+    this.applications = new Map();
     this.initializePartners();
   }
 
-  private initializePartners(){
+  initializePartners() {
     this.partners = [
       {
         id: 'emi1',
@@ -233,19 +223,20 @@ export class FinanceAgent extends BaseAgent {
     ];
   }
 
-  async execute(request)<AgentResponse> {
+  async execute(request) {
     this.setStatus(AgentStatus.BUSY);
     this.setCurrentTask(request.task);
 
     try {
       if (!this.validateRequest(request)) {
-        throw new Error('Invalid requestrequired fields or capabilities');
+        throw new Error('Invalid request: missing required fields or capabilities');
       }
 
-      const { task, payload } = request;
-      this.log(`Executing task: ${task}`, 'info');
+      var task = request.task;
+      var payload = request.payload;
+      this.log('Executing task: ' + task, 'info');
 
-      let result;
+      var result;
 
       if (task.includes('calculate') || task.includes('emi')) {
         result = await this.calculateEMI(payload);
@@ -260,285 +251,303 @@ export class FinanceAgent extends BaseAgent {
       }
 
       this.setStatus(AgentStatus.IDLE);
-      this.setCurrentTask(undefined);
+      this.setCurrentTask(null);
 
       return {
-        success,
-        data,
-        sourceAgent.id,
-        processingTime.now() - new Date().getTime()
+        success: true,
+        data: result,
+        sourceAgent: this.id,
+        processingTime: Date.now() - new Date().getTime()
       };
 
     } catch (error) {
       this.setStatus(AgentStatus.IDLE);
-      this.setCurrentTask(undefined);
+      this.setCurrentTask(null);
       return this.handleError(error, request);
     }
   }
 
-  private async calculateEMI(payload)<any> {
-    const { amount, tenure, partnerId } = payload;
+  async calculateEMI(payload) {
+    var amount = payload.amount;
+    var tenure = payload.tenure;
+    var partnerId = payload.partnerId;
 
     if (!amount || !tenure) {
       throw new Error('Amount and tenure are required');
     }
 
-    let targetPartners = this.partners;
+    var targetPartners = this.partners;
     if (partnerId) {
-      targetPartners = this.partners.filter(p => p.id === partnerId);
+      targetPartners = this.partners.filter(function(p) { return p.id === partnerId; });
     }
 
-    const quotes[] = [];
+    var quotes = [];
 
-    for (const partner of targetPartners) {
-      for (const plan of partner.plans) {
+    for (var i = 0; i < targetPartners.length; i++) {
+      var partner = targetPartners[i];
+      for (var j = 0; j < partner.plans.length; j++) {
+        var plan = partner.plans[j];
         if (amount < plan.minAmount || amount > plan.maxAmount) continue;
         if (!plan.tenures.includes(tenure)) continue;
 
-        const totalInterest = amount * (plan.interestRate / 100) * (tenure / 12);
-        const processingFee = plan.processingFee;
-        const totalAmount = amount + totalInterest + processingFee;
-        const monthlyPayment = totalAmount / tenure;
+        var totalInterest = amount * (plan.interestRate / 100) * (tenure / 12);
+        var processingFee = plan.processingFee;
+        var totalAmount = amount + totalInterest + processingFee;
+        var monthlyPayment = totalAmount / tenure;
 
         quotes.push({
-          amount,
-          tenure,
-          interestRate.interestRate,
-          processingFee,
-          totalInterest,
-          totalAmount,
-          monthlyPayment.round(monthlyPayment * 100) / 100,
-          partner.name,
-          planType.type
+          amount: amount,
+          tenure: tenure,
+          interestRate: plan.interestRate,
+          processingFee: processingFee,
+          totalInterest: totalInterest,
+          totalAmount: totalAmount,
+          monthlyPayment: Math.round(monthlyPayment * 100) / 100,
+          partner: partner.name,
+          planType: plan.type
         });
       }
     }
 
-    // Sort by total amount (best deal first)
-    quotes.sort((a, b) => a.totalAmount - b.totalAmount);
+    quotes.sort(function(a, b) { return a.totalAmount - b.totalAmount; });
 
     return {
-      quotes,
+      quotes: quotes,
       summary: {
-        bestDeal[0] || null,
-        totalOptions.length,
-        amount,
-        tenure
+        bestDeal: quotes[0] || null,
+        totalOptions: quotes.length,
+        amount: amount,
+        tenure: tenure
       }
     };
   }
 
-  private async comparePartners(payload)<any> {
-    const { amount, tenure, planType } = payload;
+  async comparePartners(payload) {
+    var amount = payload.amount;
+    var tenure = payload.tenure;
+    var planType = payload.planType;
 
-    let results = this.partners.map(partner => {
-      const availablePlans = partner.plans.filter(plan => {
-        const amountCheck = amount >= plan.minAmount && amount <= plan.maxAmount;
-        const tenureCheck = plan.tenures.includes(tenure);
-        const typeCheck = planType ? plan.type === planType ;
+    var results = this.partners.map(function(partner) {
+      var availablePlans = partner.plans.filter(function(plan) {
+        var amountCheck = amount >= plan.minAmount && amount <= plan.maxAmount;
+        var tenureCheck = plan.tenures.includes(tenure);
+        var typeCheck = planType ? plan.type === planType : true;
         return amountCheck && tenureCheck && typeCheck;
       });
 
+      var mappedPlans = availablePlans.map(function(plan) {
+        var totalPayment = amount + (amount * plan.interestRate / 100) * (tenure / 12) + plan.processingFee;
+        var monthlyPayment = totalPayment / tenure;
+        return {
+          name: plan.name,
+          type: plan.type,
+          minAmount: plan.minAmount,
+          maxAmount: plan.maxAmount,
+          tenures: plan.tenures,
+          interestRate: plan.interestRate,
+          processingFee: plan.processingFee,
+          applicableOn: plan.applicableOn,
+          monthlyPayment: Math.round(monthlyPayment * 100) / 100,
+          totalPayment: Math.round(totalPayment * 100) / 100
+        };
+      });
+
       return {
-        ...partner,
-        availablePlans.map(plan => ({
-          ...plan,
-          monthlyPayment.round(((amount + (amount * plan.interestRate / 100) * (tenure / 12) + plan.processingFee) / tenure) * 100) / 100,
-          totalPayment.round((amount + (amount * plan.interestRate / 100) * (tenure / 12) + plan.processingFee) * 100) / 100
-        }))
+        id: partner.id,
+        name: partner.name,
+        type: partner.type,
+        logo: partner.logo,
+        rating: partner.rating,
+        eligibility: partner.eligibility,
+        processingTime: partner.processingTime,
+        availablePlans: mappedPlans
       };
     });
 
-    // Filter partners with at least one available plan
-    results = results.filter(p => p.availablePlans.length > 0);
+    results = results.filter(function(p) { return p.availablePlans.length > 0; });
 
     return {
-      partners,
-      totalPartners.length,
-      query: { amount, tenure, planType }
+      partners: results,
+      totalPartners: results.length,
+      query: { amount: amount, tenure: tenure, planType: planType }
     };
   }
 
-  private async applyLoan(payload)<any> {
-    const { userId, partnerId, amount, tenure, purpose, userDetails } = payload;
+  async applyLoan(payload) {
+    var userId = payload.userId;
+    var partnerId = payload.partnerId;
+    var amount = payload.amount;
+    var tenure = payload.tenure;
+    var purpose = payload.purpose;
+    var userDetails = payload.userDetails;
 
     if (!userId || !partnerId || !amount || !tenure) {
       throw new Error('User ID, Partner ID, Amount, and Tenure are required');
     }
 
-    const partner = this.partners.find(p => p.id === partnerId);
+    var partner = this.partners.find(function(p) { return p.id === partnerId; });
     if (!partner) {
       throw new Error('Partner not found');
     }
 
-    // Calculate EMI
-    const quoteResult = await this.calculateEMI({ amount, tenure, partnerId });
-    const bestQuote = quoteResult.quotes[0];
+    var quoteResult = await this.calculateEMI({ amount: amount, tenure: tenure, partnerId: partnerId });
+    var bestQuote = quoteResult.quotes[0];
 
     if (!bestQuote) {
       throw new Error('No suitable plan found for the given amount and tenure');
     }
 
-    // Check eligibility (simplified)
-    const eligibility = await this.checkEligibility({
-      userId,
-      partnerId,
-      amount,
-      userDetails
+    var eligibility = await this.checkEligibility({
+      userId: userId,
+      partnerId: partnerId,
+      amount: amount,
+      userDetails: userDetails
     });
 
     if (!eligibility.eligible) {
-      throw new Error(`Not eligible: ${eligibility.reason}`);
+      throw new Error('Not eligible: ' + eligibility.reason);
     }
 
-    const applicationId = `LN${Date.now()}`;
+    var applicationId = 'LN' + Date.now();
 
-    const application= {
-      id,
-      userId,
-      partnerId,
-      amount,
-      tenure,
-      purpose|| 'Medical Expenses',
+    var application = {
+      id: applicationId,
+      userId: userId,
+      partnerId: partnerId,
+      amount: amount,
+      tenure: tenure,
+      purpose: purpose || 'Medical Expenses',
       status: 'Pending',
-      emiAmount.monthlyPayment,
-      totalAmount.totalAmount,
-      createdAtDate(),
-      updatedAtDate()
+      emiAmount: bestQuote.monthlyPayment,
+      totalAmount: bestQuote.totalAmount,
+      createdAt: new Date(),
+      updatedAt: new Date()
     };
 
     this.applications.set(applicationId, application);
 
     return {
-      applicationId,
+      applicationId: applicationId,
       partner: {
-        name.name,
-        type.type
+        name: partner.name,
+        type: partner.type
       },
       plan: {
-        type.planType,
-        interestRate.interestRate,
-        processingFee.processingFee,
-        monthlyPayment.monthlyPayment,
-        totalAmount.totalAmount
+        type: bestQuote.planType,
+        interestRate: bestQuote.interestRate,
+        processingFee: bestQuote.processingFee,
+        monthlyPayment: bestQuote.monthlyPayment,
+        totalAmount: bestQuote.totalAmount
       },
-      amount,
-      tenure,
-      purpose|| 'Medical Expenses',
+      amount: amount,
+      tenure: tenure,
+      purpose: purpose || 'Medical Expenses',
       status: 'Pending',
       nextSteps: [
         'Wait for approval (typically 24-48 hours)',
         'Upload required documents',
         'Complete KYC verification'
       ],
-      createdAtDate().toISOString()
+      createdAt: new Date().toISOString()
     };
   }
 
-  private async checkEligibility(payload)<any> {
-    const { userId, partnerId, amount, userDetails } = payload;
+  async checkEligibility(payload) {
+    var userId = payload.userId;
+    var partnerId = payload.partnerId;
+    var amount = payload.amount;
+    var userDetails = payload.userDetails;
 
     if (partnerId) {
-      const partner = this.partners.find(p => p.id === partnerId);
+      var partner = this.partners.find(function(p) { return p.id === partnerId; });
       if (!partner) {
         throw new Error('Partner not found');
       }
 
-      // Check eligibility criteria
-      const eligibility = partner.eligibility;
-      let eligible = true;
-      let reason = '';
+      var eligibility = partner.eligibility;
+      var eligible = true;
+      var reason = '';
 
-      // Simulated checks
       if (!userDetails) {
         eligible = false;
         reason = 'User details required';
       } else {
-        // Simulated credit score check
-        const creditScore = userDetails.creditScore || 700;
+        var creditScore = userDetails.creditScore || 700;
         if (creditScore < eligibility.minCreditScore) {
           eligible = false;
-          reason = `Credit score ${creditScore} is below minimum ${eligibility.minCreditScore}`;
+          reason = 'Credit score ' + creditScore + ' is below minimum ' + eligibility.minCreditScore;
         }
 
-        // Simulated income check
-        const income = userDetails.monthlyIncome || 25000;
+        var income = userDetails.monthlyIncome || 25000;
         if (income < eligibility.minIncome) {
           eligible = false;
-          reason = `Income ${income} is below minimum ${eligibility.minIncome}`;
+          reason = 'Income ' + income + ' is below minimum ' + eligibility.minIncome;
         }
 
-        // Age check
-        const age = userDetails.age || 30;
+        var age = userDetails.age || 30;
         if (age < eligibility.ageRange.min || age > eligibility.ageRange.max) {
           eligible = false;
-          reason = `Age ${age} is outside range ${eligibility.ageRange.min}-${eligibility.ageRange.max}`;
+          reason = 'Age ' + age + ' is outside range ' + eligibility.ageRange.min + '-' + eligibility.ageRange.max;
         }
       }
 
       return {
-        eligible,
-        reason,
+        eligible: eligible,
+        reason: reason,
         partner: {
-          name.name,
-          requiredDocuments.requiredDocuments,
-          processingTime.processingTime
+          name: partner.name,
+          requiredDocuments: partner.eligibility.requiredDocuments,
+          processingTime: partner.processingTime
         }
       };
     }
 
-    // Check all partners
-    const results = this.partners.map(partner => {
-      const eligibility = partner.eligibility;
-      let eligible = true;
-      let reason = '';
+    var results = this.partners.map(function(p) {
+      var elig = p.eligibility;
+      var isEligible = true;
+      var reasonText = '';
 
-      // Simplified check
       if (userDetails) {
-        const creditScore = userDetails.creditScore || 700;
-        if (creditScore < eligibility.minCreditScore) {
-          eligible = false;
-          reason = `Credit score ${creditScore} below ${eligibility.minCreditScore}`;
+        var cs = userDetails.creditScore || 700;
+        if (cs < elig.minCreditScore) {
+          isEligible = false;
+          reasonText = 'Credit score ' + cs + ' below ' + elig.minCreditScore;
         }
       }
 
       return {
-        partner.name,
-        type.type,
-        eligible,
-        reason,
-        processingTime.processingTime,
-        requiredDocuments.requiredDocuments
+        partner: p.name,
+        type: p.type,
+        eligible: isEligible,
+        reason: reasonText,
+        processingTime: p.processingTime,
+        requiredDocuments: p.eligibility.requiredDocuments
       };
     });
 
     return {
-      allPartners,
-      eligiblePartners.filter(r => r.eligible),
-      totalEligible.filter(r => r.eligible).length
+      allPartners: results,
+      eligiblePartners: results.filter(function(r) { return r.eligible; }),
+      totalEligible: results.filter(function(r) { return r.eligible; }).length
     };
   }
 
-  private async handleComplexQuery(task, payload)<any> {
-    const prompt = `
-      Task: ${task}
-      Payload: ${JSON.stringify(payload)}
-      
-      Available EMI Partners: ${JSON.stringify(this.partners)}
-      
-      Please analyze the query and provide a recommendation.
-    `;
+  async handleComplexQuery(task, payload) {
+    var prompt = 'Task: ' + task + '\n' +
+      'Payload: ' + JSON.stringify(payload) + '\n\n' +
+      'Available EMI Partners: ' + JSON.stringify(this.partners) + '\n\n' +
+      'Please analyze the query and provide a recommendation.';
 
-    const response = await this.providerManager.generate(prompt);
-    
+    var response = await this.providerManager.generate(prompt);
+
     return {
-      aiResponse.content,
-      provider.provider,
-      tokensUsed.tokensUsed
+      aiResponse: response.content,
+      provider: response.provider,
+      tokensUsed: response.tokensUsed
     };
   }
 
-  protected getRequiredCapability(task)| null {
+  getRequiredCapability(task) {
     if (task.includes('calculate') || task.includes('emi')) {
       return 'calculate_emi';
     }
@@ -555,5 +564,4 @@ export class FinanceAgent extends BaseAgent {
   }
 }
 
-
-
+module.exports = { FinanceAgent };

@@ -1,66 +1,54 @@
-// D:\hospital backend\ai-core\agents\business\AmbulanceAgent.ts
+// D:\hospital backend\ai-core\agents\business\AmbulanceAgent.js
 
-const { AgentRole, AgentStatus, AgentRequest, AgentResponse } = require('../../../shared/types/AgentTypes');
+const { AgentRole, AgentStatus } = require('../../../shared/types/AgentTypes');
 const { BaseAgent } = require('../base/BaseAgent');
-const { ProviderManager } = require('../../providers/ProviderManager');
 
-;
-  status: 'Available' | 'OnRoute' | 'OnSite' | 'Returning';
-  driverName;
-  driverContact;
-  estimatedArrival; // minutes
-  equipment[];
-}
-
-;
-  dropoffLocation: { address; lat; lng};
-  emergencyType: 'Medical' | 'Accident' | 'Cardiac' | 'Stroke' | 'Other';
-  notes?;
-}
-
-export class AmbulanceAgent extends BaseAgent {
-  private ambulances[] = [];
-  private activeTrips<string, any> = new Map();
-
+class AmbulanceAgent extends BaseAgent {
   constructor(providerManager) {
     super(
       {
         name: 'Ambulance Agent',
-        role.AMBULANCE,
+        role: AgentRole.AMBULANCE,
         capabilities: [
           {
             name: 'dispatch_ambulance',
             description: 'Dispatch nearest available ambulance to emergency location',
             priority: 1,
             estimatedLatency: 200,
-            requiresAuth},
+            requiresAuth: true
+          },
           {
             name: 'track_ambulance',
             description: 'Track ambulance location and ETA in real-time',
             priority: 2,
             estimatedLatency: 100,
-            requiresAuth},
+            requiresAuth: false
+          },
           {
             name: 'check_availability',
             description: 'Check ambulance availability by location and type',
             priority: 1,
             estimatedLatency: 150,
-            requiresAuth},
+            requiresAuth: false
+          },
           {
             name: 'calculate_eta',
             description: 'Calculate estimated time of arrival for ambulance',
             priority: 2,
             estimatedLatency: 100,
-            requiresAuth}
+            requiresAuth: false
+          }
         ]
       },
       providerManager
     );
 
+    this.ambulances = [];
+    this.activeTrips = new Map();
     this.initializeAmbulances();
   }
 
-  private initializeAmbulances(){
+  initializeAmbulances() {
     this.ambulances = [
       {
         id: 'amb1',
@@ -125,19 +113,20 @@ export class AmbulanceAgent extends BaseAgent {
     ];
   }
 
-  async execute(request)<AgentResponse> {
+  async execute(request) {
     this.setStatus(AgentStatus.BUSY);
     this.setCurrentTask(request.task);
 
     try {
       if (!this.validateRequest(request)) {
-        throw new Error('Invalid requestrequired fields or capabilities');
+        throw new Error('Invalid request: Missing required fields or capabilities');
       }
 
-      const { task, payload } = request;
-      this.log(`Executing task: ${task}`, 'info');
+      var task = request.task;
+      var payload = request.payload;
+      this.log('Executing task: ' + task, 'info');
 
-      let result;
+      var result;
 
       if (task.includes('dispatch') || task.includes('emergency')) {
         result = await this.dispatchAmbulance(payload);
@@ -152,96 +141,96 @@ export class AmbulanceAgent extends BaseAgent {
       }
 
       this.setStatus(AgentStatus.IDLE);
-      this.setCurrentTask(undefined);
+      this.setCurrentTask(null);
 
       return {
-        success,
-        data,
-        sourceAgent.id,
-        processingTime.now() - new Date().getTime()
+        success: true,
+        data: result,
+        sourceAgent: this.id,
+        processingTime: Date.now() - new Date().getTime()
       };
 
     } catch (error) {
       this.setStatus(AgentStatus.IDLE);
-      this.setCurrentTask(undefined);
+      this.setCurrentTask(null);
       return this.handleError(error, request);
     }
   }
 
-  private async dispatchAmbulance(payload)<any> {
-    const { patientName, patientContact, pickupLocation, dropoffLocation, emergencyType, notes } = payload;
+  async dispatchAmbulance(payload) {
+    var patientName = payload.patientName;
+    var patientContact = payload.patientContact;
+    var pickupLocation = payload.pickupLocation;
+    var dropoffLocation = payload.dropoffLocation;
+    var emergencyType = payload.emergencyType;
+    var notes = payload.notes;
 
     if (!pickupLocation || !patientName) {
       throw new Error('Patient name and pickup location are required');
     }
 
-    // Find nearest available ambulance
-    const nearestAmbulance = this.findNearestAmbulance(pickupLocation);
-    
+    var nearestAmbulance = this.findNearestAmbulance(pickupLocation);
+
     if (!nearestAmbulance) {
       throw new Error('No ambulances available in your area');
     }
 
-    // Calculate ETA
-    const eta = this.calculateDistance(pickupLocation, nearestAmbulance.currentLocation);
-    const etaMinutes = Math.round(eta * 2); // Rough estimate: 1km = 2 minutes
+    var eta = this.calculateDistance(pickupLocation, nearestAmbulance.currentLocation);
+    var etaMinutes = Math.round(eta * 2);
 
-    // Update ambulance status
     nearestAmbulance.status = 'OnRoute';
     nearestAmbulance.estimatedArrival = etaMinutes;
 
-    // Generate trip ID
-    const tripId = `TRIP${Date.now()}`;
+    var tripId = 'TRIP' + Date.now();
 
-    // Store active trip
     this.activeTrips.set(tripId, {
-      ambulanceId.id,
-      patientName,
-      patientContact,
-      pickupLocation,
-      dropoffLocation,
-      emergencyType|| 'Medical',
+      ambulanceId: nearestAmbulance.id,
+      patientName: patientName,
+      patientContact: patientContact,
+      pickupLocation: pickupLocation,
+      dropoffLocation: dropoffLocation,
+      emergencyType: emergencyType || 'Medical',
       status: 'Dispatched',
-      dispatchedAtDate().toISOString(),
-      estimatedArrival});
+      dispatchedAt: new Date().toISOString(),
+      estimatedArrival: etaMinutes
+    });
 
     return {
-      tripId,
+      tripId: tripId,
       ambulance: {
-        id.id,
-        vehicleNumber.vehicleNumber,
-        type.type,
-        driverName.driverName,
-        driverContact.driverContact
+        id: nearestAmbulance.id,
+        vehicleNumber: nearestAmbulance.vehicleNumber,
+        type: nearestAmbulance.type,
+        driverName: nearestAmbulance.driverName,
+        driverContact: nearestAmbulance.driverContact
       },
-      eta,
+      eta: etaMinutes,
       status: 'Dispatched',
-      emergencyType|| 'Medical',
-      message: `Ambulance ${nearestAmbulance.vehicleNumber} is on its way. ETA: ${etaMinutes} minutes`,
+      emergencyType: emergencyType || 'Medical',
+      message: 'Ambulance ' + nearestAmbulance.vehicleNumber + ' is on its way. ETA: ' + etaMinutes + ' minutes',
       tracking: {
-        ambulanceLocation.currentLocation,
-        pickupLocation,
-        dropoffLocation|| null
+        ambulanceLocation: nearestAmbulance.currentLocation,
+        pickupLocation: pickupLocation,
+        dropoffLocation: dropoffLocation || null
       }
     };
   }
 
-  private findNearestAmbulance(pickupLocation: { lat; lng})| null {
-    let nearest| null = null;
-    let minDistance = Infinity;
+  findNearestAmbulance(pickupLocation) {
+    var nearest = null;
+    var minDistance = Infinity;
 
-    for (const ambulance of this.ambulances) {
+    for (var i = 0; i < this.ambulances.length; i++) {
+      var ambulance = this.ambulances[i];
       if (ambulance.status !== 'Available') continue;
 
-      const distance = this.calculateDistance(pickupLocation, ambulance.currentLocation);
-      
-      // Priority> ICU > Basic
-      const typePriority = { 'Advanced': 3, 'ICU': 2, 'Basic': 1 };
-      const typeScore = typePriority[ambulance.type] || 1;
-      
-      // Combine distance and type priority
-      const adjustedDistance = distance / typeScore;
-      
+      var distance = this.calculateDistance(pickupLocation, ambulance.currentLocation);
+
+      var typePriority = { 'Advanced': 3, 'ICU': 2, 'Basic': 1 };
+      var typeScore = typePriority[ambulance.type] || 1;
+
+      var adjustedDistance = distance / typeScore;
+
       if (adjustedDistance < minDistance) {
         minDistance = adjustedDistance;
         nearest = ambulance;
@@ -251,60 +240,60 @@ export class AmbulanceAgent extends BaseAgent {
     return nearest;
   }
 
-  private calculateDistance(point1: { lat; lng}, point2: { lat; lng}){
-    // Haversine formula to calculate distance in km
-    const R = 6371; // Earth's radius in km
-    const dLat = (point2.lat - point1.lat) * Math.PI / 180;
-    const dLng = (point2.lng - point1.lng) * Math.PI / 180;
-    const a = 
-      Math.sin(dLat/2) * Math.sin(dLat/2) +
+  calculateDistance(point1, point2) {
+    var R = 6371;
+    var dLat = (point2.lat - point1.lat) * Math.PI / 180;
+    var dLng = (point2.lng - point1.lng) * Math.PI / 180;
+    var a =
+      Math.sin(dLat / 2) * Math.sin(dLat / 2) +
       Math.cos(point1.lat * Math.PI / 180) * Math.cos(point2.lat * Math.PI / 180) *
-      Math.sin(dLng/2) * Math.sin(dLng/2);
-    const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
+      Math.sin(dLng / 2) * Math.sin(dLng / 2);
+    var c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
     return R * c;
   }
 
-  private async trackAmbulance(payload)<any> {
-    const { tripId, ambulanceId } = payload;
+  async trackAmbulance(payload) {
+    var tripId = payload.tripId;
+    var ambulanceId = payload.ambulanceId;
 
     if (tripId) {
-      const trip = this.activeTrips.get(tripId);
+      var trip = this.activeTrips.get(tripId);
       if (!trip) {
         throw new Error('Trip not found');
       }
 
-      const ambulance = this.ambulances.find(a => a.id === trip.ambulanceId);
-      
+      var ambulance = this.ambulances.find(function(a) { return a.id === trip.ambulanceId; });
+
       return {
-        tripId,
-        status.status,
-        ambulance? {
-          id.id,
-          vehicleNumber.vehicleNumber,
-          driverName.driverName,
-          driverContact.driverContact,
-          currentLocation.currentLocation,
-          estimatedArrival.estimatedArrival
-        } ,
-        patientName.patientName,
-        dispatchedAt.dispatchedAt
+        tripId: tripId,
+        status: trip.status,
+        ambulance: ambulance ? {
+          id: ambulance.id,
+          vehicleNumber: ambulance.vehicleNumber,
+          driverName: ambulance.driverName,
+          driverContact: ambulance.driverContact,
+          currentLocation: ambulance.currentLocation,
+          estimatedArrival: ambulance.estimatedArrival
+        } : null,
+        patientName: trip.patientName,
+        dispatchedAt: trip.dispatchedAt
       };
     }
 
     if (ambulanceId) {
-      const ambulance = this.ambulances.find(a => a.id === ambulanceId);
-      if (!ambulance) {
+      var amb = this.ambulances.find(function(a) { return a.id === ambulanceId; });
+      if (!amb) {
         throw new Error('Ambulance not found');
       }
 
       return {
         ambulance: {
-          id.id,
-          vehicleNumber.vehicleNumber,
-          status.status,
-          currentLocation.currentLocation,
-          estimatedArrival.estimatedArrival,
-          driverName.driverName
+          id: amb.id,
+          vehicleNumber: amb.vehicleNumber,
+          status: amb.status,
+          currentLocation: amb.currentLocation,
+          estimatedArrival: amb.estimatedArrival,
+          driverName: amb.driverName
         }
       };
     }
@@ -312,46 +301,50 @@ export class AmbulanceAgent extends BaseAgent {
     throw new Error('Either tripId or ambulanceId is required');
   }
 
-  private async checkAvailability(payload)<any> {
-    const { city, type } = payload;
+  async checkAvailability(payload) {
+    var city = payload.city;
+    var type = payload.type;
 
-    let availableAmbulances = this.ambulances.filter(a => a.status === 'Available');
+    var availableAmbulances = this.ambulances.filter(function(a) { return a.status === 'Available'; });
 
     if (city) {
-      availableAmbulances = availableAmbulances.filter(a => 
-        a.city.toLowerCase().includes(city.toLowerCase())
-      );
+      availableAmbulances = availableAmbulances.filter(function(a) {
+        return a.city.toLowerCase().includes(city.toLowerCase());
+      });
     }
 
     if (type) {
-      availableAmbulances = availableAmbulances.filter(a => a.type === type);
+      availableAmbulances = availableAmbulances.filter(function(a) { return a.type === type; });
     }
 
     return {
-      available.length,
-      ambulances.map(a => ({
-        id.id,
-        vehicleNumber.vehicleNumber,
-        type.type,
-        driverName.driverName,
-        city.city,
-        equipment.equipment
-      })),
-      query: { city, type }
+      available: availableAmbulances.length,
+      ambulances: availableAmbulances.map(function(a) {
+        return {
+          id: a.id,
+          vehicleNumber: a.vehicleNumber,
+          type: a.type,
+          driverName: a.driverName,
+          city: a.city,
+          equipment: a.equipment
+        };
+      }),
+      query: { city: city, type: type }
     };
   }
 
-  private async calculateETA(payload)<any> {
-    const { pickupLocation, ambulanceId } = payload;
+  async calculateETA(payload) {
+    var pickupLocation = payload.pickupLocation;
+    var ambulanceId = payload.ambulanceId;
 
     if (!pickupLocation) {
       throw new Error('Pickup location is required');
     }
 
-    let ambulance| null = null;
+    var ambulance = null;
 
     if (ambulanceId) {
-      ambulance = this.ambulances.find(a => a.id === ambulanceId) || null;
+      ambulance = this.ambulances.find(function(a) { return a.id === ambulanceId; }) || null;
       if (!ambulance) {
         throw new Error('Ambulance not found');
       }
@@ -362,42 +355,38 @@ export class AmbulanceAgent extends BaseAgent {
       }
     }
 
-    const distance = this.calculateDistance(pickupLocation, ambulance.currentLocation);
-    const etaMinutes = Math.round(distance * 2);
+    var distance = this.calculateDistance(pickupLocation, ambulance.currentLocation);
+    var etaMinutes = Math.round(distance * 2);
 
     return {
       ambulance: {
-        id.id,
-        vehicleNumber.vehicleNumber,
-        type.type,
-        currentLocation.currentLocation
+        id: ambulance.id,
+        vehicleNumber: ambulance.vehicleNumber,
+        type: ambulance.type,
+        currentLocation: ambulance.currentLocation
       },
-      distance: `${distance.toFixed(1)} km`,
-      eta: `${etaMinutes} minutes`,
-      estimatedArrivalDate(Date.now() + etaMinutes * 60000).toISOString()
+      distance: distance.toFixed(1) + ' km',
+      eta: etaMinutes + ' minutes',
+      estimatedArrival: new Date(Date.now() + etaMinutes * 60000).toISOString()
     };
   }
 
-  private async handleComplexQuery(task, payload)<any> {
-    const prompt = `
-      Task: ${task}
-      Payload: ${JSON.stringify(payload)}
-      
-      Available ambulances: ${JSON.stringify(this.ambulances)}
-      
-      Please analyze the query and provide a recommendation.
-    `;
+  async handleComplexQuery(task, payload) {
+    var prompt = 'Task: ' + task + '\n' +
+      'Payload: ' + JSON.stringify(payload) + '\n\n' +
+      'Available ambulances: ' + JSON.stringify(this.ambulances) + '\n\n' +
+      'Please analyze the query and provide a recommendation.';
 
-    const response = await this.providerManager.generate(prompt);
-    
+    var response = await this.providerManager.generate(prompt);
+
     return {
-      aiResponse.content,
-      provider.provider,
-      tokensUsed.tokensUsed
+      aiResponse: response.content,
+      provider: response.provider,
+      tokensUsed: response.tokensUsed
     };
   }
 
-  protected getRequiredCapability(task)| null {
+  getRequiredCapability(task) {
     if (task.includes('dispatch') || task.includes('emergency')) {
       return 'dispatch_ambulance';
     }
@@ -414,5 +403,4 @@ export class AmbulanceAgent extends BaseAgent {
   }
 }
 
-
-
+module.exports = { AmbulanceAgent };

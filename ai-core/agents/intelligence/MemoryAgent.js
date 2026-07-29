@@ -1,83 +1,78 @@
-// D:\hospital backend\ai-core\agents\intelligence\MemoryAgent.ts
+// D:\hospital backend\ai-core\agents\intelligence\MemoryAgent.js
 
-const { AgentRole, AgentStatus, AgentRequest, AgentResponse } = require('../../../shared/types/AgentTypes');
+const { AgentRole, AgentStatus } = require('../../../shared/types/AgentTypes');
 const { BaseAgent } = require('../base/BaseAgent');
-const { ProviderManager } = require('../../providers/ProviderManager');
 
-
-
-[];
-  context;
-  lastUpdated;
-}
-
-export class MemoryAgent extends BaseAgent {
-  private memories<string, MemoryEntry[]> = new Map();
-  private conversations<string, ConversationMemory> = new Map();
-  private preferences<string, Record<string, any>> = new Map();
-
+class MemoryAgent extends BaseAgent {
   constructor(providerManager) {
     super(
       {
         name: 'Memory Agent',
-        role.MEMORY,
+        role: AgentRole.MEMORY,
         capabilities: [
           {
             name: 'store_memory',
             description: 'Store user memory and preferences',
             priority: 1,
             estimatedLatency: 150,
-            requiresAuth},
+            requiresAuth: true
+          },
           {
             name: 'retrieve_memory',
             description: 'Retrieve user memories and context',
             priority: 1,
             estimatedLatency: 150,
-            requiresAuth},
+            requiresAuth: true
+          },
           {
             name: 'conversation_memory',
             description: 'Manage conversation context',
             priority: 1,
             estimatedLatency: 200,
-            requiresAuth},
+            requiresAuth: true
+          },
           {
             name: 'forget_memory',
             description: 'Remove or expire old memories',
             priority: 2,
             estimatedLatency: 100,
-            requiresAuth}
+            requiresAuth: true
+          }
         ]
       },
       providerManager
     );
 
+    this.memories = new Map();
+    this.conversations = new Map();
+    this.preferences = new Map();
     this.initializeData();
   }
 
-  private initializeData(){
-    // Initialize with sample data
-    const samplePreferences= {
+  initializeData() {
+    var samplePreferences = {
       language: 'English',
       city: 'Mumbai',
-      notifications,
+      notifications: true,
       preferredHospitals: ['Apollo Hospital', 'Fortis Hospital']
     };
     this.preferences.set('user1', samplePreferences);
   }
 
-  async execute(request)<AgentResponse> {
+  async execute(request) {
     this.setStatus(AgentStatus.BUSY);
     this.setCurrentTask(request.task);
 
     try {
       if (!this.validateRequest(request)) {
-        throw new Error('Invalid requestrequired fields or capabilities');
+        throw new Error('Invalid request: Missing required fields or capabilities');
       }
 
-      const { task, payload } = request;
-      this.log(`Executing task: ${task}`, 'info');
+      var task = request.task;
+      var payload = request.payload;
+      this.log('Executing task: ' + task, 'info');
 
-      let result;
+      var result;
 
       if (task.includes('store')) {
         result = await this.storeMemory(payload);
@@ -92,149 +87,163 @@ export class MemoryAgent extends BaseAgent {
       }
 
       this.setStatus(AgentStatus.IDLE);
-      this.setCurrentTask(undefined);
+      this.setCurrentTask(null);
 
       return {
-        success,
-        data,
-        sourceAgent.id,
-        processingTime.now() - new Date().getTime()
+        success: true,
+        data: result,
+        sourceAgent: this.id,
+        processingTime: Date.now() - new Date().getTime()
       };
 
     } catch (error) {
       this.setStatus(AgentStatus.IDLE);
-      this.setCurrentTask(undefined);
+      this.setCurrentTask(null);
       return this.handleError(error, request);
     }
   }
 
-  private async storeMemory(payload)<any> {
-    const { userId, type, key, value, context, importance = 50 } = payload;
+  async storeMemory(payload) {
+    var userId = payload.userId;
+    var type = payload.type;
+    var key = payload.key;
+    var value = payload.value;
+    var context = payload.context;
+    var importance = payload.importance || 50;
 
     if (!userId || !type || !key) {
       throw new Error('UserId, type, and key are required');
     }
 
-    const entry= {
-      id: `mem${Date.now()}`,
-      userId,
-      type,
-      key,
-      value,
-      context|| {},
-      importance,
-      timestampDate()
+    var entry = {
+      id: 'mem' + Date.now(),
+      userId: userId,
+      type: type,
+      key: key,
+      value: value,
+      context: context || {},
+      importance: importance,
+      timestamp: new Date()
     };
 
     if (!this.memories.has(userId)) {
       this.memories.set(userId, []);
     }
-    this.memories.get(userId)!.push(entry);
+    this.memories.get(userId).push(entry);
 
-    // Update preferences if applicable
     if (type === 'Preference') {
       if (!this.preferences.has(userId)) {
         this.preferences.set(userId, {});
       }
-      this.preferences.get(userId)![key] = value;
+      this.preferences.get(userId)[key] = value;
     }
 
     return {
-      memoryId.id,
-      userId,
-      type,
-      key,
-      stored,
-      timestampDate().toISOString()
+      memoryId: entry.id,
+      userId: userId,
+      type: type,
+      key: key,
+      stored: true,
+      timestamp: new Date().toISOString()
     };
   }
 
-  private async retrieveMemory(payload)<any> {
-    const { userId, key, type, limit = 10, minImportance = 0 } = payload;
+  async retrieveMemory(payload) {
+    var userId = payload.userId;
+    var key = payload.key;
+    var type = payload.type;
+    var limit = payload.limit || 10;
+    var minImportance = payload.minImportance || 0;
 
     if (!userId) {
       throw new Error('UserId is required');
     }
 
-    const userMemories = this.memories.get(userId) || [];
-    let results = userMemories;
+    var userMemories = this.memories.get(userId) || [];
+    var results = userMemories.slice();
 
     if (key) {
-      results = results.filter(m => m.key === key);
+      results = results.filter(function(m) { return m.key === key; });
     }
 
     if (type) {
-      results = results.filter(m => m.type === type);
+      results = results.filter(function(m) { return m.type === type; });
     }
 
     if (minImportance) {
-      results = results.filter(m => m.importance >= minImportance);
+      results = results.filter(function(m) { return m.importance >= minImportance; });
     }
 
-    // Sort by importance and recency
-    results.sort((a, b) => {
-      const importanceDiff = b.importance - a.importance;
+    results.sort(function(a, b) {
+      var importanceDiff = b.importance - a.importance;
       if (importanceDiff !== 0) return importanceDiff;
       return b.timestamp.getTime() - a.timestamp.getTime();
     });
 
-    // Get user preferences
-    const preferences = this.preferences.get(userId) || {};
+    var preferences = this.preferences.get(userId) || {};
 
     return {
-      memories.slice(0, limit),
-      preferences,
-      total.length,
-      userId,
-      timestampDate().toISOString()
+      memories: results.slice(0, limit),
+      preferences: preferences,
+      total: results.length,
+      userId: userId,
+      timestamp: new Date().toISOString()
     };
   }
 
-  private async handleConversationMemory(payload)<any> {
-    const { action, userId, sessionId, message, role = 'user', context } = payload;
+  async handleConversationMemory(payload) {
+    var action = payload.action;
+    var userId = payload.userId;
+    var sessionId = payload.sessionId;
+    var message = payload.message;
+    var role = payload.role || 'user';
+    var context = payload.context;
 
     if (!userId) {
       throw new Error('UserId is required');
     }
 
-    const sessionKey = sessionId || userId;
+    var sessionKey = sessionId || userId;
 
     if (action === 'add') {
-      // Add message to conversation
       if (!this.conversations.has(sessionKey)) {
         this.conversations.set(sessionKey, {
-          sessionId,
-          userId,
+          sessionId: sessionKey,
+          userId: userId,
           messages: [],
-          context|| {},
-          lastUpdatedDate()
+          context: context || {},
+          lastUpdated: new Date()
         });
       }
 
-      const conversation = this.conversations.get(sessionKey)!;
+      var conversation = this.conversations.get(sessionKey);
       conversation.messages.push({
-        role,
-        content,
-        timestampDate()
+        role: role,
+        content: message,
+        timestamp: new Date()
       });
       conversation.lastUpdated = new Date();
 
       if (context) {
-        conversation.context = { ...conversation.context, ...context };
+        var existingContext = conversation.context;
+        var contextKeys = Object.keys(context);
+        for (var i = 0; i < contextKeys.length; i++) {
+          existingContext[contextKeys[i]] = context[contextKeys[i]];
+        }
       }
 
       return {
-        sessionId,
-        messageCount.messages.length,
-        added,
-        timestampDate().toISOString()
+        sessionId: sessionKey,
+        messageCount: conversation.messages.length,
+        added: true,
+        timestamp: new Date().toISOString()
       };
 
     } else if (action === 'get') {
-      const conversation = this.conversations.get(sessionKey);
-      if (!conversation) {
+      var conv = this.conversations.get(sessionKey);
+      if (!conv) {
         return {
-          sessionId,
+          sessionId: sessionKey,
           messages: [],
           context: {},
           messageCount: 0
@@ -242,93 +251,89 @@ export class MemoryAgent extends BaseAgent {
       }
 
       return {
-        sessionId,
-        messages.messages,
-        context.context,
-        messageCount.messages.length,
-        lastUpdated.lastUpdated
+        sessionId: sessionKey,
+        messages: conv.messages,
+        context: conv.context,
+        messageCount: conv.messages.length,
+        lastUpdated: conv.lastUpdated
       };
 
     } else if (action === 'clear') {
       this.conversations.delete(sessionKey);
       return {
-        sessionId,
-        cleared,
-        timestampDate().toISOString()
+        sessionId: sessionKey,
+        cleared: true,
+        timestamp: new Date().toISOString()
       };
     }
 
     throw new Error('Invalid conversation action');
   }
 
-  private async forgetMemory(payload)<any> {
-    const { userId, memoryId, type, olderThan } = payload;
+  async forgetMemory(payload) {
+    var userId = payload.userId;
+    var memoryId = payload.memoryId;
+    var type = payload.type;
+    var olderThan = payload.olderThan;
 
     if (!userId) {
       throw new Error('UserId is required');
     }
 
-    const userMemories = this.memories.get(userId) || [];
-    let removed = 0;
+    var userMemories = this.memories.get(userId) || [];
+    var removed = 0;
 
     if (memoryId) {
-      // Remove specific memory
-      const index = userMemories.findIndex(m => m.id === memoryId);
+      var index = -1;
+      for (var i = 0; i < userMemories.length; i++) {
+        if (userMemories[i].id === memoryId) {
+          index = i;
+          break;
+        }
+      }
       if (index !== -1) {
         userMemories.splice(index, 1);
         removed = 1;
       }
     } else if (type) {
-      // Remove by type
-      const originalLength = userMemories.length;
-      this.memories.set(
-        userId,
-        userMemories.filter(m => m.type !== type)
-      );
-      removed = originalLength - userMemories.length;
+      var originalLength = userMemories.length;
+      this.memories.set(userId, userMemories.filter(function(m) { return m.type !== type; }));
+      removed = originalLength - (this.memories.get(userId) || []).length;
     } else if (olderThan) {
-      // Remove memories older than specified date
-      const date = new Date(olderThan);
-      const originalLength = userMemories.length;
-      this.memories.set(
-        userId,
-        userMemories.filter(m => m.timestamp > date)
-      );
-      removed = originalLength - userMemories.length;
+      var date = new Date(olderThan);
+      var origLen = userMemories.length;
+      this.memories.set(userId, userMemories.filter(function(m) { return m.timestamp > date; }));
+      removed = origLen - (this.memories.get(userId) || []).length;
     } else {
       throw new Error('Either memoryId, type, or olderThan is required');
     }
 
     return {
-      userId,
-      removed,
+      userId: userId,
+      removed: removed,
       remaining: (this.memories.get(userId) || []).length,
-      timestampDate().toISOString()
+      timestamp: new Date().toISOString()
     };
   }
 
-  private async handleComplexQuery(task, payload)<any> {
-    const prompt = `
-      Task: ${task}
-      Payload: ${JSON.stringify(payload)}
-      
-      Memories: ${JSON.stringify(Array.from(this.memories.entries()))}
-      Conversations: ${JSON.stringify(Array.from(this.conversations.entries()))}
-      Preferences: ${JSON.stringify(Array.from(this.preferences.entries()))}
-      
-      Please analyze the query and provide a recommendation.
-    `;
+  async handleComplexQuery(task, payload) {
+    var prompt = 'Task: ' + task + '\n' +
+      'Payload: ' + JSON.stringify(payload) + '\n\n' +
+      'Memories: ' + JSON.stringify(Array.from(this.memories.entries())) + '\n' +
+      'Conversations: ' + JSON.stringify(Array.from(this.conversations.entries())) + '\n' +
+      'Preferences: ' + JSON.stringify(Array.from(this.preferences.entries())) + '\n\n' +
+      'Please analyze the query and provide a recommendation.';
 
-    const response = await this.providerManager.generate(prompt);
-    
+    var response = await this.providerManager.generate(prompt);
+
     return {
-      aiResponse.content,
-      provider.provider,
-      tokensUsed.tokensUsed
+      aiResponse: response.content,
+      provider: response.provider,
+      tokensUsed: response.tokensUsed
     };
   }
 
-  protected getRequiredCapability(task)| null {
+  getRequiredCapability(task) {
     if (task.includes('store')) {
       return 'store_memory';
     }
@@ -345,5 +350,4 @@ export class MemoryAgent extends BaseAgent {
   }
 }
 
-
-
+module.exports = { MemoryAgent };
