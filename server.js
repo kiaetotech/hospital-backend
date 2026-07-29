@@ -1,13 +1,29 @@
 // ============================================
-// ENVIRONMENT CONFIGURATION
+// ENVIRONMENT CONFIGURATION (No dotenv)
 // ============================================
-const dotenv = require('dotenv');
+
+// Load .env manually without dotenv
+const fs = require('fs');
 const path = require('path');
 
-const envPath = path.join(__dirname, '.env');
-dotenv.config({ path: envPath });
+try {
+  const envPath = path.join(__dirname, '.env');
+  const envContent = fs.readFileSync(envPath, 'utf8');
+  const lines = envContent.split('\n');
+  for (const line of lines) {
+    const trimmed = line.trim();
+    if (trimmed && !trimmed.startsWith('#')) {
+      const [key, ...valueParts] = trimmed.split('=');
+      if (key && valueParts.length > 0) {
+        process.env[key.trim()] = valueParts.join('=').trim();
+      }
+    }
+  }
+  console.log('✅ .env loaded manually from:', envPath);
+} catch (err) {
+  console.warn('⚠️ No .env file found, using environment variables');
+}
 
-console.log('✅ .env loaded from:', envPath);
 console.log('GROQ_API_KEY:', process.env.GROQ_API_KEY ? '✅ Set' : '❌ Missing');
 console.log('GEMINI_API_KEY:', process.env.GEMINI_API_KEY ? '✅ Set' : '❌ Missing');
 
