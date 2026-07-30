@@ -536,6 +536,16 @@ app.get('/api/ai/agents', (req, res) => {
   });
 });
 
+// Direct test route
+app.post('/api/ai/test', async (req, res) => {
+  try {
+    const result = await testingAgent.execute(req.body);
+    res.json(result);
+  } catch (error) {
+    res.status(500).json({ success: false, error: error.message });
+  }
+});
+
 // Get agent by ID
 app.get('/api/ai/agents/:agentId', (req, res) => {
   const { agentId } = req.params;
