@@ -1,36 +1,36 @@
 const mongoose = require('mongoose');
 
 const payoutSchema = new mongoose.Schema({
-  payoutId: { type, unique, required},
-  providerType: { type, enum: ['doctor', 'center'], required},
-  providerId: { type.Schema.Types.ObjectId, required},
-  providerName,
+  payoutId: { type: String, unique: true, required: true },
+  providerType: { type: String, enum: ['doctor', 'center'], required: true },
+  providerId: { type: mongoose.Schema.Types.ObjectId, required: true },
+  providerName: String,
   
-  amount: { type, required},
-  commissionDeducted,
-  tdsDeducted,
-  netAmount,
+  amount: { type: Number, required: true },
+  commissionDeducted: Number,
+  tdsDeducted: Number,
+  netAmount: Number,
   
-  bookingCount,
-  period: { type, enum: ['weekly', 'monthly', 'manual'] },
-  periodStart,
-  periodEnd,
+  bookingCount: Number,
+  period: { type: String, enum: ['weekly', 'monthly', 'manual'] },
+  periodStart: Date,
+  periodEnd: Date,
   
-  status: { type, enum: ['pending', 'processing', 'paid', 'failed'], default: 'pending' },
-  transactionId,
-  paidAt,
+  status: { type: String, enum: ['pending', 'processing', 'paid', 'failed'], default: 'pending' },
+  transactionId: String,
+  paidAt: Date,
   
   bankDetails: {
-    accountHolder,
-    accountNumber,
-    ifscCode,
-    bankName},
+    accountHolder: String,
+    accountNumber: String,
+    ifscCode: String,
+    bankName: String
+  },
   
-  createdAt: { type, default.now }
+  createdAt: { type: Date, default: Date.now }
 });
 
 payoutSchema.index({ providerId: 1 });
 payoutSchema.index({ status: 1 });
 
 module.exports = mongoose.model('Payout', payoutSchema);
-

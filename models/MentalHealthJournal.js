@@ -2,99 +2,105 @@ const mongoose = require('mongoose');
 
 const mentalHealthJournalSchema = new mongoose.Schema({
   userId: {
-    type.Schema.Types.ObjectId,
+    type: mongoose.Schema.Types.ObjectId,
     ref: 'User',
-    required,
-    index},
+    required: true,
+    index: true
+  },
   therapistId: {
-    type.Schema.Types.ObjectId,
+    type: mongoose.Schema.Types.ObjectId,
     ref: 'MentalHealthTherapist',
-    index},
+    index: true
+  },
   bookingId: {
-    type.Schema.Types.ObjectId,
+    type: mongoose.Schema.Types.ObjectId,
     ref: 'MentalHealthBooking'
   },
   
   // Journal Content
   title: {
-    type,
-    required,
-    trim,
+    type: String,
+    required: true,
+    trim: true,
     maxlength: 200
   },
   content: {
-    type,
-    required,
+    type: String,
+    required: true,
     maxlength: 10000
   },
   
   // Mood Tracking
   mood: {
-    type,
+    type: String,
     enum: ['very_happy', 'happy', 'neutral', 'sad', 'very_sad', 'anxious', 'stressed', 'calm', 'energetic', 'tired']
   },
   moodScore: {
-    type,
+    type: Number,
     min: 1,
     max: 10
   },
   
   // Tags & Categories
   tags: [{
-    type,
+    type: String,
     enum: ['anxiety', 'depression', 'stress', 'relationships', 'work', 'family', 'health', 'gratitude', 'goals', 'reflection', 'trauma', 'recovery']
   }],
   
   // Privacy & Sharing
   isPrivate: {
-    type,
-    default},
+    type: Boolean,
+    default: true
+  },
   shareWithTherapist: {
-    type,
-    default},
+    type: Boolean,
+    default: false
+  },
   
   // Prompts (for guided journaling)
   prompt: {
-    type,
+    type: String,
     maxlength: 500
   },
   promptCategory: {
-    type,
+    type: String,
     enum: ['gratitude', 'reflection', 'goals', 'challenge', 'achievement', 'emotional_checkin', 'mindfulness']
   },
   
   // Analytics
   wordCount: {
-    type,
+    type: Number,
     default: 0
   },
   readingTime: {
-    type, // in seconds
+    type: Number, // in seconds
     default: 0
   },
   
   // Encryption metadata
   isEncrypted: {
-    type,
-    default},
+    type: Boolean,
+    default: true
+  },
   encryptionVersion: {
-    type,
+    type: String,
     default: 'v1'
   },
   
   // Timestamps
   entryDate: {
-    type,
-    default.now,
-    index},
+    type: Date,
+    default: Date.now,
+    index: true
+  },
   updatedAt: {
-    type,
-    default.now
+    type: Date,
+    default: Date.now
   }
 }, {
-  timestamps,
-  toJSON: { virtuals},
-  toObject: { virtuals}
+  timestamps: true,
+  toJSON: { virtuals: true },
+  toObject: { virtuals: true }
 });
 
 // Virtual for formatted date
@@ -167,14 +173,14 @@ mentalHealthJournalSchema.statics = {
     
     if (filters.mood) query.mood = filters.mood;
     if (filters.tag) query.tags = filters.tag;
-    if (filters.startDate) query.entryDate = { $gteDate(filters.startDate) };
+    if (filters.startDate) query.entryDate = { $gte: new Date(filters.startDate) };
     if (filters.endDate) {
-      query.entryDate = { ...query.entryDate, $lteDate(filters.endDate) };
+      query.entryDate = { ...query.entryDate, $lte: new Date(filters.endDate) };
     }
     if (filters.search) {
       query.$or = [
-        { title: { $regex.search, $options: 'i' } },
-        { content: { $regex.search, $options: 'i' } }
+        { title: { $regex: filters.search, $options: 'i' } },
+        { content: { $regex: filters.search, $options: 'i' } }
       ];
     }
     
@@ -195,7 +201,7 @@ mentalHealthJournalSchema.statics = {
         page,
         limit,
         total,
-        pages.ceil(total / limit)
+        pages: Math.ceil(total / limit)
       }
     };
   },
@@ -207,8 +213,8 @@ mentalHealthJournalSchema.statics = {
     
     const entries = await this.find({
       userId,
-      entryDate: { $gte},
-      mood: { $ne}
+      entryDate: { $gte: startDate },
+      mood: { $ne: null }
     }).sort({ entryDate: 1 });
     
     // Aggregate mood data by day
@@ -228,8 +234,8 @@ mentalHealthJournalSchema.statics = {
     // Calculate average mood per day
     const result = Object.keys(trends).map(date => ({
       date,
-      averageMood[date].moods.reduce((a, b) => a + b, 0) / trends[date].moods.length,
-      entries[date].entries
+      averageMood: trends[date].moods.reduce((a, b) => a + b, 0) / trends[date].moods.length,
+      entries: trends[date].entries
     }));
     
     return result;
@@ -238,7 +244,7 @@ mentalHealthJournalSchema.statics = {
   // Get tags frequency for a user
   async getTagFrequency(userId) {
     const result = await this.aggregate([
-      { $match: { userId.Types.ObjectId(userId) } },
+      { $match: { userId: mongoose.Types.ObjectId(userId) } },
       { $unwind: '$tags' },
       { $group: { _id: '$tags', count: { $sum: 1 } } },
       { $sort: { count: -1 } }
@@ -277,11 +283,10 @@ mentalHealthJournalSchema.methods = {
 
 // Soft delete (optional)
 mentalHealthJournalSchema.plugin(require('mongoose-delete'), {
-  deletedAt,
+  deletedAt: true,
   overrideMethods: 'all'
 });
 
 const MentalHealthJournal = mongoose.model('MentalHealthJournal', mentalHealthJournalSchema);
 
 module.exports = MentalHealthJournal;
-

@@ -3,56 +3,60 @@ const mongoose = require('mongoose');
 const InsuranceClaimSchema = new mongoose.Schema({
   // References
   policyId: { 
-    type.Schema.Types.ObjectId, 
+    type: mongoose.Schema.Types.ObjectId, 
     ref: 'InsurancePolicy', 
-    required},
+    required: true 
+  },
   bookingId: { 
-    type.Schema.Types.ObjectId, 
+    type: mongoose.Schema.Types.ObjectId, 
     ref: 'Booking' 
   },
   companyId: { 
-    type.Schema.Types.ObjectId, 
+    type: mongoose.Schema.Types.ObjectId, 
     ref: 'InsuranceCompany', 
-    required},
+    required: true 
+  },
   userId: { 
-    type.Schema.Types.ObjectId, 
+    type: mongoose.Schema.Types.ObjectId, 
     ref: 'User', 
-    required},
+    required: true 
+  },
   
   // Claim Details
-  claimNumber: { type, unique},
+  claimNumber: { type: String, unique: true },
   claimType: {
-    type,
+    type: String,
     enum: ['cashless', 'reimbursement'],
-    required},
-  amount: { type, required},
-  approvedAmount: { type, default: 0 },
-  description: { type, required},
+    required: true
+  },
+  amount: { type: Number, required: true },
+  approvedAmount: { type: Number, default: 0 },
+  description: { type: String, required: true },
   
   // Hospital Details
-  hospitalName: { type, required},
-  hospitalAddress: { type},
-  hospitalCity: { type},
-  hospitalPincode: { type},
-  admissionDate: { type, required},
-  dischargeDate: { type},
-  diagnosis: { type},
-  treatment: { type},
+  hospitalName: { type: String, required: true },
+  hospitalAddress: { type: String },
+  hospitalCity: { type: String },
+  hospitalPincode: { type: String },
+  admissionDate: { type: Date, required: true },
+  dischargeDate: { type: Date },
+  diagnosis: { type: String },
+  treatment: { type: String },
   
   // Documents
   documents: [{
-    name: { type},
-    url: { type},
+    name: { type: String },
+    url: { type: String },
     type: { 
-      type, 
+      type: String, 
       enum: ['medical_bill', 'discharge_summary', 'prescription', 'lab_report', 'other']
     },
-    uploadedAt: { type, default.now }
+    uploadedAt: { type: Date, default: Date.now }
   }],
   
   // Status Tracking
   status: {
-    type,
+    type: String,
     enum: [
       'submitted', 
       'document_uploaded', 
@@ -69,56 +73,57 @@ const InsuranceClaimSchema = new mongoose.Schema({
   
   // Timeline
   timeline: [{
-    status: { type},
-    date: { type, default.now },
-    note: { type},
-    performedBy: { type.Schema.Types.ObjectId, ref: 'User' }
+    status: { type: String },
+    date: { type: Date, default: Date.now },
+    note: { type: String },
+    performedBy: { type: mongoose.Schema.Types.ObjectId, ref: 'User' }
   }],
   
   // Approvals
-  approvedBy: { type.Schema.Types.ObjectId, ref: 'User' },
-  approvedAt: { type},
-  rejectedReason: { type},
-  rejectedAt: { type},
+  approvedBy: { type: mongoose.Schema.Types.ObjectId, ref: 'User' },
+  approvedAt: { type: Date },
+  rejectedReason: { type: String },
+  rejectedAt: { type: Date },
   
   // Settlement
-  settlementAmount: { type},
-  settlementDate: { type},
-  settlementReference: { type},
+  settlementAmount: { type: Number },
+  settlementDate: { type: Date },
+  settlementReference: { type: String },
   settlementMode: {
-    type,
+    type: String,
     enum: ['bank_transfer', 'cheque', 'online'],
     default: 'bank_transfer'
   },
   
   // Insurer Communication
-  insurerClaimId: { type},
-  insurerResponse: { type.Schema.Types.Mixed },
+  insurerClaimId: { type: String },
+  insurerResponse: { type: mongoose.Schema.Types.Mixed },
   insurerCommunication: [{
-    date: { type, default.now },
-    message: { type},
-    from: { type},
-    direction: { type, enum: ['incoming', 'outgoing'] }
+    date: { type: Date, default: Date.now },
+    message: { type: String },
+    from: { type: String },
+    direction: { type: String, enum: ['incoming', 'outgoing'] }
   }],
   
   // Grievance
-  isGrievance: { type, default},
-  grievanceRaisedAt: { type},
-  grievanceResolvedAt: { type},
+  isGrievance: { type: Boolean, default: false },
+  grievanceRaisedAt: { type: Date },
+  grievanceResolvedAt: { type: Date },
   
   // Escalation
   escalationLevel: {
-    type,
+    type: String,
     enum: ['normal', 'escalated', 'critical'],
     default: 'normal'
   },
   
   // Audit
-  createdAt: { type, default.now },
-  updatedAt: { type, default.now },
-  submittedBy: { type.Schema.Types.ObjectId, ref: 'User' }
+  createdAt: { type: Date, default: Date.now },
+  updatedAt: { type: Date, default: Date.now },
+  submittedBy: { type: mongoose.Schema.Types.ObjectId, ref: 'User' }
 }, {
-  timestamps});
+  timestamps: true
+});
 
 // Auto-generate claim number
 InsuranceClaimSchema.pre('save', function(next) {
@@ -142,10 +147,11 @@ InsuranceClaimSchema.index({ 'timeline.date': -1 });
 // Methods
 InsuranceClaimSchema.methods.addTimeline = function(status, note, performedBy) {
   this.timeline.push({
-    status|| this.status,
-    dateDate(),
-    note|| '',
-    performedBy});
+    status: status || this.status,
+    date: new Date(),
+    note: note || '',
+    performedBy: performedBy
+  });
   return this.save();
 };
 
@@ -182,4 +188,3 @@ InsuranceClaimSchema.methods.settle = function(settlementAmount, reference, perf
 };
 
 module.exports = mongoose.model('InsuranceClaim', InsuranceClaimSchema);
-

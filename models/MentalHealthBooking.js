@@ -1,108 +1,111 @@
 const mongoose = require('mongoose');
 
 const MentalHealthBookingSchema = new mongoose.Schema({
-  therapistId: { type.Schema.Types.ObjectId, ref: 'MentalHealthTherapist', required},
-  patientId: { type.Schema.Types.ObjectId, ref: 'User', required},
+  therapistId: { type: mongoose.Schema.Types.ObjectId, ref: 'MentalHealthTherapist', required: true },
+  patientId: { type: mongoose.Schema.Types.ObjectId, ref: 'User', required: true },
   
   // Booking Details
   bookingType: {
-    type,
+    type: String,
     enum: ['video', 'audio', 'text', 'anonymous', 'emergency', 'couples', 'family'],
-    required},
+    required: true
+  },
   sessionType: {
-    type,
+    type: String,
     enum: ['individual', 'couples', 'family', 'group'],
     default: 'individual'
   },
   
   // Scheduling
-  scheduledDate: { type, required},
-  scheduledTime: { type, required},
-  duration: { type, default: 60 }, // minutes
+  scheduledDate: { type: Date, required: true },
+  scheduledTime: { type: String, required: true },
+  duration: { type: Number, default: 60 }, // minutes
   
   // ============================================
   // PRICING & FINANCE (MODIFIED - Added Fields)
   // ============================================
   
   // Original pricing fields (preserved)
-  amount: { type, required},
-  platformCommission: { type, default: 0 },
-  therapistEarning: { type, default: 0 },
+  amount: { type: Number, required: true },
+  platformCommission: { type: Number, default: 0 },
+  therapistEarning: { type: Number, default: 0 },
   
   // NEW FINANCE FIELDS (Added for revenue & payout system)
   patientAmount: {
-    type,
-    required,
+    type: Number,
+    required: true,
     min: 0
   },
   commissionRate: {
-    type,
+    type: Number,
     default: 15,
     min: 0,
     max: 100
   },
   commissionRuleId: {
-    type.Schema.Types.ObjectId,
+    type: mongoose.Schema.Types.ObjectId,
     ref: 'CommissionRule'
   },
   
   // Payment Status (Enhanced)
   paymentStatus: {
-    type,
+    type: String,
     enum: ['pending', 'paid', 'failed', 'refunded', 'partially_refunded'],
     default: 'pending'
   },
-  paymentId: { type},
-  orderId: { type},
+  paymentId: { type: String },
+  orderId: { type: String },
   paymentMethod: {
-    type,
+    type: String,
     enum: ['card', 'upi', 'netbanking', 'wallet', 'corporate', 'insurance'],
     default: 'card'
   },
-  paidAt: { type},
+  paidAt: { type: Date },
   
   // Payout Status (NEW)
   payoutStatus: {
-    type,
+    type: String,
     enum: ['pending', 'processing', 'completed', 'failed', 'cancelled'],
     default: 'pending'
   },
   payoutId: {
-    type.Schema.Types.ObjectId,
+    type: mongoose.Schema.Types.ObjectId,
     ref: 'TherapistPayout'
   },
-  payoutRequestedAt: { type},
-  payoutCompletedAt: { type},
+  payoutRequestedAt: { type: Date },
+  payoutCompletedAt: { type: Date },
   
   // Refund Details (NEW)
   refundAmount: {
-    type,
+    type: Number,
     default: 0
   },
   refundId: {
-    type},
+    type: String
+  },
   refundStatus: {
-    type,
+    type: String,
     enum: ['none', 'pending', 'completed', 'failed'],
     default: 'none'
   },
-  refundedAt: { type},
-  refundReason: { type},
+  refundedAt: { type: Date },
+  refundReason: { type: String },
   
   // Corporate/Insurance Billing (NEW)
   isCorporateBooking: {
-    type,
-    default},
+    type: Boolean,
+    default: false
+  },
   corporateId: {
-    type.Schema.Types.ObjectId,
+    type: mongoose.Schema.Types.ObjectId,
     ref: 'CorporateEmployee'
   },
   insuranceClaimId: {
-    type.Schema.Types.ObjectId,
+    type: mongoose.Schema.Types.ObjectId,
     ref: 'InsuranceClaim'
   },
   billingType: {
-    type,
+    type: String,
     enum: ['self_pay', 'corporate', 'insurance'],
     default: 'self_pay'
   },
@@ -113,54 +116,56 @@ const MentalHealthBookingSchema = new mongoose.Schema({
   
   // Status
   status: {
-    type,
+    type: String,
     enum: ['pending', 'confirmed', 'in_progress', 'completed', 'cancelled', 'no_show'],
     default: 'pending'
   },
   
   // Session Details
-  isAnonymous: { type, default},
-  anonymousId: { type}, // Random ID for anonymous sessions
+  isAnonymous: { type: Boolean, default: false },
+  anonymousId: { type: String }, // Random ID for anonymous sessions
   
   // Emergency Flag
-  isEmergency: { type, default},
-  emergencyLevel: { type, enum: ['low', 'medium', 'high', 'critical'] },
-  crisisNotes: { type},
+  isEmergency: { type: Boolean, default: false },
+  emergencyLevel: { type: String, enum: ['low', 'medium', 'high', 'critical'] },
+  crisisNotes: { type: String },
   
   // Patient Details (for emergency)
   emergencyContact: {
-    name,
-    phone,
-    relation},
+    name: String,
+    phone: String,
+    relation: String
+  },
   
   // Couples/Family Therapy
   participants: [{
-    name,
-    age,
-    relation,
-    email}],
+    name: String,
+    age: Number,
+    relation: String,
+    email: String
+  }],
   
   // Notes
-  patientNotes: { type},
-  therapistNotes: { type}, // Added after session
-  cancellationReason: { type},
+  patientNotes: { type: String },
+  therapistNotes: { type: String }, // Added after session
+  cancellationReason: { type: String },
   
   // Session Link (for video)
-  sessionLink: { type},
+  sessionLink: { type: String },
   
   // Feedback
   feedback: {
-    rating: { type, min: 1, max: 5 },
-    review: { type},
-    submittedAt: { type}
+    rating: { type: Number, min: 1, max: 5 },
+    review: { type: String },
+    submittedAt: { type: Date }
   },
   
   // Follow-up
-  followUpScheduled: { type, default},
-  followUpDate: { type},
+  followUpScheduled: { type: Boolean, default: false },
+  followUpDate: { type: Date },
   
-  createdAt: { type, default.now },
-  updatedAt: { type, default.now }
+  createdAt: { type: Date, default: Date.now },
+  updatedAt: { type: Date, default: Date.now }
 });
 
 // ============================================
@@ -229,7 +234,7 @@ MentalHealthBookingSchema.methods.complete = function() {
 };
 
 MentalHealthBookingSchema.methods.addFeedback = function(rating, review) {
-  this.feedback = { rating, review, submittedAtDate() };
+  this.feedback = { rating, review, submittedAt: new Date() };
   return this.save();
 };
 
@@ -289,15 +294,15 @@ MentalHealthBookingSchema.statics = {
   // Get revenue summary for a therapist
   async getTherapistRevenueSummary(therapistId, startDate, endDate) {
     const match = { therapistId };
-    if (startDate) match.scheduledDate = { $gteDate(startDate) };
-    if (endDate) match.scheduledDate = { ...match.scheduledDate, $lteDate(endDate) };
+    if (startDate) match.scheduledDate = { $gte: new Date(startDate) };
+    if (endDate) match.scheduledDate = { ...match.scheduledDate, $lte: new Date(endDate) };
     match.paymentStatus = 'paid';
     
     const result = await this.aggregate([
-      { $match},
+      { $match: match },
       {
         $group: {
-          _id,
+          _id: null,
           totalRevenue: { $sum: '$patientAmount' },
           totalCommission: { $sum: '$platformCommission' },
           totalEarnings: { $sum: '$therapistEarning' },
@@ -312,15 +317,15 @@ MentalHealthBookingSchema.statics = {
   // Get platform revenue summary (admin)
   async getPlatformRevenueSummary(startDate, endDate) {
     const match = {};
-    if (startDate) match.scheduledDate = { $gteDate(startDate) };
-    if (endDate) match.scheduledDate = { ...match.scheduledDate, $lteDate(endDate) };
+    if (startDate) match.scheduledDate = { $gte: new Date(startDate) };
+    if (endDate) match.scheduledDate = { ...match.scheduledDate, $lte: new Date(endDate) };
     match.paymentStatus = 'paid';
     
     const result = await this.aggregate([
-      { $match},
+      { $match: match },
       {
         $group: {
-          _id,
+          _id: null,
           totalRevenue: { $sum: '$patientAmount' },
           totalCommission: { $sum: '$platformCommission' },
           totalSessions: { $sum: 1 },
@@ -383,4 +388,3 @@ MentalHealthBookingSchema.pre('save', function(next) {
 });
 
 module.exports = mongoose.model('MentalHealthBooking', MentalHealthBookingSchema);
-

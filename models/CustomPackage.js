@@ -1,22 +1,22 @@
 const mongoose = require('mongoose');
 
 const customPackageSchema = new mongoose.Schema({
-  packageId: { type, unique},
-  packageName: { type, required},
-  description: { type},
+  packageId: { type: String, unique: true },
+  packageName: { type: String, required: true },
+  description: { type: String },
   tests: [{ 
-    testName: { type, required},
-    price: { type},
-    category: { type}
+    testName: { type: String, required: true },
+    price: { type: Number },
+    category: { type: String }
   }],
-  totalAmount: { type, default: 0 },
-  discountedAmount: { type, default: 0 },
-  discountPercent: { type, default: 0 },
-  popular: { type, default},
-  isActive: { type, default},
-  createdBy: { type},
-  createdAt: { type, default.now },
-  updatedAt: { type, default.now }
+  totalAmount: { type: Number, default: 0 },
+  discountedAmount: { type: Number, default: 0 },
+  discountPercent: { type: Number, default: 0 },
+  popular: { type: Boolean, default: false },
+  isActive: { type: Boolean, default: true },
+  createdBy: { type: String },
+  createdAt: { type: Date, default: Date.now },
+  updatedAt: { type: Date, default: Date.now }
 });
 
 customPackageSchema.pre('save', function(next) {
@@ -27,4 +27,3 @@ customPackageSchema.pre('save', function(next) {
 });
 
 module.exports = mongoose.model('CustomPackage', customPackageSchema);
-

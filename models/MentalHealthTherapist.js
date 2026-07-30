@@ -3,7 +3,7 @@ const mongoose = require('mongoose');
 const mentalHealthTherapistSchema = new mongoose.Schema({
   // User Reference
   userId: {
-    type.Schema.Types.ObjectId,
+    type: mongoose.Schema.Types.ObjectId,
     ref: 'User'
   },
   
@@ -11,27 +11,30 @@ const mentalHealthTherapistSchema = new mongoose.Schema({
   // PERSONAL INFORMATION
   // ============================================
   name: {
-    type,
+    type: String,
     required: [true, 'Name is required'],
-    trim},
+    trim: true
+  },
   phone: {
-    type,
+    type: String,
     required: [true, 'Phone number is required'],
-    unique,
-    trim},
+    unique: true,
+    trim: true
+  },
   email: {
-    type,
+    type: String,
     required: [true, 'Email is required'],
-    unique,
-    lowercase,
-    trim},
+    unique: true,
+    lowercase: true,
+    trim: true
+  },
   password: {
-    type,
+    type: String,
     required: [true, 'Password is required'],
     minlength: 6
   },
   profileImage: {
-    type,
+    type: String,
     default: ''
   },
   
@@ -39,31 +42,35 @@ const mentalHealthTherapistSchema = new mongoose.Schema({
   // LOCATION
   // ============================================
   city: {
-    type,
+    type: String,
     required: [true, 'City is required'],
-    trim},
+    trim: true
+  },
   state: {
-    type,
+    type: String,
     required: [true, 'State is required'],
-    trim},
+    trim: true
+  },
   address: {
-    street,
-    pincode,
+    street: String,
+    pincode: String,
     coordinates: {
-      lat,
-      lng}
+      lat: Number,
+      lng: Number
+    }
   },
   
   // ============================================
   // PROFESSIONAL DETAILS
   // ============================================
   licenseNumber: {
-    type,
+    type: String,
     required: [true, 'License number is required'],
-    unique,
-    trim},
+    unique: true,
+    trim: true
+  },
   licenseCouncil: {
-    type,
+    type: String,
     default: ''
   },
   specializations: {
@@ -72,17 +79,17 @@ const mentalHealthTherapistSchema = new mongoose.Schema({
     default: []
   },
   experience: {
-    type,
+    type: Number,
     required: [true, 'Years of experience is required'],
     min: 0,
     default: 0
   },
   education: {
-    type,
+    type: String,
     default: ''
   },
   about: {
-    type,
+    type: String,
     default: ''
   },
   languages: {
@@ -94,35 +101,35 @@ const mentalHealthTherapistSchema = new mongoose.Schema({
   // ✅ FIXED PRICING - CORRECT STRUCTURE
   // ============================================
   consultationFee: {
-    type,
+    type: Number,
     required: [true, 'Consultation fee is required'],
     min: 0,
     default: 500
   },
   pricing: {
     consultation: {
-      type,
+      type: Number,
       required: [true, 'Pricing consultation is required'],
       default: 500
     },
     videoTherapy: {
-      type,
+      type: Number,
       default: 500
     },
     audioTherapy: {
-      type,
+      type: Number,
       default: 400
     },
     textTherapy: {
-      type,
+      type: Number,
       default: 300
     },
     emergency: {
-      type,
+      type: Number,
       default: 800
     },
     packageDiscount: {
-      type,
+      type: Number,
       default: 10
     }
   },
@@ -131,41 +138,41 @@ const mentalHealthTherapistSchema = new mongoose.Schema({
   // CONSULTATION TYPES
   // ============================================
   consultationTypes: {
-    video: { type, default},
-    audio: { type, default},
-    text: { type, default},
-    anonymous: { type, default},
-    emergency: { type, default}
+    video: { type: Boolean, default: true },
+    audio: { type: Boolean, default: true },
+    text: { type: Boolean, default: true },
+    anonymous: { type: Boolean, default: true },
+    emergency: { type: Boolean, default: false }
   },
   
   // ============================================
   // AVAILABILITY
   // ============================================
   availability: {
-    monday: { start, end, isAvailable: { type, default} },
-    tuesday: { start, end, isAvailable: { type, default} },
-    wednesday: { start, end, isAvailable: { type, default} },
-    thursday: { start, end, isAvailable: { type, default} },
-    friday: { start, end, isAvailable: { type, default} },
-    saturday: { start, end, isAvailable: { type, default} },
-    sunday: { start, end, isAvailable: { type, default} }
+    monday: { start: String, end: String, isAvailable: { type: Boolean, default: true } },
+    tuesday: { start: String, end: String, isAvailable: { type: Boolean, default: true } },
+    wednesday: { start: String, end: String, isAvailable: { type: Boolean, default: true } },
+    thursday: { start: String, end: String, isAvailable: { type: Boolean, default: true } },
+    friday: { start: String, end: String, isAvailable: { type: Boolean, default: true } },
+    saturday: { start: String, end: String, isAvailable: { type: Boolean, default: false } },
+    sunday: { start: String, end: String, isAvailable: { type: Boolean, default: false } }
   },
   
   // ============================================
   // RATINGS
   // ============================================
   rating: {
-    type,
+    type: Number,
     min: 0,
     max: 5,
     default: 0
   },
   totalReviews: {
-    type,
+    type: Number,
     default: 0
   },
   totalSessions: {
-    type,
+    type: Number,
     default: 0
   },
   
@@ -173,86 +180,27 @@ const mentalHealthTherapistSchema = new mongoose.Schema({
   // VERIFICATION
   // ============================================
   verificationStatus: {
-    type,
+    type: String,
     enum: ['pending', 'approved', 'rejected'],
     default: 'pending'
   },
   isActive: {
-    type,
-    default},
-
-  // ============================================
-  // 🆕 CORPORATE HEALTH
-  // ============================================
-  servesCorporate: { 
-    type, 
-    default,
-    index},
-  
-  corporatePackages: [{
-    packageName: { type, required},
-    packageType: {
-      type,
-      enum: ['employee_assistance_program', 'group_therapy', 'wellness_workshop', 'stress_management', 'crisis_support', 'custom'],
-      default: 'employee_assistance_program'
-    },
-    description,
-    servicesIncluded: [String],
-    pricePerEmployee: { type, required},
-    discountedPricePerEmployee,
-    minEmployees: { type, default: 10 },
-    maxEmployees,
-    validityDays: { type, default: 365 },
-    sessionsPerEmployee: { type, default: 4 },
-    sessionDurationMinutes: { type, default: 50 },
-    availableCities: [String],
-    dedicatedPOC: {
-      name,
-      phone,
-      email},
-    anonymityGuaranteed: { type, default},
-    slaTerms,
-    isActive: { type, default},
-    createdAt: { type, default.now },
-    updatedAt: { type, default.now }
-  }],
-  
-  corporateEnquiries: [{
-    companyName,
-    contactPerson,
-    email,
-    phone,
-    employeeCount,
-    requirements,
-    status: {
-      type,
-      enum: ['new', 'contacted', 'negotiating', 'converted', 'closed'],
-      default: 'new'
-    },
-    createdAt: { type, default.now }
-  }],
+    type: Boolean,
+    default: true
+  },
   
   // ============================================
   // TIMESTAMPS
   // ============================================
   createdAt: {
-    type,
-    default.now
+    type: Date,
+    default: Date.now
   },
   updatedAt: {
-    type,
-    default.now
+    type: Date,
+    default: Date.now
   }
 });
-
-// ============================================
-// INDEXES
-// ============================================
-
-// 🆕 Corporate indexes
-mentalHealthTherapistSchema.index({ servesCorporate: 1, city: 1 });
-mentalHealthTherapistSchema.index({ 'corporatePackages.packageType': 1 });
-mentalHealthTherapistSchema.index({ 'corporatePackages.isActive': 1 });
 
 // ============================================
 // VIRTUALS
@@ -270,6 +218,7 @@ mentalHealthTherapistSchema.virtual('formattedFee').get(function() {
 // ============================================
 mentalHealthTherapistSchema.pre('save', function(next) {
   this.updatedAt = new Date();
+  // Sync consultationFee with pricing.consultation
   if (this.consultationFee && !this.pricing.consultation) {
     this.pricing.consultation = this.consultationFee;
   }
@@ -283,24 +232,27 @@ mentalHealthTherapistSchema.pre('save', function(next) {
 // STATIC METHODS
 // ============================================
 mentalHealthTherapistSchema.statics = {
+  // Find by specialization
   async findBySpecialization(specialization) {
     return this.find({
       specializations: { $in: [specialization] },
-      isActive,
+      isActive: true,
       verificationStatus: 'approved'
     }).sort({ rating: -1 });
   },
   
+  // Find verified therapists
   async findVerified(limit = 20) {
     return this.find({
-      isActive,
+      isActive: true,
       verificationStatus: 'approved'
     }).sort({ rating: -1 }).limit(limit);
   },
   
+  // Update rating
   async updateRating(therapistId) {
     const result = await this.aggregate([
-      { $match: { _id.Types.ObjectId(therapistId) } },
+      { $match: { _id: mongoose.Types.ObjectId(therapistId) } },
       {
         $lookup: {
           from: 'reviews',
@@ -319,19 +271,10 @@ mentalHealthTherapistSchema.statics = {
     
     if (result.length > 0) {
       await this.findByIdAndUpdate(therapistId, {
-        rating[0].avgRating || 0,
-        totalReviews[0].totalReviews || 0
+        rating: result[0].avgRating || 0,
+        totalReviews: result[0].totalReviews || 0
       });
     }
-  },
-
-  // 🆕 Find corporate therapists
-  async findCorporateTherapists(city = null) {
-    const query = { servesCorporate, isActive, verificationStatus: 'approved' };
-    if (city) {
-      query.city = { $regexRegExp(city, 'i') };
-    }
-    return this.find(query).select('name city specializations rating corporatePackages profileImage');
   }
 };
 
@@ -339,6 +282,7 @@ mentalHealthTherapistSchema.statics = {
 // INSTANCE METHODS
 // ============================================
 mentalHealthTherapistSchema.methods = {
+  // Check if available at given time
   isAvailableAt(date, time) {
     const day = date.toLocaleDateString('en-US', { weekday: 'long' }).toLowerCase();
     const availability = this.availability[day];
@@ -346,31 +290,10 @@ mentalHealthTherapistSchema.methods = {
     return time >= availability.start && time <= availability.end;
   },
   
+  // Get consultation fee
   getFee(type = 'consultation') {
     return this.pricing[type] || this.pricing.consultation || this.consultationFee || 500;
-  },
-
-  // 🆕 Corporate methods
-  toggleCorporate(enable = true) {
-    this.servesCorporate = enable;
-    if (!enable) {
-      this.corporatePackages.forEach(pkg => { pkg.isActive = false; });
-    }
-    return this.save();
-  },
-
-  addCorporatePackage(packageData) {
-    this.corporatePackages.push(packageData);
-    if (!this.servesCorporate) {
-      this.servesCorporate = true;
-    }
-    return this.save();
-  },
-
-  getActiveCorporatePackages() {
-    return this.corporatePackages.filter(pkg => pkg.isActive);
   }
 };
 
 module.exports = mongoose.model('MentalHealthTherapist', mentalHealthTherapistSchema);
-

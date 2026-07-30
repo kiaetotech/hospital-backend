@@ -1,71 +1,71 @@
 const mongoose = require('mongoose');
 
 const doctorSchema = new mongoose.Schema({
-  name: { type, required},
-  specialization: { type, required},
-  sub_specialization,
-  qualification,
-  experience: { type, default: '0' },
-  consultation_fee: { type, required},
-  rating: { type, default: 0 },
-  reviewCount: { type, default: 0 },
+  name: { type: String, required: true },
+  specialization: { type: String, required: true },
+  sub_specialization: String,
+  qualification: String,
+  experience: { type: String, default: '0' },
+  consultation_fee: { type: Number, required: true },
+  rating: { type: Number, default: 0 },
+  reviewCount: { type: Number, default: 0 },
   languages: [String],
-  gender: { type, enum: ['Male', 'Female', 'Other'] },
+  gender: { type: String, enum: ['Male', 'Female', 'Other'] },
   availability: {
     status: { 
-      type, 
+      type: String, 
       enum: ['available', 'limited', 'full', 'leave'],
       default: 'available'
     },
-    slots_available: { type, default: 0 },
-    next_available,
+    slots_available: { type: Number, default: 0 },
+    next_available: String,
     days: [String],
-    morning_slots,
-    evening_slots,
-    max_patients: { type, default: 20 }
+    morning_slots: String,
+    evening_slots: String,
+    max_patients: { type: Number, default: 20 }
   },
-  opd_room,
-  consultation_duration: { type, default: 15 },
-  accepting_new_patients: { type, default}
+  opd_room: String,
+  consultation_duration: { type: Number, default: 15 },
+  accepting_new_patients: { type: Boolean, default: true }
 });
 
 const reviewSchema = new mongoose.Schema({
-  patientName,
-  rating,
-  review,
-  date: { type, default.now },
-  doctorName,
-  treatment,
-  verified: { type, default}
+  patientName: String,
+  rating: Number,
+  review: String,
+  date: { type: Date, default: Date.now },
+  doctorName: String,
+  treatment: String,
+  verified: { type: Boolean, default: false }
 });
 
 const hospitalSchema = new mongoose.Schema({
   // ============ BASIC INFO ============
-  name: { type, required, index},
-  password: { type, select},
+  name: { type: String, required: true, index: true },
   subscription_plan: { 
-    type, 
+    type: String, 
     enum: ['free', 'silver', 'gold', 'platinum'],
     default: 'free' 
   },
   type: {
-    type,
+    type: String,
     enum: ['private', 'government', 'trust', 'corporate'],
     default: 'private'
   },
-  year_established,
-  registration_number,
+  year_established: String,
+  registration_number: String,
   
   // ============ LOCATION ============
   address: {
-    street,
-    city: { type, index},
-    state,
-    pincode,
-    landmark},
+    street: String,
+    city: { type: String, index: true },
+    state: String,
+    pincode: String,
+    landmark: String
+  },
   location: {
     type: {
-      type,
+      type: String,
       enum: ['Point'],
       default: 'Point'
     },
@@ -73,96 +73,87 @@ const hospitalSchema = new mongoose.Schema({
       type: [Number],
       index: '2dsphere'
     },
-    lat,
-    lng},
+    lat: Number,
+    lng: Number
+  },
   
   // ============ MEDICAL INFO ============
-  diseases_treated: [{ type, index}],
-  procedures_available: [{ type}],
-  specialties: [{ type, index}],
-  has24x7ER: { type, default},
-  trauma_center: { type, default},
-  stroke_ready: { type, default},
-  cardiac_emergency: { type, default},
+  diseases_treated: [{ type: String, index: true }],
+  procedures_available: [{ type: String }],
+  specialties: [{ type: String, index: true }],
+  has24x7ER: { type: Boolean, default: false },
+  trauma_center: { type: Boolean, default: false },
+  stroke_ready: { type: Boolean, default: false },
+  cardiac_emergency: { type: Boolean, default: false },
   
   // ============ ACCREDITATIONS ============
   accreditations: [{
-    type: { type, enum: ['NABH', 'JCI', 'NABL', 'ISO', 'ISO 9001', 'ISO 15189', 'NIC'] },
-    certificate_number,
-    issuing_body,
-    valid_until}],
+    type: String,
+    enum: ['NABH', 'JCI', 'NABL', 'ISO', 'NIC'],
+    default: []
+  }],
   
   // ============ BED MANAGEMENT ============
   beds: {
-    total: { type, default: 0 },
-    available: { type, default: 0 },
-    occupied: { type, default: 0 },
-    icu_total: { type, default: 0 },
-    icu_available: { type, default: 0 },
-    ventilator_total: { type, default: 0 },
-    ventilator_available: { type, default: 0 },
-    emergency_beds: { type, default: 0 },
-    isolation_beds: { type, default: 0 },
+    total: { type: Number, default: 0 },
+    available: { type: Number, default: 0 },
+    occupied: { type: Number, default: 0 },
+    icu_total: { type: Number, default: 0 },
+    icu_available: { type: Number, default: 0 },
+    ventilator_total: { type: Number, default: 0 },
+    ventilator_available: { type: Number, default: 0 },
+    emergency_beds: { type: Number, default: 0 },
+    isolation_beds: { type: Number, default: 0 },
+    
     categories: {
-      general_ward: { total, available, price_per_day},
-      semi_private: { total, available, price_per_day},
-      private: { total, available, price_per_day},
-      deluxe: { total, available, price_per_day},
-      suite: { total, available, price_per_day}
+      general_ward: { total: Number, available: Number, price_per_day: Number },
+      semi_private: { total: Number, available: Number, price_per_day: Number },
+      private: { total: Number, available: Number, price_per_day: Number },
+      deluxe: { total: Number, available: Number, price_per_day: Number },
+      suite: { total: Number, available: Number, price_per_day: Number }
     },
-    last_updated: { type, default.now },
+    
+    last_updated: { type: Date, default: Date.now },
     update_method: {
-      type,
+      type: String,
       enum: ['whatsapp', 'web_portal', 'mobile_app', 'api', 'excel_upload', 'manual'],
       default: 'manual'
     },
-    auto_expire_at},
+    auto_expire_at: Date
+  },
   
   // ============ PRICING ============
   pricing: {
-    consultation: { type, default: 0 },
-    consultation_discounted,
-    follow_up,
-    emergency_consultation,
-    icu_bed_per_day: { type, default: 0 },
-    general_bed_per_day: { type, default: 0 },
-    semi_private_per_day,
-    private_per_day,
-    deluxe_per_day,
-    suite_per_day,
-    opd_general: { type, default: 0 },
-    opd_specialist: { type, default: 0 },
-    opd_super_specialist: { type, default: 0 },
-    opd_emergency: { type, default: 0 },
-    opd_follow_up: { type, default: 0 },
-    opd_online: { type, default: 0 },
-    ipd_general_ward: { type, default: 0 },
-    ipd_semi_private: { type, default: 0 },
-    ipd_private_room: { type, default: 0 },
-    ipd_deluxe: { type, default: 0 },
-    ipd_super_deluxe: { type, default: 0 },
-    ipd_suite: { type, default: 0 },
-    ipd_icu: { type, default: 0 },
-    ipd_icu_ventilator: { type, default: 0 },
-    ipd_nicu: { type, default: 0 },
-    ipd_picu: { type, default: 0 },
-    ipd_hdu: { type, default: 0 },
-    ipd_isolation: { type, default: 0 },
-    ipd_day_care: { type, default: 0 },
-    online_booking_discount: { type, default: 10 },
-    first_time_discount,
+    consultation: { type: Number, default: 0 },
+    consultation_discounted: Number,
+    follow_up: Number,
+    emergency_consultation: Number,
+    
+    icu_bed_per_day: { type: Number, default: 0 },
+    general_bed_per_day: { type: Number, default: 0 },
+    semi_private_per_day: Number,
+    private_per_day: Number,
+    deluxe_per_day: Number,
+    suite_per_day: Number,
+    
+    online_booking_discount: { type: Number, default: 10 },
+    first_time_discount: Number,
+    
     health_packages: [{
-      name,
-      original_price,
-      discounted_price,
+      name: String,
+      original_price: Number,
+      discounted_price: Number,
       includes: [String],
-      valid_till}],
+      valid_till: Date
+    }],
+    
     offers: [{
-      title,
-      description,
-      discount_percentage,
-      valid_till,
-      terms}]
+      title: String,
+      description: String,
+      discount_percentage: Number,
+      valid_till: Date,
+      terms: String
+    }]
   },
   
   // ============ DOCTORS ============
@@ -170,205 +161,197 @@ const hospitalSchema = new mongoose.Schema({
   
   // ============ SCHEMES & INSURANCE ============
   schemes_accepted: [{
-    type,
-    enum: ['ayushman', 'cghs', 'esi', 'echs', 'state_scheme', 'senior_citizen', 'disability', 'pmjay', 'rsby']
+    type: String,
+    enum: [
+      'ayushman', 'cghs', 'esi', 'echs', 
+      'state_scheme', 'senior_citizen', 'disability',
+      'pmjay', 'rsby'
+    ]
   }],
+  
   scheme_details: [{
-    scheme_name,
-    scheme_type,
-    is_active: { type, default},
-    beds_allocated,
-    contact_person,
-    contact_phone,
-    last_updated}],
-  insurance_accepted: [{ type, index}],
-  cashless_available: { type, default},
-  tpa_desk_available: { type, default},
-  reimbursement_accepted: { type, default},
+    scheme_name: String,
+    scheme_type: String,
+    is_active: { type: Boolean, default: true },
+    beds_allocated: Number,
+    contact_person: String,
+    contact_phone: String,
+    last_updated: Date
+  }],
+  
+  insurance_accepted: [{ type: String, index: true }],
+  
+  cashless_available: { type: Boolean, default: false },
+  tpa_desk_available: { type: Boolean, default: false },
+  reimbursement_accepted: { type: Boolean, default: true },
+  
   tpa_partners: [String],
   
   // ============ FACILITIES ============
-  lab_tests_available: { type, default},
+  lab_tests_available: { type: Boolean, default: false },
   lab_types: [String],
-  in_house_pharmacy: { type, default},
-  pharmacy_24x7: { type, default},
-  ambulance_available: { type, default},
-  ambulance_count: { type, default: 0 },
+  in_house_pharmacy: { type: Boolean, default: false },
+  pharmacy_24x7: { type: Boolean, default: false },
+  ambulance_available: { type: Boolean, default: false },
+  ambulance_count: { type: Number, default: 0 },
+  
   technology: [{
-    type,
-    enum: ['MRI 3T', 'MRI 1.5T', 'CT 128 Slice', 'CT 64 Slice', 'PET-CT', 'SPECT-CT', 'Cath Lab', 'Robotic Surgery', 'Gamma Knife', 'CyberKnife', 'Lithotripsy', 'Digital X-Ray', 'Mammography', 'DEXA Scan', 'Ultrasound 4D', 'Echocardiography', 'EEG', 'EMG']
+    type: String,
+    enum: [
+      'MRI 3T', 'MRI 1.5T', 'CT 128 Slice', 'CT 64 Slice',
+      'PET-CT', 'SPECT-CT', 'Cath Lab', 'Robotic Surgery',
+      'Gamma Knife', 'CyberKnife', 'Lithotripsy',
+      'Digital X-Ray', 'Mammography', 'DEXA Scan',
+      'Ultrasound 4D', 'Echocardiography', 'EEG', 'EMG'
+    ]
   }],
+  
   operation_theaters: {
-    total,
-    modular,
-    robotic},
+    total: Number,
+    modular: Number,
+    robotic: Boolean
+  },
+  
   amenities: [{
-    type,
-    enum: ['WiFi', 'AC Rooms', 'TV', 'Cafeteria', 'Parking', 'Wheelchair Access', 'Prayer Room', 'ATM', 'Pharmacy', 'Attendant Stay', 'Dietary Services', 'Laundry', 'International Patient Services', 'Language Translator', 'Airport Pickup', 'Currency Exchange']
+    type: String,
+    enum: [
+      'WiFi', 'AC Rooms', 'TV', 'Cafeteria', 'Parking',
+      'Wheelchair Access', 'Prayer Room', 'ATM', 'Pharmacy',
+      'Attendant Stay', 'Dietary Services', 'Laundry',
+      'International Patient Services', 'Language Translator',
+      'Airport Pickup', 'Currency Exchange'
+    ]
   }],
+  
+  // ============ FACILITIES LIST (Custom) ============
   facilities: [{
-    name,
-    category,
-    available_24x7,
-    description}],
+    name: String,
+    category: String,
+    available_24x7: Boolean,
+    description: String
+  }],
   
   // ============ RATINGS & REVIEWS ============
   ratings: {
-    average: { type, default: 0 },
-    count: { type, default: 0 },
+    average: { type: Number, default: 0 },
+    count: { type: Number, default: 0 },
     breakdown: {
-      doctor_communication: { type, default: 0 },
-      staff_behavior: { type, default: 0 },
-      cleanliness: { type, default: 0 },
-      wait_time: { type, default: 0 },
-      value_for_money: { type, default: 0 }
+      doctor_communication: { type: Number, default: 0 },
+      staff_behavior: { type: Number, default: 0 },
+      cleanliness: { type: Number, default: 0 },
+      wait_time: { type: Number, default: 0 },
+      value_for_money: { type: Number, default: 0 }
     },
-    avg_wait_time: { type, default: 0 }
+    avg_wait_time: { type: Number, default: 0 }
   },
+  
   reviews: [reviewSchema],
+  
   featured_review: {
-    text,
-    author,
-    date},
+    text: String,
+    author: String,
+    date: Date
+  },
   
   // ============ CONTACT ============
   contact: {
-    phone,
-    alternate_phone,
-    emergency_phone,
-    ambulance_phone,
-    email,
-    website},
+    phone: String,
+    alternate_phone: String,
+    emergency_phone: String,
+    ambulance_phone: String,
+    email: String,
+    website: String
+  },
   
   // ============ OPERATIONAL ============
-  working_hours: { type, default: '24x7' },
-  online_services: {
-    enabled: { type, default},
-    consultation_fee,
-    follow_up_fee,
-    emergency_fee,
-    video_consult: { type, default},
-    chat_consult: { type, default}
-  },
+  working_hours: { type: String, default: '24x7' },
   opd_timings: {
-    morning: { start, end},
-    evening: { start, end}
+    morning: { start: String, end: String },
+    evening: { start: String, end: String }
   },
-  visiting_hours,
-  icu_visiting_hours,
+  visiting_hours: String,
+  icu_visiting_hours: String,
   
   // ============ ACTIVITY & RANKING ============
-  activity_score: { type, default: 0 },
-  last_activity: { type, default.now },
+  activity_score: { type: Number, default: 0 },
+  last_activity: { type: Date, default: Date.now },
+  
   update_frequency: {
-    today: { type, default: 0 },
-    this_week: { type, default: 0 },
-    this_month: { type, default: 0 }
+    today: { type: Number, default: 0 },
+    this_week: { type: Number, default: 0 },
+    this_month: { type: Number, default: 0 }
   },
   
   // ============ MEDICAL TOURISM ============
   medical_tourism: {
-    available: { type, default},
+    available: { type: Boolean, default: false },
     services: [String],
     languages_spoken: [String],
-    visa_assistance,
-    airport_pickup},
+    visa_assistance: Boolean,
+    airport_pickup: Boolean
+  },
   
   // ============ PAYMENT OPTIONS ============
   payment_methods: [{
-    type,
+    type: String,
     enum: ['Cash', 'Credit Card', 'Debit Card', 'UPI', 'Net Banking', 'EMI']
   }],
-  emi_available: { type, default},
+  
+  emi_available: { type: Boolean, default: false },
   emi_partners: [String],
   
-  // ============ GALLERY & DOCUMENTS ============
-  gallery: [String],
-  documents: [{
-    doc_type: { type},
-    name: { type},
-    url: { type}
-  }],
-
   // ============ AMBULANCE FLEET ============
   ambulance_fleet: [{
-    vehicle_number,
-    type: { type, enum: ['basic', 'cardiac', 'ventilator', 'neonatal', 'wheelchair'] },
-    driver_name,
-    driver_phone,
-    base_fare,
-    per_km,
-    available_24x7: { type, default}
+    vehicle_number: String,
+    type: { type: String, enum: ['basic', 'cardiac', 'ventilator', 'neonatal', 'wheelchair'] },
+    driver_name: String,
+    driver_phone: String,
+    base_fare: Number,
+    per_km: Number,
+    available_24x7: { type: Boolean, default: true }
   }],
   
   // ============ DIAGNOSTICS ============
   diagnostics: {
     tests: [{
-      name,
-      category,
-      price,
-      home_collection,
-      fasting_required,
-      report_time,
-      sample_type}]
+      name: String,
+      category: String,
+      price: Number,
+      home_collection: Boolean,
+      fasting_required: Boolean,
+      report_time: Number,
+      sample_type: String
+    }]
   },
   
   // ============ USER LINKING ============
-  userId: { type.Schema.Types.ObjectId, ref: 'User', index},
+  userId: {
+    type: mongoose.Schema.Types.ObjectId,
+    ref: 'User',
+    index: true
+  },
   
   // ============ STATUS ============
-  is_active: { type, default},
-  is_verified: { type, default},
-  verification_date,
+  is_active: { type: Boolean, default: true },
+  is_verified: { type: Boolean, default: false },
+  verification_date: Date,
   verification_status: {
-    type,
+    type: String,
     enum: ['pending', 'under_review', 'verified', 'rejected'],
     default: 'pending'
   },
-  verification_submitted_at,
+  verification_submitted_at: Date,
   
   // ============ DATA SOURCE ============
   data_filled_via: {
-    type,
+    type: String,
     enum: ['manual', 'excel_upload', 'city_template', 'api'],
     default: 'manual'
   },
 
-  // ============ CORPORATE HEALTH ============
-  servesCorporate: { type, default, index},
-  corporatePackages: [{
-    packageName: { type, required},
-    packageType: { type, enum: ['health_checkup', 'opd_subscription', 'wellness_camp', 'diagnostic_package', 'custom'], default: 'health_checkup' },
-    description,
-    servicesIncluded: [String],
-    pricePerEmployee: { type, required},
-    discountedPricePerEmployee,
-    minEmployees: { type, default: 10 },
-    maxEmployees,
-    validityDays: { type, default: 365 },
-    locations: [String],
-    availableCities: [String],
-    dedicatedPOC: { name, phone, email},
-    slaTerms,
-    isActive: { type, default},
-    createdAt: { type, default.now },
-    updatedAt: { type, default.now }
-  }],
-  upload_history: [],
-  corporateEnquiries: [{
-    companyName,
-    contactPerson,
-    email,
-    phone,
-    employeeCount,
-    requirements,
-    status: { type, enum: ['new', 'contacted', 'negotiating', 'converted', 'closed'], default: 'new' },
-    createdAt: { type, default.now }
-  }],
-
   // ============ TIMESTAMPS ============
-  created_at: { type, default.now },
-  updated_at: { type, default.now }
+  created_at: { type: Date, default: Date.now },
+  updated_at: { type: Date, default: Date.now }
 
 }, { 
   collection: 'hospitals',
@@ -376,24 +359,34 @@ const hospitalSchema = new mongoose.Schema({
 });
 
 // ============ INDEXES ============
-hospitalSchema.index({ name: 'text', specialties: 'text', diseases_treated: 'text', 'doctors.name': 'text', 'doctors.specialization': 'text' });
+
+hospitalSchema.index({ 
+  name: 'text', 
+  specialties: 'text', 
+  diseases_treated: 'text',
+  'doctors.name': 'text',
+  'doctors.specialization': 'text'
+});
+
 hospitalSchema.index({ 'location.coordinates': '2dsphere' });
 hospitalSchema.index({ 'address.city': 1, 'ratings.average': -1 });
 hospitalSchema.index({ schemes_accepted: 1, cashless_available: 1 });
 hospitalSchema.index({ activity_score: -1 });
 hospitalSchema.index({ diseases_treated: 1 });
 hospitalSchema.index({ procedures_available: 1 });
-hospitalSchema.index({ servesCorporate: 1, 'address.city': 1 });
-hospitalSchema.index({ 'corporatePackages.packageType': 1 });
-hospitalSchema.index({ 'corporatePackages.isActive': 1 });
 
 // ============ MIDDLEWARE ============
+
 hospitalSchema.pre('save', function(next) {
-  if (this.beds && this.beds.update_method && ['whatsapp', 'web_portal', 'manual'].includes(this.beds.update_method)) {
-    this.beds.auto_expire_at = new Date(Date.now() + 4 * 60 * 60 * 1000);
+  if (this.beds && this.beds.update_method && 
+      ['whatsapp', 'web_portal', 'manual'].includes(this.beds.update_method)) {
+    const fourHours = 4 * 60 * 60 * 1000;
+    this.beds.auto_expire_at = new Date(Date.now() + fourHours);
   }
+  
   this.activity_score = calculateActivityScore(this);
   this.last_activity = new Date();
+  
   next();
 });
 
@@ -401,60 +394,54 @@ hospitalSchema.pre('save', function(next) {
   if (this.isModified('reviews')) {
     const totalRating = this.reviews.reduce((sum, r) => sum + r.rating, 0);
     this.ratings.count = this.reviews.length;
-    this.ratings.average = this.reviews.length > 0 ? (totalRating / this.reviews.length).toFixed(1) : 0;
+    this.ratings.average = this.reviews.length > 0 ? 
+      (totalRating / this.reviews.length).toFixed(1) : 0;
   }
   next();
 });
 
 // ============ METHODS ============
+
 hospitalSchema.methods.getAvailableDoctors = function(specialization = null) {
-  let doctors = this.doctors.filter(d => d.availability.status !== 'leave' && d.accepting_new_patients);
-  if (specialization) doctors = doctors.filter(d => d.specialization.toLowerCase().includes(specialization.toLowerCase()));
+  let doctors = this.doctors.filter(d => 
+    d.availability.status !== 'leave' && d.accepting_new_patients
+  );
+  
+  if (specialization) {
+    doctors = doctors.filter(d => 
+      d.specialization.toLowerCase().includes(specialization.toLowerCase())
+    );
+  }
+  
   return doctors;
 };
 
 hospitalSchema.methods.getBedStatusBadge = function() {
   const hours = (Date.now() - new Date(this.beds.last_updated).getTime()) / (1000 * 60 * 60);
+  
   if (hours < 1) return { text: 'Live Updated', color: 'green', icon: '🟢' };
   if (hours < 4) return { text: 'Updated Recently', color: 'yellow', icon: '🟡' };
   if (hours < 12) return { text: 'Updated Today', color: 'orange', icon: '🟠' };
   return { text: 'May not be current', color: 'red', icon: '🔴' };
 };
 
-hospitalSchema.methods.toggleCorporate = function(enable = true) {
-  this.servesCorporate = enable;
-  if (!enable) this.corporatePackages.forEach(pkg => { pkg.isActive = false; });
-  return this.save();
-};
-
-hospitalSchema.methods.addCorporatePackage = function(packageData) {
-  this.corporatePackages.push(packageData);
-  if (!this.servesCorporate) this.servesCorporate = true;
-  return this.save();
-};
-
-hospitalSchema.methods.getActiveCorporatePackages = function() {
-  return this.corporatePackages.filter(pkg => pkg.isActive);
-};
-
-// ============ STATICS ============
-hospitalSchema.statics.findCorporateHospitals = function(city = null) {
-  const query = { servesCorporate, is_active, is_verified};
-  if (city) query['address.city'] = { $regexRegExp(city, 'i') };
-  return this.find(query).select('name address corporatePackages ratings contact');
-};
-
 // ============ HELPER ============
+
 function calculateActivityScore(hospital) {
   const now = new Date();
   const lastBedUpdate = hospital.beds?.last_updated;
+  
   if (!lastBedUpdate) return 0;
+  
   const hoursSinceUpdate = (now - new Date(lastBedUpdate)) / (1000 * 60 * 60);
+  
   let score = 100;
+  
   if (hoursSinceUpdate > 24) score -= 60;
   else if (hoursSinceUpdate > 12) score -= 40;
   else if (hoursSinceUpdate > 4) score -= 20;
   else if (hoursSinceUpdate > 2) score -= 10;
+  
   if (hospital.doctors?.length > 0) score += 10;
   if (hospital.schemes_accepted?.length > 0) score += 5;
   if (hospital.insurance_accepted?.length > 0) score += 5;
@@ -462,9 +449,8 @@ function calculateActivityScore(hospital) {
   if (hospital.technology?.length > 0) score += 5;
   if (hospital.diseases_treated?.length > 0) score += 5;
   if (hospital.procedures_available?.length > 0) score += 5;
+  
   return Math.max(0, Math.min(100, score));
 }
 
-module.exports = mongoose.model('Hospital', hospitalSchema);// force model redeploy 
-
-
+module.exports = mongoose.model('Hospital', hospitalSchema);

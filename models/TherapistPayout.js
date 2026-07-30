@@ -2,91 +2,97 @@ const mongoose = require('mongoose');
 
 const therapistPayoutSchema = new mongoose.Schema({
   therapistId: {
-    type.Schema.Types.ObjectId,
+    type: mongoose.Schema.Types.ObjectId,
     ref: 'MentalHealthTherapist',
-    required,
-    index},
+    required: true,
+    index: true
+  },
   walletId: {
-    type.Schema.Types.ObjectId,
+    type: mongoose.Schema.Types.ObjectId,
     ref: 'TherapistWallet',
-    required},
+    required: true
+  },
   
   // Payout Details
   amount: {
-    type,
-    required,
+    type: Number,
+    required: true,
     min: 0
   },
   platformCommission: {
-    type,
+    type: Number,
     default: 0
   },
   netAmount: {
-    type,
-    required},
+    type: Number,
+    required: true
+  },
   
   // Booking References
   bookingIds: [{
-    type.Schema.Types.ObjectId,
+    type: mongoose.Schema.Types.ObjectId,
     ref: 'MentalHealthBooking'
   }],
   
   // Payout Method
   method: {
-    type,
+    type: String,
     enum: ['bank_transfer', 'upi', 'razorpay_payout', 'cheque'],
-    required},
+    required: true
+  },
   
   // Bank/UPI Details
   bankDetails: {
-    accountNumber,
-    accountHolderName,
-    ifscCode,
-    bankName,
-    upiId,
-    razorpayPayoutId},
+    accountNumber: String,
+    accountHolderName: String,
+    ifscCode: String,
+    bankName: String,
+    upiId: String,
+    razorpayPayoutId: String
+  },
   
   // Status Tracking
   status: {
-    type,
+    type: String,
     enum: ['pending', 'processing', 'completed', 'failed', 'cancelled', 'refunded'],
     default: 'pending'
   },
   
   // Razorpay Payout Response
   razorpayResponse: {
-    payoutId,
-    status,
-    utr,
-    failureReason,
-    response.Schema.Types.Mixed
+    payoutId: String,
+    status: String,
+    utr: String,
+    failureReason: String,
+    response: mongoose.Schema.Types.Mixed
   },
   
   // Timeline
   requestedAt: {
-    type,
-    default.now
+    type: Date,
+    default: Date.now
   },
-  processedAt,
-  completedAt,
-  failedAt,
+  processedAt: Date,
+  completedAt: Date,
+  failedAt: Date,
   
   // Notes
-  notes,
-  adminNotes,
+  notes: String,
+  adminNotes: String,
   
   // Processed By
   processedBy: {
-    type.Schema.Types.ObjectId,
+    type: mongoose.Schema.Types.ObjectId,
     ref: 'User'
   }
 }, {
-  timestamps});
+  timestamps: true
+});
 
 // Indexes
 therapistPayoutSchema.index({ therapistId: 1, status: 1 });
 therapistPayoutSchema.index({ status: 1, requestedAt: -1 });
-therapistPayoutSchema.index({ 'razorpayResponse.utr': 1 }, { sparse});
+therapistPayoutSchema.index({ 'razorpayResponse.utr': 1 }, { sparse: true });
 
 // Virtuals
 therapistPayoutSchema.virtual('statusLabel').get(function() {
@@ -135,7 +141,7 @@ therapistPayoutSchema.statics = {
       { $match: { therapistId } },
       {
         $group: {
-          _id,
+          _id: null,
           totalPaid: {
             $sum: {
               $cond: [{ $eq: ['$status', 'completed'] }, '$netAmount', 0]
@@ -186,10 +192,11 @@ therapistPayoutSchema.methods = {
     this.completedAt = new Date();
     if (razorpayResponse) {
       this.razorpayResponse = {
-        payoutId.id,
-        status.status,
-        utr.utr,
-        response};
+        payoutId: razorpayResponse.id,
+        status: razorpayResponse.status,
+        utr: razorpayResponse.utr,
+        response: razorpayResponse
+      };
     }
     return this.save();
   },
@@ -201,8 +208,9 @@ therapistPayoutSchema.methods = {
     this.notes = reason;
     if (razorpayResponse) {
       this.razorpayResponse = {
-        failureReason.failure_reason,
-        response};
+        failureReason: razorpayResponse.failure_reason,
+        response: razorpayResponse
+      };
     }
     return this.save();
   }
@@ -220,4 +228,3 @@ therapistPayoutSchema.pre('save', function(next) {
 const TherapistPayout = mongoose.model('TherapistPayout', therapistPayoutSchema);
 
 module.exports = TherapistPayout;
-

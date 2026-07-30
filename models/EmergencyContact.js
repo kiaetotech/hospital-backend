@@ -21,13 +21,13 @@ const emergencyContactSchema = new mongoose.Schema({
   // ============================================
   
   userId: { 
-    type.Schema.Types.ObjectId, 
+    type: mongoose.Schema.Types.ObjectId, 
     ref: 'User', 
-    required,
-    unique// One emergency profile per user
+    required: true,
+    unique: true  // One emergency profile per user
   },
   userType: {
-    type,
+    type: String,
     enum: ['patient', 'caregiver_recipient', 'employee', 'general'],
     default: 'patient'
   },
@@ -37,11 +37,11 @@ const emergencyContactSchema = new mongoose.Schema({
   // ============================================
   
   contacts: [{
-    name: { type, required},
-    phone: { type, required},
-    email: { type},
+    name: { type: String, required: true },
+    phone: { type: String, required: true },
+    email: { type: String },
     relationship: { 
-      type, 
+      type: String, 
       enum: [
         'spouse', 'parent', 'child', 'sibling', 
         'grandparent', 'grandchild', 'relative',
@@ -50,52 +50,52 @@ const emergencyContactSchema = new mongoose.Schema({
       ]
     },
     priority: { 
-      type, 
+      type: Number, 
       default: 1,
       min: 1,
       max: 5  // 1=Primary, 5=Last resort
     },
-    isEmergencyContact: { type, default},
+    isEmergencyContact: { type: Boolean, default: true },
     
     // Notification preferences
     notifyOn: {
-      ambulance_emergency: { type, default},   // 🚑
-      mental_health_crisis: { type, default},  // 🧠
-      hospital_emergency: { type, default},    // 🏥
-      caregiver_emergency: { type, default},   // 🏠
-      corporate_emergency: { type, default},  // 🏢
-      general_emergency: { type, default}      // All other
+      ambulance_emergency: { type: Boolean, default: true },   // 🚑
+      mental_health_crisis: { type: Boolean, default: true },  // 🧠
+      hospital_emergency: { type: Boolean, default: true },    // 🏥
+      caregiver_emergency: { type: Boolean, default: true },   // 🏠
+      corporate_emergency: { type: Boolean, default: false },  // 🏢
+      general_emergency: { type: Boolean, default: true }      // All other
     },
     
     // Contact availability
-    available24x7: { type, default},
-    availableFrom: { type},  // "09:00"
-    availableTo: { type},    // "21:00"
-    timezone: { type, default: 'Asia/Kolkata' },
+    available24x7: { type: Boolean, default: true },
+    availableFrom: { type: String },  // "09:00"
+    availableTo: { type: String },    // "21:00"
+    timezone: { type: String, default: 'Asia/Kolkata' },
     
     // Verification
-    isVerified: { type, default},
-    verifiedAt: { type},
+    isVerified: { type: Boolean, default: false },
+    verifiedAt: { type: Date },
     
     // Last notification
-    lastNotifiedAt: { type},
-    lastNotifiedFor: { type},  // Tag/service type
+    lastNotifiedAt: { type: Date },
+    lastNotifiedFor: { type: String },  // Tag/service type
     
     // Contact address (for home emergencies)
     address: {
-      line1: { type},
-      line2: { type},
-      city: { type},
-      state: { type},
-      pincode: { type}
+      line1: { type: String },
+      line2: { type: String },
+      city: { type: String },
+      state: { type: String },
+      pincode: { type: String }
     },
     
     // Additional contact methods
-    alternatePhone: { type},
-    whatsappNumber: { type},
+    alternatePhone: { type: String },
+    whatsappNumber: { type: String },
     
-    createdAt: { type, default.now },
-    updatedAt: { type, default.now }
+    createdAt: { type: Date, default: Date.now },
+    updatedAt: { type: Date, default: Date.now }
   }],
 
   // ============================================
@@ -105,73 +105,73 @@ const emergencyContactSchema = new mongoose.Schema({
   medicalInfo: {
     // Basic
     bloodGroup: { 
-      type, 
+      type: String, 
       enum: ['A+', 'A-', 'B+', 'B-', 'AB+', 'AB-', 'O+', 'O-', 'unknown'] 
     },
-    height: { type},  // cm
-    weight: { type},  // kg
+    height: { type: Number },  // cm
+    weight: { type: Number },  // kg
     
     // Critical conditions
     chronicConditions: [{
-      condition: { type},
-      diagnosedSince: { type},
-      severity: { type, enum: ['mild', 'moderate', 'severe', 'critical'] },
-      medications: [{ type}],
-      notes: { type}
+      condition: { type: String },
+      diagnosedSince: { type: Date },
+      severity: { type: String, enum: ['mild', 'moderate', 'severe', 'critical'] },
+      medications: [{ type: String }],
+      notes: { type: String }
     }],
     
     // Allergies (Critical for emergency)
     allergies: [{
-      allergen: { type, required},
-      reaction: { type},
-      severity: { type, enum: ['mild', 'moderate', 'severe', 'life_threatening'] },
+      allergen: { type: String, required: true },
+      reaction: { type: String },
+      severity: { type: String, enum: ['mild', 'moderate', 'severe', 'life_threatening'] },
       category: { 
-        type, 
+        type: String, 
         enum: ['medication', 'food', 'environmental', 'insect', 'latex', 'other'] 
       }
     }],
     
     // Current medications
     currentMedications: [{
-      name: { type},
-      dosage: { type},
-      frequency: { type},
-      since: { type},
-      prescribedBy: { type},
-      forCondition: { type}
+      name: { type: String },
+      dosage: { type: String },
+      frequency: { type: String },
+      since: { type: Date },
+      prescribedBy: { type: String },
+      forCondition: { type: String }
     }],
     
     // Past surgeries
     pastSurgeries: [{
-      surgery: { type},
-      date: { type},
-      hospital: { type},
-      notes: { type}
+      surgery: { type: String },
+      date: { type: Date },
+      hospital: { type: String },
+      notes: { type: String }
     }],
     
     // Implants/Devices
     implants: [{
-      type: { type},  // Pacemaker, Stent, Artificial joint, etc.
-      implantedDate: { type},
-      location: { type},
-      notes: { type}
+      type: { type: String },  // Pacemaker, Stent, Artificial joint, etc.
+      implantedDate: { type: Date },
+      location: { type: String },
+      notes: { type: String }
     }],
     
     // Special conditions
-    isPregnant: { type, default},
-    dueDate: { type},
-    isOrganDonor: { type, default},
-    hasDisability: { type, default},
-    disabilityDetails: { type},
+    isPregnant: { type: Boolean, default: false },
+    dueDate: { type: Date },
+    isOrganDonor: { type: Boolean, default: false },
+    hasDisability: { type: Boolean, default: false },
+    disabilityDetails: { type: String },
     
     // Emergency-specific
-    doNotResuscitate: { type, default},
-    dnrDocumentUrl: { type},
-    advanceDirective: { type},
+    doNotResuscitate: { type: Boolean, default: false },
+    dnrDocumentUrl: { type: String },
+    advanceDirective: { type: String },
     
-    lastUpdated: { type, default.now },
-    verifiedByDoctor: { type, default},
-    verifiedDoctorId: { type}
+    lastUpdated: { type: Date, default: Date.now },
+    verifiedByDoctor: { type: Boolean, default: false },
+    verifiedDoctorId: { type: String }
   },
 
   // ============================================
@@ -180,19 +180,19 @@ const emergencyContactSchema = new mongoose.Schema({
   
   insuranceInfo: {
     primaryInsurance: {
-      provider: { type},
-      policyNumber: { type},
-      groupId: { type},
-      validUntil: { type},
-      cardFrontImage: { type},  // Cloudinary URL
-      cardBackImage: { type}    // Cloudinary URL
+      provider: { type: String },
+      policyNumber: { type: String },
+      groupId: { type: String },
+      validUntil: { type: Date },
+      cardFrontImage: { type: String },  // Cloudinary URL
+      cardBackImage: { type: String }    // Cloudinary URL
     },
     secondaryInsurance: {
-      provider: { type},
-      policyNumber: { type}
+      provider: { type: String },
+      policyNumber: { type: String }
     },
-    tpaProvider: { type},  // Third Party Administrator
-    tpaContact: { type}
+    tpaProvider: { type: String },  // Third Party Administrator
+    tpaContact: { type: String }
   },
 
   // ============================================
@@ -200,13 +200,13 @@ const emergencyContactSchema = new mongoose.Schema({
   // ============================================
   
   preferredHospitals: [{
-    hospitalId: { type.Schema.Types.ObjectId, ref: 'Hospital' },
-    hospitalName: { type},
-    address: { type},
-    phone: { type},
-    isNetworkHospital: { type, default},
-    priority: { type, default: 1 },  // 1=First choice
-    reason: { type}  // "Close to home", "Insurance network", etc.
+    hospitalId: { type: mongoose.Schema.Types.ObjectId, ref: 'Hospital' },
+    hospitalName: { type: String },
+    address: { type: String },
+    phone: { type: String },
+    isNetworkHospital: { type: Boolean, default: false },
+    priority: { type: Number, default: 1 },  // 1=First choice
+    reason: { type: String }  // "Close to home", "Insurance network", etc.
   }],
 
   // ============================================
@@ -215,18 +215,18 @@ const emergencyContactSchema = new mongoose.Schema({
   
   ambulancePreferences: {
     preferredAmbulanceType: {
-      type,
+      type: String,
       enum: ['basic', 'cardiac', 'ventilator', 'neonatal', 'wheelchair', 'any'],
       default: 'any'
     },
-    requiresOxygen: { type, default},
-    requiresStretcher: { type, default},
-    requiresWheelchairAccess: { type, default},
-    specialInstructions: { type},
+    requiresOxygen: { type: Boolean, default: false },
+    requiresStretcher: { type: Boolean, default: false },
+    requiresWheelchairAccess: { type: Boolean, default: false },
+    specialInstructions: { type: String },
     buildingInfo: {
-      floor: { type},
-      hasElevator: { type, default},
-      accessNotes: { type}  // "Narrow staircase", "Service elevator only"
+      floor: { type: Number },
+      hasElevator: { type: Boolean, default: true },
+      accessNotes: { type: String }  // "Narrow staircase", "Service elevator only"
     }
   },
 
@@ -235,17 +235,17 @@ const emergencyContactSchema = new mongoose.Schema({
   // ============================================
   
   mentalHealthCrisis: {
-    hasMentalHealthCondition: { type, default},
-    diagnosis: [{ type}],
-    therapistName: { type},
-    therapistPhone: { type},
-    psychiatristName: { type},
-    psychiatristPhone: { type},
-    crisisPlan: { type},
-    triggers: [{ type}],
-    copingStrategies: [{ type}],
-    preferredCrisisFacility: { type},
-    medicationsForCrisis: [{ type}]
+    hasMentalHealthCondition: { type: Boolean, default: false },
+    diagnosis: [{ type: String }],
+    therapistName: { type: String },
+    therapistPhone: { type: String },
+    psychiatristName: { type: String },
+    psychiatristPhone: { type: String },
+    crisisPlan: { type: String },
+    triggers: [{ type: String }],
+    copingStrategies: [{ type: String }],
+    preferredCrisisFacility: { type: String },
+    medicationsForCrisis: [{ type: String }]
   },
 
   // ============================================
@@ -253,20 +253,20 @@ const emergencyContactSchema = new mongoose.Schema({
   // ============================================
   
   caregiverEmergency: {
-    hasCaregiver: { type, default},
-    caregiverName: { type},
-    caregiverPhone: { type},
-    caregiverAgency: { type},
-    caregiverAgencyPhone: { type},
-    careSchedule: { type},  // "Mon-Fri 8am-6pm"
-    backupCaregiver: { type},
-    backupCaregiverPhone: { type},
+    hasCaregiver: { type: Boolean, default: false },
+    caregiverName: { type: String },
+    caregiverPhone: { type: String },
+    caregiverAgency: { type: String },
+    caregiverAgencyPhone: { type: String },
+    careSchedule: { type: String },  // "Mon-Fri 8am-6pm"
+    backupCaregiver: { type: String },
+    backupCaregiverPhone: { type: String },
     mobilityStatus: {
-      type,
+      type: String,
       enum: ['independent', 'walker', 'wheelchair', 'bedridden', 'assisted']
     },
-    communicationNeeds: [{ type}],  // "Hearing impaired", "Non-verbal"
-    specialCareInstructions: { type}
+    communicationNeeds: [{ type: String }],  // "Hearing impaired", "Non-verbal"
+    specialCareInstructions: { type: String }
   },
 
   // ============================================
@@ -274,16 +274,16 @@ const emergencyContactSchema = new mongoose.Schema({
   // ============================================
   
   corporateEmergency: {
-    companyName: { type},
-    hrContact: { type},
-    hrPhone: { type},
-    hrEmail: { type},
-    employeeId: { type},
-    department: { type},
-    managerName: { type},
-    managerPhone: { type},
-    workLocation: { type},
-    corporateHealthProgram: { type}
+    companyName: { type: String },
+    hrContact: { type: String },
+    hrPhone: { type: String },
+    hrEmail: { type: String },
+    employeeId: { type: String },
+    department: { type: String },
+    managerName: { type: String },
+    managerPhone: { type: String },
+    workLocation: { type: String },
+    corporateHealthProgram: { type: String }
   },
 
   // ============================================
@@ -292,25 +292,25 @@ const emergencyContactSchema = new mongoose.Schema({
   
   emergencySettings: {
     // Quick access
-    enableEmergencyButton: { type, default},
-    enableSOSGesture: { type, default},  // Shake phone for SOS
-    autoDetectFall: { type, default},
+    enableEmergencyButton: { type: Boolean, default: true },
+    enableSOSGesture: { type: Boolean, default: true },  // Shake phone for SOS
+    autoDetectFall: { type: Boolean, default: false },
     
     // Auto-share
-    autoShareLocation: { type, default},
-    autoShareMedicalInfo: { type, default},
-    autoShareInsurance: { type, default},
-    autoNotifyContacts: { type, default},
-    autoCallAmbulance: { type, default},
+    autoShareLocation: { type: Boolean, default: true },
+    autoShareMedicalInfo: { type: Boolean, default: true },
+    autoShareInsurance: { type: Boolean, default: true },
+    autoNotifyContacts: { type: Boolean, default: true },
+    autoCallAmbulance: { type: Boolean, default: false },
     
     // Notification preferences
-    notifyBeforeDispatch: { type, default},
-    notifyAfterDispatch: { type, default},
-    notifyOnArrival: { type, default},
+    notifyBeforeDispatch: { type: Boolean, default: true },
+    notifyAfterDispatch: { type: Boolean, default: true },
+    notifyOnArrival: { type: Boolean, default: true },
     
     // Emergency sound
-    emergencySoundEnabled: { type, default},
-    emergencySoundVolume: { type, default: 100, min: 0, max: 100 }
+    emergencySoundEnabled: { type: Boolean, default: true },
+    emergencySoundVolume: { type: Number, default: 100, min: 0, max: 100 }
   },
 
   // ============================================
@@ -319,7 +319,7 @@ const emergencyContactSchema = new mongoose.Schema({
   
   emergencyHistory: [{
     emergencyType: {
-      type,
+      type: String,
       enum: [
         'ambulance_emergency',   // 🚑
         'mental_health_crisis',  // 🧠
@@ -329,29 +329,29 @@ const emergencyContactSchema = new mongoose.Schema({
         'general_emergency'      // Other
       ]
     },
-    bookingId: { type},
-    occurredAt: { type},
+    bookingId: { type: String },
+    occurredAt: { type: Date },
     location: {
-      lat: { type},
-      lng: { type},
-      address: { type}
+      lat: { type: Number },
+      lng: { type: Number },
+      address: { type: String }
     },
-    outcome: { type},
-    notes: { type},
-    contactsNotified: [{ type}],
-    ambulanceDispatched: { type, default},
-    hospitalVisited: { type}
+    outcome: { type: String },
+    notes: { type: String },
+    contactsNotified: [{ type: String }],
+    ambulanceDispatched: { type: Boolean, default: false },
+    hospitalVisited: { type: String }
   }],
 
   // ============================================
   // AUDIT FIELDS
   // ============================================
   
-  isActive: { type, default},
-  createdAt: { type, default.now },
-  updatedAt: { type, default.now },
-  lastEmergencyAt: { type},
-  totalEmergencies: { type, default: 0 }
+  isActive: { type: Boolean, default: true },
+  createdAt: { type: Date, default: Date.now },
+  updatedAt: { type: Date, default: Date.now },
+  lastEmergencyAt: { type: Date },
+  totalEmergencies: { type: Number, default: 0 }
 });
 
 // ============================================
@@ -422,8 +422,8 @@ emergencyContactSchema.virtual('hasCrisisPlan').get(function() {
 emergencyContactSchema.methods.addContact = function(contactData) {
   this.contacts.push({
     ...contactData,
-    createdAtDate(),
-    updatedAtDate()
+    createdAt: new Date(),
+    updatedAt: new Date()
   });
   return this.save();
 };
@@ -432,7 +432,7 @@ emergencyContactSchema.methods.addContact = function(contactData) {
 emergencyContactSchema.methods.updateContact = function(contactId, updates) {
   const contact = this.contacts.id(contactId);
   if (!contact) return null;
-  Object.assign(contact, { ...updates, updatedAtDate() });
+  Object.assign(contact, { ...updates, updatedAt: new Date() });
   return this.save();
 };
 
@@ -456,7 +456,7 @@ emergencyContactSchema.methods.updateMedicalInfo = function(medicalData) {
   this.medicalInfo = {
     ...this.medicalInfo,
     ...medicalData,
-    lastUpdatedDate()
+    lastUpdated: new Date()
   };
   return this.save();
 };
@@ -489,7 +489,7 @@ emergencyContactSchema.methods.addMedication = function(medicationData) {
 emergencyContactSchema.methods.recordEmergency = function(emergencyData) {
   this.emergencyHistory.push({
     ...emergencyData,
-    occurredAtDate()
+    occurredAt: new Date()
   });
   this.totalEmergencies = (this.totalEmergencies || 0) + 1;
   this.lastEmergencyAt = new Date();
@@ -529,30 +529,30 @@ emergencyContactSchema.methods.markContactsNotified = function(contactIds) {
 // 🚑 Get emergency-ready data for ambulance dispatch
 emergencyContactSchema.methods.getAmbulanceEmergencyData = function() {
   return {
-    contacts.getContactsForEmergency('ambulance_emergency'),
+    contacts: this.getContactsForEmergency('ambulance_emergency'),
     medicalInfo: {
-      bloodGroup.medicalInfo?.bloodGroup,
-      allergies.medicalInfo?.allergies?.filter(a => a.severity === 'severe' || a.severity === 'life_threatening'),
-      chronicConditions.medicalInfo?.chronicConditions?.filter(c => c.severity === 'severe' || c.severity === 'critical'),
-      currentMedications.medicalInfo?.currentMedications,
-      implants.medicalInfo?.implants,
-      isPregnant.medicalInfo?.isPregnant,
-      doNotResuscitate.medicalInfo?.doNotResuscitate
+      bloodGroup: this.medicalInfo?.bloodGroup,
+      allergies: this.medicalInfo?.allergies?.filter(a => a.severity === 'severe' || a.severity === 'life_threatening'),
+      chronicConditions: this.medicalInfo?.chronicConditions?.filter(c => c.severity === 'severe' || c.severity === 'critical'),
+      currentMedications: this.medicalInfo?.currentMedications,
+      implants: this.medicalInfo?.implants,
+      isPregnant: this.medicalInfo?.isPregnant,
+      doNotResuscitate: this.medicalInfo?.doNotResuscitate
     },
-    insurance.insuranceInfo,
-    preferredHospitals.preferredHospitals,
-    ambulancePreferences.ambulancePreferences
+    insurance: this.insuranceInfo,
+    preferredHospitals: this.preferredHospitals,
+    ambulancePreferences: this.ambulancePreferences
   };
 };
 
 // 🧠 Get mental health crisis data
 emergencyContactSchema.methods.getMentalHealthCrisisData = function() {
   return {
-    contacts.getContactsForEmergency('mental_health_crisis'),
-    crisisInfo.mentalHealthCrisis,
+    contacts: this.getContactsForEmergency('mental_health_crisis'),
+    crisisInfo: this.mentalHealthCrisis,
     medicalInfo: {
-      allergies.medicalInfo?.allergies,
-      currentMedications.medicalInfo?.currentMedications
+      allergies: this.medicalInfo?.allergies,
+      currentMedications: this.medicalInfo?.currentMedications
     }
   };
 };
@@ -560,21 +560,21 @@ emergencyContactSchema.methods.getMentalHealthCrisisData = function() {
 // 🏠 Get caregiver emergency data
 emergencyContactSchema.methods.getCaregiverEmergencyData = function() {
   return {
-    contacts.getContactsForEmergency('caregiver_emergency'),
-    caregiverInfo.caregiverEmergency,
-    medicalInfo.medicalInfo,
-    ambulancePreferences.ambulancePreferences
+    contacts: this.getContactsForEmergency('caregiver_emergency'),
+    caregiverInfo: this.caregiverEmergency,
+    medicalInfo: this.medicalInfo,
+    ambulancePreferences: this.ambulancePreferences
   };
 };
 
 // 🏢 Get corporate emergency data
 emergencyContactSchema.methods.getCorporateEmergencyData = function() {
   return {
-    contacts.getContactsForEmergency('corporate_emergency'),
-    corporateInfo.corporateEmergency,
+    contacts: this.getContactsForEmergency('corporate_emergency'),
+    corporateInfo: this.corporateEmergency,
     medicalInfo: {
-      bloodGroup.medicalInfo?.bloodGroup,
-      allergies.medicalInfo?.allergies
+      bloodGroup: this.medicalInfo?.bloodGroup,
+      allergies: this.medicalInfo?.allergies
     }
   };
 };
@@ -594,14 +594,15 @@ emergencyContactSchema.methods.isProfileComplete = function() {
 
 // Find by user ID
 emergencyContactSchema.statics.findByUserId = function(userId) {
-  return this.findOne({ userId, isActive});
+  return this.findOne({ userId, isActive: true });
 };
 
 // Find users with specific blood group (for emergency blood requests)
 emergencyContactSchema.statics.findByBloodGroup = function(bloodGroup, location = null) {
   const query = { 
-    'medicalInfo.bloodGroup',
-    isActive};
+    'medicalInfo.bloodGroup': bloodGroup,
+    isActive: true 
+  };
   return this.find(query).limit(50);
 };
 
@@ -609,14 +610,16 @@ emergencyContactSchema.statics.findByBloodGroup = function(bloodGroup, location 
 emergencyContactSchema.statics.findWithCriticalAllergies = function() {
   return this.find({
     'medicalInfo.allergies.severity': 'life_threatening',
-    isActive});
+    isActive: true
+  });
 };
 
 // Find users with DNR orders
 emergencyContactSchema.statics.findWithDNR = function() {
   return this.find({
-    'medicalInfo.doNotResuscitate',
-    isActive});
+    'medicalInfo.doNotResuscitate': true,
+    isActive: true
+  });
 };
 
 // Find users who have had emergencies recently
@@ -625,8 +628,9 @@ emergencyContactSchema.statics.findRecentEmergencies = function(days = 30) {
   since.setDate(since.getDate() - days);
   
   return this.find({
-    'emergencyHistory.occurredAt': { $gte},
-    isActive}).sort({ 'emergencyHistory.occurredAt': -1 });
+    'emergencyHistory.occurredAt': { $gte: since },
+    isActive: true
+  }).sort({ 'emergencyHistory.occurredAt': -1 });
 };
 
 // ============================================
@@ -645,4 +649,3 @@ emergencyContactSchema.pre('save', function(next) {
 });
 
 module.exports = mongoose.model('EmergencyContact', emergencyContactSchema);
-

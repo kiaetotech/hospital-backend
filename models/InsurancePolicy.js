@@ -6,29 +6,33 @@ const InsurancePolicySchema = new mongoose.Schema({
   // ============================================
   
   bookingId: { 
-    type.Schema.Types.ObjectId, 
+    type: mongoose.Schema.Types.ObjectId, 
     ref: 'Booking', 
-    required},
+    required: true 
+  },
   planId: { 
-    type.Schema.Types.ObjectId, 
+    type: mongoose.Schema.Types.ObjectId, 
     ref: 'InsurancePlan', 
-    required},
+    required: true 
+  },
   companyId: { 
-    type.Schema.Types.ObjectId, 
+    type: mongoose.Schema.Types.ObjectId, 
     ref: 'User', 
-    required},
+    required: true 
+  },
   userId: { 
-    type, 
-    required},
+    type: String, 
+    required: true 
+  },
   
   // ============================================
   // POLICY DETAILS
   // ============================================
   
-  policyNumber: { type, unique},
-  policyName: { type, required},
+  policyNumber: { type: String, unique: true },
+  policyName: { type: String, required: true },
   policyType: { 
-    type, 
+    type: String, 
     enum: [
       'individual', 
       'family_floater', 
@@ -38,51 +42,52 @@ const InsurancePolicySchema = new mongoose.Schema({
       'personal_accident',
       'travel'
     ],
-    required},
-  policyCode: { type},
+    required: true 
+  },
+  policyCode: { type: String },
   
   // ============================================
   // COVERAGE
   // ============================================
   
-  sumInsured: { type, required},
-  roomRentLimit: { type},
-  icuCoverage: { type, default},
-  icuLimit: { type},
+  sumInsured: { type: Number, required: true },
+  roomRentLimit: { type: String },
+  icuCoverage: { type: Boolean, default: true },
+  icuLimit: { type: Number },
   
   // ============================================
   // PREMIUM DETAILS
   // ============================================
   
-  premiumAmount: { type, required},
-  gstAmount: { type, required},
-  discountAmount: { type, default: 0 },
-  totalAmount: { type, required},
+  premiumAmount: { type: Number, required: true },
+  gstAmount: { type: Number, required: true },
+  discountAmount: { type: Number, default: 0 },
+  totalAmount: { type: Number, required: true },
   
   // ============================================
   // COMMISSION
   // ============================================
   
-  platformCommission: { type},
-  platformCommissionRate: { type},
-  payoutToCompany: { type},
-  agentCommission: { type},
-  agentCommissionRate: { type},
+  platformCommission: { type: Number },
+  platformCommissionRate: { type: Number },
+  payoutToCompany: { type: Number },
+  agentCommission: { type: Number },
+  agentCommissionRate: { type: Number },
   
   // ============================================
   // MEMBERS (for family floater)
   // ============================================
   
   members: [{
-    name: { type, required},
-    relation: { type, required},
-    age: { type, required},
-    gender: { type, enum: ['male', 'female', 'other'] },
-    aadhaar: { type},
-    pan: { type},
-    dateOfBirth: { type},
-    isSmoker: { type, default},
-    isPrimary: { type, default}
+    name: { type: String, required: true },
+    relation: { type: String, required: true },
+    age: { type: Number, required: true },
+    gender: { type: String, enum: ['male', 'female', 'other'] },
+    aadhaar: { type: String },
+    pan: { type: String },
+    dateOfBirth: { type: Date },
+    isSmoker: { type: Boolean, default: false },
+    isPrimary: { type: Boolean, default: false }
   }],
   
   // ============================================
@@ -90,15 +95,15 @@ const InsurancePolicySchema = new mongoose.Schema({
   // ============================================
   
   primaryInsured: {
-    name: { type, required},
-    age: { type, required},
-    gender: { type, required},
-    dateOfBirth: { type},
-    aadhaar: { type},
-    pan: { type},
-    occupation: { type},
-    income: { type},
-    isSmoker: { type, default}
+    name: { type: String, required: true },
+    age: { type: Number, required: true },
+    gender: { type: String, required: true },
+    dateOfBirth: { type: Date },
+    aadhaar: { type: String },
+    pan: { type: String },
+    occupation: { type: String },
+    income: { type: Number },
+    isSmoker: { type: Boolean, default: false }
   },
   
   // ============================================
@@ -106,29 +111,29 @@ const InsurancePolicySchema = new mongoose.Schema({
   // ============================================
   
   nominee: {
-    name: { type},
-    relation: { type},
-    age: { type},
-    contactNumber: { type},
-    address: { type}
+    name: { type: String },
+    relation: { type: String },
+    age: { type: Number },
+    contactNumber: { type: String },
+    address: { type: String }
   },
   
   // ============================================
   // DATES
   // ============================================
   
-  startDate: { type, required},
-  endDate: { type, required},
-  renewalDate: { type},
-  freeLookPeriodEnd: { type}, // 15 days from start
-  gracePeriodEnd: { type}, // 30 days after end date
+  startDate: { type: Date, required: true },
+  endDate: { type: Date, required: true },
+  renewalDate: { type: Date },
+  freeLookPeriodEnd: { type: Date }, // 15 days from start
+  gracePeriodEnd: { type: Date }, // 30 days after end date
   
   // ============================================
   // STATUS
   // ============================================
   
   status: { 
-    type, 
+    type: String, 
     enum: [
       'pending', 
       'active', 
@@ -147,7 +152,7 @@ const InsurancePolicySchema = new mongoose.Schema({
   // ============================================
   
   paymentStatus: {
-    type,
+    type: String,
     enum: ['pending', 'paid', 'failed', 'refunded', 'partially_refunded'],
     default: 'pending'
   },
@@ -157,31 +162,31 @@ const InsurancePolicySchema = new mongoose.Schema({
   // ============================================
   
   settlementStatus: {
-    type,
+    type: String,
     enum: ['pending', 'processing', 'completed', 'failed'],
     default: 'pending'
   },
-  settlementDate: { type},
-  settlementTransactionId: { type},
+  settlementDate: { type: Date },
+  settlementTransactionId: { type: String },
   
   // ============================================
   // DOCUMENTS
   // ============================================
   
-  policyDocumentUrl: { type},
-  certificateUrl: { type},
-  proposalFormUrl: { type},
-  welcomeKitUrl: { type},
-  policyScheduleUrl: { type},
+  policyDocumentUrl: { type: String },
+  certificateUrl: { type: String },
+  proposalFormUrl: { type: String },
+  welcomeKitUrl: { type: String },
+  policyScheduleUrl: { type: String },
   
   // ============================================
   // ADD-ONS SELECTED
   // ============================================
   
   selectedAddons: [{
-    name: { type},
-    price: { type},
-    coverage: { type}
+    name: { type: String },
+    price: { type: Number },
+    coverage: { type: String }
   }],
   
   // ============================================
@@ -189,13 +194,13 @@ const InsurancePolicySchema = new mongoose.Schema({
   // ============================================
   
   claims: [{
-    claimId: { type},
-    claimNumber: { type},
-    date: { type},
-    amount: { type},
-    approvedAmount: { type},
+    claimId: { type: String },
+    claimNumber: { type: String },
+    date: { type: Date },
+    amount: { type: Number },
+    approvedAmount: { type: Number },
     status: { 
-      type, 
+      type: String, 
       enum: [
         'initiated', 
         'document_uploaded', 
@@ -206,16 +211,16 @@ const InsurancePolicySchema = new mongoose.Schema({
         'pending_documents'
       ]
     },
-    description: { type},
-    hospitalName: { type},
-    hospitalAddress: { type},
-    admissionDate: { type},
-    dischargeDate: { type},
-    documents: [{ type}],
-    rejectionReason: { type},
-    settledDate: { type},
-    createdAt: { type, default.now },
-    updatedAt: { type, default.now }
+    description: { type: String },
+    hospitalName: { type: String },
+    hospitalAddress: { type: String },
+    admissionDate: { type: Date },
+    dischargeDate: { type: Date },
+    documents: [{ type: String }],
+    rejectionReason: { type: String },
+    settledDate: { type: Date },
+    createdAt: { type: Date, default: Date.now },
+    updatedAt: { type: Date, default: Date.now }
   }],
   
   // ============================================
@@ -223,13 +228,13 @@ const InsurancePolicySchema = new mongoose.Schema({
   // ============================================
   
   renewals: [{
-    policyNumber: { type},
-    startDate: { type},
-    endDate: { type},
-    premiumAmount: { type},
-    paymentId: { type},
-    transactionId: { type},
-    renewedAt: { type, default.now }
+    policyNumber: { type: String },
+    startDate: { type: Date },
+    endDate: { type: Date },
+    premiumAmount: { type: Number },
+    paymentId: { type: String },
+    transactionId: { type: String },
+    renewedAt: { type: Date, default: Date.now }
   }],
   
   // ============================================
@@ -237,13 +242,13 @@ const InsurancePolicySchema = new mongoose.Schema({
   // ============================================
   
   paymentHistory: [{
-    transactionId: { type},
-    amount: { type},
-    paymentMethod: { type},
-    paymentDate: { type},
-    status: { type},
-    razorpayPaymentId: { type},
-    razorpayOrderId: { type}
+    transactionId: { type: String },
+    amount: { type: Number },
+    paymentMethod: { type: String },
+    paymentDate: { type: Date },
+    status: { type: String },
+    razorpayPaymentId: { type: String },
+    razorpayOrderId: { type: String }
   }],
   
   // ============================================
@@ -251,38 +256,38 @@ const InsurancePolicySchema = new mongoose.Schema({
   // ============================================
   
   communications: [{
-    type: { type}, // email, sms, call
-    sentAt: { type, default.now },
-    subject: { type},
-    content: { type},
-    status: { type}
+    type: { type: String }, // email, sms, call
+    sentAt: { type: Date, default: Date.now },
+    subject: { type: String },
+    content: { type: String },
+    status: { type: String }
   }],
   
   // ============================================
   // POLICY TERMS
   // ============================================
   
-  termsAccepted: { type, default},
-  termsAcceptedAt: { type},
-  termsVersion: { type},
+  termsAccepted: { type: Boolean, default: false },
+  termsAcceptedAt: { type: Date },
+  termsVersion: { type: String },
   
   // ============================================
   // PROPOSAL DETAILS
   // ============================================
   
-  proposalNumber: { type},
-  proposalDate: { type},
-  proposalFormData: { type.Schema.Types.Mixed },
+  proposalNumber: { type: String },
+  proposalDate: { type: Date },
+  proposalFormData: { type: mongoose.Schema.Types.Mixed },
   
   // ============================================
   // DECLARATIONS
   // ============================================
   
   declarations: {
-    medicalHistoryDeclared: { type, default},
-    preExistingDeclared: { type, default},
-    occupationalHazardsDeclared: { type, default},
-    familyHistoryDeclared: { type, default}
+    medicalHistoryDeclared: { type: Boolean, default: false },
+    preExistingDeclared: { type: Boolean, default: false },
+    occupationalHazardsDeclared: { type: Boolean, default: false },
+    familyHistoryDeclared: { type: Boolean, default: false }
   },
   
   // ============================================
@@ -290,15 +295,15 @@ const InsurancePolicySchema = new mongoose.Schema({
   // ============================================
   
   medicalHistory: {
-    chronicDiseases: [{ type}],
-    pastSurgeries: [{ type}],
-    currentMedications: [{ type}],
-    familyHistory: [{ type}],
+    chronicDiseases: [{ type: String }],
+    pastSurgeries: [{ type: String }],
+    currentMedications: [{ type: String }],
+    familyHistory: [{ type: String }],
     lifestyle: {
-      smoking: { type, default},
-      alcohol: { type, default},
-      exercise: { type},
-      dietType: { type}
+      smoking: { type: Boolean, default: false },
+      alcohol: { type: Boolean, default: false },
+      exercise: { type: String },
+      dietType: { type: String }
     }
   },
   
@@ -307,33 +312,34 @@ const InsurancePolicySchema = new mongoose.Schema({
   // ============================================
   
   underwritingStatus: {
-    type,
+    type: String,
     enum: ['pending', 'approved', 'rejected', 'needs_review'],
     default: 'pending'
   },
-  underwritingNotes: { type},
-  underwritingDate: { type},
-  underwrittenBy: { type.Schema.Types.ObjectId, ref: 'User' },
+  underwritingNotes: { type: String },
+  underwritingDate: { type: Date },
+  underwrittenBy: { type: mongoose.Schema.Types.ObjectId, ref: 'User' },
   
   // ============================================
   // CANCELLATION
   // ============================================
   
-  cancellationReason: { type},
-  cancellationDate: { type},
-  refundAmount: { type},
-  refundProcessedAt: { type},
+  cancellationReason: { type: String },
+  cancellationDate: { type: Date },
+  refundAmount: { type: Number },
+  refundProcessedAt: { type: Date },
   
   // ============================================
   // AUDIT
   // ============================================
   
-  createdAt: { type, default.now },
-  updatedAt: { type, default.now },
-  createdBy: { type.Schema.Types.ObjectId, ref: 'User' },
-  updatedBy: { type.Schema.Types.ObjectId, ref: 'User' }
+  createdAt: { type: Date, default: Date.now },
+  updatedAt: { type: Date, default: Date.now },
+  createdBy: { type: mongoose.Schema.Types.ObjectId, ref: 'User' },
+  updatedBy: { type: mongoose.Schema.Types.ObjectId, ref: 'User' }
 }, {
-  timestamps});
+  timestamps: true
+});
 
 // ============================================
 // INDEXES
@@ -484,13 +490,13 @@ InsurancePolicySchema.methods.renew = function(premiumAmount, paymentId, transac
   newEndDate.setFullYear(newEndDate.getFullYear() + 1);
   
   this.renewals.push({
-    policyNumber.policyNumber,
-    startDate.startDate,
-    endDate.endDate,
-    premiumAmount.premiumAmount,
-    paymentId,
-    transactionId,
-    renewedAtDate()
+    policyNumber: this.policyNumber,
+    startDate: this.startDate,
+    endDate: this.endDate,
+    premiumAmount: this.premiumAmount,
+    paymentId: paymentId,
+    transactionId: transactionId,
+    renewedAt: new Date()
   });
   
   this.startDate = newStartDate;
@@ -501,12 +507,13 @@ InsurancePolicySchema.methods.renew = function(premiumAmount, paymentId, transac
   this.paymentStatus = 'paid';
   
   this.paymentHistory.push({
-    transactionId,
-    amount|| this.premiumAmount,
+    transactionId: transactionId,
+    amount: premiumAmount || this.premiumAmount,
     paymentMethod: 'razorpay',
-    paymentDateDate(),
+    paymentDate: new Date(),
     status: 'paid',
-    razorpayPaymentId});
+    razorpayPaymentId: paymentId
+  });
   
   return this.save();
 };
@@ -543,16 +550,16 @@ InsurancePolicySchema.methods.addClaim = function(claimData) {
   const claimId = `CLM${Date.now().toString().slice(-8)}${Math.floor(Math.random() * 1000).toString().padStart(3, '0')}`;
   
   this.claims.push({
-    claimId,
-    claimNumber,
-    dateDate(),
-    amount.amount,
+    claimId: claimId,
+    claimNumber: claimId,
+    date: new Date(),
+    amount: claimData.amount,
     status: 'initiated',
-    description.description,
-    hospitalName.hospitalName,
-    hospitalAddress.hospitalAddress,
-    admissionDate.admissionDate,
-    documents.documents || []
+    description: claimData.description,
+    hospitalName: claimData.hospitalName,
+    hospitalAddress: claimData.hospitalAddress,
+    admissionDate: claimData.admissionDate,
+    documents: claimData.documents || []
   });
   
   return this.save();
@@ -614,7 +621,7 @@ InsurancePolicySchema.statics.findExpiringPolicies = function(days = 30) {
   
   return this.find({
     status: 'active',
-    endDate: { $lte, $gteDate() }
+    endDate: { $lte: expiryDate, $gte: new Date() }
   })
     .populate('planId', 'planName')
     .populate('companyId', 'name');
@@ -623,7 +630,7 @@ InsurancePolicySchema.statics.findExpiringPolicies = function(days = 30) {
 InsurancePolicySchema.statics.findExpiredPolicies = function() {
   return this.find({
     status: { $ne: 'cancelled' },
-    endDate: { $ltDate() }
+    endDate: { $lt: new Date() }
   })
     .populate('planId', 'planName')
     .populate('companyId', 'name');
@@ -645,7 +652,7 @@ InsurancePolicySchema.statics.findByUserId = function(userId) {
 InsurancePolicySchema.statics.getPolicyStats = function(companyId) {
   const match = companyId ? { companyId } : {};
   return this.aggregate([
-    { $match},
+    { $match: match },
     {
       $group: {
         _id: '$status',
@@ -660,14 +667,14 @@ InsurancePolicySchema.statics.getPolicyStats = function(companyId) {
 InsurancePolicySchema.statics.getMonthlySales = function(year, companyId) {
   const match = {
     createdAt: {
-      $gteDate(year, 0, 1),
-      $lteDate(year, 11, 31)
+      $gte: new Date(year, 0, 1),
+      $lte: new Date(year, 11, 31)
     }
   };
   if (companyId) match.companyId = companyId;
   
   return this.aggregate([
-    { $match},
+    { $match: match },
     {
       $group: {
         _id: { $month: '$createdAt' },
@@ -681,4 +688,3 @@ InsurancePolicySchema.statics.getMonthlySales = function(year, companyId) {
 };
 
 module.exports = mongoose.model('InsurancePolicy', InsurancePolicySchema);
-

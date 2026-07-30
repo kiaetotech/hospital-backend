@@ -1,24 +1,23 @@
 const mongoose = require('mongoose');
 
 const providerSchema = new mongoose.Schema({
-  providerName: { type, required, unique},
-  email: { type, required, unique},
-  password: { type, required},
-  phone: { type},
-  address: { type},
-  city: { type},
-  pincode: { type},
-  latitude: { type},
-  longitude: { type},
-  rating: { type, default: 4.0 },
-  isVerified: { type, default},
-  isActive: { type, default},
-  adminNote: { type},
-  verifiedAt: { type},
-  verifiedBy: { type},
-  createdAt: { type, default.now },
-  updatedAt: { type, default.now }
+  providerName: { type: String, required: true, unique: true },
+  email: { type: String, required: true, unique: true },
+  password: { type: String, required: true },
+  phone: { type: String },
+  address: { type: String },
+  city: { type: String },
+  pincode: { type: String },
+  latitude: { type: Number },
+  longitude: { type: Number },
+  rating: { type: Number, default: 4.0 },
+  isVerified: { type: Boolean, default: false },
+  isActive: { type: Boolean, default: true },
+  adminNote: { type: String },
+  verifiedAt: { type: Date },
+  verifiedBy: { type: String },
+  createdAt: { type: Date, default: Date.now },
+  updatedAt: { type: Date, default: Date.now }
 });
 
 module.exports = mongoose.model('Provider', providerSchema);
-

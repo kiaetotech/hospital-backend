@@ -9,7 +9,7 @@ const authenticateToken = (req, res, next) => {
 
   if (!token) {
     return res.status(401).json({
-      success,
+      success: false,
       message: 'Access denied. No token provided.'
     });
   }
@@ -20,7 +20,7 @@ const authenticateToken = (req, res, next) => {
     next();
   } catch (error) {
     return res.status(403).json({
-      success,
+      success: false,
       message: 'Invalid or expired token.'
     });
   }
@@ -37,7 +37,7 @@ const authenticate = authenticateToken;
 const authenticatePatient = (req, res, next) => {
   authenticateToken(req, res, () => {
     if (req.user.role !== 'patient') {
-      return res.status(403).json({ success, message: 'Patient access required.' });
+      return res.status(403).json({ success: false, message: 'Patient access required.' });
     }
     next();
   });
@@ -57,7 +57,7 @@ const authenticateProvider = (req, res, next) => {
     
     if (!providerRoles.includes(req.user.role)) {
       return res.status(403).json({ 
-        success, 
+        success: false, 
         message: 'Provider access required.' 
       });
     }
@@ -73,7 +73,7 @@ const authorizeRoles = (...allowedRoles) => {
     authenticateToken(req, res, () => {
       if (!allowedRoles.includes(req.user.role)) {
         return res.status(403).json({
-          success,
+          success: false,
           message: `Access denied. Required role: ${allowedRoles.join(' or ')}`
         });
       }
@@ -89,7 +89,7 @@ const authenticateHospital = (req, res, next) => {
   authenticateToken(req, res, () => {
     if (req.user.role !== 'hospital') {
       return res.status(403).json({ 
-        success, 
+        success: false, 
         message: 'Hospital access required.' 
       });
     }
@@ -104,7 +104,7 @@ const authenticateAmbulance = (req, res, next) => {
   authenticateToken(req, res, () => {
     if (req.user.role !== 'ambulance' && req.user.role !== 'ambulance_provider' && req.user.role !== 'ambulance_driver') {
       return res.status(403).json({ 
-        success, 
+        success: false, 
         message: 'Ambulance provider access required.' 
       });
     }
@@ -119,7 +119,7 @@ const authenticateAmbulanceProvider = (req, res, next) => {
   authenticateToken(req, res, () => {
     if (req.user.role !== 'ambulance_provider') {
       return res.status(403).json({ 
-        success, 
+        success: false, 
         message: 'Ambulance fleet owner access required.' 
       });
     }
@@ -134,7 +134,7 @@ const authenticateAmbulanceDriver = (req, res, next) => {
   authenticateToken(req, res, () => {
     if (req.user.role !== 'ambulance_driver') {
       return res.status(403).json({ 
-        success, 
+        success: false, 
         message: 'Ambulance driver access required.' 
       });
     }
@@ -149,7 +149,7 @@ const authenticateCaregiver = (req, res, next) => {
   authenticateToken(req, res, () => {
     if (req.user.role !== 'caregiver') {
       return res.status(403).json({ 
-        success, 
+        success: false, 
         message: 'Caregiver access required.' 
       });
     }
@@ -164,7 +164,7 @@ const authenticateDiagnostics = (req, res, next) => {
   authenticateToken(req, res, () => {
     if (req.user.role !== 'diagnostics') {
       return res.status(403).json({ 
-        success, 
+        success: false, 
         message: 'Diagnostics provider access required.' 
       });
     }
@@ -178,7 +178,7 @@ const authenticateDiagnostics = (req, res, next) => {
 const authenticateLender = (req, res, next) => {
   authenticateToken(req, res, () => {
     if (req.user.role !== 'lender') {
-      return res.status(403).json({ success, message: 'Lender access required.' });
+      return res.status(403).json({ success: false, message: 'Lender access required.' });
     }
     next();
   });
@@ -192,7 +192,7 @@ const isAdmin = (req, res, next) => {
   const validKey = process.env.ADMIN_KEY || 'admin_secret_key_2024';
 
   if (!adminKey || adminKey !== validKey) {
-    return res.status(401).json({ success, message: 'Admin access denied' });
+    return res.status(401).json({ success: false, message: 'Admin access denied' });
   }
   next();
 };
@@ -204,7 +204,7 @@ const authenticateAdmin = (req, res, next) => {
   authenticateToken(req, res, () => {
     if (req.user.role !== 'admin') {
       return res.status(403).json({ 
-        success, 
+        success: false, 
         message: 'Admin access required.' 
       });
     }
@@ -219,7 +219,7 @@ const authenticateSuperAdmin = (req, res, next) => {
   authenticateToken(req, res, () => {
     if (req.user.role !== 'admin' || req.user.adminLevel !== 'super') {
       return res.status(403).json({ 
-        success, 
+        success: false, 
         message: 'Super admin access required.' 
       });
     }
@@ -233,7 +233,7 @@ const authenticateSuperAdmin = (req, res, next) => {
 const authenticateInsuranceCompany = (req, res, next) => {
   authenticateToken(req, res, () => {
     if (req.user.role !== 'insurance_company') {
-      return res.status(403).json({ success, message: 'Insurance company access required.' });
+      return res.status(403).json({ success: false, message: 'Insurance company access required.' });
     }
     next();
   });
@@ -245,7 +245,7 @@ const authenticateInsuranceCompany = (req, res, next) => {
 const authenticateInsuranceAgent = (req, res, next) => {
   authenticateToken(req, res, () => {
     if (req.user.role !== 'insurance_agent') {
-      return res.status(403).json({ success, message: 'Insurance agent access required.' });
+      return res.status(403).json({ success: false, message: 'Insurance agent access required.' });
     }
     next();
   });
@@ -258,7 +258,7 @@ const authenticateInsurance = (req, res, next) => {
   authenticateToken(req, res, () => {
     if (req.user.role !== 'insurance_company' && req.user.role !== 'insurance_agent') {
       return res.status(403).json({ 
-        success, 
+        success: false, 
         message: 'Insurance access required.' 
       });
     }
@@ -273,7 +273,7 @@ const authenticateAyurvedaDoctor = (req, res, next) => {
   authenticateToken(req, res, () => {
     if (req.user.role !== 'ayurveda_doctor') {
       return res.status(403).json({ 
-        success, 
+        success: false, 
         message: 'Ayurveda doctor access required.' 
       });
     }
@@ -288,7 +288,7 @@ const authenticateAyurvedaCenter = (req, res, next) => {
   authenticateToken(req, res, () => {
     if (req.user.role !== 'ayurveda_center') {
       return res.status(403).json({ 
-        success, 
+        success: false, 
         message: 'Ayurveda center access required.' 
       });
     }
@@ -303,7 +303,7 @@ const authenticateHomeopathyDoctor = (req, res, next) => {
   authenticateToken(req, res, () => {
     if (req.user.role !== 'homeopathy_doctor') {
       return res.status(403).json({ 
-        success, 
+        success: false, 
         message: 'Homeopathy doctor access required.' 
       });
     }
@@ -318,7 +318,7 @@ const authenticateHomeopathyCenter = (req, res, next) => {
   authenticateToken(req, res, () => {
     if (req.user.role !== 'homeopathy_center' && req.user.role !== 'pharmacy') {
       return res.status(403).json({ 
-        success, 
+        success: false, 
         message: 'Homeopathy center/pharmacy access required.' 
       });
     }
@@ -333,7 +333,7 @@ const authenticateTherapist = (req, res, next) => {
   authenticateToken(req, res, () => {
     if (req.user.role !== 'mental_health_therapist') {
       return res.status(403).json({ 
-        success, 
+        success: false, 
         message: 'Therapist access required.' 
       });
     }
@@ -348,7 +348,7 @@ const authenticateOnlineDoctor = (req, res, next) => {
   authenticateToken(req, res, () => {
     if (req.user.role !== 'online_doctor') {
       return res.status(403).json({ 
-        success, 
+        success: false, 
         message: 'Online doctor access required.' 
       });
     }
@@ -363,7 +363,7 @@ const authenticateCorporateHR = (req, res, next) => {
   authenticateToken(req, res, () => {
     if (req.user.role !== 'corporate_hr') {
       return res.status(403).json({ 
-        success, 
+        success: false, 
         message: 'Corporate HR access required.' 
       });
     }
@@ -376,14 +376,15 @@ const authenticateCorporateHR = (req, res, next) => {
 // ============================================
 const isPhoneVerified = (req, res, next) => {
   if (!req.user) {
-    return res.status(401).json({ success, message: 'Authentication required.' });
+    return res.status(401).json({ success: false, message: 'Authentication required.' });
   }
 
   if (!req.user.phoneVerified) {
     return res.status(403).json({
-      success,
+      success: false,
       message: 'Phone verification required.',
-      requiresVerification});
+      requiresVerification: true
+    });
   }
   next();
 };
@@ -393,18 +394,19 @@ const isPhoneVerified = (req, res, next) => {
 // ============================================
 const isHospitalVerified = (req, res, next) => {
   if (!req.user) {
-    return res.status(401).json({ success, message: 'Authentication required.' });
+    return res.status(401).json({ success: false, message: 'Authentication required.' });
   }
 
   if (req.user.role !== 'hospital') {
-    return res.status(403).json({ success, message: 'Hospital access required.' });
+    return res.status(403).json({ success: false, message: 'Hospital access required.' });
   }
 
   if (!req.user.isVerified) {
     return res.status(403).json({
-      success,
+      success: false,
       message: 'Hospital verification pending. Please wait for admin approval.',
-      requiresVerification});
+      requiresVerification: true
+    });
   }
   next();
 };
@@ -414,14 +416,15 @@ const isHospitalVerified = (req, res, next) => {
 // ============================================
 const isAmbulanceVerified = (req, res, next) => {
   if (!req.user) {
-    return res.status(401).json({ success, message: 'Authentication required.' });
+    return res.status(401).json({ success: false, message: 'Authentication required.' });
   }
 
   if (!req.user.isVerified || req.user.ambulanceVerificationStatus !== 'verified') {
     return res.status(403).json({
-      success,
+      success: false,
       message: 'Ambulance provider verification pending. Please wait for admin approval.',
-      requiresVerification});
+      requiresVerification: true
+    });
   }
   next();
 };
@@ -432,17 +435,18 @@ const isAmbulanceVerified = (req, res, next) => {
 const checkSubscription = (requiredPlans) => {
   return (req, res, next) => {
     if (!req.user) {
-      return res.status(401).json({ success, message: 'Authentication required.' });
+      return res.status(401).json({ success: false, message: 'Authentication required.' });
     }
 
     const userPlan = req.user.subscriptionPlan || 'free';
     
     if (requiredPlans && !requiredPlans.includes(userPlan)) {
       return res.status(403).json({
-        success,
+        success: false,
         message: `This feature requires ${requiredPlans.join(' or ')} subscription.`,
-        currentPlan,
-        upgradeRequired});
+        currentPlan: userPlan,
+        upgradeRequired: true
+      });
     }
     next();
   };
@@ -463,14 +467,14 @@ const checkOwnership = (model) => {
       const resource = await model.findById(resourceId);
       
       if (!resource) {
-        return res.status(404).json({ success, message: 'Resource not found.' });
+        return res.status(404).json({ success: false, message: 'Resource not found.' });
       }
 
       const ownerField = resource.userId || resource.providerId || resource.ownerId || resource.driverId;
       
       if (ownerField && ownerField.toString() !== (req.user._id || req.user.userId)?.toString() && req.user.role !== 'admin') {
         return res.status(403).json({ 
-          success, 
+          success: false, 
           message: 'You can only modify your own resources.' 
         });
       }
@@ -478,7 +482,7 @@ const checkOwnership = (model) => {
       req.resource = resource;
       next();
     } catch (error) {
-      return res.status(500).json({ success, message: 'Ownership check failed.' });
+      return res.status(500).json({ success: false, message: 'Ownership check failed.' });
     }
   };
 };
@@ -568,7 +572,7 @@ const verifyDevice = (req, res, next) => {
     return next();
   }
 
-  // In productiondevice is registered to this user
+  // In production: Verify device is registered to this user
   // For now, just attach to request
   req.deviceId = deviceId;
   req.deviceVerified = true;
@@ -585,15 +589,15 @@ const checkActiveSession = async (req, res, next) => {
       // Check if user account is active and not blocked
       if (req.user.isBlocked) {
         return res.status(403).json({
-          success,
+          success: false,
           message: 'Your account has been suspended. Please contact support.',
-          reason.user.blockedReason || 'Account suspended'
+          reason: req.user.blockedReason || 'Account suspended'
         });
       }
 
       if (!req.user.isActive) {
         return res.status(403).json({
-          success,
+          success: false,
           message: 'Your account is inactive. Please contact support.'
         });
       }
@@ -603,7 +607,7 @@ const checkActiveSession = async (req, res, next) => {
       
       next();
     } catch (error) {
-      return res.status(500).json({ success, message: 'Session check failed.' });
+      return res.status(500).json({ success: false, message: 'Session check failed.' });
     }
   });
 };
@@ -613,15 +617,16 @@ const checkActiveSession = async (req, res, next) => {
 // ============================================
 const requireKYC = (req, res, next) => {
   if (!req.user) {
-    return res.status(401).json({ success, message: 'Authentication required.' });
+    return res.status(401).json({ success: false, message: 'Authentication required.' });
   }
 
   if (req.user.kycStatus !== 'verified') {
     return res.status(403).json({
-      success,
+      success: false,
       message: 'KYC verification required to access this feature.',
-      kycStatus.user.kycStatus,
-      requiresKYC});
+      kycStatus: req.user.kycStatus,
+      requiresKYC: true
+    });
   }
   next();
 };
@@ -631,17 +636,18 @@ const requireKYC = (req, res, next) => {
 // ============================================
 const require2FA = (req, res, next) => {
   if (!req.user) {
-    return res.status(401).json({ success, message: 'Authentication required.' });
+    return res.status(401).json({ success: false, message: 'Authentication required.' });
   }
 
   if (req.user.twoFactorEnabled && !req.headers['x-2fa-code']) {
     return res.status(403).json({
-      success,
+      success: false,
       message: 'Two-factor authentication code required.',
-      requires2FA});
+      requires2FA: true
+    });
   }
 
-  // In production2FA code here
+  // In production: Verify 2FA code here
   
   next();
 };
@@ -650,14 +656,14 @@ const require2FA = (req, res, next) => {
 // 🆕 COMBINED AUTH MIDDLEWARE (Common patterns)
 // ============================================
 
-// Full authentication+ Active Session + Phone Verified
+// Full authentication: Token + Active Session + Phone Verified
 const authenticateFull = [
   authenticateToken,
   checkActiveSession,
   isPhoneVerified
 ];
 
-// Provider full auth+ Active + Phone + KYC
+// Provider full auth: Token + Active + Phone + KYC
 const authenticateProviderFull = [
   authenticateToken,
   checkActiveSession,
@@ -665,13 +671,13 @@ const authenticateProviderFull = [
   requireKYC
 ];
 
-// Emergency authOR Emergency Token
+// Emergency auth: Token OR Emergency Token
 const authenticateEmergency = [
   emergencyTokenBypass,
   emergencyRateLimitBypass
 ];
 
-// Driver auth+ Device + Active
+// Driver auth: Token + Device + Active
 const authenticateDriverFull = [
   authenticateToken,
   verifyDevice,
@@ -751,4 +757,3 @@ module.exports = {
   authenticateEmergency,
   authenticateDriverFull
 };
-

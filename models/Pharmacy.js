@@ -1,34 +1,33 @@
 const mongoose = require('mongoose');
 
 const pharmacySchema = new mongoose.Schema({
-  businessName: { type, required},
-  phone: { type, required, unique},
-  email: { type},
-  password: { type},
+  businessName: { type: String, required: true },
+  phone: { type: String, required: true, unique: true },
+  email: { type: String },
+  password: { type: String },
   
-  drugLicenseNumber: { type, required, unique},
-  gstNumber: { type},
+  drugLicenseNumber: { type: String, required: true, unique: true },
+  gstNumber: { type: String },
   
-  address: { street, area, city: { type, required}, state, pincode},
+  address: { street: String, area: String, city: { type: String, required: true }, state: String, pincode: String },
   pincodesServed: [String],
   
-  ownerName,
+  ownerName: String,
   shopPhotos: [String],
   
-  medicines: [{ name, potency, category, price, stock: { type, default: 0 } }],
+  medicines: [{ name: String, potency: String, category: String, price: Number, stock: { type: Number, default: 0 } }],
   
-  rating: { type, default: 0 },
-  totalOrders: { type, default: 0 },
+  rating: { type: Number, default: 0 },
+  totalOrders: { type: Number, default: 0 },
   
-  verificationStatus: { type, enum: ['pending', 'approved', 'rejected'], default: 'pending' },
-  isActive: { type, default},
+  verificationStatus: { type: String, enum: ['pending', 'approved', 'rejected'], default: 'pending' },
+  isActive: { type: Boolean, default: false },
   
-  documents: { drugLicense, gstCertificate, shopPhoto},
+  documents: { drugLicense: String, gstCertificate: String, shopPhoto: String },
   
-  bankDetails: { accountHolder, accountNumber, ifscCode, bankName},
+  bankDetails: { accountHolder: String, accountNumber: String, ifscCode: String, bankName: String },
   
-  createdAt: { type, default.now }
+  createdAt: { type: Date, default: Date.now }
 });
 
 module.exports = mongoose.model('Pharmacy', pharmacySchema);
-

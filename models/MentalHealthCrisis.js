@@ -2,14 +2,15 @@ const mongoose = require('mongoose');
 
 const mentalHealthCrisisSchema = new mongoose.Schema({
   userId: {
-    type.Schema.Types.ObjectId,
+    type: mongoose.Schema.Types.ObjectId,
     ref: 'User',
-    required,
-    index},
+    required: true,
+    index: true
+  },
   
   // Crisis Details
   crisisType: {
-    type,
+    type: String,
     enum: [
       'suicidal_thoughts',
       'self_harm',
@@ -24,124 +25,134 @@ const mentalHealthCrisisSchema = new mongoose.Schema({
       'financial_crisis',
       'other'
     ],
-    required},
+    required: true
+  },
   severity: {
-    type,
+    type: String,
     enum: ['low', 'medium', 'high', 'critical'],
     default: 'medium'
   },
   description: {
-    type,
-    required,
+    type: String,
+    required: true,
     maxlength: 1000
   },
   
   // Location Info
   location: {
-    address,
-    city,
-    state,
-    country,
+    address: String,
+    city: String,
+    state: String,
+    country: String,
     coordinates: {
-      lat,
-      lng}
+      lat: Number,
+      lng: Number
+    }
   },
   
   // Emergency Contact
   emergencyContact: {
-    name,
-    relationship,
-    phone,
-    email,
+    name: String,
+    relationship: String,
+    phone: String,
+    email: String,
     isNotified: {
-      type,
-      default}
+      type: Boolean,
+      default: false
+    }
   },
   
   // Crisis Response
   respondedBy: {
-    type.Schema.Types.ObjectId,
+    type: mongoose.Schema.Types.ObjectId,
     ref: 'User'
   },
   responderRole: {
-    type,
+    type: String,
     enum: ['therapist', 'admin', 'helpline', 'emergency_services']
   },
-  responseTime,
-  resolutionTime,
-  resolutionNotes,
+  responseTime: Date,
+  resolutionTime: Date,
+  resolutionNotes: String,
   
   // Helpline Details
   helplineCalled: {
-    type,
-    default},
-  helplineName,
-  helplineNumber,
-  helplineNotes,
+    type: Boolean,
+    default: false
+  },
+  helplineName: String,
+  helplineNumber: String,
+  helplineNotes: String,
   
   // Emergency Services
   emergencyServicesCalled: {
-    type,
-    default},
+    type: Boolean,
+    default: false
+  },
   emergencyServiceType: {
-    type,
+    type: String,
     enum: ['ambulance', 'police', 'fire', 'rescue']
   },
-  emergencyServiceNotes,
-  incidentNumber,
+  emergencyServiceNotes: String,
+  incidentNumber: String,
   
   // Follow-up
   followUpRequired: {
-    type,
-    default},
-  followUpDate,
-  followUpNotes,
+    type: Boolean,
+    default: false
+  },
+  followUpDate: Date,
+  followUpNotes: String,
   followUpCompleted: {
-    type,
-    default},
+    type: Boolean,
+    default: false
+  },
   
   // Status
   status: {
-    type,
+    type: String,
     enum: ['reported', 'in_progress', 'resolved', 'escalated', 'closed'],
     default: 'reported'
   },
   escalatedTo: {
-    type,
+    type: String,
     enum: ['supervisor', 'admin', 'crisis_team', 'emergency_services']
   },
   
   // Privacy
   isAnonymous: {
-    type,
-    default},
-  anonymousId, // For tracking anonymous reports
+    type: Boolean,
+    default: false
+  },
+  anonymousId: String, // For tracking anonymous reports
   
   // Safety Plan
   safetyPlan: {
     copingStrategies: [String],
     supportNetwork: [String],
     emergencyContacts: [{
-      name,
-      relationship,
-      phone}],
+      name: String,
+      relationship: String,
+      phone: String
+    }],
     triggers: [String],
     warningSigns: [String]
   },
   
   // Analytics
   platform: {
-    type,
+    type: String,
     enum: ['web', 'mobile', 'helpline', 'chat'],
     default: 'web'
   },
   source: {
-    type,
+    type: String,
     enum: ['self_report', 'therapist', 'family', 'friend', 'stranger', 'helpline', 'chat'],
     default: 'self_report'
   }
 }, {
-  timestamps});
+  timestamps: true
+});
 
 // Indexes
 mentalHealthCrisisSchema.index({ userId: 1, createdAt: -1 });
@@ -204,14 +215,14 @@ mentalHealthCrisisSchema.statics = {
   // Get crisis stats for admin
   async getStats(startDate, endDate) {
     const match = {};
-    if (startDate) match.createdAt = { $gteDate(startDate) };
-    if (endDate) match.createdAt = { ...match.createdAt, $lteDate(endDate) };
+    if (startDate) match.createdAt = { $gte: new Date(startDate) };
+    if (endDate) match.createdAt = { ...match.createdAt, $lte: new Date(endDate) };
     
     const stats = await this.aggregate([
-      { $match},
+      { $match: match },
       {
         $group: {
-          _id,
+          _id: null,
           total: { $sum: 1 },
           bySeverity: {
             $push: '$severity'
@@ -232,12 +243,12 @@ mentalHealthCrisisSchema.statics = {
     
     const result = stats[0];
     return {
-      total.total,
-      severity._countByField(result.bySeverity),
-      status._countByField(result.byStatus),
-      types._countByField(result.byType),
-      avgResponseTime.round(result.avgResponseTime || 0),
-      avgResolutionTime.round(result.avgResolutionTime || 0)
+      total: result.total,
+      severity: this._countByField(result.bySeverity),
+      status: this._countByField(result.byStatus),
+      types: this._countByField(result.byType),
+      avgResponseTime: Math.round(result.avgResponseTime || 0),
+      avgResolutionTime: Math.round(result.avgResolutionTime || 0)
     };
   },
   
@@ -256,7 +267,7 @@ mentalHealthCrisisSchema.statics = {
     startDate.setDate(startDate.getDate() - days);
     
     return this.aggregate([
-      { $match: { createdAt: { $gte} } },
+      { $match: { createdAt: { $gte: startDate } } },
       {
         $group: {
           _id: {
@@ -333,4 +344,3 @@ mentalHealthCrisisSchema.pre('save', function(next) {
 const MentalHealthCrisis = mongoose.model('MentalHealthCrisis', mentalHealthCrisisSchema);
 
 module.exports = MentalHealthCrisis;
-

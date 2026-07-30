@@ -3,21 +3,23 @@ const mongoose = require('mongoose');
 const commissionRuleSchema = new mongoose.Schema({
   // Rule Name
   name: {
-    type,
-    required},
+    type: String,
+    required: true
+  },
   description: {
-    type},
+    type: String
+  },
   
   // Commission Type
   type: {
-    type,
+    type: String,
     enum: ['percentage', 'fixed', 'tiered'],
     default: 'percentage'
   },
   
   // Percentage Commission
   percentage: {
-    type,
+    type: Number,
     min: 0,
     max: 100,
     default: 15
@@ -25,7 +27,7 @@ const commissionRuleSchema = new mongoose.Schema({
   
   // Fixed Commission
   fixedAmount: {
-    type,
+    type: Number,
     min: 0,
     default: 0
   },
@@ -33,15 +35,15 @@ const commissionRuleSchema = new mongoose.Schema({
   // Tiered Commission
   tiers: [{
     minRevenue: {
-      type,
+      type: Number,
       min: 0
     },
     maxRevenue: {
-      type,
+      type: Number,
       min: 0
     },
     percentage: {
-      type,
+      type: Number,
       min: 0,
       max: 100
     }
@@ -49,57 +51,60 @@ const commissionRuleSchema = new mongoose.Schema({
   
   // Applicability
   appliesTo: {
-    type,
+    type: String,
     enum: ['all', 'new_therapists', 'experienced_therapists', 'corporate', 'individual'],
     default: 'all'
   },
   
   // Specialization-based (optional)
   specialization: {
-    type,
+    type: String,
     enum: ['psychology', 'psychiatry', 'counseling', 'all'],
     default: 'all'
   },
   
   // Time-based rules (optional)
-  validFrom,
-  validUntil,
+  validFrom: Date,
+  validUntil: Date,
   
   // Priority (higher number = higher priority)
   priority: {
-    type,
+    type: Number,
     default: 0
   },
   
   // Status
   isActive: {
-    type,
-    default},
+    type: Boolean,
+    default: true
+  },
   isDefault: {
-    type,
-    default},
+    type: Boolean,
+    default: false
+  },
   
   // Additional settings
   maxCommission: {
-    type,
+    type: Number,
     default: 1000 // Max commission per session
   },
   minCommission: {
-    type,
+    type: Number,
     default: 0
   },
   
   // Created by
   createdBy: {
-    type.Schema.Types.ObjectId,
+    type: mongoose.Schema.Types.ObjectId,
     ref: 'User'
   },
   updatedBy: {
-    type.Schema.Types.ObjectId,
+    type: mongoose.Schema.Types.ObjectId,
     ref: 'User'
   }
 }, {
-  timestamps});
+  timestamps: true
+});
 
 // Indexes
 commissionRuleSchema.index({ isActive: 1, isDefault: 1 });
@@ -111,14 +116,14 @@ commissionRuleSchema.statics = {
   // Get active commission rule
   async getActiveRule(specialization = 'all', therapistType = 'individual') {
     const query = {
-      isActive,
+      isActive: true,
       $or: [
         { specialization: 'all' },
         { specialization }
       ],
       $or: [
         { appliesTo: 'all' },
-        { appliesTo}
+        { appliesTo: therapistType }
       ]
     };
     
@@ -128,7 +133,7 @@ commissionRuleSchema.statics = {
     
     // Fallback to default
     if (!rule) {
-      rule = await this.findOne({ isDefault, isActive});
+      rule = await this.findOne({ isDefault: true, isActive: true });
     }
     
     // If no rule found, create default
@@ -138,8 +143,8 @@ commissionRuleSchema.statics = {
         description: 'Default 15% commission for all therapists',
         type: 'percentage',
         percentage: 15,
-        isDefault,
-        isActive,
+        isDefault: true,
+        isActive: true,
         appliesTo: 'all',
         specialization: 'all'
       });
@@ -193,10 +198,10 @@ commissionRuleSchema.statics = {
     return {
       commission,
       commissionRate,
-      ruleName.name,
-      ruleId._id,
-      platformEarnings,
-      therapistEarnings- commission
+      ruleName: rule.name,
+      ruleId: rule._id,
+      platformEarnings: commission,
+      therapistEarnings: amount - commission
     };
   }
 };
@@ -204,4 +209,3 @@ commissionRuleSchema.statics = {
 const CommissionRule = mongoose.model('CommissionRule', commissionRuleSchema);
 
 module.exports = CommissionRule;
-

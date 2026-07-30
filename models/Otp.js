@@ -10,22 +10,25 @@ const otpSchema = new mongoose.Schema({
   // ============================================
   
   phone: { 
-    type, 
-    required,
-    index},
+    type: String, 
+    required: true,
+    index: true 
+  },
   email: { 
-    type,
-    index},
+    type: String,
+    index: true 
+  },
   
   // ============================================
   // OTP DETAILS
   // ============================================
   
   otp: { 
-    type, 
-    required},
+    type: String, 
+    required: true 
+  },
   type: { 
-    type, 
+    type: String, 
     enum: [
       // Authentication
       'login',
@@ -49,19 +52,21 @@ const otpSchema = new mongoose.Schema({
       'verification',
       'two_factor'
     ],
-    required,
-    index},
+    required: true,
+    index: true
+  },
   
   // ============================================
   // REFERENCE TO RELATED DOCUMENT
   // ============================================
   
   referenceId: { 
-    type.Schema.Types.ObjectId,
+    type: mongoose.Schema.Types.ObjectId,
     refPath: 'referenceModel',
-    index},
+    index: true
+  },
   referenceModel: { 
-    type,
+    type: String,
     enum: ['User', 'Booking', 'InsurancePolicy', 'Hospital', 'Ambulance', 'Caregiver']
   },
   
@@ -70,78 +75,84 @@ const otpSchema = new mongoose.Schema({
   // ============================================
   
   userId: { 
-    type.Schema.Types.ObjectId, 
+    type: mongoose.Schema.Types.ObjectId, 
     ref: 'User',
-    index},
+    index: true 
+  },
   
   // ============================================
   // STATUS & VALIDITY
   // ============================================
   
   expiresAt: { 
-    type, 
-    required,
-    index,
+    type: Date, 
+    required: true,
+    index: true,
     // Auto-delete after expiry (TTL index will be created)
   },
   isUsed: { 
-    type, 
-    default,
-    index},
+    type: Boolean, 
+    default: false,
+    index: true 
+  },
   isVerified: { 
-    type, 
-    default},
+    type: Boolean, 
+    default: false 
+  },
   
   // ============================================
   // SECURITY & ATTEMPTS
   // ============================================
   
   attempts: { 
-    type, 
+    type: Number, 
     default: 0 
   },
   maxAttempts: { 
-    type, 
+    type: Number, 
     default: 5 
   },
   isBlocked: { 
-    type, 
-    default},
+    type: Boolean, 
+    default: false 
+  },
   blockedUntil: { 
-    type},
+    type: Date 
+  },
   
   // ============================================
   // IP & DEVICE TRACKING (For Security)
   // ============================================
   
-  ipAddress: { type},
-  userAgent: { type},
-  deviceInfo: { type},
+  ipAddress: { type: String },
+  userAgent: { type: String },
+  deviceInfo: { type: String },
   
   // ============================================
   // DELIVERY TRACKING
   // ============================================
   
   sentVia: { 
-    type, 
+    type: String, 
     enum: ['sms', 'email', 'both'],
     default: 'sms'
   },
   sentAt: { 
-    type, 
-    default.now 
+    type: Date, 
+    default: Date.now 
   },
-  deliveredAt: { type},
+  deliveredAt: { type: Date },
   
   // ============================================
   // AUDIT
   // ============================================
   
-  createdAt: { type, default.now, index},
-  updatedAt: { type, default.now },
-  verifiedAt: { type}
+  createdAt: { type: Date, default: Date.now, index: true },
+  updatedAt: { type: Date, default: Date.now },
+  verifiedAt: { type: Date }
 }, {
-  timestamps});
+  timestamps: true
+});
 
 // ============================================
 // INDEXES
@@ -194,25 +205,26 @@ otpSchema.methods.verify = function(providedOtp) {
     }
     
     return {
-      success,
+      success: false,
       message: 'Invalid OTP',
-      attemptsRemaining.maxAttempts - this.attempts,
-      isBlocked.isBlocked
+      attemptsRemaining: this.maxAttempts - this.attempts,
+      isBlocked: this.isBlocked
     };
   }
 
   // Check if expired
   if (this.isExpired) {
     return {
-      success,
+      success: false,
       message: 'OTP has expired. Please request a new one.',
-      isExpired};
+      isExpired: true
+    };
   }
 
   // Check if already used
   if (this.isUsed) {
     return {
-      success,
+      success: false,
       message: 'OTP has already been used.'
     };
   }
@@ -220,9 +232,10 @@ otpSchema.methods.verify = function(providedOtp) {
   // Check if blocked
   if (this.isBlocked) {
     return {
-      success,
+      success: false,
       message: 'Too many failed attempts. Please try again after 30 minutes.',
-      isBlocked};
+      isBlocked: true
+    };
   }
 
   // Mark as used and verified
@@ -231,7 +244,7 @@ otpSchema.methods.verify = function(providedOtp) {
   this.verifiedAt = new Date();
 
   return {
-    success,
+    success: true,
     message: 'OTP verified successfully'
   };
 };
@@ -280,13 +293,13 @@ otpSchema.statics.createOTP = async function(data) {
     expiresIn = 300 // 5 minutes default
   } = data;
 
-  // Validateleast phone or email
+  // Validate: at least phone or email
   if (!phone && !email) {
     throw new Error('Either phone or email is required');
   }
 
   // Delete any existing unused OTPs for this contact/type
-  const query = { type, isUsed};
+  const query = { type, isUsed: false };
   if (phone) query.phone = phone;
   if (email) query.email = email;
   
@@ -311,7 +324,7 @@ otpSchema.statics.createOTP = async function(data) {
     userAgent,
     sentVia,
     expiresAt,
-    sentAtDate()
+    sentAt: new Date()
   });
 
   await otpDoc.save();
@@ -321,7 +334,7 @@ otpSchema.statics.createOTP = async function(data) {
 
 // Find and verify OTP
 otpSchema.statics.verifyOTP = async function(phone, email, otp, type) {
-  const query = { type, isUsed};
+  const query = { type, isUsed: false };
   if (phone) query.phone = phone;
   if (email) query.email = email;
   
@@ -329,7 +342,7 @@ otpSchema.statics.verifyOTP = async function(phone, email, otp, type) {
   
   if (!otpDoc) {
     return {
-      success,
+      success: false,
       message: 'OTP not found. Please request a new one.'
     };
   }
@@ -340,14 +353,14 @@ otpSchema.statics.verifyOTP = async function(phone, email, otp, type) {
 // Clean up old OTPs (manual cleanup)
 otpSchema.statics.cleanupExpired = async function() {
   const result = await this.deleteMany({
-    expiresAt: { $ltDate() }
+    expiresAt: { $lt: new Date() }
   });
   return result;
 };
 
 // Get OTP status
 otpSchema.statics.getStatus = async function(phone, email, type) {
-  const query = { type, isUsed};
+  const query = { type, isUsed: false };
   if (phone) query.phone = phone;
   if (email) query.email = email;
   
@@ -355,18 +368,18 @@ otpSchema.statics.getStatus = async function(phone, email, type) {
   
   if (!otpDoc) {
     return {
-      exists,
+      exists: false,
       message: 'No active OTP found'
     };
   }
 
   return {
-    exists,
-    isValid.isValid,
-    isExpired.isExpired,
-    attemptsRemaining.remainingAttempts,
-    timeRemaining.timeRemaining,
-    isBlocked.isBlocked
+    exists: true,
+    isValid: otpDoc.isValid,
+    isExpired: otpDoc.isExpired,
+    attemptsRemaining: otpDoc.remainingAttempts,
+    timeRemaining: otpDoc.timeRemaining,
+    isBlocked: otpDoc.isBlocked
   };
 };
 
@@ -380,4 +393,3 @@ otpSchema.pre('save', function(next) {
 });
 
 module.exports = mongoose.model('Otp', otpSchema);
-

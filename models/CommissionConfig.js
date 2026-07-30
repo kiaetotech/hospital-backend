@@ -13,16 +13,16 @@ const commissionConfigSchema = new mongoose.Schema({
   // CONFIG IDENTIFICATION
   // ============================================
   
-  configId: { type, unique, required},
-  configName: { type, required},
-  description: { type},
+  configId: { type: String, unique: true, required: true },
+  configName: { type: String, required: true },
+  description: { type: String },
   
   // ============================================
   // SERVICE TYPE (Which tag this applies to)
   // ============================================
   
   serviceType: { 
-    type, 
+    type: String, 
     enum: [
       'hospital_opd',
       'hospital_admission',
@@ -43,21 +43,22 @@ const commissionConfigSchema = new mongoose.Schema({
       'corporate_health',
       'all'                       // Applies to all services
     ],
-    required},
+    required: true 
+  },
 
   // ============================================
   // COMMISSION RATE STRUCTURE
   // ============================================
   
   commissionType: {
-    type,
+    type: String,
     enum: ['percentage', 'fixed', 'hybrid', 'tiered'],
     default: 'percentage'
   },
   
   // Percentage-based commission
   percentageRate: { 
-    type, 
+    type: Number, 
     default: 15,
     min: 0,
     max: 50  // Maximum 50% commission
@@ -65,24 +66,24 @@ const commissionConfigSchema = new mongoose.Schema({
   
   // Fixed amount commission (in rupees)
   fixedAmount: { 
-    type, 
+    type: Number, 
     default: 0 
   },
   
-  // Hybrid+ fixed
+  // Hybrid: percentage + fixed
   hybridConfig: {
-    percentage: { type, default: 0 },
-    fixedAmount: { type, default: 0 },
-    capAmount: { type},      // Maximum commission cap
-    floorAmount: { type}     // Minimum commission guarantee
+    percentage: { type: Number, default: 0 },
+    fixedAmount: { type: Number, default: 0 },
+    capAmount: { type: Number },      // Maximum commission cap
+    floorAmount: { type: Number }     // Minimum commission guarantee
   },
   
   // Tiered commission based on order value
   tieredConfig: [{
-    minAmount: { type},      // Min order value for this tier
-    maxAmount: { type},      // Max order value for this tier
-    percentageRate: { type}, // Commission % for this tier
-    fixedAmount: { type, default: 0 }
+    minAmount: { type: Number },      // Min order value for this tier
+    maxAmount: { type: Number },      // Max order value for this tier
+    percentageRate: { type: Number }, // Commission % for this tier
+    fixedAmount: { type: Number, default: 0 }
   }],
 
   // ============================================
@@ -90,22 +91,22 @@ const commissionConfigSchema = new mongoose.Schema({
   // ============================================
   
   // If set, this config applies to specific provider only
-  providerSpecific: { type, default},
-  providerId: { type},          // User ID of provider
-  providerType: { type},        // 'ambulance_provider', 'hospital', etc.
+  providerSpecific: { type: Boolean, default: false },
+  providerId: { type: String },          // User ID of provider
+  providerType: { type: String },        // 'ambulance_provider', 'hospital', etc.
   
   // Performance-based rate adjustment
-  performanceBased: { type, default},
+  performanceBased: { type: Boolean, default: false },
   performanceRules: [{
     metric: { 
-      type, 
+      type: String, 
       enum: ['rating', 'completed_orders', 'acceptance_rate', 'response_time', 'cancellation_rate']
     },
-    operator: { type, enum: ['gte', 'lte', 'between'] },
-    value: { type},
-    valueMax: { type},  // For 'between' operator
-    adjustedRate: { type}, // New commission rate if condition met
-    adjustedFixedAmount: { type}
+    operator: { type: String, enum: ['gte', 'lte', 'between'] },
+    value: { type: Number },
+    valueMax: { type: Number },  // For 'between' operator
+    adjustedRate: { type: Number }, // New commission rate if condition met
+    adjustedFixedAmount: { type: Number }
   }],
 
   // ============================================
@@ -114,29 +115,29 @@ const commissionConfigSchema = new mongoose.Schema({
   
   ambulanceSpecific: {
     // Emergency bookings get lower commission (incentivize emergency response)
-    emergencyDiscount: { type, default: 3 },  // 3% discount on emergency
+    emergencyDiscount: { type: Number, default: 3 },  // 3% discount on emergency
     
     // Night shift incentive (drivers get more, platform takes less)
-    nightShiftDiscount: { type, default: 2 },  // Additional 2% off during 10PM-6AM
+    nightShiftDiscount: { type: Number, default: 2 },  // Additional 2% off during 10PM-6AM
     
     // Long distance discount (encourage intercity)
-    longDistanceDiscount: { type, default: 5 }, // For trips > 50km
+    longDistanceDiscount: { type: Number, default: 5 }, // For trips > 50km
     
     // Driver incentive from platform commission
-    driverIncentiveShare: { type, default: 40 }, // 40% of platform commission goes to driver
+    driverIncentiveShare: { type: Number, default: 40 }, // 40% of platform commission goes to driver
     
     // Surge pricing commission
-    surgeCommissionRate: { type, default: 20 }, // Higher commission on surge amount
+    surgeCommissionRate: { type: Number, default: 20 }, // Higher commission on surge amount
     
     // Minimum driver earning guarantee
-    minimumDriverEarning: { type, default: 100 },
+    minimumDriverEarning: { type: Number, default: 100 },
     
     // Peak hour adjustments
     peakHourAdjustments: [{
-      startHour: { type},     // 9 (9 AM)
-      endHour: { type},       // 11 (11 AM)
-      adjustment: { type},    // +2 or -2 percentage points
-      reason: { type}
+      startHour: { type: Number },     // 9 (9 AM)
+      endHour: { type: Number },       // 11 (11 AM)
+      adjustment: { type: Number },    // +2 or -2 percentage points
+      reason: { type: String }
     }]
   },
 
@@ -145,17 +146,17 @@ const commissionConfigSchema = new mongoose.Schema({
   // ============================================
   
   platformFee: {
-    enabled: { type, default},
-    feeType: { type, enum: ['fixed', 'percentage', 'range'], default: 'fixed' },
-    fixedFee: { type, default: 50 },        // ₹50 platform fee
-    percentageFee: { type, default: 0 },    // Additional % fee
+    enabled: { type: Boolean, default: true },
+    feeType: { type: String, enum: ['fixed', 'percentage', 'range'], default: 'fixed' },
+    fixedFee: { type: Number, default: 50 },        // ₹50 platform fee
+    percentageFee: { type: Number, default: 0 },    // Additional % fee
     rangeConfig: [{
-      minAmount: { type},
-      maxAmount: { type},
-      fee: { type}
+      minAmount: { type: Number },
+      maxAmount: { type: Number },
+      fee: { type: Number }
     }],
-    capFee: { type},                        // Maximum platform fee
-    waiveForEmergency: { type, default} // 🚑 Waive fee for emergencies
+    capFee: { type: Number },                        // Maximum platform fee
+    waiveForEmergency: { type: Boolean, default: true } // 🚑 Waive fee for emergencies
   },
 
   // ============================================
@@ -163,10 +164,10 @@ const commissionConfigSchema = new mongoose.Schema({
   // ============================================
   
   gstConfig: {
-    gstPercentage: { type, default: 5 },     // 5% for ambulance, 18% for others
-    includedInPrice: { type, default},
-    hsnCode: { type},
-    sacCode: { type}
+    gstPercentage: { type: Number, default: 5 },     // 5% for ambulance, 18% for others
+    includedInPrice: { type: Boolean, default: true },
+    hsnCode: { type: String },
+    sacCode: { type: String }
   },
 
   // ============================================
@@ -175,17 +176,17 @@ const commissionConfigSchema = new mongoose.Schema({
   
   payoutConfig: {
     payoutFrequency: { 
-      type, 
+      type: String, 
       enum: ['instant', 'daily', 'weekly', 'biweekly', 'monthly'],
       default: 'weekly'
     },
-    minimumPayoutAmount: { type, default: 500 },
-    payoutDay: { type},  // Day of week/month for scheduled payouts
-    instantPayoutEnabled: { type, default},
-    instantPayoutFee: { type, default: 10 },  // Fee for instant payout
+    minimumPayoutAmount: { type: Number, default: 500 },
+    payoutDay: { type: Number },  // Day of week/month for scheduled payouts
+    instantPayoutEnabled: { type: Boolean, default: false },
+    instantPayoutFee: { type: Number, default: 10 },  // Fee for instant payout
     
-    // 🚑 Ambulance-specificpayout for emergency trips
-    emergencyInstantPayout: { type, default}
+    // 🚑 Ambulance-specific: instant payout for emergency trips
+    emergencyInstantPayout: { type: Boolean, default: true }
   },
 
   // ============================================
@@ -193,40 +194,40 @@ const commissionConfigSchema = new mongoose.Schema({
   // ============================================
   
   promotions: [{
-    name: { type},
-    description: { type},
-    discountType: { type, enum: ['percentage', 'fixed'] },
-    discountValue: { type},
-    startDate: { type},
-    endDate: { type},
-    isActive: { type, default},
-    maxUsage: { type},
-    currentUsage: { type, default: 0 }
+    name: { type: String },
+    description: { type: String },
+    discountType: { type: String, enum: ['percentage', 'fixed'] },
+    discountValue: { type: Number },
+    startDate: { type: Date },
+    endDate: { type: Date },
+    isActive: { type: Boolean, default: false },
+    maxUsage: { type: Number },
+    currentUsage: { type: Number, default: 0 }
   }],
 
   // ============================================
   // STATUS & AUDIT
   // ============================================
   
-  isActive: { type, default},
-  isDefault: { type, default},  // Default config for service type
-  priority: { type, default: 0 },        // Higher priority = applied first
+  isActive: { type: Boolean, default: true },
+  isDefault: { type: Boolean, default: false },  // Default config for service type
+  priority: { type: Number, default: 0 },        // Higher priority = applied first
   
-  effectiveFrom: { type, required},
-  effectiveUntil: { type},                 // Null = indefinite
+  effectiveFrom: { type: Date, required: true },
+  effectiveUntil: { type: Date },                 // Null = indefinite
   
-  createdBy: { type},                   // Admin ID
-  updatedBy: { type},                   // Admin ID
-  createdAt: { type, default.now },
-  updatedAt: { type, default.now },
+  createdBy: { type: String },                   // Admin ID
+  updatedBy: { type: String },                   // Admin ID
+  createdAt: { type: Date, default: Date.now },
+  updatedAt: { type: Date, default: Date.now },
   
   // Versioning for audit trail
-  version: { type, default: 1 },
-  previousVersionId: { type},
+  version: { type: Number, default: 1 },
+  previousVersionId: { type: String },
   
   // Notes
-  changeReason: { type},
-  adminNotes: { type}
+  changeReason: { type: String },
+  adminNotes: { type: String }
 });
 
 // ============================================
@@ -312,16 +313,16 @@ commissionConfigSchema.methods.calculateCommission = function(orderAmount, optio
     this.performanceRules.forEach(rule => {
       let metricValue;
       switch (rule.metric) {
-        case 'rating'= providerRating; break;
-        case 'completed_orders'= providerCompletedOrders; break;
-        default= 0;
+        case 'rating': metricValue = providerRating; break;
+        case 'completed_orders': metricValue = providerCompletedOrders; break;
+        default: metricValue = 0;
       }
       
       let conditionMet = false;
       switch (rule.operator) {
-        case 'gte'= metricValue >= rule.value; break;
-        case 'lte'= metricValue <= rule.value; break;
-        case 'between'= metricValue >= rule.value && metricValue <= rule.valueMax; break;
+        case 'gte': conditionMet = metricValue >= rule.value; break;
+        case 'lte': conditionMet = metricValue <= rule.value; break;
+        case 'between': conditionMet = metricValue >= rule.value && metricValue <= rule.valueMax; break;
       }
       
       if (conditionMet) {
@@ -346,13 +347,16 @@ commissionConfigSchema.methods.calculateCommission = function(orderAmount, optio
 
   // Calculate based on commission type
   switch (this.commissionType) {
-    case 'percentage'= Math.round((orderAmount * rate) / 100);
+    case 'percentage':
+      commission = Math.round((orderAmount * rate) / 100);
       break;
     
-    case 'fixed'= fixedAmount;
+    case 'fixed':
+      commission = fixedAmount;
       break;
     
-    case 'hybrid'= Math.round((orderAmount * (this.hybridConfig?.percentage || rate)) / 100) + (this.hybridConfig?.fixedAmount || fixedAmount);
+    case 'hybrid':
+      commission = Math.round((orderAmount * (this.hybridConfig?.percentage || rate)) / 100) + (this.hybridConfig?.fixedAmount || fixedAmount);
       if (this.hybridConfig?.capAmount) {
         commission = Math.min(commission, this.hybridConfig.capAmount);
       }
@@ -361,7 +365,8 @@ commissionConfigSchema.methods.calculateCommission = function(orderAmount, optio
       }
       break;
     
-    case 'tiered'(this.tieredConfig && this.tieredConfig.length > 0) {
+    case 'tiered':
+      if (this.tieredConfig && this.tieredConfig.length > 0) {
         const tier = this.tieredConfig.find(t => 
           orderAmount >= t.minAmount && (!t.maxAmount || orderAmount <= t.maxAmount)
         );
@@ -394,12 +399,12 @@ commissionConfigSchema.methods.calculateCommission = function(orderAmount, optio
     commission,
     rate,
     fixedAmount,
-    commissionType.commissionType,
+    commissionType: this.commissionType,
     appliedAdjustments: {
       isEmergency,
       isNightShift,
       isLongDistance,
-      performanceAdjusted.performanceBased
+      performanceAdjusted: this.performanceBased
     }
   };
 };
@@ -414,17 +419,20 @@ commissionConfigSchema.methods.calculatePlatformFee = function(orderAmount, isEm
   let fee = 0;
   
   switch (this.platformFee.feeType) {
-    case 'fixed'= this.platformFee.fixedFee || 0;
+    case 'fixed':
+      fee = this.platformFee.fixedFee || 0;
       break;
     
-    case 'percentage'= Math.round((orderAmount * (this.platformFee.percentageFee || 0)) / 100);
+    case 'percentage':
+      fee = Math.round((orderAmount * (this.platformFee.percentageFee || 0)) / 100);
       break;
     
-    case 'range'(this.platformFee.rangeConfig) {
+    case 'range':
+      if (this.platformFee.rangeConfig) {
         const range = this.platformFee.rangeConfig.find(r => 
           orderAmount >= r.minAmount && orderAmount <= r.maxAmount
         );
-        fee = range ? range.fee .platformFee.fixedFee || 0;
+        fee = range ? range.fee : this.platformFee.fixedFee || 0;
       }
       break;
   }
@@ -463,12 +471,12 @@ commissionConfigSchema.statics.getActiveConfig = async function(serviceType, pro
     const providerConfig = await this.findOne({
       serviceType,
       providerId,
-      providerSpecific,
-      isActive,
-      effectiveFrom: { $lte},
+      providerSpecific: true,
+      isActive: true,
+      effectiveFrom: { $lte: now },
       $or: [
-        { effectiveUntil},
-        { effectiveUntil: { $gte} }
+        { effectiveUntil: null },
+        { effectiveUntil: { $gte: now } }
       ]
     }).sort({ priority: -1, version: -1 });
     
@@ -478,12 +486,12 @@ commissionConfigSchema.statics.getActiveConfig = async function(serviceType, pro
   // Fall back to default config for service type
   const defaultConfig = await this.findOne({
     serviceType,
-    isDefault,
-    isActive,
-    effectiveFrom: { $lte},
+    isDefault: true,
+    isActive: true,
+    effectiveFrom: { $lte: now },
     $or: [
-      { effectiveUntil},
-      { effectiveUntil: { $gte} }
+      { effectiveUntil: null },
+      { effectiveUntil: { $gte: now } }
     ]
   }).sort({ version: -1 });
   
@@ -492,19 +500,20 @@ commissionConfigSchema.statics.getActiveConfig = async function(serviceType, pro
   // Ultimate fallback: 'all' service type default
   return this.findOne({
     serviceType: 'all',
-    isDefault,
-    isActive});
+    isDefault: true,
+    isActive: true
+  });
 };
 
 // Get all active configs
 commissionConfigSchema.statics.getAllActiveConfigs = function() {
   const now = new Date();
   return this.find({
-    isActive,
-    effectiveFrom: { $lte},
+    isActive: true,
+    effectiveFrom: { $lte: now },
     $or: [
-      { effectiveUntil},
-      { effectiveUntil: { $gte} }
+      { effectiveUntil: null },
+      { effectiveUntil: { $gte: now } }
     ]
   }).sort({ serviceType: 1, priority: -1 });
 };
@@ -523,16 +532,16 @@ commissionConfigSchema.statics.createNewVersion = async function(configId, updat
   const newConfig = new this({
     ...existing.toObject(),
     ...updates,
-    configId+ '_v' + (existing.version + 1),
-    version.version + 1,
-    previousVersionId.configId,
-    createdBy,
-    updatedBy,
-    createdAtDate(),
-    updatedAtDate(),
-    isActive,
-    effectiveFrom.effectiveFrom || new Date(),
-    effectiveUntil.effectiveUntil || null
+    configId: configId + '_v' + (existing.version + 1),
+    version: existing.version + 1,
+    previousVersionId: existing.configId,
+    createdBy: adminId,
+    updatedBy: adminId,
+    createdAt: new Date(),
+    updatedAt: new Date(),
+    isActive: true,
+    effectiveFrom: updates.effectiveFrom || new Date(),
+    effectiveUntil: updates.effectiveUntil || null
   });
   
   delete newConfig._id;
@@ -562,4 +571,3 @@ commissionConfigSchema.pre('save', function(next) {
 });
 
 module.exports = mongoose.model('CommissionConfig', commissionConfigSchema);
-

@@ -6,7 +6,7 @@ const Hospital = require('../models/Hospital');
 const { authenticateToken, authorizeRoles } = require('../middleware/auth');
 
 // Multer config for Excel upload
-onst upload = multer({
+const upload = multer({ 
   storage: multer.memoryStorage(),
   fileFilter: (req, file, cb) => {
     if (file.mimetype === 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' || 
@@ -20,21 +20,21 @@ onst upload = multer({
 });
 
 // ============================================
-// STATIC ROUTES (Must be before /)
+// STATIC ROUTES (Must be before /:id)
 // ============================================
 
 // Health check
 router.get('/health', (req, res) => {
   res.json({
-    success,
+    success: true,
     module: 'Hospitals',
     status: 'active',
     features: {
       search: '/api/hospitals/search',
-      details: '/api/hospitals/',
-      bedUpdate: '/api/hospitals//bed-status',
+      details: '/api/hospitals/:id',
+      bedUpdate: '/api/hospitals/:id/bed-status',
       whatsappUpdate: '/api/hospitals/whatsapp-update',
-      excelUpload: '/api/hospitals//upload-doctors',
+      excelUpload: '/api/hospitals/:id/upload-doctors',
       template: '/api/hospitals/template/download',
       medicalData: '/api/hospitals/medical-data',
       schemeFilter: '/api/hospitals/search?scheme=ayushman',
@@ -45,19 +45,20 @@ router.get('/health', (req, res) => {
   });
 });
 
-// Medical master data - MUST be before /router.get('/medical-data', (req, res) => {
+// Medical master data - MUST be before /:id
+router.get('/medical-data', (req, res) => {
   try {
     const MEDICAL_MASTER_DATA = require('../data/medicalMasterData');
     res.json({
-      success,
+      success: true,
       data: {
-        specialties_MASTER_DATA.specialties,
-        diseases_MASTER_DATA.diseases,
-        procedures_MASTER_DATA.procedures
+        specialties: MEDICAL_MASTER_DATA.specialties,
+        diseases: MEDICAL_MASTER_DATA.diseases,
+        procedures: MEDICAL_MASTER_DATA.procedures
       }
     });
   } catch (error) {
-    res.status(500).json({ success, message: 'Medical data unavailable' });
+    res.status(500).json({ success: false, message: 'Medical data unavailable' });
   }
 });
 
@@ -77,34 +78,42 @@ router.get('/search', async (req, res) => {
     const query = {};
 
     if (q && q.trim() !== '') {
-  const searchRegex = { $regex.trim(), $options: 'i' };
-  // First try to match by doctor specialization (most relevant)
-  query.$or = [
-    { 'doctors.specialization'},
-    { 'doctors.name'},
-    { name},
-    { diseases_treated},
-    { specialties},
-    { procedures_available}
-  ];
-}
+      const searchRegex = { $regex: q.trim(), $options: 'i' };
+      query.$or = [
+        { name: searchRegex },
+        { diseases_treated: searchRegex },
+        { specialties: searchRegex },
+        { procedures_available: searchRegex },
+        { 'doctors.name': searchRegex },
+        { 'doctors.specialization': searchRegex }
+      ];
+    }
 
     if (city && city.trim() !== '') {
-      query['address.city'] = { $regex.trim(), $options: 'i' };
+      query['address.city'] = { $regex: city.trim(), $options: 'i' };
     }
 
     if (state && state.trim() !== '') {
-      query['address.state'] = { $regex.trim(), $options: 'i' };
+      query['address.state'] = { $regex: state.trim(), $options: 'i' };
     }
 
-    // Geo search disabled - frontend calculates distance
+    const parsedLat = parseFloat(lat);
+    const parsedLng = parseFloat(lng);
+    if (!isNaN(parsedLat) && !isNaN(parsedLng) && parsedLat !== 0 && parsedLng !== 0) {
+      query.location = {
+        $near: {
+          $geometry: { type: 'Point', coordinates: [parsedLng, parsedLat] },
+          $maxDistance: (parseFloat(radius) || 50) * 1000
+        }
+      };
+    }
 
     if (disease && disease.trim() !== '') {
-      query.diseases_treated = { $regex.trim(), $options: 'i' };
+      query.diseases_treated = { $regex: disease.trim(), $options: 'i' };
     }
 
     if (procedure && procedure.trim() !== '') {
-      query.procedures_available = { $regex.trim(), $options: 'i' };
+      query.procedures_available = { $regex: procedure.trim(), $options: 'i' };
     }
 
     if (scheme && scheme.trim() !== '') {
@@ -112,7 +121,7 @@ router.get('/search', async (req, res) => {
     }
 
     if (insurance && insurance.trim() !== '') {
-      query['insurance_accepted'] = { $regex.trim(), $options: 'i' };
+      query['insurance_accepted'] = { $regex: insurance.trim(), $options: 'i' };
     }
 
     if (cashless === 'true') {
@@ -130,12 +139,12 @@ router.get('/search', async (req, res) => {
     if (min_rating && !isNaN(parseFloat(min_rating))) {
       const rating = parseFloat(min_rating);
       if (rating > 0) {
-        query['ratings.average'] = { $gte};
+        query['ratings.average'] = { $gte: rating };
       }
     }
 
     if (facility && facility.trim() !== '') {
-      query['facilities.name'] = { $regex.trim(), $options: 'i' };
+      query['facilities.name'] = { $regex: facility.trim(), $options: 'i' };
     }
 
     if (accreditation && accreditation.trim() !== '') {
@@ -143,7 +152,7 @@ router.get('/search', async (req, res) => {
     }
 
     if (specialty && specialty.trim() !== '') {
-      query.specialties = { $regex.trim(), $options: 'i' };
+      query.specialties = { $regex: specialty.trim(), $options: 'i' };
     }
 
     const parsedFeeMin = parseFloat(opd_fee_min);
@@ -160,12 +169,14 @@ router.get('/search', async (req, res) => {
 
     let sortQuery = {};
     switch(sort) {
-      case 'distance'= { 'ratings.average': -1 }; break;
-      case 'fee'= { 'pricing.consultation': 1 }; break;
-      case 'rating'= { 'ratings.average': -1 }; break;
-      case 'beds'= { 'beds.available': -1 }; break;
-      case 'reviews'= { 'ratings.count': -1 }; break;
-      default= { 'activity_score': -1, 'ratings.average': -1 };
+      case 'distance':
+        sortQuery = (!isNaN(parsedLat) && !isNaN(parsedLng)) ? {} : { 'ratings.average': -1 };
+        break;
+      case 'fee': sortQuery = { 'pricing.consultation': 1 }; break;
+      case 'rating': sortQuery = { 'ratings.average': -1 }; break;
+      case 'beds': sortQuery = { 'beds.available': -1 }; break;
+      case 'reviews': sortQuery = { 'ratings.count': -1 }; break;
+      default: sortQuery = { 'activity_score': -1, 'ratings.average': -1 };
     }
 
     const pageNum = Math.max(1, parseInt(page) || 1);
@@ -178,18 +189,111 @@ router.get('/search', async (req, res) => {
     ]);
 
     res.json({
-      success,
-      data,
+      success: true,
+      data: hospitals,
       pagination: {
-        currentPage,
-        totalPages.ceil(total / limitNum),
-        totalHospitals,
-        perPage}
+        currentPage: pageNum,
+        totalPages: Math.ceil(total / limitNum),
+        totalHospitals: total,
+        perPage: limitNum
+      }
     });
 
   } catch (error) {
     console.error('Search error:', error.message);
-    res.status(500).json({ success, message: 'Search failed. Please try again.' });
+    res.status(500).json({ success: false, message: 'Search failed. Please try again.' });
+  }
+});
+
+// Seed hospitals (for testing)
+router.get('/seed', async (req, res) => {
+  try {
+    const count = await Hospital.countDocuments();
+    if (count > 0) {
+      return res.json({ success: true, message: `Already has ${count} hospitals` });
+    }
+    
+    const hospitals = [
+      {
+        name: 'Apollo Hospital Mumbai',
+        address: { city: 'Mumbai', state: 'Maharashtra' },
+        location: { coordinates: [72.8344, 19.1079], lat: 19.1079, lng: 72.8344 },
+        specialties: ['Cardiology', 'Neurology', 'Orthopedics'],
+        diseases_treated: ['heart_attack', 'coronary_artery_disease', 'stroke', 'arthritis', 'kidney_stones', 'diabetes_type2'],
+        procedures_available: ['angioplasty', 'cabg', 'angiography', 'knee_replacement', 'dialysis'],
+        has24x7ER: true,
+        beds: { total: 350, available: 45, icu_available: 12 },
+        pricing: { consultation: 1200, icu_bed_per_day: 8000, general_bed_per_day: 3000, semi_private_per_day: 4500, private_per_day: 6000 },
+        doctors: [
+          { name: 'Dr. Rajesh Mehta', specialization: 'Cardiologist', qualification: 'MBBS, MD, DM', consultation_fee: 1300, experience: '20 years', rating: 4.8, reviewCount: 210, languages: ['English', 'Hindi'], availability: { status: 'available', slots_available: 4 } },
+          { name: 'Dr. Priya Sharma', specialization: 'Neurologist', qualification: 'MBBS, MD, DNB', consultation_fee: 1200, experience: '15 years', rating: 4.7, reviewCount: 180, languages: ['English', 'Marathi'], availability: { status: 'available', slots_available: 6 } }
+        ],
+        insurance_accepted: ['Star Health', 'ICICI Lombard', 'HDFC Ergo'],
+        schemes_accepted: ['ayushman', 'cghs'],
+        cashless_available: true,
+        accreditations: ['NABH', 'JCI'],
+        lab_tests_available: true,
+        facilities: [
+          { name: 'MRI 3T', category: 'Imaging', available_24x7: false },
+          { name: 'CT 128 Slice', category: 'Imaging', available_24x7: true },
+          { name: 'Cath Lab', category: 'Cardiac', available_24x7: true }
+        ],
+        ratings: { average: 4.8, count: 1240 },
+        contact: { phone: '9876543210', email: 'contact@apollo.com' },
+        is_verified: true
+      },
+      {
+        name: 'Manipal Hospital Bangalore',
+        address: { city: 'Bangalore', state: 'Karnataka' },
+        location: { coordinates: [77.6451, 12.9592], lat: 12.9592, lng: 77.6451 },
+        specialties: ['Neurology', 'Oncology'],
+        diseases_treated: ['stroke', 'brain_tumor', 'breast_cancer', 'lung_cancer'],
+        procedures_available: ['chemotherapy', 'radiation', 'biopsy'],
+        has24x7ER: true,
+        beds: { total: 420, available: 56, icu_available: 15 },
+        pricing: { consultation: 1000, icu_bed_per_day: 7500, general_bed_per_day: 2500 },
+        doctors: [
+          { name: 'Dr. Sunita Reddy', specialization: 'Neurologist', qualification: 'MBBS, MD, DM', consultation_fee: 1000, experience: '18 years', rating: 4.9, reviewCount: 310, languages: ['English', 'Kannada', 'Hindi'], availability: { status: 'available', slots_available: 5 } }
+        ],
+        insurance_accepted: ['Star Health', 'ICICI Lombard', 'Bajaj Allianz'],
+        schemes_accepted: ['ayushman', 'state_scheme'],
+        cashless_available: true,
+        accreditations: ['NABH'],
+        lab_tests_available: true,
+        facilities: [{ name: 'MRI 3T', category: 'Imaging', available_24x7: true }],
+        ratings: { average: 4.9, count: 2100 },
+        contact: { phone: '8765432109', email: 'contact@manipal.com' },
+        is_verified: true
+      },
+      {
+        name: 'Narayana Health Kolkata',
+        address: { city: 'Kolkata', state: 'West Bengal' },
+        location: { coordinates: [88.3639, 22.5726], lat: 22.5726, lng: 88.3639 },
+        specialties: ['Cardiology', 'Oncology'],
+        diseases_treated: ['heart_attack', 'coronary_artery_disease', 'blood_cancer'],
+        procedures_available: ['angioplasty', 'angiography', 'chemotherapy'],
+        has24x7ER: true,
+        beds: { total: 450, available: 42, icu_available: 8 },
+        pricing: { consultation: 900, icu_bed_per_day: 6800, general_bed_per_day: 2200 },
+        doctors: [
+          { name: 'Dr. S. Chatterjee', specialization: 'Cardiologist', qualification: 'MBBS, MD', consultation_fee: 900, experience: '12 years', rating: 4.6, reviewCount: 160, languages: ['English', 'Bengali', 'Hindi'], availability: { status: 'available', slots_available: 3 } }
+        ],
+        insurance_accepted: ['Star Health', 'HDFC Ergo'],
+        schemes_accepted: ['state_scheme'],
+        cashless_available: false,
+        accreditations: ['NABH'],
+        lab_tests_available: false,
+        facilities: [{ name: 'Cath Lab', category: 'Cardiac', available_24x7: true }],
+        ratings: { average: 4.5, count: 980 },
+        contact: { phone: '7654321098', email: 'contact@narayana.com' },
+        is_verified: true
+      }
+    ];
+    
+    await Hospital.insertMany(hospitals);
+    res.json({ success: true, message: '3 hospitals seeded' });
+  } catch (error) {
+    res.status(500).json({ success: false, message: error.message });
   }
 });
 
@@ -199,16 +303,16 @@ router.post('/whatsapp-update', async (req, res) => {
     const { phone, message } = req.body;
     const parsedData = parseWhatsAppMessage(message);
     if (!parsedData) {
-      return res.status(400).json({ success, message: 'Invalid format' });
+      return res.status(400).json({ success: false, message: 'Invalid format' });
     }
-    const hospital = await Hospital.findOne({ 'contact.phone'});
-    if (!hospital) return res.status(404).json({ success, message: 'Hospital not found' });
-    hospital.beds = { ...hospital.beds.toObject(), total.total || hospital.beds.total, available.available || hospital.beds.available, icu_available.icu || hospital.beds.icu_available, ventilator_available.ventilator || hospital.beds.ventilator_available, last_updatedDate(), update_method: 'whatsapp', auto_expire_atDate(Date.now() + 4 * 60 * 60 * 1000) };
+    const hospital = await Hospital.findOne({ 'contact.phone': phone });
+    if (!hospital) return res.status(404).json({ success: false, message: 'Hospital not found' });
+    hospital.beds = { ...hospital.beds.toObject(), total: parsedData.total || hospital.beds.total, available: parsedData.available || hospital.beds.available, icu_available: parsedData.icu || hospital.beds.icu_available, ventilator_available: parsedData.ventilator || hospital.beds.ventilator_available, last_updated: new Date(), update_method: 'whatsapp', auto_expire_at: new Date(Date.now() + 4 * 60 * 60 * 1000) };
     hospital.activity_score = calculateActivityScore(hospital);
     await hospital.save();
-    res.json({ success, message: 'Updated' });
+    res.json({ success: true, message: 'Updated' });
   } catch (error) {
-    res.status(500).json({ success, message.message });
+    res.status(500).json({ success: false, message: error.message });
   }
 });
 
@@ -225,7 +329,7 @@ router.get('/template/download', authenticateToken, authorizeRoles('hospital', '
 });
 
 // ============================================
-// CORPORATE ROUTES (Must be before /)
+// 🆕 CORPORATE ROUTES (Must be before /:id)
 // ============================================
 
 // Toggle corporate serving status
@@ -233,25 +337,25 @@ router.put('/corporate/toggle', authenticateToken, authorizeRoles('hospital', 'a
   try {
     const hospitalId = req.user.hospitalId || req.body.hospitalId;
     if (!hospitalId) {
-      return res.status(400).json({ success, message: 'Hospital ID required' });
+      return res.status(400).json({ success: false, message: 'Hospital ID required' });
     }
 
     const hospital = await Hospital.findById(hospitalId);
     if (!hospital) {
-      return res.status(404).json({ success, message: 'Hospital not found' });
+      return res.status(404).json({ success: false, message: 'Hospital not found' });
     }
 
     const enable = req.body.enable !== false;
     await hospital.toggleCorporate(enable);
 
     res.json({
-      success,
+      success: true,
       message: `Corporate ${enable ? 'enabled' : 'disabled'} successfully`,
-      data: { servesCorporate.servesCorporate }
+      data: { servesCorporate: hospital.servesCorporate }
     });
   } catch (error) {
     console.error('Corporate toggle error:', error);
-    res.status(500).json({ success, message.message });
+    res.status(500).json({ success: false, message: error.message });
   }
 });
 
@@ -260,24 +364,24 @@ router.get('/corporate/packages', authenticateToken, authorizeRoles('hospital', 
   try {
     const hospitalId = req.user.hospitalId || req.query.hospitalId;
     if (!hospitalId) {
-      return res.status(400).json({ success, message: 'Hospital ID required' });
+      return res.status(400).json({ success: false, message: 'Hospital ID required' });
     }
 
     const hospital = await Hospital.findById(hospitalId).select('servesCorporate corporatePackages');
     if (!hospital) {
-      return res.status(404).json({ success, message: 'Hospital not found' });
+      return res.status(404).json({ success: false, message: 'Hospital not found' });
     }
 
     res.json({
-      success,
+      success: true,
       data: {
-        servesCorporate.servesCorporate,
-        packages.corporatePackages || []
+        servesCorporate: hospital.servesCorporate,
+        packages: hospital.corporatePackages || []
       }
     });
   } catch (error) {
     console.error('Get corporate packages error:', error);
-    res.status(500).json({ success, message.message });
+    res.status(500).json({ success: false, message: error.message });
   }
 });
 
@@ -286,65 +390,66 @@ router.post('/corporate/packages', authenticateToken, authorizeRoles('hospital',
   try {
     const hospitalId = req.user.hospitalId || req.body.hospitalId;
     if (!hospitalId) {
-      return res.status(400).json({ success, message: 'Hospital ID required' });
+      return res.status(400).json({ success: false, message: 'Hospital ID required' });
     }
 
     const hospital = await Hospital.findById(hospitalId);
     if (!hospital) {
-      return res.status(404).json({ success, message: 'Hospital not found' });
+      return res.status(404).json({ success: false, message: 'Hospital not found' });
     }
 
     const packageData = {
-      packageName.body.packageName,
-      packageType.body.packageType || 'health_checkup',
-      description.body.description || '',
-      servicesIncluded.body.servicesIncluded || [],
-      pricePerEmployee.body.pricePerEmployee,
-      discountedPricePerEmployee.body.discountedPricePerEmployee,
-      minEmployees.body.minEmployees || 10,
-      maxEmployees.body.maxEmployees,
-      validityDays.body.validityDays || 365,
-      locations.body.locations || [],
-      availableCities.body.availableCities || [],
-      dedicatedPOC.body.dedicatedPOC || {},
-      slaTerms.body.slaTerms || ''
+      packageName: req.body.packageName,
+      packageType: req.body.packageType || 'health_checkup',
+      description: req.body.description || '',
+      servicesIncluded: req.body.servicesIncluded || [],
+      pricePerEmployee: req.body.pricePerEmployee,
+      discountedPricePerEmployee: req.body.discountedPricePerEmployee,
+      minEmployees: req.body.minEmployees || 10,
+      maxEmployees: req.body.maxEmployees,
+      validityDays: req.body.validityDays || 365,
+      locations: req.body.locations || [],
+      availableCities: req.body.availableCities || [],
+      dedicatedPOC: req.body.dedicatedPOC || {},
+      slaTerms: req.body.slaTerms || ''
     };
 
     if (!packageData.packageName || !packageData.pricePerEmployee) {
-      return res.status(400).json({ success, message: 'Package name and price per employee are required' });
+      return res.status(400).json({ success: false, message: 'Package name and price per employee are required' });
     }
 
     await hospital.addCorporatePackage(packageData);
 
     res.json({
-      success,
+      success: true,
       message: 'Corporate package added successfully',
-      data.corporatePackages[hospital.corporatePackages.length - 1]
+      data: hospital.corporatePackages[hospital.corporatePackages.length - 1]
     });
   } catch (error) {
     console.error('Add corporate package error:', error);
-    res.status(500).json({ success, message.message });
+    res.status(500).json({ success: false, message: error.message });
   }
 });
 
 // Update corporate package
-router.put('/corporate/packages/', authenticateToken, authorizeRoles('hospital', 'admin'), async (req, res) => {
+router.put('/corporate/packages/:packageId', authenticateToken, authorizeRoles('hospital', 'admin'), async (req, res) => {
   try {
     const hospitalId = req.user.hospitalId || req.body.hospitalId;
     if (!hospitalId) {
-      return res.status(400).json({ success, message: 'Hospital ID required' });
+      return res.status(400).json({ success: false, message: 'Hospital ID required' });
     }
 
     const hospital = await Hospital.findById(hospitalId);
     if (!hospital) {
-      return res.status(404).json({ success, message: 'Hospital not found' });
+      return res.status(404).json({ success: false, message: 'Hospital not found' });
     }
 
     const pkg = hospital.corporatePackages.id(req.params.packageId);
     if (!pkg) {
-      return res.status(404).json({ success, message: 'Package not found' });
+      return res.status(404).json({ success: false, message: 'Package not found' });
     }
 
+    // Update fields
     const updatableFields = [
       'packageName', 'packageType', 'description', 'servicesIncluded',
       'pricePerEmployee', 'discountedPricePerEmployee', 'minEmployees',
@@ -362,43 +467,44 @@ router.put('/corporate/packages/', authenticateToken, authorizeRoles('hospital',
     await hospital.save();
 
     res.json({
-      success,
+      success: true,
       message: 'Corporate package updated successfully',
-      data});
+      data: pkg
+    });
   } catch (error) {
     console.error('Update corporate package error:', error);
-    res.status(500).json({ success, message.message });
+    res.status(500).json({ success: false, message: error.message });
   }
 });
 
 // Delete corporate package
-router.delete('/corporate/packages/', authenticateToken, authorizeRoles('hospital', 'admin'), async (req, res) => {
+router.delete('/corporate/packages/:packageId', authenticateToken, authorizeRoles('hospital', 'admin'), async (req, res) => {
   try {
     const hospitalId = req.user.hospitalId || req.body.hospitalId;
     if (!hospitalId) {
-      return res.status(400).json({ success, message: 'Hospital ID required' });
+      return res.status(400).json({ success: false, message: 'Hospital ID required' });
     }
 
     const hospital = await Hospital.findById(hospitalId);
     if (!hospital) {
-      return res.status(404).json({ success, message: 'Hospital not found' });
+      return res.status(404).json({ success: false, message: 'Hospital not found' });
     }
 
     const pkg = hospital.corporatePackages.id(req.params.packageId);
     if (!pkg) {
-      return res.status(404).json({ success, message: 'Package not found' });
+      return res.status(404).json({ success: false, message: 'Package not found' });
     }
 
     pkg.remove();
     await hospital.save();
 
     res.json({
-      success,
+      success: true,
       message: 'Corporate package deleted successfully'
     });
   } catch (error) {
     console.error('Delete corporate package error:', error);
-    res.status(500).json({ success, message.message });
+    res.status(500).json({ success: false, message: error.message });
   }
 });
 
@@ -407,40 +513,40 @@ router.get('/corporate/enquiries', authenticateToken, authorizeRoles('hospital',
   try {
     const hospitalId = req.user.hospitalId || req.query.hospitalId;
     if (!hospitalId) {
-      return res.status(400).json({ success, message: 'Hospital ID required' });
+      return res.status(400).json({ success: false, message: 'Hospital ID required' });
     }
 
     const hospital = await Hospital.findById(hospitalId).select('corporateEnquiries');
     if (!hospital) {
-      return res.status(404).json({ success, message: 'Hospital not found' });
+      return res.status(404).json({ success: false, message: 'Hospital not found' });
     }
 
     res.json({
-      success,
-      data.corporateEnquiries || []
+      success: true,
+      data: hospital.corporateEnquiries || []
     });
   } catch (error) {
     console.error('Get corporate enquiries error:', error);
-    res.status(500).json({ success, message.message });
+    res.status(500).json({ success: false, message: error.message });
   }
 });
 
 // Update enquiry status
-router.put('/corporate/enquiries/', authenticateToken, authorizeRoles('hospital', 'admin'), async (req, res) => {
+router.put('/corporate/enquiries/:enquiryId', authenticateToken, authorizeRoles('hospital', 'admin'), async (req, res) => {
   try {
     const hospitalId = req.user.hospitalId || req.body.hospitalId;
     if (!hospitalId) {
-      return res.status(400).json({ success, message: 'Hospital ID required' });
+      return res.status(400).json({ success: false, message: 'Hospital ID required' });
     }
 
     const hospital = await Hospital.findById(hospitalId);
     if (!hospital) {
-      return res.status(404).json({ success, message: 'Hospital not found' });
+      return res.status(404).json({ success: false, message: 'Hospital not found' });
     }
 
     const enquiry = hospital.corporateEnquiries.id(req.params.enquiryId);
     if (!enquiry) {
-      return res.status(404).json({ success, message: 'Enquiry not found' });
+      return res.status(404).json({ success: false, message: 'Enquiry not found' });
     }
 
     if (req.body.status) {
@@ -450,12 +556,13 @@ router.put('/corporate/enquiries/', authenticateToken, authorizeRoles('hospital'
     await hospital.save();
 
     res.json({
-      success,
+      success: true,
       message: 'Enquiry updated successfully',
-      data});
+      data: enquiry
+    });
   } catch (error) {
     console.error('Update enquiry error:', error);
-    res.status(500).json({ success, message.message });
+    res.status(500).json({ success: false, message: error.message });
   }
 });
 
@@ -464,52 +571,52 @@ router.put('/corporate/enquiries/', authenticateToken, authorizeRoles('hospital'
 // ============================================
 
 // Get single hospital
-router.get('/', async (req, res) => {
+router.get('/:id', async (req, res) => {
   try {
-    if (['health', 'search', 'whatsapp-update', 'template', 'medical-data', 'corporate'].includes(req.params.id)) return;
+    if (['health', 'search', 'seed', 'whatsapp-update', 'template', 'medical-data', 'corporate'].includes(req.params.id)) return;
     const hospital = await Hospital.findById(req.params.id).select('-password').lean();
-    if (!hospital) return res.status(404).json({ success, message: 'Hospital not found' });
-    res.json({ success, data});
+    if (!hospital) return res.status(404).json({ success: false, message: 'Hospital not found' });
+    res.json({ success: true, data: hospital });
   } catch (error) {
-    res.status(500).json({ success, message.message });
+    res.status(500).json({ success: false, message: error.message });
   }
 });
 
 // Update bed status
-router.put('//bed-status', authenticateToken, authorizeRoles('hospital', 'admin'), async (req, res) => {
+router.put('/:id/bed-status', authenticateToken, authorizeRoles('hospital', 'admin'), async (req, res) => {
   try {
     const hospital = await Hospital.findById(req.params.id);
-    if (!hospital) return res.status(404).json({ success, message: 'Hospital not found' });
-    hospital.beds = { ...hospital.beds.toObject(), ...req.body.beds, last_updatedDate(), update_method.body.updateMethod || 'web_portal', auto_expire_atDate(Date.now() + 4 * 60 * 60 * 1000) };
+    if (!hospital) return res.status(404).json({ success: false, message: 'Hospital not found' });
+    hospital.beds = { ...hospital.beds.toObject(), ...req.body.beds, last_updated: new Date(), update_method: req.body.updateMethod || 'web_portal', auto_expire_at: new Date(Date.now() + 4 * 60 * 60 * 1000) };
     await hospital.save();
-    res.json({ success, data.beds });
+    res.json({ success: true, data: hospital.beds });
   } catch (error) {
-    res.status(500).json({ success, message.message });
+    res.status(500).json({ success: false, message: error.message });
   }
 });
 
 // Upload doctors Excel
-router.post('//upload-doctors', authenticateToken, authorizeRoles('hospital', 'admin'), upload.single('file'), async (req, res) => {
+router.post('/:id/upload-doctors', authenticateToken, authorizeRoles('hospital', 'admin'), upload.single('file'), async (req, res) => {
   try {
-    if (!req.file) return res.status(400).json({ success, message: 'No file' });
+    if (!req.file) return res.status(400).json({ success: false, message: 'No file' });
     const hospital = await Hospital.findById(req.params.id);
-    if (!hospital) return res.status(404).json({ success, message: 'Not found' });
+    if (!hospital) return res.status(404).json({ success: false, message: 'Not found' });
     const wb = xlsx.read(req.file.buffer, { type: 'buffer' });
     const doctors = xlsx.utils.sheet_to_json(wb.Sheets[wb.SheetNames[0]]);
-    hospital.doctors = doctors.map(d => ({ name['Doctor Name'] || '', specialization['Specialization'] || '', qualification['Qualification'] || '', experience['Experience (Years)'] || '0', consultation_fee(d['Consultation Fee (₹)']) || 0, languages['Languages'] ? d['Languages'].split(',').map(l => l.trim()) : [], gender['Gender'] || 'Male', rating: 0, reviewCount: 0, availability: { status: 'available', slots_available(d['Max Patients Per Day']) || 20, days: ['Mon','Tue','Wed','Thu','Fri','Sat'], morning_slots['Morning Slots'] || '09:00-13:00', evening_slots['Evening Slots'] || '', max_patients(d['Max Patients Per Day']) || 20 } }));
+    hospital.doctors = doctors.map(d => ({ name: d['Doctor Name'] || '', specialization: d['Specialization'] || '', qualification: d['Qualification'] || '', experience: d['Experience (Years)'] || '0', consultation_fee: parseFloat(d['Consultation Fee (₹)']) || 0, languages: d['Languages'] ? d['Languages'].split(',').map(l => l.trim()) : [], gender: d['Gender'] || 'Male', rating: 0, reviewCount: 0, availability: { status: 'available', slots_available: parseInt(d['Max Patients Per Day']) || 20, days: ['Mon','Tue','Wed','Thu','Fri','Sat'], morning_slots: d['Morning Slots'] || '09:00-13:00', evening_slots: d['Evening Slots'] || '', max_patients: parseInt(d['Max Patients Per Day']) || 20 } }));
     await hospital.save();
-    res.json({ success, message: `${doctors.length} doctors uploaded` });
+    res.json({ success: true, message: `${doctors.length} doctors uploaded` });
   } catch (error) {
-    res.status(400).json({ success, message.message });
+    res.status(400).json({ success: false, message: error.message });
   }
 });
 
 // Upload data Excel
-router.post('//upload-data', authenticateToken, authorizeRoles('hospital', 'admin'), upload.single('file'), async (req, res) => {
+router.post('/:id/upload-data', authenticateToken, authorizeRoles('hospital', 'admin'), upload.single('file'), async (req, res) => {
   try {
-    if (!req.file) return res.status(400).json({ success, message: 'No file' });
+    if (!req.file) return res.status(400).json({ success: false, message: 'No file' });
     const hospital = await Hospital.findById(req.params.id);
-    if (!hospital) return res.status(404).json({ success, message: 'Not found' });
+    if (!hospital) return res.status(404).json({ success: false, message: 'Not found' });
     const wb = xlsx.read(req.file.buffer, { type: 'buffer' });
     const data = xlsx.utils.sheet_to_json(wb.Sheets[wb.SheetNames[0]])[0] || {};
     if (data['Total Beds']) hospital.beds.total = parseInt(data['Total Beds']);
@@ -519,9 +626,9 @@ router.post('//upload-data', authenticateToken, authorizeRoles('hospital', 'admi
     hospital.beds.last_updated = new Date();
     hospital.beds.update_method = 'excel_upload';
     await hospital.save();
-    res.json({ success, message: 'Updated' });
+    res.json({ success: true, message: 'Updated' });
   } catch (error) {
-    res.status(400).json({ success, message.message });
+    res.status(400).json({ success: false, message: error.message });
   }
 });
 
@@ -535,14 +642,14 @@ function parseWhatsAppMessage(message) {
     const data = {};
     for (let i = 0; i < parts.length; i++) {
       switch(parts[i]) {
-        case 'BEDS'.total = parseInt(parts[i + 1]); break;
-        case 'AVL'.available = parseInt(parts[i + 1]); break;
-        case 'ICU'.icu = parseInt(parts[i + 1]); break;
-        case 'VENT'.ventilator = parseInt(parts[i + 1]); break;
-        case 'ER'.emergency = parts[i + 1] === 'OPEN'; break;
+        case 'BEDS': data.total = parseInt(parts[i + 1]); break;
+        case 'AVL': data.available = parseInt(parts[i + 1]); break;
+        case 'ICU': data.icu = parseInt(parts[i + 1]); break;
+        case 'VENT': data.ventilator = parseInt(parts[i + 1]); break;
+        case 'ER': data.emergency = parts[i + 1] === 'OPEN'; break;
       }
     }
-    return data.total ? data ;
+    return data.total ? data : null;
   } catch (error) { return null; }
 }
 
@@ -565,4 +672,3 @@ function calculateActivityScore(hospital) {
 }
 
 module.exports = router;
-

@@ -2,159 +2,150 @@ const mongoose = require('mongoose');
 
 const diagnosticsProviderSchema = new mongoose.Schema({
   // ============================================
-  // BASIC INFO
+  // YOUR EXISTING FIELDS (ALL PRESERVED)
   // ============================================
-  provider_id: { type, unique},
-  provider_name: { type, required},
-  provider_type: { type, enum: ['Lab', 'Hospital', 'Both'], default: 'Lab' },
-  address_line1,
-  city: { type, required},
-  state,
-  pincode,
+  
+  provider_id: { type: Number, unique: true },
+  provider_name: { type: String, required: true },
+  provider_type: { type: String, enum: ['Lab', 'Hospital', 'Both'], default: 'Lab' },
+  address_line1: String,
+  city: { type: String, required: true },
+  state: String,
+  pincode: String,
   location: {
-    lat: { type},
-    lng: { type}
+    lat: { type: Number },
+    lng: { type: Number }
   },
-  phone,
-  email,
-  
-  // ============================================
-  // RATINGS & ACCREDITATION
-  // ============================================
-  rating: { type, default: 0 },
-  total_reviews: { type, default: 0 },
-  is_nabl_accredited: { type, default},
-  is_iso_accredited: { type, default},
-  is_home_collection_available: { type, default},
-  logo_url,
+  phone: String,
+  email: String,
+  rating: { type: Number, default: 0 },
+  total_reviews: { type: Number, default: 0 },
+  is_nabl_accredited: { type: Boolean, default: false },
+  is_iso_accredited: { type: Boolean, default: false },
+  is_home_collection_available: { type: Boolean, default: false },
+  logo_url: String,
   popular_tests: [String],
-  
-  // ============================================
-  // STATUS
-  // ============================================
-  is_active: { type, default},
-  partner_status: { type, enum: ['Pending', 'Approved', 'Suspended'], default: 'Pending' },
+  is_active: { type: Boolean, default: true },
+  partner_status: { type: String, enum: ['Pending', 'Approved', 'Suspended'], default: 'Pending' },
   tags: [String],
+  createdAt: { type: Date, default: Date.now },
 
   // ============================================
-  // ✅ CORPORATE CHECKUP (ORIGINAL - KEPT)
+  // 🆕 CORPORATE CHECKUP FIELDS (ADDED)
   // ============================================
+
+  // Whether lab offers corporate health checkup packages
   hasCorporatePackages: {
-    type,
-    default},
-  minEmployees: {
-    type,
-    default: 10
+    type: Boolean,
+    default: false,
+    description: 'Whether this lab offers corporate health checkup packages'
   },
+
+  // Minimum employees required for corporate checkup
+  minEmployees: {
+    type: Number,
+    default: 10,
+    description: 'Minimum employees required for corporate checkup booking'
+  },
+
+  // Corporate-specific health checkup packages
   corporatePackages: [{
-    name: { type, required},
-    description: { type},
-    pricePerEmployee: { type, required},
+    name: { type: String, required: true },
+    description: { type: String },
+    pricePerEmployee: { type: Number, required: true },
     tests: [{
-      name: { type},
-      description: { type}
+      name: { type: String },
+      description: { type: String }
     }],
     categories: [{
-      type,
+      type: String,
       enum: ['basic', 'standard', 'premium', 'comprehensive', 'executive', 'women', 'men', 'senior']
     }],
-    duration: { type, default: '2-3 hours' },
-    includes: [{ type}],
-    excludes: [{ type}],
-    isActive: { type, default},
-    createdAt: { type, default.now }
+    duration: { type: String, default: '2-3 hours' },
+    includes: [{ type: String }],
+    excludes: [{ type: String }],
+    isActive: { type: Boolean, default: true },
+    createdAt: { type: Date, default: Date.now }
   }],
+
+  // Corporate pricing structure
   corporatePricing: {
-    basePricePerEmployee: { type},
-    discountPerEmployee: { type, default: 0 },
+    basePricePerEmployee: { type: Number },
+    discountPerEmployee: { type: Number, default: 0 },
     bulkDiscount: {
-      enabled: { type, default},
+      enabled: { type: Boolean, default: false },
       tiers: [{
-        minEmployees: { type},
-        maxEmployees: { type},
-        discountPercentage: { type}
+        minEmployees: { type: Number },
+        maxEmployees: { type: Number },
+        discountPercentage: { type: Number }
       }]
     }
   },
+
+  // Corporate discount percentage (applies to all corporate bookings)
   corporateDiscount: {
-    type,
+    type: Number,
     default: 15,
     min: 0,
-    max: 50
+    max: 50,
+    description: 'Discount percentage for corporate bookings'
   },
+
+  // Whether home collection is available for corporate
   homeCollectionCorporate: {
-    type,
-    default},
+    type: Boolean,
+    default: false,
+    description: 'Whether home collection is available for corporate clients'
+  },
+
+  // Services specifically for corporate clients
   corporateServices: [{
-    name: { type},
-    description: { type},
-    price: { type},
-    duration: { type}
+    name: { type: String },
+    description: { type: String },
+    price: { type: Number },
+    duration: { type: String }
   }],
+
+  // Corporate-specific settings
   corporateSettings: {
-    allowCustomPackages: { type, default},
-    reportDeliveryTime: { type, default: '24-48 hours' },
-    dedicatedCoordinator: { type, default},
-    coordinatorName: { type},
-    coordinatorPhone: { type},
-    coordinatorEmail: { type}
+    allowCustomPackages: { type: Boolean, default: false },
+    reportDeliveryTime: { type: String, default: '24-48 hours' },
+    dedicatedCoordinator: { type: Boolean, default: false },
+    coordinatorName: { type: String },
+    coordinatorPhone: { type: String },
+    coordinatorEmail: { type: String }
   },
+
+  // Corporate documents
   corporateDocuments: [{
-    name: { type},
-    url: { type},
-    type: { type, enum: ['brochure', 'corporate_policy', 'terms'] },
-    uploadedAt: { type, default.now }
+    name: { type: String },
+    url: { type: String },
+    type: { type: String, enum: ['brochure', 'corporate_policy', 'terms'] },
+    uploadedAt: { type: Date, default: Date.now }
   }],
+
+  // Corporate analytics
   corporateAnalytics: {
-    totalCorporateBookings: { type, default: 0 },
-    totalCorporateRevenue: { type, default: 0 },
-    corporateClients: [{ type}]
-  },
-
-  // ============================================
-  // 🆕 STANDARDIZED CORPORATE FIELDS (ADDED)
-  // ============================================
-  servesCorporate: { 
-    type, 
-    default,
-    index},
-  
-  corporateEnquiries: [{
-    companyName,
-    contactPerson,
-    email,
-    phone,
-    employeeCount,
-    requirements,
-    interestedIn: [String],
-    status: {
-      type,
-      enum: ['new', 'contacted', 'negotiating', 'converted', 'closed'],
-      default: 'new'
-    },
-    createdAt: { type, default.now }
-  }],
-
-  // ============================================
-  // TIMESTAMPS
-  // ============================================
-  createdAt: { type, default.now }
+    totalCorporateBookings: { type: Number, default: 0 },
+    totalCorporateRevenue: { type: Number, default: 0 },
+    corporateClients: [{ type: String }] // Company names
+  }
 });
 
 // ============================================
-// INDEXES
+// INDEXES (EXISTING + NEW)
 // ============================================
 
+// Existing indexes
 diagnosticsProviderSchema.index({ location: '2dsphere' });
+
+// 🆕 NEW INDEXES FOR CORPORATE
 diagnosticsProviderSchema.index({ hasCorporatePackages: 1 });
 diagnosticsProviderSchema.index({ minEmployees: 1 });
 diagnosticsProviderSchema.index({ 'corporatePackages.isActive': 1 });
 
-// 🆕 New indexes
-diagnosticsProviderSchema.index({ servesCorporate: 1, city: 1 });
-
 // ============================================
-// VIRTUALS
+// VIRTUAL FIELDS (NEW)
 // ============================================
 
 diagnosticsProviderSchema.virtual('hasCorporateCheckups').get(function() {
@@ -174,30 +165,25 @@ diagnosticsProviderSchema.virtual('isCorporateReady').get(function() {
 });
 
 // ============================================
-// MIDDLEWARE
+// METHODS (NEW)
 // ============================================
 
-// Sync servesCorporate with hasCorporatePackages
-diagnosticsProviderSchema.pre('save', function(next) {
-  if (this.isModified('hasCorporatePackages')) {
-    this.servesCorporate = this.hasCorporatePackages;
-  }
-  if (this.isModified('servesCorporate') && !this.isModified('hasCorporatePackages')) {
-    this.hasCorporatePackages = this.servesCorporate;
-  }
-  next();
-});
-
-// ============================================
-// METHODS
-// ============================================
-
-diagnosticsProviderSchema.methods.calculateCorporatePrice = function(employeeCount, packageId, options = {}) {
+/**
+ * Calculate corporate package price based on employee count
+ */
+diagnosticsProviderSchema.methods.calculateCorporatePrice = function(
+  employeeCount,
+  packageId,
+  options = {}
+) {
   const packageItem = this.corporatePackages.find(p => p._id.toString() === packageId);
-  if (!packageItem) throw new Error('Corporate package not found');
+  if (!packageItem) {
+    throw new Error('Corporate package not found');
+  }
 
   let pricePerEmployee = packageItem.pricePerEmployee || this.corporatePricing?.basePricePerEmployee || 500;
 
+  // Apply bulk discount
   if (this.corporatePricing?.bulkDiscount?.enabled) {
     const tiers = this.corporatePricing.bulkDiscount.tiers || [];
     let applicableDiscount = 0;
@@ -212,6 +198,7 @@ diagnosticsProviderSchema.methods.calculateCorporatePrice = function(employeeCou
     }
   }
 
+  // Apply global corporate discount
   if (this.corporateDiscount) {
     pricePerEmployee = pricePerEmployee * (1 - this.corporateDiscount / 100);
   }
@@ -219,65 +206,70 @@ diagnosticsProviderSchema.methods.calculateCorporatePrice = function(employeeCou
   const totalPrice = pricePerEmployee * employeeCount;
 
   return {
-    packageName.name,
-    pricePerEmployee.round(pricePerEmployee),
+    packageName: packageItem.name,
+    pricePerEmployee: Math.round(pricePerEmployee),
     employeeCount,
-    totalPrice.round(totalPrice),
-    discountApplied.corporateDiscount || 0,
-    tests.tests || []
+    totalPrice: Math.round(totalPrice),
+    discountApplied: this.corporateDiscount || 0,
+    tests: packageItem.tests || []
   };
 };
 
+/**
+ * Get all active corporate packages
+ */
 diagnosticsProviderSchema.methods.getActiveCorporatePackages = function() {
   return this.corporatePackages?.filter(p => p.isActive !== false) || [];
 };
 
+/**
+ * Get corporate package by ID
+ */
 diagnosticsProviderSchema.methods.getCorporatePackageById = function(packageId) {
   return this.corporatePackages?.find(p => p._id.toString() === packageId) || null;
 };
 
+/**
+ * Get corporate summary
+ */
 diagnosticsProviderSchema.methods.getCorporateSummary = function() {
-  if (!this.hasCorporatePackages) return null;
+  if (!this.hasCorporatePackages) {
+    return null;
+  }
+
   return {
-    providerId._id,
-    providerName.provider_name,
-    city.city,
-    rating.rating,
-    minEmployees.minEmployees || 10,
-    packages.getActiveCorporatePackages().length,
-    homeCollection.homeCollectionCorporate,
-    discount.corporateDiscount || 0,
-    isActive.is_active,
-    partnerStatus.partner_status
+    providerId: this._id,
+    providerName: this.provider_name,
+    city: this.city,
+    rating: this.rating,
+    minEmployees: this.minEmployees || 10,
+    packages: this.getActiveCorporatePackages().length,
+    homeCollection: this.homeCollectionCorporate,
+    discount: this.corporateDiscount || 0,
+    isActive: this.is_active,
+    partnerStatus: this.partner_status
   };
 };
 
-// 🆕 Toggle corporate (syncs both flags)
-diagnosticsProviderSchema.methods.toggleCorporate = function(enable = true) {
-  this.servesCorporate = enable;
-  this.hasCorporatePackages = enable;
-  if (!enable) {
-    this.corporatePackages.forEach(pkg => { pkg.isActive = false; });
-  }
-  return this.save();
-};
-
 // ============================================
-// STATIC METHODS
+// STATIC METHODS (NEW)
 // ============================================
 
+/**
+ * Find all providers offering corporate checkups
+ */
 diagnosticsProviderSchema.statics.findCorporateProviders = function(filters = {}) {
   const query = {
-    hasCorporatePackages,
-    is_active,
+    hasCorporatePackages: true,
+    is_active: true,
     partner_status: 'Approved'
   };
 
   if (filters.city) {
-    query.city = { $regex.city, $options: 'i' };
+    query.city = { $regex: filters.city, $options: 'i' };
   }
   if (filters.minEmployees) {
-    query.minEmployees = { $lte(filters.minEmployees) };
+    query.minEmployees = { $lte: parseInt(filters.minEmployees) };
   }
   if (filters.isNABL) {
     query.is_nabl_accredited = true;
@@ -294,35 +286,37 @@ diagnosticsProviderSchema.statics.findCorporateProviders = function(filters = {}
     .select('provider_name city rating corporatePackages corporateDiscount homeCollectionCorporate');
 };
 
+/**
+ * Get corporate provider stats
+ */
 diagnosticsProviderSchema.statics.getCorporateStats = async function() {
-  const total = await this.countDocuments({ hasCorporatePackages});
+  const total = await this.countDocuments({ hasCorporatePackages: true });
   const active = await this.countDocuments({
-    hasCorporatePackages,
-    is_active,
+    hasCorporatePackages: true,
+    is_active: true,
     partner_status: 'Approved'
   });
 
   const byCity = await this.aggregate([
-    { $match: { hasCorporatePackages, is_active} },
+    { $match: { hasCorporatePackages: true, is_active: true } },
     { $group: { _id: '$city', count: { $sum: 1 } } },
     { $sort: { count: -1 } },
     { $limit: 10 }
   ]);
 
   const totalPackages = await this.aggregate([
-    { $match: { hasCorporatePackages} },
+    { $match: { hasCorporatePackages: true } },
     { $unwind: '$corporatePackages' },
-    { $match: { 'corporatePackages.isActive'} },
+    { $match: { 'corporatePackages.isActive': true } },
     { $count: 'total' }
   ]);
 
   return {
-    totalProviders,
-    activeProviders,
-    topCities,
-    totalPackages[0]?.total || 0
+    totalProviders: total,
+    activeProviders: active,
+    topCities: byCity,
+    totalPackages: totalPackages[0]?.total || 0
   };
 };
 
 module.exports = mongoose.model('DiagnosticsProvider', diagnosticsProviderSchema);
-

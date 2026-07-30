@@ -2,190 +2,101 @@ const mongoose = require('mongoose');
 
 const CorporatePlanSchema = new mongoose.Schema({
   // Company Details
-  companyId: { type.Schema.Types.ObjectId, ref: 'User', required, default},
-  companyName: { type, required},
-  companyGST: { type},
-  companyPAN: { type},
-  companyType: { type, enum: ['startup', 'sme', 'enterprise', 'mnc'], default: 'sme' },
-  employeeCount: { type, required},
-  industryType: { type},
-  website: { type},
+  companyId: { type: mongoose.Schema.Types.ObjectId, ref: 'User', required: true },
+  companyName: { type: String, required: true },
+  companyGST: { type: String },
+  companyPAN: { type: String },
+  employeeCount: { type: Number, required: true },
   
   // Plan Details
-  planName: { type, required},
-  planType: { type, enum: ['group_health', 'group_wellness', 'group_insurance', 'custom', 'hybrid'], required},
-  coverageAmount: { type, required},
-  premiumPerEmployee: { type, required},
-  totalPremium: { type, required},
-  walletBalance: { type, default: 0 },
-  billingCycle: { type, enum: ['monthly', 'quarterly', 'half_yearly', 'yearly'], default: 'yearly' },
-  
-  // Services Included (8 categories)
-  servicesEnabled: [{
-    type,
-    enum: ['hospitals', 'onlineDoctor', 'diagnostics', 'ambulance', 'caregivers', 'mentalHealth', 'ayurveda', 'homeopathy']
-  }],
-  
-  // Service-specific coverage
-  coverageDetails: {
-    hospitals: { percentage, maxAmount},
-    onlineDoctor: { percentage, maxAmount},
-    diagnostics: { percentage, maxAmount},
-    ambulance: { percentage, maxAmount},
-    caregivers: { percentage, maxAmount},
-    mentalHealth: { percentage, maxAmount},
-    ayurveda: { percentage, maxAmount},
-    homeopathy: { percentage, maxAmount}
-  },
+  planName: { type: String, required: true },
+  planType: { type: String, enum: ['group_health', 'group_wellness', 'group_insurance'], required: true },
+  coverageAmount: { type: Number, required: true },
+  premiumPerEmployee: { type: Number, required: true },
+  totalPremium: { type: Number, required: true },
   
   // Features
-  features: [{ type}],
-  inclusions: [{ type}],
-  exclusions: [{ type}],
+  features: [{ type: String }],
+  inclusions: [{ type: String }],
+  exclusions: [{ type: String }],
   
   // Benefits
   benefits: [{
-    name: { type},
-    description: { type},
-    limit: { type}
+    name: { type: String },
+    description: { type: String },
+    limit: { type: Number }
   }],
   
-  // Network Providers
+  // Network Hospitals
   networkHospitals: [{
-    name,
-    city,
-    address,
-    contactPhone,
-    isPreferred: { type, default}
+    name: String,
+    city: String,
+    address: String
   }],
-  
-  preferredLabs: [{
-    name,
-    city,
-    contactPhone}],
   
   // Employees
   employees: [{
-    name: { type, required},
-    email: { type, required},
-    phone: { type, required},
-    department: { type},
-    designation: { type},
-    dateOfBirth: { type},
-    gender: { type, enum: ['male', 'female', 'other'] },
-    employeeId: { type},
-    joiningDate: { type},
-    isActive: { type, default},
-    walletBalance: { type, default: 0 },
-    benefitsUsed: { type, default: 0 },
-    benefitsLimit: { type, default: 0 },
-    enrolledAt: { type, default.now }
+    name: { type: String, required: true },
+    email: { type: String, required: true },
+    phone: { type: String, required: true },
+    department: { type: String },
+    designation: { type: String },
+    dateOfBirth: { type: Date },
+    gender: { type: String, enum: ['male', 'female', 'other'] },
+    employeeId: { type: String },
+    joiningDate: { type: Date },
+    isActive: { type: Boolean, default: true },
+    enrolledAt: { type: Date, default: Date.now }
   }],
   
   // Dependents
   dependents: [{
-    employeeId: { type},
-    name: { type},
-    relation: { type, enum: ['spouse', 'child', 'parent', 'sibling'] },
-    age: { type},
-    gender: { type},
-    dateOfBirth: { type},
-    isActive: { type, default}
+    employeeId: { type: String },
+    name: { type: String },
+    relation: { type: String, enum: ['spouse', 'child', 'parent'] },
+    age: { type: Number },
+    dateOfBirth: { type: Date }
   }],
   
   // Dates
-  startDate: { type, required},
-  endDate: { type, required},
-  renewalDate: { type},
-  coolingPeriod: { type, default: 30 },
+  startDate: { type: Date, required: true },
+  endDate: { type: Date, required: true },
+  renewalDate: { type: Date },
   
   // Pricing & Commission
   pricing: {
-    basePremium: { type, required, default: 0 },
-    gstRate: { type, default: 18 },
-    discount: { type, default: 0 },
-    bulkDiscount: { type, default: 0 },
-    commission: { type, default: 10 },
-    platformFee: { type, default: 2 },
-    setupFee: { type, default: 0 },
-    minWalletTopup: { type, default: 50000 }
+    basePremium: { type: Number, required: true },
+    gstRate: { type: Number, default: 18 },
+    discount: { type: Number, default: 0 },
+    commission: { type: Number, default: 10 }
   },
-  
-  // Payment Details
-  paymentTerms: { type, enum: ['prepaid', 'postpaid', 'hybrid'], default: 'prepaid' },
-  creditLimit: { type, default: 0 },
-  paymentDueDays: { type, default: 30 },
-  
-  // Documents
-  documents: [{
-    type: { type},
-    name: { type},
-    url: { type},
-    uploadedAt: { type, default.now }
-  }],
   
   // Status
   status: {
-    type,
-    enum: ['draft', 'pending', 'active', 'suspended', 'expired', 'cancelled'],
+    type: String,
+    enum: ['pending', 'active', 'expired', 'cancelled'],
     default: 'pending'
   },
-  isActive: { type, default},
-  isVerified: { type, default},
-  verificationNotes: { type},
+  isActive: { type: Boolean, default: true },
+  isVerified: { type: Boolean, default: false },
   
   // Admin
-  verifiedBy: { type.Schema.Types.ObjectId, ref: 'User' },
-  verifiedAt: { type},
-  approvedBy: { type},
+  verifiedBy: { type: mongoose.Schema.Types.ObjectId, ref: 'User' },
+  verifiedAt: { type: Date },
   
   // HR Contact
   hrContact: {
-    name: { type},
-    email: { type},
-    phone: { type},
-    designation: { type}
+    name: { type: String },
+    email: { type: String },
+    phone: { type: String }
   },
   
-  // Notifications
-  notifications: [{
-    type: { type, enum: ['renewal', 'wallet_low', 'employee_added', 'claim', 'payment'] },
-    message: { type},
-    sentAt: { type, default.now },
-    isRead: { type, default}
-  }],
-  
-  // Activity Log
-  activityLog: [{
-    action: { type},
-    performedBy: { type},
-    details: { type},
-    timestamp: { type, default.now }
-  }],
-  
   // Audit
-  createdBy: { type.Schema.Types.ObjectId, ref: 'User' },
-  createdAt: { type, default.now },
-  updatedAt: { type, default.now }
+  createdBy: { type: mongoose.Schema.Types.ObjectId, ref: 'User' },
+  createdAt: { type: Date, default: Date.now },
+  updatedAt: { type: Date, default: Date.now }
 }, {
-  timestamps});
-
-// Indexes
-CorporatePlanSchema.index({ companyName: 1, planType: 1 });
-CorporatePlanSchema.index({ status: 1, isActive: 1 });
-CorporatePlanSchema.index({ 'servicesEnabled': 1 });
-CorporatePlanSchema.index({ 'employees.employeeId': 1 });
-
-// Auto-generate companyId if not provided
-CorporatePlanSchema.pre('save', function(next) {
-  if (!this.companyId) {
-    this.companyId = this._id;
-  }
-  if (!this.planName) {
-    this.planName = `${this.companyName} - ${this.planType}`;
-  }
-  next();
+  timestamps: true
 });
 
 module.exports = mongoose.model('CorporatePlan', CorporatePlanSchema);
-
