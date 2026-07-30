@@ -17,8 +17,8 @@ export class EncryptionService {
     
     return {
       encrypted,
-      iv.toString('hex'),
-      authTag.toString('hex')
+      iv: iv.toString('hex'),
+      authTag: authTag.toString('hex')
     };
   }
 
@@ -46,4 +46,3 @@ export class EncryptionService {
       .digest('hex');
   }
 }
-

@@ -7,8 +7,8 @@ async function geocodeAddress(address, city) {
     
     if (data && data.length > 0) {
       return {
-        lat(data[0].lat),
-        lon(data[0].lon)
+        lat: parseFloat(data[0].lat),
+        lon: parseFloat(data[0].lon)
       };
     }
     return null;
@@ -19,4 +19,3 @@ async function geocodeAddress(address, city) {
 }
 
 module.exports = geocodeAddress;
-

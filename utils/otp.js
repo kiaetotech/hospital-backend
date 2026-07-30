@@ -7,7 +7,7 @@ const generateOTP = () => {
 const otpStore = new Map();
 
 const saveOTP = (mobile, otp) => {
-  otpStore.set(mobile, { otp, expiresAt.now() + 10 * 60 * 1000 }); // 10 min expiry
+  otpStore.set(mobile, { otp, expiresAt: Date.now() + 10 * 60 * 1000 }); // 10 min expiry
   setTimeout(() => otpStore.delete(mobile), 10 * 60 * 1000);
 };
 
@@ -19,4 +19,3 @@ const verifyOTP = (mobile, otp) => {
 };
 
 module.exports = { generateOTP, saveOTP, verifyOTP };
-

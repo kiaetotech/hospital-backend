@@ -330,16 +330,6 @@ router.get('/template/download', authenticateToken, authorizeRoles('hospital', '
 // DYNAMIC ID ROUTES (Must be AFTER static routes)
 // ============================================
 
-// Get all hospitals
-router.get('/', async (req, res) => {
-  try {
-    const hospitals = await Hospital.find({}).select('-password').limit(50).lean();
-    res.json({ success: true, count: hospitals.length, data: hospitals });
-  } catch (error) {
-    res.status(500).json({ success: false, message: error.message });
-  }
-});
-
 // Get single hospital
 router.get('/:id', async (req, res) => {
   try {
