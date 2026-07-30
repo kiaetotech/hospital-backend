@@ -6,8 +6,8 @@ const Hospital = require('../models/Hospital');
 const { authenticateToken, authorizeRoles } = require('../middleware/auth');
 
 // Multer config for Excel upload
-const upload = multer({ 
-  multer.memoryStorage(),
+onst upload = multer({
+  storage: multer.memoryStorage(),
   fileFilter: (req, file, cb) => {
     if (file.mimetype === 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' || 
         file.mimetype === 'application/vnd.ms-excel') {
