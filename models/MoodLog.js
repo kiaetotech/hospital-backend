@@ -1,40 +1,41 @@
 const mongoose = require('mongoose');
 
 const moodLogSchema = new mongoose.Schema({
-  userId: { type.Schema.Types.ObjectId, ref: 'User', required},
+  userId: { type: mongoose.Schema.Types.ObjectId, ref: 'User', required: true },
   
   // Mood entry
   mood: { 
-    type, 
+    type: String, 
     enum: ['great', 'good', 'okay', 'low', 'bad', 'terrible'],
-    required},
-  moodScore: { type, min: 1, max: 10, required}, // 1=worst, 10=best
+    required: true 
+  },
+  moodScore: { type: Number, min: 1, max: 10, required: true }, // 1=worst, 10=best
   
   // Context
-  journalEntry: { type, maxlength: 2000 },
-  tags: [{ type}], // anxiety, stress, sleep, work, relationship
+  journalEntry: { type: String, maxlength: 2000 },
+  tags: [{ type: String }], // anxiety, stress, sleep, work, relationship
   
   // AI Analysis (auto-filled)
-  sentimentScore: { type, min: -1, max: 1 }, // -1 negative, 1 positive
-  detectedKeywords: [{ type}],
-  crisisDetected: { type, default},
+  sentimentScore: { type: Number, min: -1, max: 1 }, // -1 negative, 1 positive
+  detectedKeywords: [{ type: String }],
+  crisisDetected: { type: Boolean, default: false },
   
   // Date
-  date: { type, default.now },
+  date: { type: Date, default: Date.now },
   
-  createdAt: { type, default.now }
+  createdAt: { type: Date, default: Date.now }
 });
 
 // Index for quick trend queries
 moodLogSchema.index({ userId: 1, date: -1 });
 moodLogSchema.index({ userId: 1, moodScore: 1 });
 
-// Staticweekly mood trend
+// Static: Get weekly mood trend
 moodLogSchema.statics.getWeeklyTrend = async function(userId) {
   const weekAgo = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000);
-  const logs = await this.find({ userId, date: { $gte} }).sort({ date: 1 });
+  const logs = await this.find({ userId, date: { $gte: weekAgo } }).sort({ date: 1 });
   
-  if (logs.length === 0) return { trend: 'stable', averageScore, data: [] };
+  if (logs.length === 0) return { trend: 'stable', averageScore: null, data: [] };
   
   const scores = logs.map(l => l.moodScore);
   const avg = Math.round(scores.reduce((a, b) => a + b, 0) / scores.length);
@@ -47,8 +48,7 @@ moodLogSchema.statics.getWeeklyTrend = async function(userId) {
     else if (recent > older + 1) trend = 'improving';
   }
   
-  return { trend, averageScore, data.map(l => ({ date.date, mood.mood, score.moodScore })) };
+  return { trend, averageScore: avg, data: logs.map(l => ({ date: l.date, mood: l.mood, score: l.moodScore })) };
 };
 
 module.exports = mongoose.model('MoodLog', moodLogSchema);
-
