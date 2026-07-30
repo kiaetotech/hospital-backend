@@ -19,7 +19,7 @@ class TestingAgent extends BaseAgent {
       ]
     }, providerManager);
 
-    this.baseURL = process.env.API_URL || 'http://localhost:5001';
+    this.baseURL = 'https://hospital-backend-production-f1b1.up.railway.app';
     this.results = { models: null, routes: null, flows: [], summary: {} };
   }
 
