@@ -116,7 +116,7 @@ class TestingAgent extends BaseAgent {
     this.results.flows.push(await this.testEndpoint('GET', '/api/bookings', null, '📋 Bookings List'));
 
     // 5. Payment
-    this.results.flows.push(await this.testEndpoint('POST', '/api/payment/create-order', { amount: 500 }, '💳 Create Payment'));
+    this.results.flows.push(await this.testEndpoint('POST', '/api/payment/create-order', { amount: 500, bookingType: 'opd', bookingId: 'test123' }, '💳 Create Payment'));
 
     // 6. Ambulance
     this.results.flows.push(await this.testEndpoint('GET', '/api/ambulance/search?city=Mumbai', null, '🚑 Ambulance Search'));
