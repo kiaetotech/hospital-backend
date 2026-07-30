@@ -468,7 +468,7 @@ const strategyAgent = new StrategyAgent(providerManager);
 capabilityRegistry.register(strategyAgent.getRegistration());
 
 const testingAgent = new TestingAgent(providerManager);
-capabilityRegistry.registerAgent(testingAgent);
+capabilityRegistry.register(testingAgent);
 
 console.log('🤖 AI Router initialized with 18 agents');
 
