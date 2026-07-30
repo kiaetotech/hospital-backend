@@ -270,8 +270,8 @@ mentalHealthJournalSchema.methods = {
   },
   
   // Share with therapist
-  shareWithTherapist() {
-    this.shareWithTherapist = true;
+  enableTherapistSharing() {
+   this.shareWithTherapist = true;
     return this.save();
   },
   
