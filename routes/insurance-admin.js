@@ -6,7 +6,7 @@ const InsurancePolicy = require('../models/InsurancePolicy');
 const Booking = require('../models/Booking');
 const Transaction = require('../models/Transaction');
 const User = require('../models/User');
-const { authenticate} = require('../middleware/auth');
+const { authenticate: auth } = require('../middleware/auth');
 const upload = require('../middleware/upload');
 
 // ============================================
@@ -16,11 +16,11 @@ const upload = require('../middleware/upload');
 const isAdmin = async (req, res, next) => {
   try {
     if (req.user.role !== 'admin') {
-      return res.status(403).json({ success, message: 'Admin access required' });
+      return res.status(403).json({ success: false, message: 'Admin access required' });
     }
     next();
   } catch (error) {
-    res.status(500).json({ success, message: 'Authorization error' });
+    res.status(500).json({ success: false, message: 'Authorization error' });
   }
 };
 
@@ -47,33 +47,33 @@ router.get('/companies', auth, isAdmin, async (req, res) => {
     const total = await User.countDocuments(query);
 
     res.json({
-      success,
-      data,
+      success: true,
+      data: companies,
       pagination: {
-        page(page),
-        limit(limit),
+        page: parseInt(page),
+        limit: parseInt(limit),
         total,
-        pages.ceil(total / limit)
+        pages: Math.ceil(total / limit)
       }
     });
   } catch (error) {
     console.error('Error fetching companies:', error);
-    res.status(500).json({ success, message: 'Failed to fetch companies' });
+    res.status(500).json({ success: false, message: 'Failed to fetch companies' });
   }
 });
 
 // Verify insurance company
-router.put('/companies//verify', auth, isAdmin, async (req, res) => {
+router.put('/companies/:id/verify', auth, isAdmin, async (req, res) => {
   try {
     const { verified, notes } = req.body;
     
     const company = await User.findById(req.params.id);
     if (!company) {
-      return res.status(404).json({ success, message: 'Company not found' });
+      return res.status(404).json({ success: false, message: 'Company not found' });
     }
 
     if (company.role !== 'insurance_company') {
-      return res.status(400).json({ success, message: 'User is not an insurance company' });
+      return res.status(400).json({ success: false, message: 'User is not an insurance company' });
     }
 
     company.isVerified = verified || false;
@@ -85,45 +85,46 @@ router.put('/companies//verify', auth, isAdmin, async (req, res) => {
     await company.save();
 
     res.json({
-      success,
-      message? 'Company verified successfully' : 'Company verification rejected',
-      data});
+      success: true,
+      message: verified ? 'Company verified successfully' : 'Company verification rejected',
+      data: company
+    });
   } catch (error) {
     console.error('Error verifying company:', error);
-    res.status(500).json({ success, message: 'Failed to verify company' });
+    res.status(500).json({ success: false, message: 'Failed to verify company' });
   }
 });
 
 // Get company details
-router.get('/companies/', auth, isAdmin, async (req, res) => {
+router.get('/companies/:id', auth, isAdmin, async (req, res) => {
   try {
     const company = await User.findById(req.params.id)
       .select('-password')
       .populate('companyDocuments');
     
     if (!company) {
-      return res.status(404).json({ success, message: 'Company not found' });
+      return res.status(404).json({ success: false, message: 'Company not found' });
     }
 
     if (company.role !== 'insurance_company') {
-      return res.status(400).json({ success, message: 'User is not an insurance company' });
+      return res.status(400).json({ success: false, message: 'User is not an insurance company' });
     }
 
     // Get company stats
-    const planCount = await InsurancePlan.countDocuments({ companyId._id });
-    const policyCount = await InsurancePolicy.countDocuments({ companyId._id });
+    const planCount = await InsurancePlan.countDocuments({ companyId: company._id });
+    const policyCount = await InsurancePolicy.countDocuments({ companyId: company._id });
     const activePolicies = await InsurancePolicy.countDocuments({ 
-      companyId._id, 
+      companyId: company._id, 
       status: 'active' 
     });
     
     // Get total premium
-    const policies = await InsurancePolicy.find({ companyId._id });
+    const policies = await InsurancePolicy.find({ companyId: company._id });
     const totalPremium = policies.reduce((sum, p) => sum + (p.premiumAmount || 0), 0);
     const totalCommission = policies.reduce((sum, p) => sum + (p.platformCommission || 0), 0);
 
     res.json({
-      success,
+      success: true,
       data: {
         ...company.toObject(),
         stats: {
@@ -137,7 +138,7 @@ router.get('/companies/', auth, isAdmin, async (req, res) => {
     });
   } catch (error) {
     console.error('Error fetching company:', error);
-    res.status(500).json({ success, message: 'Failed to fetch company' });
+    res.status(500).json({ success: false, message: 'Failed to fetch company' });
   }
 });
 
@@ -153,68 +154,70 @@ router.post('/plans', auth, isAdmin, async (req, res) => {
     // Validate company exists
     const company = await User.findById(planData.companyId);
     if (!company) {
-      return res.status(404).json({ success, message: 'Company not found' });
+      return res.status(404).json({ success: false, message: 'Company not found' });
     }
 
     if (company.role !== 'insurance_company') {
-      return res.status(400).json({ success, message: 'Company is not an insurance company' });
+      return res.status(400).json({ success: false, message: 'Company is not an insurance company' });
     }
 
     // Create plan
     const plan = new InsurancePlan({
       ...planData,
-      createdBy.user.id,
-      isVerified,
-      verificationDateDate(),
-      verifiedBy.user.id
+      createdBy: req.user.id,
+      isVerified: true,
+      verificationDate: new Date(),
+      verifiedBy: req.user.id
     });
 
     await plan.save();
 
     res.json({
-      success,
+      success: true,
       message: 'Plan created successfully',
-      data});
+      data: plan
+    });
   } catch (error) {
     console.error('Error creating plan:', error);
-    res.status(500).json({ success, message: 'Failed to create plan: ' + error.message });
+    res.status(500).json({ success: false, message: 'Failed to create plan: ' + error.message });
   }
 });
 
 // Update insurance plan
-router.put('/plans/', auth, isAdmin, async (req, res) => {
+router.put('/plans/:id', auth, isAdmin, async (req, res) => {
   try {
     const plan = await InsurancePlan.findById(req.params.id);
     if (!plan) {
-      return res.status(404).json({ success, message: 'Plan not found' });
+      return res.status(404).json({ success: false, message: 'Plan not found' });
     }
 
     const updatedPlan = await InsurancePlan.findByIdAndUpdate(
       req.params.id,
       {
         ...req.body,
-        updatedBy.user.id,
-        updatedAtDate()
+        updatedBy: req.user.id,
+        updatedAt: new Date()
       },
-      { new, runValidators}
+      { new: true, runValidators: true }
     );
 
     res.json({
-      success,
+      success: true,
       message: 'Plan updated successfully',
-      data});
+      data: updatedPlan
+    });
   } catch (error) {
     console.error('Error updating plan:', error);
-    res.status(500).json({ success, message: 'Failed to update plan: ' + error.message });
+    res.status(500).json({ success: false, message: 'Failed to update plan: ' + error.message });
   }
 });
 
 // Toggle plan status (activate/deactivate)
-router.patch('/plans//toggle-status', auth, isAdmin, async (req, res) => {
+router.patch('/plans/:id/toggle-status', auth, isAdmin, async (req, res) => {
   try {
     const plan = await InsurancePlan.findById(req.params.id);
     if (!plan) {
-      return res.status(404).json({ success, message: 'Plan not found' });
+      return res.status(404).json({ success: false, message: 'Plan not found' });
     }
 
     plan.isActive = !plan.isActive;
@@ -223,32 +226,33 @@ router.patch('/plans//toggle-status', auth, isAdmin, async (req, res) => {
     await plan.save();
 
     res.json({
-      success,
+      success: true,
       message: `Plan ${plan.isActive ? 'activated' : 'deactivated'} successfully`,
-      data});
+      data: plan
+    });
   } catch (error) {
     console.error('Error toggling plan status:', error);
-    res.status(500).json({ success, message: 'Failed to toggle plan status' });
+    res.status(500).json({ success: false, message: 'Failed to toggle plan status' });
   }
 });
 
 // Delete plan (soft delete)
-router.delete('/plans/', auth, isAdmin, async (req, res) => {
+router.delete('/plans/:id', auth, isAdmin, async (req, res) => {
   try {
     const plan = await InsurancePlan.findById(req.params.id);
     if (!plan) {
-      return res.status(404).json({ success, message: 'Plan not found' });
+      return res.status(404).json({ success: false, message: 'Plan not found' });
     }
 
     // Check if there are active policies for this plan
     const activePolicies = await InsurancePolicy.countDocuments({
-      planId._id,
+      planId: plan._id,
       status: 'active'
     });
 
     if (activePolicies > 0) {
       return res.status(400).json({
-        success,
+        success: false,
         message: 'Cannot delete plan with active policies. Deactivate it instead.'
       });
     }
@@ -259,12 +263,12 @@ router.delete('/plans/', auth, isAdmin, async (req, res) => {
     await plan.save();
 
     res.json({
-      success,
+      success: true,
       message: 'Plan deactivated successfully'
     });
   } catch (error) {
     console.error('Error deleting plan:', error);
-    res.status(500).json({ success, message: 'Failed to delete plan' });
+    res.status(500).json({ success: false, message: 'Failed to delete plan' });
   }
 });
 
@@ -307,23 +311,23 @@ router.get('/policies', auth, isAdmin, async (req, res) => {
     const total = await InsurancePolicy.countDocuments(query);
 
     res.json({
-      success,
-      data,
+      success: true,
+      data: policies,
       pagination: {
-        page(page),
-        limit(limit),
+        page: parseInt(page),
+        limit: parseInt(limit),
         total,
-        pages.ceil(total / limit)
+        pages: Math.ceil(total / limit)
       }
     });
   } catch (error) {
     console.error('Error fetching policies:', error);
-    res.status(500).json({ success, message: 'Failed to fetch policies' });
+    res.status(500).json({ success: false, message: 'Failed to fetch policies' });
   }
 });
 
 // Get policy details (admin view)
-router.get('/policies/', auth, isAdmin, async (req, res) => {
+router.get('/policies/:id', auth, isAdmin, async (req, res) => {
   try {
     const policy = await InsurancePolicy.findById(req.params.id)
       .populate('planId')
@@ -331,15 +335,15 @@ router.get('/policies/', auth, isAdmin, async (req, res) => {
       .populate('userId', 'name email phone');
 
     if (!policy) {
-      return res.status(404).json({ success, message: 'Policy not found' });
+      return res.status(404).json({ success: false, message: 'Policy not found' });
     }
 
     // Get related booking and transaction
     const booking = await Booking.findById(policy.bookingId);
-    const transaction = await Transaction.findOne({ bookingId.bookingId });
+    const transaction = await Transaction.findOne({ bookingId: policy.bookingId });
 
     res.json({
-      success,
+      success: true,
       data: {
         ...policy.toObject(),
         booking,
@@ -348,7 +352,7 @@ router.get('/policies/', auth, isAdmin, async (req, res) => {
     });
   } catch (error) {
     console.error('Error fetching policy:', error);
-    res.status(500).json({ success, message: 'Failed to fetch policy' });
+    res.status(500).json({ success: false, message: 'Failed to fetch policy' });
   }
 });
 
@@ -362,17 +366,19 @@ router.get('/settlements/pending', auth, isAdmin, async (req, res) => {
     const transactions = await Transaction.find({
       bookingType: 'insurance',
       insuranceSettlementStatus: 'pending',
-      settledToProvider})
+      settledToProvider: false
+    })
       .populate('providerId', 'name companyName')
       .populate('bookingId')
       .sort({ createdAt: 1 });
 
     res.json({
-      success,
-      data});
+      success: true,
+      data: transactions
+    });
   } catch (error) {
     console.error('Error fetching pending settlements:', error);
-    res.status(500).json({ success, message: 'Failed to fetch pending settlements' });
+    res.status(500).json({ success: false, message: 'Failed to fetch pending settlements' });
   }
 });
 
@@ -383,7 +389,7 @@ router.post('/settlements/process', auth, isAdmin, async (req, res) => {
 
     if (!transactionIds || !Array.isArray(transactionIds) || transactionIds.length === 0) {
       return res.status(400).json({
-        success,
+        success: false,
         message: 'Transaction IDs are required'
       });
     }
@@ -393,7 +399,7 @@ router.post('/settlements/process', auth, isAdmin, async (req, res) => {
       const transaction = await Transaction.findById(transactionId);
       if (!transaction) {
         results.push({
-          id,
+          id: transactionId,
           status: 'failed',
           message: 'Transaction not found'
         });
@@ -402,7 +408,7 @@ router.post('/settlements/process', auth, isAdmin, async (req, res) => {
 
       if (transaction.insuranceSettlementStatus === 'completed') {
         results.push({
-          id,
+          id: transactionId,
           status: 'skipped',
           message: 'Already settled'
         });
@@ -413,7 +419,7 @@ router.post('/settlements/process', auth, isAdmin, async (req, res) => {
       await transaction.markInsuranceSettlementCompleted('SETTLE_' + Date.now());
 
       // Update policy
-      const policy = await InsurancePolicy.findOne({ bookingId.bookingId });
+      const policy = await InsurancePolicy.findOne({ bookingId: transaction.bookingId });
       if (policy) {
         policy.settlementStatus = 'completed';
         policy.settlementDate = new Date();
@@ -422,19 +428,20 @@ router.post('/settlements/process', auth, isAdmin, async (req, res) => {
       }
 
       results.push({
-        id,
+        id: transactionId,
         status: 'success',
         message: 'Settlement processed successfully',
-        amount.insurancePayoutToCompany
+        amount: transaction.insurancePayoutToCompany
       });
     }
 
     res.json({
-      success,
-      data});
+      success: true,
+      data: results
+    });
   } catch (error) {
     console.error('Error processing settlements:', error);
-    res.status(500).json({ success, message: 'Failed to process settlements' });
+    res.status(500).json({ success: false, message: 'Failed to process settlements' });
   }
 });
 
@@ -460,7 +467,7 @@ router.get('/reports/sales', auth, isAdmin, async (req, res) => {
     if (companyId) match.providerId = mongoose.Types.ObjectId(companyId);
 
     const report = await Transaction.aggregate([
-      { $match},
+      { $match: match },
       {
         $group: {
           _id: {
@@ -498,11 +505,12 @@ router.get('/reports/sales', auth, isAdmin, async (req, res) => {
     ]);
 
     res.json({
-      success,
-      data});
+      success: true,
+      data: report
+    });
   } catch (error) {
     console.error('Error generating sales report:', error);
-    res.status(500).json({ success, message: 'Failed to generate sales report' });
+    res.status(500).json({ success: false, message: 'Failed to generate sales report' });
   }
 });
 
@@ -524,7 +532,7 @@ router.get('/reports/commission', auth, isAdmin, async (req, res) => {
     if (companyId) match.providerId = mongoose.Types.ObjectId(companyId);
 
     const report = await Transaction.aggregate([
-      { $match},
+      { $match: match },
       {
         $group: {
           _id: '$providerId',
@@ -556,11 +564,12 @@ router.get('/reports/commission', auth, isAdmin, async (req, res) => {
     ]);
 
     res.json({
-      success,
-      data});
+      success: true,
+      data: report
+    });
   } catch (error) {
     console.error('Error generating commission report:', error);
-    res.status(500).json({ success, message: 'Failed to generate commission report' });
+    res.status(500).json({ success: false, message: 'Failed to generate commission report' });
   }
 });
 
@@ -573,37 +582,36 @@ router.get('/reports/summary', auth, isAdmin, async (req, res) => {
     const cancelledPolicies = await InsurancePolicy.countDocuments({ status: 'cancelled' });
 
     const totalPremium = await InsurancePolicy.aggregate([
-      { $group: { _id, total: { $sum: '$premiumAmount' } } }
+      { $group: { _id: null, total: { $sum: '$premiumAmount' } } }
     ]);
 
     const totalCommission = await Transaction.aggregate([
       { $match: { bookingType: 'insurance', status: 'completed' } },
-      { $group: { _id, total: { $sum: '$platformCommission' } } }
+      { $group: { _id: null, total: { $sum: '$platformCommission' } } }
     ]);
 
     // Plans by type
     const plansByType = await InsurancePlan.aggregate([
-      { $match: { isActive} },
+      { $match: { isActive: true } },
       { $group: { _id: '$planType', count: { $sum: 1 } } }
     ]);
 
     res.json({
-      success,
+      success: true,
       data: {
         totalPolicies,
         activePolicies,
         expiredPolicies,
         cancelledPolicies,
-        totalPremium[0]?.total || 0,
-        totalCommission[0]?.total || 0,
+        totalPremium: totalPremium[0]?.total || 0,
+        totalCommission: totalCommission[0]?.total || 0,
         plansByType
       }
     });
   } catch (error) {
     console.error('Error generating summary report:', error);
-    res.status(500).json({ success, message: 'Failed to generate summary report' });
+    res.status(500).json({ success: false, message: 'Failed to generate summary report' });
   }
 });
 
 module.exports = router;
-

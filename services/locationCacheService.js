@@ -28,10 +28,10 @@ const Redis = require('ioredis');
 // ============================================
 
 const redisConfig = {
-  host.env.REDIS_HOST || 'localhost',
-  port.env.REDIS_PORT || 6379,
-  password.env.REDIS_PASSWORD || '',
-  db.env.REDIS_DB || 0,
+  host: process.env.REDIS_HOST || 'localhost',
+  port: process.env.REDIS_PORT || 6379,
+  password: process.env.REDIS_PASSWORD || '',
+  db: process.env.REDIS_DB || 0,
   retryStrategy: (times) => Math.min(times * 50, 2000),
   maxRetriesPerRequest: 3
 };
@@ -54,92 +54,92 @@ const getRedisClient = () => {
 const KEY_PREFIXES = {
   // 🏥 Hospitals - Static locations with filterable metadata
   hospital: {
-    geo: 'geo',                    // Geospatial index
-    details: 'loc:',               // loc:{hospitalId}
-    filters: 'filter:',            // filter:{filterType}
-    bySpecialty: 'filter:', // filter:{specialty}
-    byInsurance: 'filter:', // filter:{insuranceId}
-    byEMI: 'filter',           // Set of hospitals offering EMI
-    byCorporate: 'filter:', // filter:{corporateId}
-    byRating: 'filter',     // Sorted set by rating
-    byBeds: 'filter',         // Hospitals with bed availability
+    geo: 'geo:hospitals',                    // Geospatial index
+    details: 'loc:hospital:',               // loc:hospital:{hospitalId}
+    filters: 'filter:hospital:',            // filter:hospital:{filterType}
+    bySpecialty: 'filter:hospital:specialty:', // filter:hospital:specialty:{specialty}
+    byInsurance: 'filter:hospital:insurance:', // filter:hospital:insurance:{insuranceId}
+    byEMI: 'filter:hospital:emi',           // Set of hospitals offering EMI
+    byCorporate: 'filter:hospital:corporate:', // filter:hospital:corporate:{corporateId}
+    byRating: 'filter:hospital:rating',     // Sorted set by rating
+    byBeds: 'filter:hospital:beds',         // Hospitals with bed availability
   },
 
   // 🚑 Ambulance - Real-time driver tracking
   ambulance: {
-    driverLocation: 'loc:',      // loc:{driverId}
-    driverGeo: 'geo',           // Geospatial index
-    driverStatus: 'status:',     // status:{driverId}
-    activeEmergencies: 'emergency',  // Active emergency bookings
-    areaDemand: 'demand:',         // demand:{areaCode}
+    driverLocation: 'loc:amb:driver:',      // loc:amb:driver:{driverId}
+    driverGeo: 'geo:amb:drivers',           // Geospatial index
+    driverStatus: 'status:amb:driver:',     // status:amb:driver:{driverId}
+    activeEmergencies: 'emergency:active',  // Active emergency bookings
+    areaDemand: 'demand:amb:area:',         // demand:amb:area:{areaCode}
   },
 
   // 🛡️ Insurance - Network hospital geo-search
   insurance: {
-    networkHospitals: 'geo:', // geo:{insuranceId}
-    networkDetails: 'loc:',  // loc:{hospitalId}
+    networkHospitals: 'geo:insurance:network:', // geo:insurance:network:{insuranceId}
+    networkDetails: 'loc:insurance:hospital:',  // loc:insurance:hospital:{hospitalId}
   },
 
   // 🌿 Homeopathy - Doctor & pharmacy locations
   homeopathy: {
-    doctorGeo: 'geo',         // Geospatial index for doctors
-    doctorDetails: 'loc:',     // loc:{doctorId}
-    pharmacyGeo: 'geo',    // Geospatial index for pharmacies
-    pharmacyDetails: 'loc:', // loc:{pharmacyId}
-    deliveryGeo: 'geo',    // Delivery tracking
-    deliveryLocation: 'loc:', // loc:{deliveryId}
+    doctorGeo: 'geo:homeo:doctors',         // Geospatial index for doctors
+    doctorDetails: 'loc:homeo:doctor:',     // loc:homeo:doctor:{doctorId}
+    pharmacyGeo: 'geo:homeo:pharmacies',    // Geospatial index for pharmacies
+    pharmacyDetails: 'loc:homeo:pharmacy:', // loc:homeo:pharmacy:{pharmacyId}
+    deliveryGeo: 'geo:homeo:deliveries',    // Delivery tracking
+    deliveryLocation: 'loc:homeo:delivery:', // loc:homeo:delivery:{deliveryId}
   },
 
   // 🧘 Ayurveda - Doctor, center & delivery
   ayurveda: {
-    doctorGeo: 'geo',           // Geospatial index for doctors
-    doctorDetails: 'loc:',       // loc:{doctorId}
-    centerGeo: 'geo',           // Geospatial index for Panchakarma centers
-    centerDetails: 'loc:',       // loc:{centerId}
-    deliveryGeo: 'geo',      // Delivery tracking
-    deliveryLocation: 'loc:',  // loc:{deliveryId}
+    doctorGeo: 'geo:ayu:doctors',           // Geospatial index for doctors
+    doctorDetails: 'loc:ayu:doctor:',       // loc:ayu:doctor:{doctorId}
+    centerGeo: 'geo:ayu:centers',           // Geospatial index for Panchakarma centers
+    centerDetails: 'loc:ayu:center:',       // loc:ayu:center:{centerId}
+    deliveryGeo: 'geo:ayu:deliveries',      // Delivery tracking
+    deliveryLocation: 'loc:ayu:delivery:',  // loc:ayu:delivery:{deliveryId}
   },
 
   // 🏠 Caregivers - Real-time tracking
   caregiver: {
-    caregiverGeo: 'geo',      // Geospatial index
-    caregiverLocation: 'loc:', // loc:{caregiverId}
-    caregiverStatus: 'status:', // status:{caregiverId}
+    caregiverGeo: 'geo:cg:caregivers',      // Geospatial index
+    caregiverLocation: 'loc:cg:caregiver:', // loc:cg:caregiver:{caregiverId}
+    caregiverStatus: 'status:cg:caregiver:', // status:cg:caregiver:{caregiverId}
   },
 
   // 💰 Health EMI - EMI-enabled hospital finder
   healthEMI: {
-    emiHospitals: 'filter',   // Set of hospitals offering EMI
-    lenderGeo: 'geo',           // Lender locations (if applicable)
-    emiByHospital: 'filter:', // filter:{hospitalId} → lenders
+    emiHospitals: 'filter:emi:hospitals',   // Set of hospitals offering EMI
+    lenderGeo: 'geo:emi:lenders',           // Lender locations (if applicable)
+    emiByHospital: 'filter:emi:byhospital:', // filter:emi:byhospital:{hospitalId} → lenders
   },
 
   // 🏢 Corporate - Empaneled facility finder
   corporate: {
-    empaneledGeo: 'geo:',    // geo:{corporateId}
-    empaneledDetails: 'loc:', // loc:{facilityId}
+    empaneledGeo: 'geo:corp:empaneled:',    // geo:corp:empaneled:{corporateId}
+    empaneledDetails: 'loc:corp:facility:', // loc:corp:facility:{facilityId}
   },
 
   // 🔬 Diagnostics - Lab & phlebotomist locations
   diagnostics: {
-    labGeo: 'geo',                // Geospatial index for labs
-    labDetails: 'loc:',            // loc:{labId}
-    phleboGeo: 'geo',          // Phlebotomist tracking
-    phleboLocation: 'loc:',     // loc:{phleboId}
+    labGeo: 'geo:diag:labs',                // Geospatial index for labs
+    labDetails: 'loc:diag:lab:',            // loc:diag:lab:{labId}
+    phleboGeo: 'geo:diag:phlebos',          // Phlebotomist tracking
+    phleboLocation: 'loc:diag:phlebo:',     // loc:diag:phlebo:{phleboId}
   },
 
   // 🧠 Mental Health - Therapist & crisis center locations
   mentalHealth: {
-    therapistGeo: 'geo',      // Geospatial index for therapists
-    therapistDetails: 'loc:',  // loc:{therapistId}
-    crisisCenterGeo: 'geo',       // Crisis centers (always available)
-    crisisCenterDetails: 'loc:',  // loc:{centerId}
+    therapistGeo: 'geo:mh:therapists',      // Geospatial index for therapists
+    therapistDetails: 'loc:mh:therapist:',  // loc:mh:therapist:{therapistId}
+    crisisCenterGeo: 'geo:mh:crisis',       // Crisis centers (always available)
+    crisisCenterDetails: 'loc:mh:crisis:',  // loc:mh:crisis:{centerId}
   },
 
   // 📱 Online Doctor - N/A for location (virtual), but delivery tracking
   onlineDoctor: {
-    deliveryGeo: 'geo',    // Prescription delivery tracking
-    deliveryLocation: 'loc:', // loc:{deliveryId}
+    deliveryGeo: 'geo:ondoc:deliveries',    // Prescription delivery tracking
+    deliveryLocation: 'loc:ondoc:delivery:', // loc:ondoc:delivery:{deliveryId}
   },
 
   // General
@@ -183,7 +183,7 @@ const calculateDistance = (lat1, lng1, lat2, lng2) => {
 const estimateETA = (distanceKm, mode = 'ambulance') => {
   const speeds = { ambulance: 30, caregiver: 20, phlebotomist: 25, delivery: 20, default: 25 };
   const speed = speeds[mode] || speeds.default;
-  return { distance, estimatedMinutes.round((distanceKm / speed) * 60), mode };
+  return { distance: distanceKm, estimatedMinutes: Math.round((distanceKm / speed) * 60), mode };
 };
 
 const getAreaCode = (lat, lng) => `${Math.round(lat * 100) / 100},${Math.round(lng * 100) / 100}`;
@@ -194,38 +194,38 @@ const getAreaCode = (lat, lng) => `${Math.round(lat * 100) / 100},${Math.round(l
 
 const hospitalLocation = {
   // Register/Update hospital location
-  registerHospital(hospitalId, lat, lng, metadata = {}) => {
+  registerHospital: async (hospitalId, lat, lng, metadata = {}) => {
     const redis = getRedisClient();
     const key = KEY_PREFIXES.hospital.details + hospitalId;
     const geoKey = KEY_PREFIXES.hospital.geo;
 
     const hospitalData = {
       hospitalId,
-      name.name || '',
+      name: metadata.name || '',
       lat,
       lng,
-      address.address || '',
-      city.city || '',
-      state.state || '',
-      phone.phone || '',
-      type.type || 'hospital', // hospital, clinic, nursing_home
-      specialties.specialties || [],
-      rating.rating || 0,
-      totalBeds.totalBeds || 0,
-      availableBeds.availableBeds || 0,
-      icuBeds.icuBeds || 0,
-      ventilatorBeds.ventilatorBeds || 0,
-      emergencyAvailable.emergencyAvailable || false,
-      ambulanceAvailable.ambulanceAvailable || false,
-      insuranceNetworks.insuranceNetworks || [], // List of insurance IDs
-      emiAvailable.emiAvailable || false,
-      emiPartners.emiPartners || [],           // List of lender IDs
-      corporatePartners.corporatePartners || [], // List of corporate IDs
-      accreditations.accreditations || [],      // NABH, JCI, etc.
-      facilities.facilities || [],              // MRI, CT, ICU, etc.
-      timings.timings || '24x7',
-      photos.photos || [],
-      lastUpdatedDate().toISOString()
+      address: metadata.address || '',
+      city: metadata.city || '',
+      state: metadata.state || '',
+      phone: metadata.phone || '',
+      type: metadata.type || 'hospital', // hospital, clinic, nursing_home
+      specialties: metadata.specialties || [],
+      rating: metadata.rating || 0,
+      totalBeds: metadata.totalBeds || 0,
+      availableBeds: metadata.availableBeds || 0,
+      icuBeds: metadata.icuBeds || 0,
+      ventilatorBeds: metadata.ventilatorBeds || 0,
+      emergencyAvailable: metadata.emergencyAvailable || false,
+      ambulanceAvailable: metadata.ambulanceAvailable || false,
+      insuranceNetworks: metadata.insuranceNetworks || [], // List of insurance IDs
+      emiAvailable: metadata.emiAvailable || false,
+      emiPartners: metadata.emiPartners || [],           // List of lender IDs
+      corporatePartners: metadata.corporatePartners || [], // List of corporate IDs
+      accreditations: metadata.accreditations || [],      // NABH, JCI, etc.
+      facilities: metadata.facilities || [],              // MRI, CT, ICU, etc.
+      timings: metadata.timings || '24x7',
+      photos: metadata.photos || [],
+      lastUpdated: new Date().toISOString()
     };
 
     const pipeline = redis.pipeline();
@@ -278,11 +278,11 @@ const hospitalLocation = {
     pipeline.expire(KEY_PREFIXES.hospital.byBeds, TTL_CONFIG.hospital.filters);
 
     await pipeline.exec();
-    return { success, hospitalId };
+    return { success: true, hospitalId };
   },
 
   // Find nearby hospitals with filters
-  findNearbyHospitals(lat, lng, radiusKm = 10, filters = {}) => {
+  findNearbyHospitals: async (lat, lng, radiusKm = 10, filters = {}) => {
     const redis = getRedisClient();
     const geoKey = KEY_PREFIXES.hospital.geo;
 
@@ -299,7 +299,7 @@ const hospitalLocation = {
     } = filters;
 
     try {
-      // Step 1hospitals within radius
+      // Step 1: Get hospitals within radius
       const results = await redis.georadius(
         geoKey, lng, lat, radiusKm, 'km',
         'WITHDIST', 'WITHCOORD', 'COUNT', limit * 3, 'ASC'
@@ -307,7 +307,7 @@ const hospitalLocation = {
 
       if (!results || results.length === 0) return [];
 
-      // Step 2filter sets (if filters applied)
+      // Step 2: Get filter sets (if filters applied)
       let filterSet = null;
       const filterKeys = [];
 
@@ -324,7 +324,7 @@ const hospitalLocation = {
         });
       }
 
-      // Step 3details and filter
+      // Step 3: Fetch details and filter
       const hospitalPromises = results.map(async ([hospitalId, distance, [hLng, hLat]]) => {
         // Check filter set
         if (filterSet && !filterSet.has(hospitalId)) return null;
@@ -342,19 +342,20 @@ const hospitalLocation = {
 
         return {
           hospitalId,
-          distance.round(distance * 10) / 10,
-          lat,
-          lng,
+          distance: Math.round(distance * 10) / 10,
+          lat: hLat,
+          lng: hLng,
           ...hospital,
-          location: { lat, lng}
+          location: { lat: hLat, lng: hLng }
         };
       });
 
       let hospitals = (await Promise.all(hospitalPromises)).filter(Boolean);
 
-      // Step 4if (sortBy === 'rating') hospitals.sort((a, b) => b.rating - a.rating);
+      // Step 4: Sort
+      if (sortBy === 'rating') hospitals.sort((a, b) => b.rating - a.rating);
       else if (sortBy === 'beds') hospitals.sort((a, b) => (b.availableBeds + b.icuBeds) - (a.availableBeds + a.icuBeds));
-      // Defaultsorted by distance
+      // Default: already sorted by distance
 
       return hospitals.slice(0, limit);
     } catch (error) {
@@ -364,14 +365,14 @@ const hospitalLocation = {
   },
 
   // Get hospital details
-  getHospitalDetails(hospitalId) => {
+  getHospitalDetails: async (hospitalId) => {
     const redis = getRedisClient();
     const data = await redis.get(KEY_PREFIXES.hospital.details + hospitalId);
-    return data ? JSON.parse(data) ;
+    return data ? JSON.parse(data) : null;
   },
 
   // Update hospital bed availability (real-time)
-  updateBedAvailability(hospitalId, beds) => {
+  updateBedAvailability: async (hospitalId, beds) => {
     const redis = getRedisClient();
     const key = KEY_PREFIXES.hospital.details + hospitalId;
     const data = await redis.get(key);
@@ -390,7 +391,7 @@ const hospitalLocation = {
   },
 
   // Remove hospital
-  removeHospital(hospitalId) => {
+  removeHospital: async (hospitalId) => {
     const redis = getRedisClient();
     const pipeline = redis.pipeline();
     pipeline.del(KEY_PREFIXES.hospital.details + hospitalId);
@@ -399,7 +400,7 @@ const hospitalLocation = {
     pipeline.zrem(KEY_PREFIXES.hospital.byBeds, hospitalId);
     pipeline.srem(KEY_PREFIXES.hospital.byEMI, hospitalId);
     await pipeline.exec();
-    return { success, hospitalId };
+    return { success: true, hospitalId };
   }
 };
 
@@ -408,22 +409,22 @@ const hospitalLocation = {
 // ============================================
 
 const ambulanceLocation = {
-  updateDriverLocation(driverId, lat, lng, metadata = {}) => {
+  updateDriverLocation: async (driverId, lat, lng, metadata = {}) => {
     const redis = getRedisClient();
     const key = KEY_PREFIXES.ambulance.driverLocation + driverId;
     const geoKey = KEY_PREFIXES.ambulance.driverGeo;
 
     const locationData = {
       driverId, lat, lng,
-      timestamp.now(),
-      speed.speed || 0,
-      heading.heading || 0,
-      isAvailable.isAvailable !== false,
-      vehicleType.vehicleType || 'basic',
-      providerId.providerId || '',
-      isOnTrip.isOnTrip || false,
-      tripId.tripId || '',
-      lastUpdateDate().toISOString()
+      timestamp: Date.now(),
+      speed: metadata.speed || 0,
+      heading: metadata.heading || 0,
+      isAvailable: metadata.isAvailable !== false,
+      vehicleType: metadata.vehicleType || 'basic',
+      providerId: metadata.providerId || '',
+      isOnTrip: metadata.isOnTrip || false,
+      tripId: metadata.tripId || '',
+      lastUpdate: new Date().toISOString()
     };
 
     const pipeline = redis.pipeline();
@@ -431,10 +432,10 @@ const ambulanceLocation = {
     pipeline.geoadd(geoKey, lng, lat, driverId);
     pipeline.setex(KEY_PREFIXES.general.heartbeat + 'ambulance:' + driverId, TTL_CONFIG.heartbeat.ambulance, Date.now());
     await pipeline.exec();
-    return { success, driverId, lat, lng };
+    return { success: true, driverId, lat, lng };
   },
 
-  findNearbyDrivers(lat, lng, radiusKm = 5, options = {}) => {
+  findNearbyDrivers: async (lat, lng, radiusKm = 5, options = {}) => {
     const redis = getRedisClient();
     const { vehicleType = null, limit = 10, requireAvailable = true } = options;
 
@@ -451,31 +452,31 @@ const ambulanceLocation = {
         const d = JSON.parse(data);
         if (requireAvailable && (!d.isAvailable || d.isOnTrip)) return null;
         if (vehicleType && d.vehicleType !== vehicleType) return null;
-        return { driverId, distance.round(dist * 10) / 10, lat, lng, ...d };
+        return { driverId: id, distance: Math.round(dist * 10) / 10, lat, lng, ...d };
       }))).filter(Boolean).slice(0, limit);
 
       return drivers;
     } catch (error) { return []; }
   },
 
-  removeDriver(driverId) => {
+  removeDriver: async (driverId) => {
     const redis = getRedisClient();
     const pipeline = redis.pipeline();
     pipeline.del(KEY_PREFIXES.ambulance.driverLocation + driverId);
     pipeline.zrem(KEY_PREFIXES.ambulance.driverGeo, driverId);
     pipeline.del(KEY_PREFIXES.general.heartbeat + 'ambulance:' + driverId);
     await pipeline.exec();
-    return { success, driverId };
+    return { success: true, driverId };
   },
 
-  updateAreaDemand(lat, lng, demandLevel) => {
+  updateAreaDemand: async (lat, lng, demandLevel) => {
     const redis = getRedisClient();
     const key = KEY_PREFIXES.ambulance.areaDemand + getAreaCode(lat, lng);
     await redis.setex(key, 300, demandLevel);
-    return { success};
+    return { success: true };
   },
 
-  getAreaDemand(lat, lng) => {
+  getAreaDemand: async (lat, lng) => {
     const redis = getRedisClient();
     const val = await redis.get(KEY_PREFIXES.ambulance.areaDemand + getAreaCode(lat, lng));
     return val ? parseInt(val) : 0;
@@ -488,7 +489,7 @@ const ambulanceLocation = {
 
 const insuranceLocation = {
   // Register network hospital for an insurance provider
-  registerNetworkHospital(insuranceId, hospitalId, lat, lng, metadata = {}) => {
+  registerNetworkHospital: async (insuranceId, hospitalId, lat, lng, metadata = {}) => {
     const redis = getRedisClient();
     const geoKey = KEY_PREFIXES.insurance.networkHospitals + insuranceId;
     const detailsKey = KEY_PREFIXES.insurance.networkDetails + hospitalId;
@@ -497,17 +498,17 @@ const insuranceLocation = {
     pipeline.geoadd(geoKey, lng, lat, hospitalId);
     pipeline.setex(detailsKey, TTL_CONFIG.insurance.details, JSON.stringify({
       hospitalId, insuranceId, lat, lng,
-      name.name || '',
-      cashlessAvailable.cashlessAvailable || false,
-      tpaList.tpaList || [],
+      name: metadata.name || '',
+      cashlessAvailable: metadata.cashlessAvailable || false,
+      tpaList: metadata.tpaList || [],
       ...metadata
     }));
     await pipeline.exec();
-    return { success, insuranceId, hospitalId };
+    return { success: true, insuranceId, hospitalId };
   },
 
   // Find network hospitals near patient
-  findNetworkHospitals(insuranceId, lat, lng, radiusKm = 15, options = {}) => {
+  findNetworkHospitals: async (insuranceId, lat, lng, radiusKm = 15, options = {}) => {
     const redis = getRedisClient();
     const geoKey = KEY_PREFIXES.insurance.networkHospitals + insuranceId;
     const { cashlessOnly = false, limit = 20 } = options;
@@ -522,7 +523,7 @@ const insuranceLocation = {
         if (!data) return null;
         const h = JSON.parse(data);
         if (cashlessOnly && !h.cashlessAvailable) return null;
-        return { hospitalId, distance.round(dist * 10) / 10, lat, lng, ...h };
+        return { hospitalId: id, distance: Math.round(dist * 10) / 10, lat, lng, ...h };
       }))).filter(Boolean).slice(0, limit);
 
       return hospitals;
@@ -536,22 +537,22 @@ const insuranceLocation = {
 
 const homeopathyLocation = {
   // Register homeopathy doctor
-  registerDoctor(doctorId, lat, lng, metadata = {}) => {
+  registerDoctor: async (doctorId, lat, lng, metadata = {}) => {
     const redis = getRedisClient();
     const key = KEY_PREFIXES.homeopathy.doctorDetails + doctorId;
     const geoKey = KEY_PREFIXES.homeopathy.doctorGeo;
 
-    const data = { doctorId, lat, lng, name.name || '', specialization.specialization || [], rating.rating || 0, experience.experience || 0, consultationFee.consultationFee || 0, availableOnline.availableOnline || false, ...metadata, lastUpdatedDate().toISOString() };
+    const data = { doctorId, lat, lng, name: metadata.name || '', specialization: metadata.specialization || [], rating: metadata.rating || 0, experience: metadata.experience || 0, consultationFee: metadata.consultationFee || 0, availableOnline: metadata.availableOnline || false, ...metadata, lastUpdated: new Date().toISOString() };
 
     const pipeline = redis.pipeline();
     pipeline.setex(key, TTL_CONFIG.homeopathy.doctor, JSON.stringify(data));
     pipeline.geoadd(geoKey, lng, lat, doctorId);
     await pipeline.exec();
-    return { success, doctorId };
+    return { success: true, doctorId };
   },
 
   // Find nearby homeopathy doctors
-  findNearbyDoctors(lat, lng, radiusKm = 20, filters = {}) => {
+  findNearbyDoctors: async (lat, lng, radiusKm = 20, filters = {}) => {
     const redis = getRedisClient();
     const { specialization = null, minRating = 0, limit = 20 } = filters;
 
@@ -566,7 +567,7 @@ const homeopathyLocation = {
         const d = JSON.parse(data);
         if (specialization && !d.specialization?.includes(specialization)) return null;
         if (minRating > 0 && d.rating < minRating) return null;
-        return { doctorId, distance.round(dist * 10) / 10, lat, lng, ...d };
+        return { doctorId: id, distance: Math.round(dist * 10) / 10, lat, lng, ...d };
       }))).filter(Boolean).slice(0, limit);
 
       return doctors;
@@ -574,22 +575,22 @@ const homeopathyLocation = {
   },
 
   // Register homeopathy pharmacy
-  registerPharmacy(pharmacyId, lat, lng, metadata = {}) => {
+  registerPharmacy: async (pharmacyId, lat, lng, metadata = {}) => {
     const redis = getRedisClient();
     const key = KEY_PREFIXES.homeopathy.pharmacyDetails + pharmacyId;
     const geoKey = KEY_PREFIXES.homeopathy.pharmacyGeo;
 
-    const data = { pharmacyId, lat, lng, name.name || '', deliversHome.deliversHome || false, deliveryRadius.deliveryRadius || 10, rating.rating || 0, ...metadata, lastUpdatedDate().toISOString() };
+    const data = { pharmacyId, lat, lng, name: metadata.name || '', deliversHome: metadata.deliversHome || false, deliveryRadius: metadata.deliveryRadius || 10, rating: metadata.rating || 0, ...metadata, lastUpdated: new Date().toISOString() };
 
     const pipeline = redis.pipeline();
     pipeline.setex(key, TTL_CONFIG.homeopathy.pharmacy, JSON.stringify(data));
     pipeline.geoadd(geoKey, lng, lat, pharmacyId);
     await pipeline.exec();
-    return { success, pharmacyId };
+    return { success: true, pharmacyId };
   },
 
   // Find nearby pharmacies
-  findNearbyPharmacies(lat, lng, radiusKm = 15, filters = {}) => {
+  findNearbyPharmacies: async (lat, lng, radiusKm = 15, filters = {}) => {
     const redis = getRedisClient();
     const { deliversHome = false, limit = 20 } = filters;
 
@@ -604,7 +605,7 @@ const homeopathyLocation = {
         const p = JSON.parse(data);
         if (deliversHome && !p.deliversHome) return null;
         if (deliversHome && dist > (p.deliveryRadius || 10)) return null;
-        return { pharmacyId, distance.round(dist * 10) / 10, lat, lng, ...p };
+        return { pharmacyId: id, distance: Math.round(dist * 10) / 10, lat, lng, ...p };
       }))).filter(Boolean).slice(0, limit);
 
       return pharmacies;
@@ -612,21 +613,21 @@ const homeopathyLocation = {
   },
 
   // Delivery tracking
-  updateDeliveryLocation(deliveryId, lat, lng, metadata = {}) => {
+  updateDeliveryLocation: async (deliveryId, lat, lng, metadata = {}) => {
     const redis = getRedisClient();
     const key = KEY_PREFIXES.homeopathy.deliveryLocation + deliveryId;
     const geoKey = KEY_PREFIXES.homeopathy.deliveryGeo;
-    const data = { deliveryId, lat, lng, timestamp.now(), orderId.orderId || '', status.status || 'in_transit' };
+    const data = { deliveryId, lat, lng, timestamp: Date.now(), orderId: metadata.orderId || '', status: metadata.status || 'in_transit' };
     const pipeline = redis.pipeline();
     pipeline.setex(key, TTL_CONFIG.homeopathy.delivery, JSON.stringify(data));
     pipeline.geoadd(geoKey, lng, lat, deliveryId);
     await pipeline.exec();
-    return { success, deliveryId };
+    return { success: true, deliveryId };
   },
 
-  getDeliveryLocation(deliveryId) => {
+  getDeliveryLocation: async (deliveryId) => {
     const data = await getRedisClient().get(KEY_PREFIXES.homeopathy.deliveryLocation + deliveryId);
-    return data ? JSON.parse(data) ;
+    return data ? JSON.parse(data) : null;
   }
 };
 
@@ -635,18 +636,18 @@ const homeopathyLocation = {
 // ============================================
 
 const ayurvedaLocation = {
-  registerDoctor(doctorId, lat, lng, metadata = {}) => {
+  registerDoctor: async (doctorId, lat, lng, metadata = {}) => {
     const redis = getRedisClient();
     const key = KEY_PREFIXES.ayurveda.doctorDetails + doctorId;
-    const data = { doctorId, lat, lng, name.name || '', specialization.specialization || [], prakritiSpecialization.prakritiSpecialization || [], rating.rating || 0, ...metadata };
+    const data = { doctorId, lat, lng, name: metadata.name || '', specialization: metadata.specialization || [], prakritiSpecialization: metadata.prakritiSpecialization || [], rating: metadata.rating || 0, ...metadata };
     const pipeline = redis.pipeline();
     pipeline.setex(key, TTL_CONFIG.ayurveda.doctor, JSON.stringify(data));
     pipeline.geoadd(KEY_PREFIXES.ayurveda.doctorGeo, lng, lat, doctorId);
     await pipeline.exec();
-    return { success, doctorId };
+    return { success: true, doctorId };
   },
 
-  findNearbyDoctors(lat, lng, radiusKm = 20, filters = {}) => {
+  findNearbyDoctors: async (lat, lng, radiusKm = 20, filters = {}) => {
     const redis = getRedisClient();
     const { specialization = null, limit = 20 } = filters;
     try {
@@ -657,24 +658,24 @@ const ayurvedaLocation = {
         if (!data) return null;
         const d = JSON.parse(data);
         if (specialization && !d.specialization?.includes(specialization)) return null;
-        return { doctorId, distance.round(dist * 10) / 10, lat, lng, ...d };
+        return { doctorId: id, distance: Math.round(dist * 10) / 10, lat, lng, ...d };
       }))).filter(Boolean).slice(0, limit);
       return doctors;
     } catch (error) { return []; }
   },
 
-  registerCenter(centerId, lat, lng, metadata = {}) => {
+  registerCenter: async (centerId, lat, lng, metadata = {}) => {
     const redis = getRedisClient();
     const key = KEY_PREFIXES.ayurveda.centerDetails + centerId;
-    const data = { centerId, lat, lng, name.name || '', treatments.treatments || [], rating.rating || 0, ...metadata };
+    const data = { centerId, lat, lng, name: metadata.name || '', treatments: metadata.treatments || [], rating: metadata.rating || 0, ...metadata };
     const pipeline = redis.pipeline();
     pipeline.setex(key, TTL_CONFIG.ayurveda.center, JSON.stringify(data));
     pipeline.geoadd(KEY_PREFIXES.ayurveda.centerGeo, lng, lat, centerId);
     await pipeline.exec();
-    return { success, centerId };
+    return { success: true, centerId };
   },
 
-  findNearbyCenters(lat, lng, radiusKm = 30, filters = {}) => {
+  findNearbyCenters: async (lat, lng, radiusKm = 30, filters = {}) => {
     const redis = getRedisClient();
     const { treatment = null, limit = 20 } = filters;
     try {
@@ -685,25 +686,25 @@ const ayurvedaLocation = {
         if (!data) return null;
         const c = JSON.parse(data);
         if (treatment && !c.treatments?.includes(treatment)) return null;
-        return { centerId, distance.round(dist * 10) / 10, lat, lng, ...c };
+        return { centerId: id, distance: Math.round(dist * 10) / 10, lat, lng, ...c };
       }))).filter(Boolean).slice(0, limit);
       return centers;
     } catch (error) { return []; }
   },
 
-  updateDeliveryLocation(deliveryId, lat, lng, metadata = {}) => {
+  updateDeliveryLocation: async (deliveryId, lat, lng, metadata = {}) => {
     const redis = getRedisClient();
-    const data = { deliveryId, lat, lng, timestamp.now(), orderId.orderId || '', status.status || 'in_transit' };
+    const data = { deliveryId, lat, lng, timestamp: Date.now(), orderId: metadata.orderId || '', status: metadata.status || 'in_transit' };
     const pipeline = redis.pipeline();
     pipeline.setex(KEY_PREFIXES.ayurveda.deliveryLocation + deliveryId, TTL_CONFIG.ayurveda.delivery, JSON.stringify(data));
     pipeline.geoadd(KEY_PREFIXES.ayurveda.deliveryGeo, lng, lat, deliveryId);
     await pipeline.exec();
-    return { success, deliveryId };
+    return { success: true, deliveryId };
   },
 
-  getDeliveryLocation(deliveryId) => {
+  getDeliveryLocation: async (deliveryId) => {
     const data = await getRedisClient().get(KEY_PREFIXES.ayurveda.deliveryLocation + deliveryId);
-    return data ? JSON.parse(data) ;
+    return data ? JSON.parse(data) : null;
   }
 };
 
@@ -712,18 +713,18 @@ const ayurvedaLocation = {
 // ============================================
 
 const caregiverLocation = {
-  updateCaregiverLocation(caregiverId, lat, lng, metadata = {}) => {
+  updateCaregiverLocation: async (caregiverId, lat, lng, metadata = {}) => {
     const redis = getRedisClient();
-    const data = { caregiverId, lat, lng, timestamp.now(), isAvailable.isAvailable !== false, isOnVisit.isOnVisit || false };
+    const data = { caregiverId, lat, lng, timestamp: Date.now(), isAvailable: metadata.isAvailable !== false, isOnVisit: metadata.isOnVisit || false };
     const pipeline = redis.pipeline();
     pipeline.setex(KEY_PREFIXES.caregiver.caregiverLocation + caregiverId, TTL_CONFIG.caregiver.location, JSON.stringify(data));
     pipeline.geoadd(KEY_PREFIXES.caregiver.caregiverGeo, lng, lat, caregiverId);
     pipeline.setex(KEY_PREFIXES.general.heartbeat + 'caregiver:' + caregiverId, TTL_CONFIG.heartbeat.caregiver, Date.now());
     await pipeline.exec();
-    return { success, caregiverId };
+    return { success: true, caregiverId };
   },
 
-  findNearbyCaregivers(lat, lng, radiusKm = 10, options = {}) => {
+  findNearbyCaregivers: async (lat, lng, radiusKm = 10, options = {}) => {
     const redis = getRedisClient();
     try {
       const results = await redis.georadius(KEY_PREFIXES.caregiver.caregiverGeo, lng, lat, radiusKm, 'km', 'WITHDIST', 'WITHCOORD', 'COUNT', (options.limit || 10) * 2, 'ASC');
@@ -733,7 +734,7 @@ const caregiverLocation = {
         if (!data) return null;
         const c = JSON.parse(data);
         if (!c.isAvailable || c.isOnVisit) return null;
-        return { caregiverId, distance.round(dist * 10) / 10, lat, lng, ...c };
+        return { caregiverId: id, distance: Math.round(dist * 10) / 10, lat, lng, ...c };
       }))).filter(Boolean).slice(0, options.limit || 10);
     } catch (error) { return []; }
   }
@@ -745,7 +746,7 @@ const caregiverLocation = {
 
 const healthEMILocation = {
   // Register hospital with EMI facility
-  registerEMIHospital(hospitalId, lenderIds = []) => {
+  registerEMIHospital: async (hospitalId, lenderIds = []) => {
     const redis = getRedisClient();
     const pipeline = redis.pipeline();
     pipeline.sadd(KEY_PREFIXES.healthEMI.emiHospitals, hospitalId);
@@ -754,11 +755,11 @@ const healthEMILocation = {
     });
     pipeline.expire(KEY_PREFIXES.healthEMI.emiHospitals, TTL_CONFIG.healthEMI.hospitals);
     await pipeline.exec();
-    return { success, hospitalId };
+    return { success: true, hospitalId };
   },
 
   // Find nearby hospitals offering EMI
-  findNearbyEMIHospitals(lat, lng, radiusKm = 15, filters = {}) => {
+  findNearbyEMIHospitals: async (lat, lng, radiusKm = 15, filters = {}) => {
     const redis = getRedisClient();
     const { lenderId = null, loanAmount = 0, limit = 20 } = filters;
 
@@ -782,7 +783,7 @@ const healthEMILocation = {
         const data = await redis.get(KEY_PREFIXES.hospital.details + id);
         if (!data) return null;
         const h = JSON.parse(data);
-        return { hospitalId, distance.round(dist * 10) / 10, lat, lng, ...h };
+        return { hospitalId: id, distance: Math.round(dist * 10) / 10, lat, lng, ...h };
       }))).filter(Boolean).slice(0, limit);
 
       return hospitals;
@@ -790,7 +791,7 @@ const healthEMILocation = {
   },
 
   // Get lenders available at a hospital
-  getLendersAtHospital(hospitalId) => {
+  getLendersAtHospital: async (hospitalId) => {
     const redis = getRedisClient();
     return await redis.smembers(KEY_PREFIXES.healthEMI.emiByHospital + hospitalId);
   }
@@ -802,7 +803,7 @@ const healthEMILocation = {
 
 const corporateLocation = {
   // Register empaneled facility for a corporate
-  registerEmpaneledFacility(corporateId, facilityId, lat, lng, metadata = {}) => {
+  registerEmpaneledFacility: async (corporateId, facilityId, lat, lng, metadata = {}) => {
     const redis = getRedisClient();
     const geoKey = KEY_PREFIXES.corporate.empaneledGeo + corporateId;
     const detailsKey = KEY_PREFIXES.corporate.empaneledDetails + facilityId;
@@ -811,17 +812,17 @@ const corporateLocation = {
     pipeline.geoadd(geoKey, lng, lat, facilityId);
     pipeline.setex(detailsKey, TTL_CONFIG.corporate.empaneled, JSON.stringify({
       facilityId, corporateId, lat, lng,
-      name.name || '',
-      type.type || 'hospital', // hospital, clinic, diagnostic
-      services.services || [],
+      name: metadata.name || '',
+      type: metadata.type || 'hospital', // hospital, clinic, diagnostic
+      services: metadata.services || [],
       ...metadata
     }));
     await pipeline.exec();
-    return { success, corporateId, facilityId };
+    return { success: true, corporateId, facilityId };
   },
 
   // Find empaneled facilities near employee
-  findEmpaneledFacilities(corporateId, lat, lng, radiusKm = 15, filters = {}) => {
+  findEmpaneledFacilities: async (corporateId, lat, lng, radiusKm = 15, filters = {}) => {
     const redis = getRedisClient();
     const geoKey = KEY_PREFIXES.corporate.empaneledGeo + corporateId;
     const { type = null, limit = 20 } = filters;
@@ -836,7 +837,7 @@ const corporateLocation = {
         if (!data) return null;
         const f = JSON.parse(data);
         if (type && f.type !== type) return null;
-        return { facilityId, distance.round(dist * 10) / 10, lat, lng, ...f };
+        return { facilityId: id, distance: Math.round(dist * 10) / 10, lat, lng, ...f };
       }))).filter(Boolean).slice(0, limit);
 
       return facilities;
@@ -849,17 +850,17 @@ const corporateLocation = {
 // ============================================
 
 const diagnosticsLocation = {
-  registerLab(labId, lat, lng, metadata = {}) => {
+  registerLab: async (labId, lat, lng, metadata = {}) => {
     const redis = getRedisClient();
-    const data = { labId, lat, lng, name.name || '', tests.tests || [], homeCollection.homeCollection || false, rating.rating || 0, ...metadata };
+    const data = { labId, lat, lng, name: metadata.name || '', tests: metadata.tests || [], homeCollection: metadata.homeCollection || false, rating: metadata.rating || 0, ...metadata };
     const pipeline = redis.pipeline();
     pipeline.setex(KEY_PREFIXES.diagnostics.labDetails + labId, TTL_CONFIG.diagnostics.lab, JSON.stringify(data));
     pipeline.geoadd(KEY_PREFIXES.diagnostics.labGeo, lng, lat, labId);
     await pipeline.exec();
-    return { success, labId };
+    return { success: true, labId };
   },
 
-  findNearbyLabs(lat, lng, radiusKm = 15, filters = {}) => {
+  findNearbyLabs: async (lat, lng, radiusKm = 15, filters = {}) => {
     const redis = getRedisClient();
     const { testName = null, homeCollection = false, limit = 20 } = filters;
     try {
@@ -871,23 +872,23 @@ const diagnosticsLocation = {
         const l = JSON.parse(data);
         if (testName && !l.tests?.includes(testName)) return null;
         if (homeCollection && !l.homeCollection) return null;
-        return { labId, distance.round(dist * 10) / 10, lat, lng, ...l };
+        return { labId: id, distance: Math.round(dist * 10) / 10, lat, lng, ...l };
       }))).filter(Boolean).slice(0, limit);
     } catch (error) { return []; }
   },
 
-  updatePhleboLocation(phleboId, lat, lng, metadata = {}) => {
+  updatePhleboLocation: async (phleboId, lat, lng, metadata = {}) => {
     const redis = getRedisClient();
-    const data = { phleboId, lat, lng, timestamp.now(), isAvailable.isAvailable !== false, labId.labId || '' };
+    const data = { phleboId, lat, lng, timestamp: Date.now(), isAvailable: metadata.isAvailable !== false, labId: metadata.labId || '' };
     const pipeline = redis.pipeline();
     pipeline.setex(KEY_PREFIXES.diagnostics.phleboLocation + phleboId, TTL_CONFIG.diagnostics.phlebo, JSON.stringify(data));
     pipeline.geoadd(KEY_PREFIXES.diagnostics.phleboGeo, lng, lat, phleboId);
     pipeline.setex(KEY_PREFIXES.general.heartbeat + 'diagnostics:' + phleboId, TTL_CONFIG.heartbeat.diagnostics, Date.now());
     await pipeline.exec();
-    return { success, phleboId };
+    return { success: true, phleboId };
   },
 
-  findNearbyPhlebos(lat, lng, radiusKm = 15, options = {}) => {
+  findNearbyPhlebos: async (lat, lng, radiusKm = 15, options = {}) => {
     const redis = getRedisClient();
     try {
       const results = await redis.georadius(KEY_PREFIXES.diagnostics.phleboGeo, lng, lat, radiusKm, 'km', 'WITHDIST', 'WITHCOORD', 'COUNT', (options.limit || 10) * 2, 'ASC');
@@ -898,7 +899,7 @@ const diagnosticsLocation = {
         const p = JSON.parse(data);
         if (!p.isAvailable) return null;
         if (options.labId && p.labId !== options.labId) return null;
-        return { phleboId, distance.round(dist * 10) / 10, lat, lng, ...p };
+        return { phleboId: id, distance: Math.round(dist * 10) / 10, lat, lng, ...p };
       }))).filter(Boolean).slice(0, options.limit || 10);
     } catch (error) { return []; }
   }
@@ -909,17 +910,17 @@ const diagnosticsLocation = {
 // ============================================
 
 const mentalHealthLocation = {
-  registerTherapist(therapistId, lat, lng, metadata = {}) => {
+  registerTherapist: async (therapistId, lat, lng, metadata = {}) => {
     const redis = getRedisClient();
-    const data = { therapistId, lat, lng, name.name || '', specializations.specializations || [], languages.languages || [], rating.rating || 0, sessionFee.sessionFee || 0, availableOnline.availableOnline || false, ...metadata };
+    const data = { therapistId, lat, lng, name: metadata.name || '', specializations: metadata.specializations || [], languages: metadata.languages || [], rating: metadata.rating || 0, sessionFee: metadata.sessionFee || 0, availableOnline: metadata.availableOnline || false, ...metadata };
     const pipeline = redis.pipeline();
     pipeline.setex(KEY_PREFIXES.mentalHealth.therapistDetails + therapistId, TTL_CONFIG.mentalHealth.therapist, JSON.stringify(data));
     pipeline.geoadd(KEY_PREFIXES.mentalHealth.therapistGeo, lng, lat, therapistId);
     await pipeline.exec();
-    return { success, therapistId };
+    return { success: true, therapistId };
   },
 
-  findNearbyTherapists(lat, lng, radiusKm = 20, filters = {}) => {
+  findNearbyTherapists: async (lat, lng, radiusKm = 20, filters = {}) => {
     const redis = getRedisClient();
     const { specialization = null, language = null, limit = 20 } = filters;
     try {
@@ -931,22 +932,22 @@ const mentalHealthLocation = {
         const t = JSON.parse(data);
         if (specialization && !t.specializations?.includes(specialization)) return null;
         if (language && !t.languages?.includes(language)) return null;
-        return { therapistId, distance.round(dist * 10) / 10, lat, lng, ...t };
+        return { therapistId: id, distance: Math.round(dist * 10) / 10, lat, lng, ...t };
       }))).filter(Boolean).slice(0, limit);
     } catch (error) { return []; }
   },
 
-  registerCrisisCenter(centerId, lat, lng, metadata = {}) => {
+  registerCrisisCenter: async (centerId, lat, lng, metadata = {}) => {
     const redis = getRedisClient();
-    const data = { centerId, lat, lng, name.name || '', phone.phone || '', available24x7.available24x7 || true, ...metadata };
+    const data = { centerId, lat, lng, name: metadata.name || '', phone: metadata.phone || '', available24x7: metadata.available24x7 || true, ...metadata };
     const pipeline = redis.pipeline();
     pipeline.setex(KEY_PREFIXES.mentalHealth.crisisCenterDetails + centerId, TTL_CONFIG.mentalHealth.crisis, JSON.stringify(data));
     pipeline.geoadd(KEY_PREFIXES.mentalHealth.crisisCenterGeo, lng, lat, centerId);
     await pipeline.exec();
-    return { success, centerId };
+    return { success: true, centerId };
   },
 
-  findNearestCrisisCenter(lat, lng) => {
+  findNearestCrisisCenter: async (lat, lng) => {
     const redis = getRedisClient();
     try {
       const results = await redis.georadius(KEY_PREFIXES.mentalHealth.crisisCenterGeo, lng, lat, 50, 'km', 'WITHDIST', 'WITHCOORD', 'COUNT', 3, 'ASC');
@@ -954,7 +955,7 @@ const mentalHealthLocation = {
       return (await Promise.all(results.map(async ([id, dist, [lng, lat]]) => {
         const data = await redis.get(KEY_PREFIXES.mentalHealth.crisisCenterDetails + id);
         if (!data) return null;
-        return { centerId, distance.round(dist * 10) / 10, lat, lng, ...JSON.parse(data) };
+        return { centerId: id, distance: Math.round(dist * 10) / 10, lat, lng, ...JSON.parse(data) };
       }))).filter(Boolean);
     } catch (error) { return []; }
   }
@@ -965,19 +966,19 @@ const mentalHealthLocation = {
 // ============================================
 
 const onlineDoctorLocation = {
-  updateDeliveryLocation(deliveryId, lat, lng, metadata = {}) => {
+  updateDeliveryLocation: async (deliveryId, lat, lng, metadata = {}) => {
     const redis = getRedisClient();
-    const data = { deliveryId, lat, lng, timestamp.now(), prescriptionId.prescriptionId || '', status.status || 'in_transit' };
+    const data = { deliveryId, lat, lng, timestamp: Date.now(), prescriptionId: metadata.prescriptionId || '', status: metadata.status || 'in_transit' };
     const pipeline = redis.pipeline();
     pipeline.setex(KEY_PREFIXES.onlineDoctor.deliveryLocation + deliveryId, TTL_CONFIG.onlineDoctor.delivery, JSON.stringify(data));
     pipeline.geoadd(KEY_PREFIXES.onlineDoctor.deliveryGeo, lng, lat, deliveryId);
     await pipeline.exec();
-    return { success, deliveryId };
+    return { success: true, deliveryId };
   },
 
-  getDeliveryLocation(deliveryId) => {
+  getDeliveryLocation: async (deliveryId) => {
     const data = await getRedisClient().get(KEY_PREFIXES.onlineDoctor.deliveryLocation + deliveryId);
-    return data ? JSON.parse(data) ;
+    return data ? JSON.parse(data) : null;
   }
 };
 
@@ -990,14 +991,14 @@ const acquireLock = async (key, ttlSeconds = 30) => {
   const lockKey = KEY_PREFIXES.general.lockKey + key;
   const lockValue = Date.now().toString();
   const acquired = await redis.set(lockKey, lockValue, 'EX', ttlSeconds, 'NX');
-  return acquired === 'OK' ? { acquired, lockKey, lockValue } : { acquired};
+  return acquired === 'OK' ? { acquired: true, lockKey, lockValue } : { acquired: false };
 };
 
 const releaseLock = async (key, lockValue) => {
   const redis = getRedisClient();
   const script = `if redis.call("get", KEYS[1]) == ARGV[1] then return redis.call("del", KEYS[1]) else return 0 end`;
   await redis.eval(script, 1, KEY_PREFIXES.general.lockKey + key, lockValue);
-  return { success};
+  return { success: true };
 };
 
 // ============================================
@@ -1014,21 +1015,21 @@ const getServiceStats = async () => {
     ];
     const counts = await Promise.all(keys.map(k => redis.zcard(KEY_PREFIXES[k.split('.')[0]]?.[k.split('.')[1]] || k)));
     return {
-      hospitals[0], ambulanceDrivers[1],
-      homeopathyDoctors[2], homeopathyPharmacies[3],
-      ayurvedaDoctors[4], ayurvedaCenters[5],
-      caregivers[6], labs[7], phlebotomists[8],
-      therapists[9], crisisCenters[10],
-      timestampDate().toISOString()
+      hospitals: counts[0], ambulanceDrivers: counts[1],
+      homeopathyDoctors: counts[2], homeopathyPharmacies: counts[3],
+      ayurvedaDoctors: counts[4], ayurvedaCenters: counts[5],
+      caregivers: counts[6], labs: counts[7], phlebotomists: counts[8],
+      therapists: counts[9], crisisCenters: counts[10],
+      timestamp: new Date().toISOString()
     };
-  } catch (error) { return { error.message }; }
+  } catch (error) { return { error: error.message }; }
 };
 
 const healthCheck = async () => {
   try {
     const pong = await getRedisClient().ping();
-    return { status=== 'PONG' ? 'healthy' : 'unhealthy' };
-  } catch (error) { return { status: 'unhealthy', error.message }; }
+    return { status: pong === 'PONG' ? 'healthy' : 'unhealthy' };
+  } catch (error) { return { status: 'unhealthy', error: error.message }; }
 };
 
 // ============================================
@@ -1046,19 +1047,18 @@ module.exports = {
   releaseLock,
 
   // All 11 Tags
-  hospital,
-  ambulance,
-  insurance,
-  homeopathy,
-  ayurveda,
-  caregiver,
-  healthEMI,
-  corporate,
-  diagnostics,
-  mentalHealth,
-  onlineDoctor,
+  hospital: hospitalLocation,
+  ambulance: ambulanceLocation,
+  insurance: insuranceLocation,
+  homeopathy: homeopathyLocation,
+  ayurveda: ayurvedaLocation,
+  caregiver: caregiverLocation,
+  healthEMI: healthEMILocation,
+  corporate: corporateLocation,
+  diagnostics: diagnosticsLocation,
+  mentalHealth: mentalHealthLocation,
+  onlineDoctor: onlineDoctorLocation,
 
   KEY_PREFIXES,
   TTL_CONFIG
 };
-

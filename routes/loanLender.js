@@ -63,7 +63,8 @@ router.post('/register', async (req, res) => {
     const branchesWithIds = branches?.map((branch, index) => ({
       ...branch,
       branchId: `BR_${lenderId}_${index + 1}`,
-      isActive})) || [];
+      isActive: true
+    })) || [];
     
     const lender = new Lender({
       lenderId,
@@ -71,39 +72,40 @@ router.post('/register', async (req, res) => {
       registrationNumber,
       email,
       phone,
-      password,
-      registeredOffice|| {
+      password: hashedPassword,
+      registeredOffice: registeredOffice || {
         address: '',
         city: '',
         district: '',
         state: '',
         pincode: ''
       },
-      branches,
-      lenderType|| 'regional',
-      servicePincodes|| [],
-      serviceCities|| [],
-      serviceDistricts|| [],
-      serviceStates|| [],
-      loanProducts|| [],
-      commissionRate|| 2,
+      branches: branchesWithIds,
+      lenderType: lenderType || 'regional',
+      servicePincodes: servicePincodes || [],
+      serviceCities: serviceCities || [],
+      serviceDistricts: serviceDistricts || [],
+      serviceStates: serviceStates || [],
+      loanProducts: loanProducts || [],
+      commissionRate: commissionRate || 2,
       apiConfig: {
         apiKey,
         apiSecret,
         webhookUrl: '',
-        supportsWebhook},
+        supportsWebhook: false
+      },
       status: 'pending',
-      createdAtDate()
+      createdAt: new Date()
     });
     
     await lender.save();
     
     res.json({
-      success,
+      success: true,
       lenderId,
       apiKey,
       apiSecret,
-      branches,
+      branches: branchesWithIds,
       message: 'Registration submitted for admin approval. You will receive email once verified.'
     });
   } catch (error) {
@@ -132,21 +134,21 @@ router.post('/login', async (req, res) => {
     }
     
     const token = jwt.sign(
-      { id._id, lenderId.lenderId, email.email, role: 'lender' },
+      { id: lender._id, lenderId: lender.lenderId, email: lender.email, role: 'lender' },
       JWT_SECRET,
       { expiresIn: '7d' }
     );
     
     res.json({
-      success,
+      success: true,
       token,
       lender: {
-        lenderId.lenderId,
-        businessName.businessName,
-        email.email,
-        status.status,
-        commissionRate.commissionRate,
-        branches.branches
+        lenderId: lender.lenderId,
+        businessName: lender.businessName,
+        email: lender.email,
+        status: lender.status,
+        commissionRate: lender.commissionRate,
+        branches: lender.branches
       }
     });
   } catch (error) {
@@ -188,7 +190,7 @@ router.put('/profile', global.authenticateLender, async (req, res) => {
     lender.updatedAt = new Date();
     await lender.save();
     
-    res.json({ success, lender.toObject({ getters, transform: (doc, ret) => { delete ret.password; return ret; } }) });
+    res.json({ success: true, lender: lender.toObject({ getters: true, transform: (doc, ret) => { delete ret.password; return ret; } }) });
   } catch (error) {
     res.status(500).json({ error: 'Failed to update profile' });
   }
@@ -207,8 +209,8 @@ router.get('/branches', global.authenticateLender, async (req, res) => {
     }
     
     res.json({
-      businessName.businessName,
-      branches.branches
+      businessName: lender.businessName,
+      branches: lender.branches
     });
   } catch (error) {
     console.error(error);
@@ -229,7 +231,7 @@ router.post('/branches', global.authenticateLender, async (req, res) => {
     const newBranchId = `BR_${lender.lenderId}_${lender.branches.length + 1}`;
     
     lender.branches.push({
-      branchId,
+      branchId: newBranchId,
       branchName,
       address,
       city,
@@ -239,12 +241,13 @@ router.post('/branches', global.authenticateLender, async (req, res) => {
       managerName,
       managerPhone,
       managerEmail,
-      isActive});
+      isActive: true
+    });
     
     lender.updatedAt = new Date();
     await lender.save();
     
-    res.json({ success, branch.branches[lender.branches.length - 1] });
+    res.json({ success: true, branch: lender.branches[lender.branches.length - 1] });
   } catch (error) {
     console.error(error);
     res.status(500).json({ error: 'Failed to add branch' });
@@ -252,7 +255,7 @@ router.post('/branches', global.authenticateLender, async (req, res) => {
 });
 
 // Update branch
-router.put('/branches/', global.authenticateLender, async (req, res) => {
+router.put('/branches/:branchId', global.authenticateLender, async (req, res) => {
   try {
     const { branchId } = req.params;
     const { branchName, address, city, district, state, pincode, managerName, managerPhone, managerEmail, isActive } = req.body;
@@ -281,7 +284,7 @@ router.put('/branches/', global.authenticateLender, async (req, res) => {
     lender.updatedAt = new Date();
     await lender.save();
     
-    res.json({ success, branch.branches[branchIndex] });
+    res.json({ success: true, branch: lender.branches[branchIndex] });
   } catch (error) {
     console.error(error);
     res.status(500).json({ error: 'Failed to update branch' });
@@ -289,7 +292,7 @@ router.put('/branches/', global.authenticateLender, async (req, res) => {
 });
 
 // Delete branch (soft delete - set inactive)
-router.delete('/branches/', global.authenticateLender, async (req, res) => {
+router.delete('/branches/:branchId', global.authenticateLender, async (req, res) => {
   try {
     const { branchId } = req.params;
     
@@ -307,7 +310,7 @@ router.delete('/branches/', global.authenticateLender, async (req, res) => {
     lender.updatedAt = new Date();
     await lender.save();
     
-    res.json({ success, message: 'Branch deactivated' });
+    res.json({ success: true, message: 'Branch deactivated' });
   } catch (error) {
     console.error(error);
     res.status(500).json({ error: 'Failed to deactivate branch' });
@@ -379,13 +382,13 @@ router.get('/applications', global.authenticateLender, async (req, res) => {
     }
     
     res.json({
-      applications.map(app => ({
+      applications: applications.map(app => ({
         ...app.toObject(),
-        branchName[app.assignedBranchId] || 'Head Office'
+        branchName: branchMap[app.assignedBranchId] || 'Head Office'
       })),
       total,
-      page(page),
-      totalPages.ceil(total / parseInt(limit))
+      page: parseInt(page),
+      totalPages: Math.ceil(total / parseInt(limit))
     });
   } catch (error) {
     console.error(error);
@@ -394,7 +397,7 @@ router.get('/applications', global.authenticateLender, async (req, res) => {
 });
 
 // Get applications for a specific branch
-router.get('/branch//applications', global.authenticateLender, async (req, res) => {
+router.get('/branch/:branchId/applications', global.authenticateLender, async (req, res) => {
   try {
     const { branchId } = req.params;
     const { status, page = 1, limit = 20 } = req.query;
@@ -409,7 +412,8 @@ router.get('/branch//applications', global.authenticateLender, async (req, res) 
     
     const query = {
       lenderId,
-      assignedBranchId};
+      assignedBranchId: branchId
+    };
     if (status && status !== 'all') query.status = status;
     
     const applications = await LoanApplication.find(query)
@@ -421,16 +425,16 @@ router.get('/branch//applications', global.authenticateLender, async (req, res) 
     
     res.json({
       branch: {
-        branchId.branchId,
-        branchName.branchName,
-        address.address,
-        managerName.managerName,
-        managerPhone.managerPhone
+        branchId: branch.branchId,
+        branchName: branch.branchName,
+        address: branch.address,
+        managerName: branch.managerName,
+        managerPhone: branch.managerPhone
       },
       applications,
       total,
-      page(page),
-      totalPages.ceil(total / parseInt(limit))
+      page: parseInt(page),
+      totalPages: Math.ceil(total / parseInt(limit))
     });
   } catch (error) {
     console.error(error);
@@ -439,11 +443,11 @@ router.get('/branch//applications', global.authenticateLender, async (req, res) 
 });
 
 // Get single application details
-router.get('/applications/', global.authenticateLender, async (req, res) => {
+router.get('/applications/:applicationId', global.authenticateLender, async (req, res) => {
   try {
     const application = await LoanApplication.findOne({
-      applicationId.params.applicationId,
-      lenderId.user.id
+      applicationId: req.params.applicationId,
+      lenderId: req.user.id
     });
     
     if (!application) {
@@ -456,7 +460,7 @@ router.get('/applications/', global.authenticateLender, async (req, res) => {
     
     res.json({
       application,
-      branchInfo|| null
+      branchInfo: branch || null
     });
   } catch (error) {
     console.error(error);
@@ -465,14 +469,14 @@ router.get('/applications/', global.authenticateLender, async (req, res) => {
 });
 
 // Update application status (approve/reject)
-router.put('/applications//status', global.authenticateLender, async (req, res) => {
+router.put('/applications/:applicationId/status', global.authenticateLender, async (req, res) => {
   try {
     const { applicationId } = req.params;
     const { status, note, sanctionedAmount, tenure, interestRate } = req.body;
     
     const application = await LoanApplication.findOne({
       applicationId,
-      lenderId.user.id
+      lenderId: req.user.id
     });
     
     if (!application) {
@@ -496,10 +500,10 @@ router.put('/applications//status', global.authenticateLender, async (req, res) 
     application.status = status;
     application.statusHistory.push({
       status,
-      note|| `Status changed to ${status}`,
-      updatedBy.user.email,
+      note: note || `Status changed to ${status}`,
+      updatedBy: req.user.email,
       updatedByRole: 'lender',
-      timestampDate()
+      timestamp: new Date()
     });
     
     if (status === 'approved') {
@@ -521,7 +525,7 @@ router.put('/applications//status', global.authenticateLender, async (req, res) 
     
     await application.save();
     
-    res.json({ success, application });
+    res.json({ success: true, application });
   } catch (error) {
     console.error(error);
     res.status(500).json({ error: 'Failed to update status' });
@@ -529,14 +533,14 @@ router.put('/applications//status', global.authenticateLender, async (req, res) 
 });
 
 // Request additional documents from patient
-router.post('/applications//request-document', global.authenticateLender, async (req, res) => {
+router.post('/applications/:applicationId/request-document', global.authenticateLender, async (req, res) => {
   try {
     const { applicationId } = req.params;
     const { documentType, description } = req.body;
     
     const application = await LoanApplication.findOne({
       applicationId,
-      lenderId.user.id
+      lenderId: req.user.id
     });
     
     if (!application) {
@@ -548,14 +552,14 @@ router.post('/applications//request-document', global.authenticateLender, async 
       requestId,
       requestType: 'document',
       description: `${documentType}: ${description}`,
-      requestedAtDate(),
+      requestedAt: new Date(),
       status: 'pending'
     });
     
     application.status = 'document_pending';
     await application.save();
     
-    res.json({ success, requestId, message: `Document request sent to patient` });
+    res.json({ success: true, requestId, message: `Document request sent to patient` });
   } catch (error) {
     console.error(error);
     res.status(500).json({ error: 'Failed to request document' });
@@ -563,14 +567,14 @@ router.post('/applications//request-document', global.authenticateLender, async 
 });
 
 // Mark loan as disbursed (after final bill received)
-router.post('/applications//disburse', global.authenticateLender, async (req, res) => {
+router.post('/applications/:applicationId/disburse', global.authenticateLender, async (req, res) => {
   try {
     const { applicationId } = req.params;
     const { transactionId, utrNumber } = req.body;
     
     const application = await LoanApplication.findOne({
       applicationId,
-      lenderId.user.id
+      lenderId: req.user.id
     });
     
     if (!application) {
@@ -603,16 +607,16 @@ router.post('/applications//disburse', global.authenticateLender, async (req, re
     application.statusHistory.push({
       status: 'disbursed',
       note: `Amount ₹${actualDisbursedAmount} disbursed to hospital. Patient liability: ₹${patientLiability}. Platform commission: ₹${commissionAmount}`,
-      updatedBy.user.email,
+      updatedBy: req.user.email,
       updatedByRole: 'lender',
-      timestampDate()
+      timestamp: new Date()
     });
     
     await application.save();
     
     res.json({
-      success,
-      disbursedAmount,
+      success: true,
+      disbursedAmount: actualDisbursedAmount,
       patientLiability,
       commissionAmount,
       message: `Disbursed ₹${actualDisbursedAmount} to hospital. Patient liability: ₹${patientLiability}. Platform commission of ₹${commissionAmount} will be collected.`
@@ -640,7 +644,7 @@ router.get('/reports/daily', global.authenticateLender, async (req, res) => {
     
     const applications = await LoanApplication.find({
       lenderId,
-      submittedAt: { $gte, $lte}
+      submittedAt: { $gte: startDate, $lte: endDate }
     });
     
     // Group by branch
@@ -659,23 +663,25 @@ router.get('/reports/daily', global.authenticateLender, async (req, res) => {
     
     const report = {
       date,
-      totalApplications.length,
-      submitted.filter(a => a.status === 'submitted').length,
-      approved.filter(a => a.status === 'approved').length,
-      rejected.filter(a => a.status === 'rejected').length,
-      disbursed.filter(a => a.status === 'disbursed').length,
-      totalDisbursedAmount.filter(a => a.status === 'disbursed')
+      totalApplications: applications.length,
+      submitted: applications.filter(a => a.status === 'submitted').length,
+      approved: applications.filter(a => a.status === 'approved').length,
+      rejected: applications.filter(a => a.status === 'rejected').length,
+      disbursed: applications.filter(a => a.status === 'disbursed').length,
+      totalDisbursedAmount: applications
+        .filter(a => a.status === 'disbursed')
         .reduce((sum, a) => sum + (a.disbursedAmount || 0), 0),
-      totalCommission.filter(a => a.status === 'disbursed')
+      totalCommission: applications
+        .filter(a => a.status === 'disbursed')
         .reduce((sum, a) => sum + (a.platformCommission || 0), 0),
       branchWise,
-      applicationsList.map(a => ({
-        applicationId.applicationId,
-        patientName.patientDetails?.fullName,
-        amount.estimatedAmount,
-        status.status,
-        assignedBranch.assignedBranchName,
-        submittedAt.submittedAt
+      applicationsList: applications.map(a => ({
+        applicationId: a.applicationId,
+        patientName: a.patientDetails?.fullName,
+        amount: a.estimatedAmount,
+        status: a.status,
+        assignedBranch: a.assignedBranchName,
+        submittedAt: a.submittedAt
       }))
     };
     
@@ -698,7 +704,7 @@ router.get('/reports/monthly', global.authenticateLender, async (req, res) => {
     
     const applications = await LoanApplication.find({
       lenderId,
-      submittedAt: { $gte, $lte}
+      submittedAt: { $gte: startDate, $lte: endDate }
     });
     
     // Group by day
@@ -738,12 +744,14 @@ router.get('/reports/monthly', global.authenticateLender, async (req, res) => {
       month,
       dailyData,
       branchWise,
-      totalApplications.length,
-      totalApproved.filter(a => a.status === 'approved').length,
-      totalDisbursed.filter(a => a.status === 'disbursed').length,
-      totalDisbursedAmount.filter(a => a.status === 'disbursed')
+      totalApplications: applications.length,
+      totalApproved: applications.filter(a => a.status === 'approved').length,
+      totalDisbursed: applications.filter(a => a.status === 'disbursed').length,
+      totalDisbursedAmount: applications
+        .filter(a => a.status === 'disbursed')
         .reduce((sum, a) => sum + (a.disbursedAmount || 0), 0),
-      totalCommission.filter(a => a.status === 'disbursed')
+      totalCommission: applications
+        .filter(a => a.status === 'disbursed')
         .reduce((sum, a) => sum + (a.platformCommission || 0), 0)
     });
   } catch (error) {
@@ -753,7 +761,7 @@ router.get('/reports/monthly', global.authenticateLender, async (req, res) => {
 });
 
 // Generate branch-wise report
-router.get('/reports/branch/', global.authenticateLender, async (req, res) => {
+router.get('/reports/branch/:branchId', global.authenticateLender, async (req, res) => {
   try {
     const { branchId } = req.params;
     const { startDate, endDate } = req.query;
@@ -768,32 +776,35 @@ router.get('/reports/branch/', global.authenticateLender, async (req, res) => {
     
     const query = {
       lenderId,
-      assignedBranchId};
+      assignedBranchId: branchId
+    };
     
     if (startDate && endDate) {
-      query.submittedAt = { $gteDate(startDate), $lteDate(endDate) };
+      query.submittedAt = { $gte: new Date(startDate), $lte: new Date(endDate) };
     }
     
     const applications = await LoanApplication.find(query).sort({ submittedAt: -1 });
     
     const summary = {
-      totalApplications.length,
-      submitted.filter(a => a.status === 'submitted').length,
-      approved.filter(a => a.status === 'approved').length,
-      rejected.filter(a => a.status === 'rejected').length,
-      disbursed.filter(a => a.status === 'disbursed').length,
-      totalDisbursedAmount.filter(a => a.status === 'disbursed')
+      totalApplications: applications.length,
+      submitted: applications.filter(a => a.status === 'submitted').length,
+      approved: applications.filter(a => a.status === 'approved').length,
+      rejected: applications.filter(a => a.status === 'rejected').length,
+      disbursed: applications.filter(a => a.status === 'disbursed').length,
+      totalDisbursedAmount: applications
+        .filter(a => a.status === 'disbursed')
         .reduce((sum, a) => sum + (a.disbursedAmount || 0), 0),
-      totalCommission.filter(a => a.status === 'disbursed')
+      totalCommission: applications
+        .filter(a => a.status === 'disbursed')
         .reduce((sum, a) => sum + (a.platformCommission || 0), 0)
     };
     
     res.json({
       branch: {
-        branchId.branchId,
-        branchName.branchName,
-        address.address,
-        managerName.managerName
+        branchId: branch.branchId,
+        branchName: branch.branchName,
+        address: branch.address,
+        managerName: branch.managerName
       },
       summary,
       applications
@@ -805,4 +816,3 @@ router.get('/reports/branch/', global.authenticateLender, async (req, res) => {
 });
 
 module.exports = router;
-

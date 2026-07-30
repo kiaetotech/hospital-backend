@@ -17,12 +17,12 @@ export const errorHandler = (err, req, res, next) => {
 
   // Log error
   logger.error({
-    message.message,
-    stack.stack,
-    path.path,
-    method.method,
-    ip.ip,
-    userId.user?._id
+    message: error.message,
+    stack: err.stack,
+    path: req.path,
+    method: req.method,
+    ip: req.ip,
+    userId: req.user?._id
   });
 
   // Mongoose duplicate key error
@@ -51,12 +51,12 @@ export const errorHandler = (err, req, res, next) => {
   const message = error.message || 'Internal server error';
 
   res.status(statusCode).json({
-    success,
+    success: false,
     message,
-    errorCode.errorCode,
-    stack.env.NODE_ENV === 'development' ? err.stack ,
-    timestampDate().toISOString(),
-    path.path
+    errorCode: error.errorCode,
+    stack: process.env.NODE_ENV === 'development' ? err.stack : undefined,
+    timestamp: new Date().toISOString(),
+    path: req.path
   });
 };
 
@@ -64,4 +64,3 @@ export const errorHandler = (err, req, res, next) => {
 export const asyncHandler = (fn) => (req, res, next) => {
   Promise.resolve(fn(req, res, next)).catch(next);
 };
-

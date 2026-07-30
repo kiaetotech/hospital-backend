@@ -8,49 +8,47 @@ const User = require('../models/User');
 const router = express.Router();
 
 // ============================================
-// 🆕 CORS PREFLIGHT FOR LOGIN
-// ============================================
-router.options('/login', (req, res) => {
-  res.header('Access-Control-Allow-Origin', 'https://hospital-frontend-kiaeto.vercel.app');
-  res.header('Access-Control-Allow-Methods', 'POST, OPTIONS');
-  res.header('Access-Control-Allow-Headers', 'Content-Type, Authorization');
-  res.header('Access-Control-Allow-Credentials', 'true');
-  res.sendStatus(200);
-});
-
-// ============================================
-// ✅ ADMIN LOGIN - Email/Password
+// ✅ ADMIN LOGIN - Generates JWT Token
 // ============================================
 router.post('/login', async (req, res) => {
   try {
-    const { email, password } = req.body;
+    const { adminKey } = req.body;
 
-    if (!email || !password) {
-      return res.status(400).json({ success, message: 'Email and password required' });
-    }
-
-    const ADMIN_EMAIL = process.env.ADMIN_EMAIL || 'admin@healthcarehub.com';
-    const ADMIN_PASSWORD = process.env.ADMIN_PASSWORD || 'Admin@123';
-
-    if (email !== ADMIN_EMAIL || password !== ADMIN_PASSWORD) {
-      return res.status(401).json({ success, message: 'Invalid credentials' });
+    const validAdminKey = process.env.ADMIN_KEY || 'admin_secret_key_2024';
+    
+    if (adminKey !== validAdminKey) {
+      return res.status(401).json({ 
+        success: false, 
+        message: 'Invalid admin key' 
+      });
     }
 
     const token = jwt.sign(
-      { id: 'admin', email_EMAIL, role: 'admin', isAdmin},
+      { 
+        role: 'admin', 
+        isAdmin: true,
+        type: 'admin'
+      },
       process.env.JWT_SECRET || 'hospital_platform_secret_key_2024',
       { expiresIn: '7d' }
     );
 
     res.json({
-      success,
-      token,
+      success: true,
+      token: token,
       message: 'Admin login successful',
-      admin: { email_EMAIL, role: 'admin', name: 'Admin' }
+      admin: {
+        role: 'admin',
+        name: 'Admin'
+      }
     });
+
   } catch (error) {
     console.error('Admin login error:', error);
-    res.status(500).json({ success, message.message });
+    res.status(500).json({ 
+      success: false, 
+      message: error.message 
+    });
   }
 });
 
@@ -61,10 +59,10 @@ router.post('/login', async (req, res) => {
 // Get all unverified providers
 router.get('/providers/pending', async (req, res) => {
   try {
-    const providers = await Provider.find({ isVerified}).select('-password');
+    const providers = await Provider.find({ isVerified: false }).select('-password');
     res.json(providers);
   } catch (error) {
-    res.status(500).json({ error.message });
+    res.status(500).json({ error: error.message });
   }
 });
 
@@ -74,37 +72,37 @@ router.get('/providers', async (req, res) => {
     const providers = await Provider.find().select('-password').sort({ createdAt: -1 });
     res.json(providers);
   } catch (error) {
-    res.status(500).json({ error.message });
+    res.status(500).json({ error: error.message });
   }
 });
 
 // Verify a provider
-router.put('/providers//verify', async (req, res) => {
+router.put('/providers/:id/verify', async (req, res) => {
   try {
     const { adminName, adminNote } = req.body;
     const provider = await Provider.findByIdAndUpdate(
       req.params.id,
       { 
-        isVerified, 
-        verifiedAtDate(),
-        verifiedBy|| 'Admin',
-        adminNote|| ''
+        isVerified: true, 
+        verifiedAt: new Date(),
+        verifiedBy: adminName || 'Admin',
+        adminNote: adminNote || ''
       },
-      { new}
+      { new: true }
     ).select('-password');
-    res.json({ success, provider });
+    res.json({ success: true, provider });
   } catch (error) {
-    res.status(500).json({ error.message });
+    res.status(500).json({ error: error.message });
   }
 });
 
 // Reject/Delete a provider
-router.delete('/providers/', async (req, res) => {
+router.delete('/providers/:id', async (req, res) => {
   try {
     await Provider.findByIdAndDelete(req.params.id);
-    res.json({ success});
+    res.json({ success: true });
   } catch (error) {
-    res.status(500).json({ error.message });
+    res.status(500).json({ error: error.message });
   }
 });
 
@@ -112,16 +110,16 @@ router.delete('/providers/', async (req, res) => {
 router.get('/stats', async (req, res) => {
   try {
     const total = await Provider.countDocuments();
-    const verified = await Provider.countDocuments({ isVerified});
-    const pending = await Provider.countDocuments({ isVerified});
+    const verified = await Provider.countDocuments({ isVerified: true });
+    const pending = await Provider.countDocuments({ isVerified: false });
     res.json({ total, verified, pending });
   } catch (error) {
-    res.status(500).json({ error.message });
+    res.status(500).json({ error: error.message });
   }
 });
 
 // ============================================
-// HOSPITAL MANAGEMENT
+// 🆕 HOSPITAL MANAGEMENT (NEW)
 // ============================================
 
 // Get all hospitals (with filters)
@@ -135,10 +133,10 @@ router.get('/hospitals', async (req, res) => {
     if (subscription) query.subscription_plan = subscription;
     if (search) {
       query.$or = [
-        { name: { $regex, $options: 'i' } },
-        { 'contact.email': { $regex, $options: 'i' } },
-        { 'contact.phone': { $regex, $options: 'i' } },
-        { 'address.city': { $regex, $options: 'i' } }
+        { name: { $regex: search, $options: 'i' } },
+        { 'contact.email': { $regex: search, $options: 'i' } },
+        { 'contact.phone': { $regex: search, $options: 'i' } },
+        { 'address.city': { $regex: search, $options: 'i' } }
       ];
     }
 
@@ -155,153 +153,178 @@ router.get('/hospitals', async (req, res) => {
     ]);
 
     res.json({
-      success,
-      data,
+      success: true,
+      data: hospitals,
       pagination: {
-        currentPage(page),
-        totalPages.ceil(total / parseInt(limit)),
-        totalHospitals}
+        currentPage: parseInt(page),
+        totalPages: Math.ceil(total / parseInt(limit)),
+        totalHospitals: total
+      }
     });
   } catch (error) {
-    res.status(500).json({ success, message.message });
+    res.status(500).json({ success: false, message: error.message });
   }
 });
 
 // Get single hospital details
-router.get('/hospitals/', async (req, res) => {
+router.get('/hospitals/:id', async (req, res) => {
   try {
     const hospital = await Hospital.findById(req.params.id)
       .select('-password')
       .lean();
     
     if (!hospital) {
-      return res.status(404).json({ success, message: 'Hospital not found' });
+      return res.status(404).json({ success: false, message: 'Hospital not found' });
     }
 
+    // Get stats
     const [bookingCount, revenueData] = await Promise.all([
-      Booking.countDocuments({ hospitalId._id }),
+      Booking.countDocuments({ hospitalId: hospital._id }),
       Transaction.aggregate([
-        { $match: { hospitalId._id.toString(), status: { $in: ['completed', 'captured'] } } },
-        { $group: { _id, total: { $sum: '$netAmount' }, commission: { $sum: '$platformCommission' } } }
+        { $match: { hospitalId: hospital._id.toString(), status: { $in: ['completed', 'captured'] } } },
+        { $group: { _id: null, total: { $sum: '$netAmount' }, commission: { $sum: '$platformCommission' } } }
       ])
     ]);
 
     res.json({
-      success,
+      success: true,
       data: {
         ...hospital,
         stats: {
-          totalBookings,
-          totalRevenue[0]?.total || 0,
-          totalCommission[0]?.commission || 0
+          totalBookings: bookingCount,
+          totalRevenue: revenueData[0]?.total || 0,
+          totalCommission: revenueData[0]?.commission || 0
         }
       }
     });
   } catch (error) {
-    res.status(500).json({ success, message.message });
+    res.status(500).json({ success: false, message: error.message });
   }
 });
 
-// Verify/Approve hospital
-router.put('/hospitals//verify', async (req, res) => {
+// 🆕 Verify/Approve hospital
+router.put('/hospitals/:id/verify', async (req, res) => {
   try {
     const { adminNote, subscriptionPlan } = req.body;
     
     const hospital = await Hospital.findByIdAndUpdate(
       req.params.id,
       {
-        is_verified,
-        verification_dateDate(),
-        admin_note|| '',
-        subscription_plan|| 'free',
-        is_active},
-      { new}
+        is_verified: true,
+        verification_date: new Date(),
+        admin_note: adminNote || '',
+        subscription_plan: subscriptionPlan || 'free',
+        is_active: true
+      },
+      { new: true }
     ).select('-password');
 
     if (!hospital) {
-      return res.status(404).json({ success, message: 'Hospital not found' });
+      return res.status(404).json({ success: false, message: 'Hospital not found' });
+    }
+
+    // Send approval email
+    try {
+      const { sendHospitalApprovalEmail } = require('../utils/notifications');
+      await sendHospitalApprovalEmail(hospital, 'approved', adminNote);
+    } catch (emailError) {
+      console.error('Approval email error:', emailError.message);
     }
 
     res.json({
-      success,
+      success: true,
       message: 'Hospital approved successfully',
-      data});
+      data: hospital
+    });
   } catch (error) {
-    res.status(500).json({ success, message.message });
+    res.status(500).json({ success: false, message: error.message });
   }
 });
 
-// Reject hospital
-router.put('/hospitals//reject', async (req, res) => {
+// 🆕 Reject hospital
+router.put('/hospitals/:id/reject', async (req, res) => {
   try {
     const { rejectionReason } = req.body;
     
     const hospital = await Hospital.findByIdAndUpdate(
       req.params.id,
       {
-        is_verified,
-        is_active,
-        rejection_reason|| 'Not meeting requirements',
-        rejected_atDate()
+        is_verified: false,
+        is_active: false,
+        rejection_reason: rejectionReason || 'Not meeting requirements',
+        rejected_at: new Date()
       },
-      { new}
+      { new: true }
     ).select('-password');
 
     if (!hospital) {
-      return res.status(404).json({ success, message: 'Hospital not found' });
+      return res.status(404).json({ success: false, message: 'Hospital not found' });
+    }
+
+    // Send rejection email
+    try {
+      const { sendHospitalApprovalEmail } = require('../utils/notifications');
+      await sendHospitalApprovalEmail(hospital, 'rejected', rejectionReason);
+    } catch (emailError) {
+      console.error('Rejection email error:', emailError.message);
     }
 
     res.json({
-      success,
+      success: true,
       message: 'Hospital rejected',
-      data});
+      data: hospital
+    });
   } catch (error) {
-    res.status(500).json({ success, message.message });
+    res.status(500).json({ success: false, message: error.message });
   }
 });
 
-// Update hospital subscription
-router.put('/hospitals//subscription', async (req, res) => {
+// 🆕 Update hospital subscription
+router.put('/hospitals/:id/subscription', async (req, res) => {
   try {
     const { subscriptionPlan } = req.body;
     
     const validPlans = ['free', 'silver', 'gold', 'platinum'];
     if (!validPlans.includes(subscriptionPlan)) {
-      return res.status(400).json({ success, message: 'Invalid subscription plan' });
+      return res.status(400).json({ success: false, message: 'Invalid subscription plan' });
     }
 
     const hospital = await Hospital.findByIdAndUpdate(
       req.params.id,
-      { subscription_plan},
-      { new}
+      { subscription_plan: subscriptionPlan },
+      { new: true }
     ).select('-password');
 
-    res.json({ success, data});
+    res.json({ success: true, data: hospital });
   } catch (error) {
-    res.status(500).json({ success, message.message });
+    res.status(500).json({ success: false, message: error.message });
   }
 });
 
-// Toggle hospital active status
-router.put('/hospitals//toggle-status', async (req, res) => {
+// 🆕 Toggle hospital active status
+router.put('/hospitals/:id/toggle-status', async (req, res) => {
   try {
     const hospital = await Hospital.findById(req.params.id);
     if (!hospital) {
-      return res.status(404).json({ success, message: 'Hospital not found' });
+      return res.status(404).json({ success: false, message: 'Hospital not found' });
     }
 
     hospital.is_active = !hospital.is_active;
     await hospital.save();
 
     res.json({
-      success,
+      success: true,
       message: `Hospital ${hospital.is_active ? 'activated' : 'deactivated'}`,
-      data: { is_active.is_active }
+      data: { is_active: hospital.is_active }
     });
   } catch (error) {
-    res.status(500).json({ success, message.message });
+    res.status(500).json({ success: false, message: error.message });
   }
 });
+
+// ============================================
+// 🆕 HOSPITAL STATS & ANALYTICS (NEW)
+// ============================================
 
 // Hospital stats overview
 router.get('/hospitals-stats', async (req, res) => {
@@ -314,36 +337,37 @@ router.get('/hospitals-stats', async (req, res) => {
       subscriptionBreakdown
     ] = await Promise.all([
       Hospital.countDocuments(),
-      Hospital.countDocuments({ is_verified}),
-      Hospital.countDocuments({ is_verified}),
-      Hospital.countDocuments({ is_active}),
+      Hospital.countDocuments({ is_verified: true }),
+      Hospital.countDocuments({ is_verified: false }),
+      Hospital.countDocuments({ is_active: true }),
       Hospital.aggregate([
         { $group: { _id: '$subscription_plan', count: { $sum: 1 } } }
       ])
     ]);
 
     res.json({
-      success,
+      success: true,
       data: {
         totalHospitals,
         verifiedHospitals,
         pendingHospitals,
         activeHospitals,
-        subscriptionBreakdown.reduce((acc, curr) => {
+        subscriptionBreakdown: subscriptionBreakdown.reduce((acc, curr) => {
           acc[curr._id || 'free'] = curr.count;
           return acc;
         }, {})
       }
     });
   } catch (error) {
-    res.status(500).json({ success, message.message });
+    res.status(500).json({ success: false, message: error.message });
   }
 });
 
 // ============================================
-// BOOKING MANAGEMENT
+// 🆕 BOOKING MANAGEMENT (NEW)
 // ============================================
 
+// Get all bookings (admin view)
 router.get('/bookings', async (req, res) => {
   try {
     const { status, type, search, page = 1, limit = 20 } = req.query;
@@ -353,34 +377,39 @@ router.get('/bookings', async (req, res) => {
     if (type) query.bookingType = type;
     if (search) {
       query.$or = [
-        { bookingId: { $regex, $options: 'i' } },
-        { patientName: { $regex, $options: 'i' } },
-        { patientPhone: { $regex, $options: 'i' } },
-        { hospitalName: { $regex, $options: 'i' } }
+        { bookingId: { $regex: search, $options: 'i' } },
+        { patientName: { $regex: search, $options: 'i' } },
+        { patientPhone: { $regex: search, $options: 'i' } },
+        { hospitalName: { $regex: search, $options: 'i' } }
       ];
     }
 
     const skip = (parseInt(page) - 1) * parseInt(limit);
     
     const [bookings, total] = await Promise.all([
-      Booking.find(query).sort({ createdAt: -1 }).skip(skip).limit(parseInt(limit)).lean(),
+      Booking.find(query)
+        .sort({ createdAt: -1 })
+        .skip(skip)
+        .limit(parseInt(limit))
+        .lean(),
       Booking.countDocuments(query)
     ]);
 
     res.json({
-      success,
-      data,
-      pagination: { currentPage(page), totalPages.ceil(total / parseInt(limit)), totalBookings}
+      success: true,
+      data: bookings,
+      pagination: { currentPage: parseInt(page), totalPages: Math.ceil(total / parseInt(limit)), totalBookings: total }
     });
   } catch (error) {
-    res.status(500).json({ success, message.message });
+    res.status(500).json({ success: false, message: error.message });
   }
 });
 
 // ============================================
-// REVENUE & COMMISSION
+// 🆕 REVENUE & COMMISSION (NEW)
 // ============================================
 
+// Revenue overview
 router.get('/revenue', async (req, res) => {
   try {
     const { startDate, endDate } = req.query;
@@ -393,22 +422,40 @@ router.get('/revenue', async (req, res) => {
     }
 
     const revenueData = await Transaction.aggregate([
-      { $match},
-      { $group: { _id: '$bookingType', totalRevenue: { $sum: '$netAmount' }, totalCommission: { $sum: '$platformCommission' }, totalBookings: { $sum: 1 }, avgAmount: { $avg: '$netAmount' } } },
+      { $match: matchQuery },
+      {
+        $group: {
+          _id: '$bookingType',
+          totalRevenue: { $sum: '$netAmount' },
+          totalCommission: { $sum: '$platformCommission' },
+          totalBookings: { $sum: 1 },
+          avgAmount: { $avg: '$netAmount' }
+        }
+      },
       { $sort: { totalRevenue: -1 } }
     ]);
 
     const summary = await Transaction.aggregate([
-      { $match},
-      { $group: { _id, totalRevenue: { $sum: '$netAmount' }, totalCommission: { $sum: '$platformCommission' }, totalBookings: { $sum: 1 } } }
+      { $match: matchQuery },
+      {
+        $group: {
+          _id: null,
+          totalRevenue: { $sum: '$netAmount' },
+          totalCommission: { $sum: '$platformCommission' },
+          totalBookings: { $sum: 1 }
+        }
+      }
     ]);
 
     res.json({
-      success,
-      data: { summary[0] || { totalRevenue: 0, totalCommission: 0, totalBookings: 0 }, breakdown}
+      success: true,
+      data: {
+        summary: summary[0] || { totalRevenue: 0, totalCommission: 0, totalBookings: 0 },
+        breakdown: revenueData
+      }
     });
   } catch (error) {
-    res.status(500).json({ success, message.message });
+    res.status(500).json({ success: false, message: error.message });
   }
 });
 
@@ -420,19 +467,31 @@ router.get('/revenue/daily', async (req, res) => {
     startDate.setDate(startDate.getDate() - days);
 
     const dailyRevenue = await Transaction.aggregate([
-      { $match: { status: { $in: ['completed', 'captured'] }, createdAt: { $gte} } },
-      { $group: { _id: { $dateToString: { format: '%Y-%m-%d', date: '$createdAt' } }, revenue: { $sum: '$netAmount' }, commission: { $sum: '$platformCommission' }, bookings: { $sum: 1 } } },
+      {
+        $match: {
+          status: { $in: ['completed', 'captured'] },
+          createdAt: { $gte: startDate }
+        }
+      },
+      {
+        $group: {
+          _id: { $dateToString: { format: '%Y-%m-%d', date: '$createdAt' } },
+          revenue: { $sum: '$netAmount' },
+          commission: { $sum: '$platformCommission' },
+          bookings: { $sum: 1 }
+        }
+      },
       { $sort: { _id: 1 } }
     ]);
 
-    res.json({ success, data});
+    res.json({ success: true, data: dailyRevenue });
   } catch (error) {
-    res.status(500).json({ success, message.message });
+    res.status(500).json({ success: false, message: error.message });
   }
 });
 
 // ============================================
-// DASHBOARD OVERVIEW
+// 🆕 DASHBOARD OVERVIEW (NEW)
 // ============================================
 
 router.get('/dashboard', async (req, res) => {
@@ -450,31 +509,31 @@ router.get('/dashboard', async (req, res) => {
       User.countDocuments({ role: 'patient' }),
       Transaction.aggregate([
         { $match: { status: { $in: ['completed', 'captured'] } } },
-        { $group: { _id, total: { $sum: '$netAmount' }, commission: { $sum: '$platformCommission' } } }
+        { $group: { _id: null, total: { $sum: '$netAmount' }, commission: { $sum: '$platformCommission' } } }
       ]),
-      Hospital.countDocuments({ is_verified}),
+      Hospital.countDocuments({ is_verified: false }),
       Booking.find().sort({ createdAt: -1 }).limit(10).lean()
     ]);
 
     res.json({
-      success,
+      success: true,
       data: {
         totalHospitals,
         totalBookings,
         totalUsers,
-        totalRevenue[0]?.total || 0,
-        totalCommission[0]?.commission || 0,
+        totalRevenue: revenueSummary[0]?.total || 0,
+        totalCommission: revenueSummary[0]?.commission || 0,
         pendingVerifications,
         recentBookings
       }
     });
   } catch (error) {
-    res.status(500).json({ success, message.message });
+    res.status(500).json({ success: false, message: error.message });
   }
 });
 
 // ============================================
-// PATIENT/USER MANAGEMENT
+// 🆕 PATIENT/USER MANAGEMENT (NEW)
 // ============================================
 
 router.get('/users', async (req, res) => {
@@ -485,9 +544,9 @@ router.get('/users', async (req, res) => {
     if (role) query.role = role;
     if (search) {
       query.$or = [
-        { name: { $regex, $options: 'i' } },
-        { email: { $regex, $options: 'i' } },
-        { phone: { $regex, $options: 'i' } }
+        { name: { $regex: search, $options: 'i' } },
+        { email: { $regex: search, $options: 'i' } },
+        { phone: { $regex: search, $options: 'i' } }
       ];
     }
 
@@ -499,14 +558,13 @@ router.get('/users', async (req, res) => {
     ]);
 
     res.json({
-      success,
-      data,
-      pagination: { currentPage(page), totalPages.ceil(total / parseInt(limit)), totalUsers}
+      success: true,
+      data: users,
+      pagination: { currentPage: parseInt(page), totalPages: Math.ceil(total / parseInt(limit)), totalUsers: total }
     });
   } catch (error) {
-    res.status(500).json({ success, message.message });
+    res.status(500).json({ success: false, message: error.message });
   }
 });
 
 module.exports = router;
-

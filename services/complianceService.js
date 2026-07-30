@@ -12,21 +12,21 @@ class ComplianceService {
   getDisclosures() {
     return {
       irda: {
-        registration.irdaRegistration,
+        registration: this.irdaRegistration,
         status: 'Valid',
-        aggregatorName.aggregatorName
+        aggregatorName: this.aggregatorName
       },
       disclaimer: {
         text: 'Insurance is a subject matter of solicitation. Please read policy wordings carefully before purchasing.',
-        lastUpdatedDate().toISOString()
+        lastUpdated: new Date().toISOString()
       },
       commission: {
         disclosure: 'We receive commission from insurance companies for policies sold through our platform.',
         rate: 'Up to 15% of the premium'
       },
       grievance: {
-        email.grievanceEmail,
-        phone.grievancePhone,
+        email: this.grievanceEmail,
+        phone: this.grievancePhone,
         hours: 'Monday to Saturday, 9:00 AM - 6:00 PM IST'
       },
       refund: {
@@ -67,13 +67,13 @@ class ComplianceService {
    */
   getPlanDisclosure(plan) {
     return {
-      planName.planName,
-      companyName.companyId?.name,
-      claimSettlementRatio.claimProcess?.claimSettlementRatio || 'N/A',
-      networkHospitals.totalNetworkHospitals || 0,
-      waitingPeriod.preExistingWaiting || 48,
-      irdaApproved,
-      lastUpdatedDate().toISOString(),
+      planName: plan.planName,
+      companyName: plan.companyId?.name,
+      claimSettlementRatio: plan.claimProcess?.claimSettlementRatio || 'N/A',
+      networkHospitals: plan.totalNetworkHospitals || 0,
+      waitingPeriod: plan.preExistingWaiting || 48,
+      irdaApproved: true,
+      lastUpdated: new Date().toISOString(),
       termsLink: '/terms-and-conditions',
       privacyLink: '/privacy-policy'
     };
@@ -85,19 +85,19 @@ class ComplianceService {
   getUserConsent() {
     return {
       marketing: {
-        required,
+        required: false,
         description: 'Agree to receive marketing communications'
       },
       dataSharing: {
-        required,
+        required: true,
         description: 'Agree to share data with insurance companies for policy processing'
       },
       terms: {
-        required,
+        required: true,
         description: 'Agree to Terms and Conditions'
       },
       privacy: {
-        required,
+        required: true,
         description: 'Agree to Privacy Policy'
       }
     };
@@ -126,13 +126,13 @@ class ComplianceService {
     if (data.members && data.members.length > 0) {
       data.members.forEach((member, index) => {
         if (member.age < 18) {
-          issues.push(`Member ${index + 1}must be 18 or above`);
+          issues.push(`Member ${index + 1}: Age must be 18 or above`);
         }
       });
     }
 
     return {
-      isValid.length === 0,
+      isValid: issues.length === 0,
       issues
     };
   }
@@ -145,7 +145,7 @@ class ComplianceService {
       userId,
       action,
       details,
-      timestampDate().toISOString(),
+      timestamp: new Date().toISOString(),
       ipAddress: '', // Set from request
       userAgent: '', // Set from request
       sessionId: '' // Set from request
@@ -160,8 +160,8 @@ class ComplianceService {
     // For now, return structure
     return {
       reportPeriod: {
-        startDate|| new Date(Date.now() - 30 * 24 * 60 * 60 * 1000),
-        endDate|| new Date()
+        startDate: startDate || new Date(Date.now() - 30 * 24 * 60 * 60 * 1000),
+        endDate: endDate || new Date()
       },
       metrics: {
         totalPolicies: 0,
@@ -220,4 +220,3 @@ class ComplianceService {
 }
 
 module.exports = new ComplianceService();
-

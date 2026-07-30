@@ -25,21 +25,21 @@ router.get('/search', async (req, res) => {
   }
   try {
     const tests = await Test.find({
-      testName: { $regex, $options: 'i' }
+      testName: { $regex: q, $options: 'i' }
     }).limit(50);
     res.json(tests);
   } catch (error) {
-    res.status(500).json({ error.message });
+    res.status(500).json({ error: error.message });
   }
 });
 
 // Get all tests
 router.get('/all', async (req, res) => {
   try {
-    const tests = await Test.find({ isActive}).sort({ testName: 1 });
+    const tests = await Test.find({ isActive: true }).sort({ testName: 1 });
     res.json({ tests });
   } catch (error) {
-    res.status(500).json({ error.message });
+    res.status(500).json({ error: error.message });
   }
 });
 
@@ -58,8 +58,9 @@ router.post('/compare', async (req, res) => {
   
   try {
     let query = {
-      testName: { $in},
-      isActive};
+      testName: { $in: testNames },
+      isActive: true
+    };
     
     // City filter
     if (city && city !== 'All' && city !== '') {
@@ -68,7 +69,7 @@ router.post('/compare', async (req, res) => {
     
     // Rating filter
     if (minRating && minRating !== '') {
-      query.rating = { $gte(minRating) };
+      query.rating = { $gte: parseFloat(minRating) };
     }
     
     // Home collection filter
@@ -99,21 +100,21 @@ router.post('/compare', async (req, res) => {
         }
         
         groupedByProvider[price.providerName] = {
-          providerName.providerName,
-          rating.rating || 4.0,
-          city.city || 'All',
-          address.address || 'Address not provided',
-          distance,
-          distanceKm,
-          homeCollectionAvailable.homeCollectionAvailable || false,
-          reportTimeHours.reportTimeHours || 24,
+          providerName: price.providerName,
+          rating: price.rating || 4.0,
+          city: price.city || 'All',
+          address: price.address || 'Address not provided',
+          distance: distance,
+          distanceKm: distanceKm,
+          homeCollectionAvailable: price.homeCollectionAvailable || false,
+          reportTimeHours: price.reportTimeHours || 24,
           prices: {},
           totalPrice: 0
         };
       }
       groupedByProvider[price.providerName].prices[price.testName] = {
-        price.price,
-        discountedPrice.discountedPrice || price.price
+        price: price.price,
+        discountedPrice: price.discountedPrice || price.price
       };
       groupedByProvider[price.providerName].totalPrice += (price.discountedPrice || price.price);
     }
@@ -135,21 +136,21 @@ router.post('/compare', async (req, res) => {
     res.json(result);
   } catch (error) {
     console.error('Compare error:', error);
-    res.status(500).json({ error.message });
+    res.status(500).json({ error: error.message });
   }
 });
 
 // Get prices for a specific test
-router.get('/prices/', async (req, res) => {
+router.get('/prices/:testName', async (req, res) => {
   try {
     const prices = await ProviderPrice.find({
-      testName: { $regex.params.testName, $options: 'i' },
-      isActive}).sort({ price: 1 });
+      testName: { $regex: req.params.testName, $options: 'i' },
+      isActive: true
+    }).sort({ price: 1 });
     res.json(prices);
   } catch (error) {
-    res.status(500).json({ error.message });
+    res.status(500).json({ error: error.message });
   }
 });
 
 module.exports = router;
-

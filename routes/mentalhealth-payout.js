@@ -23,12 +23,12 @@ router.get('/wallet/summary', async (req, res) => {
     const therapistId = decoded.id || decoded._id;
     
     const summary = await TherapistWallet.getSummary(therapistId);
-    res.json({ success, data});
+    res.json({ success: true, data: summary });
   } catch (error) {
     if (error.name === 'JsonWebTokenError') {
       return res.status(403).json({ error: 'Invalid or expired token.' });
     }
-    res.status(500).json({ error.message });
+    res.status(500).json({ error: error.message });
   }
 });
 
@@ -48,12 +48,12 @@ router.get('/wallet/transactions', async (req, res) => {
     
     const { limit = 50, skip = 0 } = req.query;
     const result = await TherapistWallet.getTransactions(therapistId, parseInt(limit), parseInt(skip));
-    res.json({ success, data});
+    res.json({ success: true, data: result });
   } catch (error) {
     if (error.name === 'JsonWebTokenError') {
       return res.status(403).json({ error: 'Invalid or expired token.' });
     }
-    res.status(500).json({ error.message });
+    res.status(500).json({ error: error.message });
   }
 });
 
@@ -80,12 +80,12 @@ router.post('/wallet/bank-details', async (req, res) => {
     const wallet = await TherapistWallet.getOrCreate(therapistId);
     await wallet.setBankDetails({ accountNumber, accountHolderName, ifscCode, bankName, upiId });
     
-    res.json({ success, message: 'Bank details updated successfully' });
+    res.json({ success: true, message: 'Bank details updated successfully' });
   } catch (error) {
     if (error.name === 'JsonWebTokenError') {
       return res.status(403).json({ error: 'Invalid or expired token.' });
     }
-    res.status(500).json({ error.message });
+    res.status(500).json({ error: error.message });
   }
 });
 
@@ -123,11 +123,11 @@ router.post('/payout/request', async (req, res) => {
     
     const payout = new TherapistPayout({
       therapistId,
-      walletId._id,
-      amount,
-      netAmount,
-      method,
-      bankDetails.bankDetails,
+      walletId: wallet._id,
+      amount: amount,
+      netAmount: amount,
+      method: method,
+      bankDetails: wallet.bankDetails,
       status: 'pending'
     });
     await payout.save();
@@ -140,7 +140,7 @@ router.post('/payout/request', async (req, res) => {
     }
     
     res.json({
-      success,
+      success: true,
       data: {
         payout,
         message: 'Payout request submitted successfully'
@@ -150,7 +150,7 @@ router.post('/payout/request', async (req, res) => {
     if (error.name === 'JsonWebTokenError') {
       return res.status(403).json({ error: 'Invalid or expired token.' });
     }
-    res.status(500).json({ error.message });
+    res.status(500).json({ error: error.message });
   }
 });
 
@@ -177,12 +177,12 @@ router.get('/payout/history', async (req, res) => {
       parseInt(skip)
     );
     
-    res.json({ success, data});
+    res.json({ success: true, data: result });
   } catch (error) {
     if (error.name === 'JsonWebTokenError') {
       return res.status(403).json({ error: 'Invalid or expired token.' });
     }
-    res.status(500).json({ error.message });
+    res.status(500).json({ error: error.message });
   }
 });
 
@@ -201,12 +201,12 @@ router.get('/payout/summary', async (req, res) => {
     const therapistId = decoded.id || decoded._id;
     
     const summary = await TherapistPayout.getSummary(therapistId);
-    res.json({ success, data});
+    res.json({ success: true, data: summary });
   } catch (error) {
     if (error.name === 'JsonWebTokenError') {
       return res.status(403).json({ error: 'Invalid or expired token.' });
     }
-    res.status(500).json({ error.message });
+    res.status(500).json({ error: error.message });
   }
 });
 
@@ -232,17 +232,17 @@ router.get('/admin/pending', async (req, res) => {
     }
     
     const payouts = await TherapistPayout.getPendingPayouts();
-    res.json({ success, data});
+    res.json({ success: true, data: payouts });
   } catch (error) {
     if (error.name === 'JsonWebTokenError') {
       return res.status(403).json({ error: 'Invalid or expired token.' });
     }
-    res.status(500).json({ error.message });
+    res.status(500).json({ error: error.message });
   }
 });
 
 // Process payout (Admin only)
-router.post('/admin/process/', async (req, res) => {
+router.post('/admin/process/:payoutId', async (req, res) => {
   try {
     const authHeader = req.headers['authorization'];
     const token = authHeader && authHeader.split(' ')[1];
@@ -285,20 +285,20 @@ router.post('/admin/process/', async (req, res) => {
     }, 2000);
     
     res.json({
-      success,
-      data,
+      success: true,
+      data: payout,
       message: 'Payout processing initiated'
     });
   } catch (error) {
     if (error.name === 'JsonWebTokenError') {
       return res.status(403).json({ error: 'Invalid or expired token.' });
     }
-    res.status(500).json({ error.message });
+    res.status(500).json({ error: error.message });
   }
 });
 
 // Mark payout as completed (Admin only)
-router.post('/admin/complete/', async (req, res) => {
+router.post('/admin/complete/:payoutId', async (req, res) => {
   try {
     const authHeader = req.headers['authorization'];
     const token = authHeader && authHeader.split(' ')[1];
@@ -332,25 +332,25 @@ router.post('/admin/complete/', async (req, res) => {
     );
     
     await MentalHealthBooking.updateMany(
-      { _id: { $in.bookingIds } },
-      { payoutStatus: 'completed', payoutCompletedAtDate() }
+      { _id: { $in: payout.bookingIds } },
+      { payoutStatus: 'completed', payoutCompletedAt: new Date() }
     );
     
     res.json({
-      success,
-      data,
+      success: true,
+      data: payout,
       message: 'Payout marked as completed'
     });
   } catch (error) {
     if (error.name === 'JsonWebTokenError') {
       return res.status(403).json({ error: 'Invalid or expired token.' });
     }
-    res.status(500).json({ error.message });
+    res.status(500).json({ error: error.message });
   }
 });
 
 // Mark payout as failed (Admin only)
-router.post('/admin/fail/', async (req, res) => {
+router.post('/admin/fail/:payoutId', async (req, res) => {
   try {
     const authHeader = req.headers['authorization'];
     const token = authHeader && authHeader.split(' ')[1];
@@ -374,12 +374,12 @@ router.post('/admin/fail/', async (req, res) => {
     const { reason } = req.body;
     await payout.markFailed(reason);
     
-    const wallet = await TherapistWallet.findOne({ therapistId.therapistId });
+    const wallet = await TherapistWallet.findOne({ therapistId: payout.therapistId });
     if (wallet) {
       wallet.balance += payout.amount;
       wallet.transactions.push({
         type: 'credit',
-        amount.amount,
+        amount: payout.amount,
         description: `Payout reverted - ${reason}`,
         status: 'completed'
       });
@@ -387,15 +387,15 @@ router.post('/admin/fail/', async (req, res) => {
     }
     
     res.json({
-      success,
-      data,
+      success: true,
+      data: payout,
       message: 'Payout marked as failed'
     });
   } catch (error) {
     if (error.name === 'JsonWebTokenError') {
       return res.status(403).json({ error: 'Invalid or expired token.' });
     }
-    res.status(500).json({ error.message });
+    res.status(500).json({ error: error.message });
   }
 });
 
@@ -422,17 +422,16 @@ router.post('/wallet/auto-payout', async (req, res) => {
     await wallet.setAutoPayout(enabled, threshold, dayOfWeek);
     
     res.json({
-      success,
-      data.autoPayout,
+      success: true,
+      data: wallet.autoPayout,
       message: 'Auto-payout settings updated'
     });
   } catch (error) {
     if (error.name === 'JsonWebTokenError') {
       return res.status(403).json({ error: 'Invalid or expired token.' });
     }
-    res.status(500).json({ error.message });
+    res.status(500).json({ error: error.message });
   }
 });
 
 module.exports = router;
-

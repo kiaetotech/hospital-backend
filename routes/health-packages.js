@@ -7,7 +7,7 @@ const PackageReview = require('../models/PackageReview');
 const TestMaster = require('../models/TestMaster');
 const DiagnosticsProvider = require('../models/DiagnosticsProvider');
 
-// Helperdistance using Haversine formula
+// Helper: Calculate distance using Haversine formula
 const calculateDistance = (lat1, lon1, lat2, lon2) => {
   if (!lat1 || !lon1 || !lat2 || !lon2) return null;
   const R = 6371;
@@ -31,17 +31,17 @@ router.get('/search', async (req, res) => {
       requires_fasting, sort_by, page = 1, limit = 20
     } = req.query;
 
-    let filter = { is_active, is_approved};
+    let filter = { is_active: true, is_approved: true };
 
     if (query) {
       filter.$or = [
-        { package_name: { $regex, $options: 'i' } },
-        { package_description: { $regex, $options: 'i' } },
+        { package_name: { $regex: query, $options: 'i' } },
+        { package_description: { $regex: query, $options: 'i' } },
         { tags: { $in: [new RegExp(query, 'i')] } }
       ];
     }
 
-    if (city) filter.city = { $regex, $options: 'i' };
+    if (city) filter.city = { $regex: city, $options: 'i' };
     if (package_type) filter.package_type = package_type;
     
     if (min_price || max_price) {
@@ -51,11 +51,11 @@ router.get('/search', async (req, res) => {
     }
     
     if (home_collection === 'true') filter.home_collection_available = true;
-    if (max_report_time_hours) filter.report_time_hours = { $lte(max_report_time_hours) };
+    if (max_report_time_hours) filter.report_time_hours = { $lte: parseInt(max_report_time_hours) };
     if (gender && gender !== 'unisex') filter.gender = { $in: [gender, 'unisex'] };
     if (age) {
-      filter.min_age = { $lte(age) };
-      filter.max_age = { $gte(age) };
+      filter.min_age = { $lte: parseInt(age) };
+      filter.max_age = { $gte: parseInt(age) };
     }
     if (requires_fasting === 'true') filter.requires_fasting = true;
 
@@ -65,17 +65,17 @@ router.get('/search', async (req, res) => {
       .limit(parseInt(limit));
 
     for (let pkg of packages) {
-      const testCount = await PackageTest.countDocuments({ package_id._id });
+      const testCount = await PackageTest.countDocuments({ package_id: pkg._id });
       pkg.total_tests_count = testCount;
       
       const reviews = await PackageReview.aggregate([
-        { $match: { package_id._id } },
-        { $group: { _id, avg: { $avg: '$rating' }, count: { $sum: 1 } } }
+        { $match: { package_id: pkg._id } },
+        { $group: { _id: null, avg: { $avg: '$rating' }, count: { $sum: 1 } } }
       ]);
       pkg.average_rating = reviews[0]?.avg || 0;
       pkg.total_reviews_count = reviews[0]?.count || 0;
 
-      const packageTests = await PackageTest.find({ package_id._id })
+      const packageTests = await PackageTest.find({ package_id: pkg._id })
         .populate('test_id', 'test_name')
         .limit(6);
       pkg.tests_short_list = packageTests.map(pt => pt.test_id?.test_name).filter(Boolean);
@@ -108,17 +108,17 @@ router.get('/search', async (req, res) => {
     res.json({
       status: 'success',
       total,
-      page(page),
-      total_pages.ceil(total / limit),
+      page: parseInt(page),
+      total_pages: Math.ceil(total / limit),
       packages
     });
   } catch (error) {
-    res.status(500).json({ status: 'error', message.message });
+    res.status(500).json({ status: 'error', message: error.message });
   }
 });
 
-// GET /api/packages/_id - Get package details
-router.get('/_id', async (req, res) => {
+// GET /api/packages/:package_id - Get package details
+router.get('/:package_id', async (req, res) => {
   try {
     const pkg = await HealthPackage.findById(req.params.package_id)
       .populate('provider_id', 'provider_name rating total_reviews city location is_nabl_accredited address phone email');
@@ -127,7 +127,7 @@ router.get('/_id', async (req, res) => {
       return res.status(404).json({ status: 'error', message: 'Package not found' });
     }
 
-    const packageTests = await PackageTest.find({ package_id._id })
+    const packageTests = await PackageTest.find({ package_id: pkg._id })
       .populate('test_id', 'test_name test_short_name major_category_name sub_category')
       .sort('display_order');
 
@@ -138,20 +138,20 @@ router.get('/_id', async (req, res) => {
       testsByCategory[category].push(pt.test_id);
     }
 
-    const reviews = await PackageReview.find({ package_id._id })
+    const reviews = await PackageReview.find({ package_id: pkg._id })
       .populate('user_id', 'name')
       .sort('-created_at')
       .limit(20);
 
     res.json({
       status: 'success',
-      package,
-      tests_by_category,
-      total_tests.length,
+      package: pkg,
+      tests_by_category: testsByCategory,
+      total_tests: packageTests.length,
       reviews
     });
   } catch (error) {
-    res.status(500).json({ status: 'error', message.message });
+    res.status(500).json({ status: 'error', message: error.message });
   }
 });
 
@@ -160,16 +160,16 @@ router.post('/compare', async (req, res) => {
   try {
     const { package_ids, latitude, longitude } = req.body;
 
-    const packages = await HealthPackage.find({ _id: { $in_ids }, is_active})
+    const packages = await HealthPackage.find({ _id: { $in: package_ids }, is_active: true })
       .populate('provider_id', 'provider_name rating total_reviews city location is_nabl_accredited');
 
     const comparisonData = [];
 
     for (const pkg of packages) {
-      const testCount = await PackageTest.countDocuments({ package_id._id });
+      const testCount = await PackageTest.countDocuments({ package_id: pkg._id });
       const reviews = await PackageReview.aggregate([
-        { $match: { package_id._id } },
-        { $group: { _id, avg: { $avg: '$rating' }, count: { $sum: 1 } } }
+        { $match: { package_id: pkg._id } },
+        { $group: { _id: null, avg: { $avg: '$rating' }, count: { $sum: 1 } } }
       ]);
 
       let distance = null;
@@ -181,28 +181,29 @@ router.post('/compare', async (req, res) => {
       }
 
       comparisonData.push({
-        package_id._id,
-        package_name.package_name,
-        package_type.package_type,
-        provider.provider_id,
-        tests_count,
-        mrp.mrp,
-        discounted_price.discounted_price,
-        discount_percentage.discount_percentage,
-        home_collection_available.home_collection_available,
-        report_time_hours.report_time_hours,
-        requires_fasting.requires_fasting,
-        fasting_hours.fasting_hours,
-        gender.gender,
-        rating[0]?.avg || 0,
-        total_reviews[0]?.count || 0,
-        distance_km});
+        package_id: pkg._id,
+        package_name: pkg.package_name,
+        package_type: pkg.package_type,
+        provider: pkg.provider_id,
+        tests_count: testCount,
+        mrp: pkg.mrp,
+        discounted_price: pkg.discounted_price,
+        discount_percentage: pkg.discount_percentage,
+        home_collection_available: pkg.home_collection_available,
+        report_time_hours: pkg.report_time_hours,
+        requires_fasting: pkg.requires_fasting,
+        fasting_hours: pkg.fasting_hours,
+        gender: pkg.gender,
+        rating: reviews[0]?.avg || 0,
+        total_reviews: reviews[0]?.count || 0,
+        distance_km: distance
+      });
     }
 
     comparisonData.sort((a, b) => a.discounted_price - b.discounted_price);
-    res.json({ status: 'success', packages});
+    res.json({ status: 'success', packages: comparisonData });
   } catch (error) {
-    res.status(500).json({ status: 'error', message.message });
+    res.status(500).json({ status: 'error', message: error.message });
   }
 });
 
@@ -216,8 +217,9 @@ router.get('/nearby', async (req, res) => {
     }
 
     const providers = await DiagnosticsProvider.find({
-      'location.lat': { $exists},
-      is_active});
+      'location.lat': { $exists: true },
+      is_active: true
+    });
 
     const nearbyProviders = [];
     for (const provider of providers) {
@@ -231,20 +233,21 @@ router.get('/nearby', async (req, res) => {
     }
 
     const packages = await HealthPackage.find({
-      provider_id: { $in},
-      is_active,
-      is_approved})
+      provider_id: { $in: nearbyProviders },
+      is_active: true,
+      is_approved: true
+    })
       .populate('provider_id', 'provider_name rating location')
       .limit(parseInt(limit));
 
     res.json({ status: 'success', packages });
   } catch (error) {
-    res.status(500).json({ status: 'error', message.message });
+    res.status(500).json({ status: 'error', message: error.message });
   }
 });
 
-// POST /api/packages/_id/book - Book a package
-router.post('/_id/book', async (req, res) => {
+// POST /api/packages/:package_id/book - Book a package
+router.post('/:package_id/book', async (req, res) => {
   try {
     const pkg = await HealthPackage.findById(req.params.package_id);
     if (!pkg) {
@@ -259,9 +262,9 @@ router.post('/_id/book', async (req, res) => {
     const booking_reference = 'PKG' + Date.now() + Math.floor(Math.random() * 1000);
 
     const booking = new PackageBooking({
-      booking_id.now(),
-      package_id._id,
-      provider_id.provider_id,
+      booking_id: Date.now(),
+      package_id: pkg._id,
+      provider_id: pkg.provider_id,
       booking_reference,
       patient_name,
       patient_age,
@@ -270,11 +273,11 @@ router.post('/_id/book', async (req, res) => {
       patient_email,
       appointment_date,
       appointment_time_slot,
-      home_collection_requested_collection_requested || false,
+      home_collection_requested: home_collection_requested || false,
       home_address,
-      total_amount.mrp,
-      discount_applied.mrp - pkg.discounted_price,
-      final_amount.discounted_price,
+      total_amount: pkg.mrp,
+      discount_applied: pkg.mrp - pkg.discounted_price,
+      final_amount: pkg.discounted_price,
       payment_status: 'pending',
       booking_status: 'confirmed'
     });
@@ -285,16 +288,16 @@ router.post('/_id/book', async (req, res) => {
       status: 'success',
       message: 'Booking created successfully',
       booking_reference,
-      booking_id._id,
-      final_amount.discounted_price
+      booking_id: booking._id,
+      final_amount: pkg.discounted_price
     });
   } catch (error) {
-    res.status(500).json({ status: 'error', message.message });
+    res.status(500).json({ status: 'error', message: error.message });
   }
 });
 
-// POST /api/packages/_id/review - Submit review
-router.post('/_id/review', async (req, res) => {
+// POST /api/packages/:package_id/review - Submit review
+router.post('/:package_id/review', async (req, res) => {
   try {
     const { rating, review_text, user_id, booking_id } = req.body;
     const pkg = await HealthPackage.findById(req.params.package_id);
@@ -304,8 +307,8 @@ router.post('/_id/review', async (req, res) => {
     }
 
     const review = new PackageReview({
-      package_id._id,
-      provider_id.provider_id,
+      package_id: pkg._id,
+      provider_id: pkg.provider_id,
       user_id,
       booking_id,
       rating,
@@ -316,7 +319,7 @@ router.post('/_id/review', async (req, res) => {
     await review.save();
     res.json({ status: 'success', message: 'Review submitted successfully' });
   } catch (error) {
-    res.status(500).json({ status: 'error', message.message });
+    res.status(500).json({ status: 'error', message: error.message });
   }
 });
 
@@ -324,11 +327,11 @@ router.post('/_id/review', async (req, res) => {
 router.get('/suggest', async (req, res) => {
   try {
     const { age, gender, symptoms } = req.query;
-    let filter = { is_active, is_approved};
+    let filter = { is_active: true, is_approved: true };
 
     if (age) {
-      filter.min_age = { $lte(age) };
-      filter.max_age = { $gte(age) };
+      filter.min_age = { $lte: parseInt(age) };
+      filter.max_age = { $gte: parseInt(age) };
     }
     if (gender) filter.gender = { $in: [gender, 'unisex'] };
 
@@ -338,7 +341,7 @@ router.get('/suggest', async (req, res) => {
 
     res.json({ status: 'success', packages });
   } catch (error) {
-    res.status(500).json({ status: 'error', message.message });
+    res.status(500).json({ status: 'error', message: error.message });
   }
 });
 
@@ -356,53 +359,55 @@ router.post('/provider/packages/bulk-upload', async (req, res) => {
         const testIds = [];
 
         for (const testName of testNames) {
-          const test = await TestMaster.findOne({ test_name: { $regexRegExp(`^${testName}$`, 'i') } });
+          const test = await TestMaster.findOne({ test_name: { $regex: new RegExp(`^${testName}$`, 'i') } });
           if (test) testIds.push(test._id);
         }
 
         const slug = pkgData.package_name.toLowerCase().replace(/[^a-z0-9]+/g, '-');
 
         const newPackage = new HealthPackage({
-          package_id.now(),
+          package_id: Date.now(),
           provider_id,
-          package_name.package_name,
-          package_slug,
-          package_description.description,
-          package_type.package_type,
-          tests_included_text.tests_included,
-          total_tests_count.length,
-          mrp.mrp,
-          discounted_price.discounted_price,
-          home_collection_available.home_collection === 'Yes',
-          report_time_hours.report_time_hours,
-          requires_fasting.requires_fasting === 'Yes',
-          fasting_hours.fasting_hours || 0,
-          gender.gender || 'unisex',
-          min_age.min_age || 0,
-          max_age.max_age || 100,
-          tags.tags ? pkgData.tags.split(',') : [],
-          city.city,
-          is_approved});
+          package_name: pkgData.package_name,
+          package_slug: slug,
+          package_description: pkgData.description,
+          package_type: pkgData.package_type,
+          tests_included_text: pkgData.tests_included,
+          total_tests_count: testIds.length,
+          mrp: pkgData.mrp,
+          discounted_price: pkgData.discounted_price,
+          home_collection_available: pkgData.home_collection === 'Yes',
+          report_time_hours: pkgData.report_time_hours,
+          requires_fasting: pkgData.requires_fasting === 'Yes',
+          fasting_hours: pkgData.fasting_hours || 0,
+          gender: pkgData.gender || 'unisex',
+          min_age: pkgData.min_age || 0,
+          max_age: pkgData.max_age || 100,
+          tags: pkgData.tags ? pkgData.tags.split(',') : [],
+          city: pkgData.city,
+          is_approved: false
+        });
 
         await newPackage.save();
 
         for (let i = 0; i < testIds.length; i++) {
           const packageTest = new PackageTest({
-            package_id._id,
-            test_id[i],
-            display_order});
+            package_id: newPackage._id,
+            test_id: testIds[i],
+            display_order: i
+          });
           await packageTest.save();
         }
 
-        results.success.push({ package_name.package_name });
+        results.success.push({ package_name: pkgData.package_name });
       } catch (err) {
-        results.failed.push({ package_name.package_name, error.message });
+        results.failed.push({ package_name: pkgData.package_name, error: err.message });
       }
     }
 
     res.json({ status: 'success', results });
   } catch (error) {
-    res.status(500).json({ status: 'error', message.message });
+    res.status(500).json({ status: 'error', message: error.message });
   }
 });
 
@@ -413,7 +418,7 @@ router.get('/provider/packages', async (req, res) => {
     const packages = await HealthPackage.find({ provider_id }).sort('-created_at');
     res.json({ status: 'success', packages });
   } catch (error) {
-    res.status(500).json({ status: 'error', message.message });
+    res.status(500).json({ status: 'error', message: error.message });
   }
 });
 
@@ -422,17 +427,17 @@ router.get('/provider/packages', async (req, res) => {
 // GET /api/admin/packages/pending
 router.get('/admin/packages/pending', async (req, res) => {
   try {
-    const packages = await HealthPackage.find({ is_approved})
+    const packages = await HealthPackage.find({ is_approved: false })
       .populate('provider_id', 'provider_name')
       .sort('-created_at');
     res.json({ status: 'success', packages });
   } catch (error) {
-    res.status(500).json({ status: 'error', message.message });
+    res.status(500).json({ status: 'error', message: error.message });
   }
 });
 
-// PUT /api/admin/packages/_id/approve
-router.put('/admin/packages/_id/approve', async (req, res) => {
+// PUT /api/admin/packages/:package_id/approve
+router.put('/admin/packages/:package_id/approve', async (req, res) => {
   try {
     const { approve } = req.body;
     const pkg = await HealthPackage.findById(req.params.package_id);
@@ -441,9 +446,9 @@ router.put('/admin/packages/_id/approve', async (req, res) => {
     }
     pkg.is_approved = approve === true;
     await pkg.save();
-    res.json({ status: 'success', message? 'Package approved' : 'Package rejected' });
+    res.json({ status: 'success', message: approve ? 'Package approved' : 'Package rejected' });
   } catch (error) {
-    res.status(500).json({ status: 'error', message.message });
+    res.status(500).json({ status: 'error', message: error.message });
   }
 });
 
@@ -451,28 +456,27 @@ router.put('/admin/packages/_id/approve', async (req, res) => {
 router.get('/admin/packages/stats', async (req, res) => {
   try {
     const totalPackages = await HealthPackage.countDocuments();
-    const pendingApprovals = await HealthPackage.countDocuments({ is_approved});
-    const activePackages = await HealthPackage.countDocuments({ is_active, is_approved});
+    const pendingApprovals = await HealthPackage.countDocuments({ is_approved: false });
+    const activePackages = await HealthPackage.countDocuments({ is_active: true, is_approved: true });
     const totalBookings = await PackageBooking.countDocuments();
     const totalRevenue = await PackageBooking.aggregate([
       { $match: { payment_status: 'completed' } },
-      { $group: { _id, total: { $sum: '$final_amount' } } }
+      { $group: { _id: null, total: { $sum: '$final_amount' } } }
     ]);
 
     res.json({
       status: 'success',
       stats: {
-        total_packages,
-        pending_approvals,
-        active_packages,
-        total_bookings,
-        total_revenue[0]?.total || 0
+        total_packages: totalPackages,
+        pending_approvals: pendingApprovals,
+        active_packages: activePackages,
+        total_bookings: totalBookings,
+        total_revenue: totalRevenue[0]?.total || 0
       }
     });
   } catch (error) {
-    res.status(500).json({ status: 'error', message.message });
+    res.status(500).json({ status: 'error', message: error.message });
   }
 });
 
 module.exports = router;
-

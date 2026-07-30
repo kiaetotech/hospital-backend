@@ -12,7 +12,7 @@ class PDFService {
 
   ensureTemplateDirectory() {
     if (!fs.existsSync(this.templatesDir)) {
-      fs.mkdirSync(this.templatesDir, { recursive});
+      fs.mkdirSync(this.templatesDir, { recursive: true });
     }
   }
 
@@ -36,41 +36,41 @@ class PDFService {
 
       // Generate QR code
       const qrCodeData = await this.generateQRCode({
-        policyNumber.policyNumber,
-        planName.planName,
-        insuredName.primaryInsured?.name
+        policyNumber: policyData.policyNumber,
+        planName: policyData.planName,
+        insuredName: policyData.primaryInsured?.name
       });
 
       // Prepare data
       const data = {
         ...policyData,
-        qrCode,
-        formattedPremium.formatCurrency(policyData.premiumAmount),
-        formattedSumInsured.formatCurrency(policyData.sumInsured),
-        policyNumber.policyNumber || this.generatePolicyNumber(),
-        issueDateDate().toLocaleDateString('en-IN', {
+        qrCode: qrCodeData,
+        formattedPremium: this.formatCurrency(policyData.premiumAmount),
+        formattedSumInsured: this.formatCurrency(policyData.sumInsured),
+        policyNumber: policyData.policyNumber || this.generatePolicyNumber(),
+        issueDate: new Date().toLocaleDateString('en-IN', {
           day: '2-digit',
           month: 'long',
           year: 'numeric'
         }),
-        startDate.startDate ? new Date(policyData.startDate).toLocaleDateString('en-IN', {
+        startDate: policyData.startDate ? new Date(policyData.startDate).toLocaleDateString('en-IN', {
           day: '2-digit',
           month: 'long',
           year: 'numeric'
         }) : '',
-        endDate.endDate ? new Date(policyData.endDate).toLocaleDateString('en-IN', {
+        endDate: policyData.endDate ? new Date(policyData.endDate).toLocaleDateString('en-IN', {
           day: '2-digit',
           month: 'long',
           year: 'numeric'
         }) : '',
-        companyName.companyId?.name || 'Insurance Company',
-        companyLogo.companyId?.logo || '',
-        features.features || [],
-        inclusions.inclusions || [],
-        exclusions.exclusions || [],
-        members.members || [],
-        primaryInsured.primaryInsured || {},
-        nominee.nominee || {}
+        companyName: policyData.companyId?.name || 'Insurance Company',
+        companyLogo: policyData.companyId?.logo || '',
+        features: policyData.features || [],
+        inclusions: policyData.inclusions || [],
+        exclusions: policyData.exclusions || [],
+        members: policyData.members || [],
+        primaryInsured: policyData.primaryInsured || {},
+        nominee: policyData.nominee || {}
       };
 
       // Generate HTML
@@ -83,17 +83,17 @@ class PDFService {
       const pdfUrl = await this.uploadToCloud(pdf, policyData.policyNumber);
 
       return {
-        success,
-        pdf,
-        pdfUrl,
-        policyNumber.policyNumber
+        success: true,
+        pdf: pdf,
+        pdfUrl: pdfUrl,
+        policyNumber: data.policyNumber
       };
 
     } catch (error) {
       console.error('PDF generation error:', error);
       return {
-        success,
-        error.message
+        success: false,
+        error: error.message
       };
     }
   }
@@ -104,7 +104,8 @@ class PDFService {
   async generatePDF(html) {
     const browser = await puppeteer.launch({
       args: ['--no-sandbox', '--disable-setuid-sandbox'],
-      headless});
+      headless: true
+    });
 
     try {
       const page = await browser.newPage();
@@ -114,7 +115,7 @@ class PDFService {
 
       const pdf = await page.pdf({
         format: 'A4',
-        printBackground,
+        printBackground: true,
         margin: {
           top: '40px',
           bottom: '40px',
@@ -136,9 +137,9 @@ class PDFService {
   async generateQRCode(data) {
     try {
       const qrData = JSON.stringify({
-        policyNumber.policyNumber,
-        planName.planName,
-        insuredName.insuredName,
+        policyNumber: data.policyNumber,
+        planName: data.planName,
+        insuredName: data.insuredName,
         verificationUrl: `${process.env.FRONTEND_URL}/verify-policy/${data.policyNumber}`
       });
       
@@ -187,7 +188,7 @@ class PDFService {
     const filePath = path.join(__dirname, '../public/policies', fileName);
     
     if (!fs.existsSync(path.dirname(filePath))) {
-      fs.mkdirSync(path.dirname(filePath), { recursive});
+      fs.mkdirSync(path.dirname(filePath), { recursive: true });
     }
 
     fs.writeFileSync(filePath, pdf);
@@ -204,10 +205,10 @@ class PDFService {
     <head>
       <meta charset="UTF-8">
       <style>
-        * { margin: 0; padding: 0; box-sizing-box; }
+        * { margin: 0; padding: 0; box-sizing: border-box; }
         body { 
-          font-family, sans-serif;
-          background;
+          font-family: Arial, sans-serif;
+          background: white;
           color: #1e293b;
           padding: 40px;
         }
@@ -218,7 +219,7 @@ class PDFService {
           padding: 40px;
         }
         .header {
-          text-align;
+          text-align: center;
           border-bottom: 3px solid #2563eb;
           padding-bottom: 20px;
           margin-bottom: 30px;
@@ -243,7 +244,7 @@ class PDFService {
           margin-bottom: 15px;
         }
         .grid-2 {
-          display;
+          display: grid;
           grid-template-columns: 1fr 1fr;
           gap: 20px;
         }
@@ -251,7 +252,7 @@ class PDFService {
           margin-bottom: 10px;
         }
         .info-item .label {
-          font-weight;
+          font-weight: bold;
           font-size: 14px;
           color: #64748b;
         }
@@ -260,12 +261,12 @@ class PDFService {
           color: #1e293b;
         }
         .features-list {
-          display;
+          display: grid;
           grid-template-columns: 1fr 1fr;
           gap: 8px;
         }
         .features-list li {
-          list-style;
+          list-style: none;
           padding: 5px 10px;
           background: #f1f5f9;
           border-radius: 4px;
@@ -275,7 +276,7 @@ class PDFService {
           margin-top: 30px;
           padding-top: 20px;
           border-top: 1px solid #e2e8f0;
-          text-align;
+          text-align: center;
           font-size: 12px;
           color: #64748b;
         }
@@ -283,10 +284,10 @@ class PDFService {
           font-size: 10px;
           color: #94a3b8;
           margin-top: 10px;
-          text-align;
+          text-align: center;
         }
         .qr-section {
-          text-align;
+          text-align: center;
           margin-top: 20px;
         }
         .qr-section img {
@@ -417,4 +418,3 @@ class PDFService {
 }
 
 module.exports = new PDFService();
-

@@ -10,7 +10,7 @@ router.post('/lender-status', async (req, res) => {
     const { apiKey, applicationId, status, amount, referenceId, utrNumber, signature } = req.body;
     
     // Find lender by API key
-    const lender = await Lender.findOne({ 'apiConfig.apiKey'});
+    const lender = await Lender.findOne({ 'apiConfig.apiKey': apiKey });
     if (!lender) {
       return res.status(401).json({ error: 'Invalid API key' });
     }
@@ -60,7 +60,7 @@ router.post('/lender-status', async (req, res) => {
       status,
       note: `Status updated via webhook from lender. Old status: ${oldStatus}`,
       updatedBy: 'system',
-      timestampDate()
+      timestamp: new Date()
     });
     
     await application.save();
@@ -68,7 +68,7 @@ router.post('/lender-status', async (req, res) => {
     // Log webhook receipt
     console.log(`📡 Webhook received: ${applicationId} -> ${status}`);
     
-    res.json({ success, message: 'Status updated' });
+    res.json({ success: true, message: 'Status updated' });
   } catch (error) {
     console.error('Webhook error:', error);
     res.status(500).json({ error: 'Webhook processing failed' });
@@ -95,16 +95,17 @@ router.post('/razorpay', async (req, res) => {
         await LoanApplication.findOneAndUpdate(
           { applicationId },
           { 
-            commissionPaid,
-            commissionPaidAtDate(),
-            commissionPaymentId,
-            commissionAmount}
+            commissionPaid: true,
+            commissionPaidAt: new Date(),
+            commissionPaymentId: paymentId,
+            commissionAmount: amount
+          }
         );
         console.log(`💰 Commission payment received for ${applicationId}: ₹${amount}`);
       }
     }
     
-    res.json({ received});
+    res.json({ received: true });
   } catch (error) {
     console.error('Razorpay webhook error:', error);
     res.status(500).json({ error: 'Webhook processing failed' });
@@ -117,4 +118,3 @@ router.get('/health', (req, res) => {
 });
 
 module.exports = router;
-

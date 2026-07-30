@@ -26,8 +26,9 @@ router.post('/generate', authenticateToken, async (req, res) => {
 
     // Get employee count
     const employeeCount = await CorporateEmployee.countDocuments({
-      corporateId,
-      isActive});
+      corporateId: companyId,
+      isActive: true
+    });
 
     // Calculate amounts
     const baseAmount = company.basePrice || 0;
@@ -40,11 +41,11 @@ router.post('/generate', authenticateToken, async (req, res) => {
     // Create billing
     const billing = new CorporateBilling({
       companyId,
-      hrId.user.id,
+      hrId: req.user.id,
       billingPeriod,
-      periodStartDate(periodStart),
-      periodEndDate(periodEnd),
-      dueDateDate(new Date(periodEnd).setDate(new Date(periodEnd).getDate() + 15)),
+      periodStart: new Date(periodStart),
+      periodEnd: new Date(periodEnd),
+      dueDate: new Date(new Date(periodEnd).setDate(new Date(periodEnd).getDate() + 15)),
       baseAmount,
       perEmployeeAmount,
       totalEmployees,
@@ -57,14 +58,14 @@ router.post('/generate', authenticateToken, async (req, res) => {
     await billing.save();
 
     res.json({
-      success,
-      data,
+      success: true,
+      data: billing,
       message: 'Invoice generated successfully'
     });
 
   } catch (error) {
     console.error('Error generating invoice:', error);
-    res.status(500).json({ error.message });
+    res.status(500).json({ error: error.message });
   }
 });
 
@@ -73,7 +74,7 @@ router.post('/generate', authenticateToken, async (req, res) => {
 // ============================================
 
 // Get all billings for a company
-router.get('/company/', authenticateToken, async (req, res) => {
+router.get('/company/:companyId', authenticateToken, async (req, res) => {
   try {
     const { companyId } = req.params;
     const { status, limit = 50, skip = 0 } = req.query;
@@ -90,25 +91,25 @@ router.get('/company/', authenticateToken, async (req, res) => {
     ]);
 
     res.json({
-      success,
+      success: true,
       data: {
         billings,
         pagination: {
           total,
-          limit(limit),
-          skip(skip),
-          pages.ceil(total / parseInt(limit))
+          limit: parseInt(limit),
+          skip: parseInt(skip),
+          pages: Math.ceil(total / parseInt(limit))
         }
       }
     });
 
   } catch (error) {
-    res.status(500).json({ error.message });
+    res.status(500).json({ error: error.message });
   }
 });
 
 // Get billing summary
-router.get('/summary/', authenticateToken, async (req, res) => {
+router.get('/summary/:companyId', authenticateToken, async (req, res) => {
   try {
     const { companyId } = req.params;
     const summary = await CorporateBilling.getCompanyBillingSummary(companyId);
@@ -120,7 +121,7 @@ router.get('/summary/', authenticateToken, async (req, res) => {
     });
 
     res.json({
-      success,
+      success: true,
       data: {
         ...summary,
         overdueCount
@@ -128,12 +129,12 @@ router.get('/summary/', authenticateToken, async (req, res) => {
     });
 
   } catch (error) {
-    res.status(500).json({ error.message });
+    res.status(500).json({ error: error.message });
   }
 });
 
 // Get single billing
-router.get('/', authenticateToken, async (req, res) => {
+router.get('/:id', authenticateToken, async (req, res) => {
   try {
     const billing = await CorporateBilling.findById(req.params.id)
       .populate('companyId', 'companyName email')
@@ -144,11 +145,12 @@ router.get('/', authenticateToken, async (req, res) => {
     }
 
     res.json({
-      success,
-      data});
+      success: true,
+      data: billing
+    });
 
   } catch (error) {
-    res.status(500).json({ error.message });
+    res.status(500).json({ error: error.message });
   }
 });
 
@@ -157,7 +159,7 @@ router.get('/', authenticateToken, async (req, res) => {
 // ============================================
 
 // Mark invoice as paid
-router.post('//pay', authenticateToken, async (req, res) => {
+router.post('/:id/pay', authenticateToken, async (req, res) => {
   try {
     const { paymentId, paymentMethod = 'razorpay' } = req.body;
     const billing = await CorporateBilling.findById(req.params.id);
@@ -173,13 +175,13 @@ router.post('//pay', authenticateToken, async (req, res) => {
     await billing.markAsPaid(paymentId, paymentMethod);
 
     res.json({
-      success,
-      data,
+      success: true,
+      data: billing,
       message: 'Invoice marked as paid'
     });
 
   } catch (error) {
-    res.status(500).json({ error.message });
+    res.status(500).json({ error: error.message });
   }
 });
 
@@ -196,11 +198,12 @@ router.get('/admin/overdue', authenticateToken, async (req, res) => {
 
     const invoices = await CorporateBilling.getOverdueInvoices();
     res.json({
-      success,
-      data});
+      success: true,
+      data: invoices
+    });
 
   } catch (error) {
-    res.status(500).json({ error.message });
+    res.status(500).json({ error: error.message });
   }
 });
 
@@ -214,7 +217,7 @@ router.get('/admin/stats', authenticateToken, async (req, res) => {
     const stats = await CorporateBilling.aggregate([
       {
         $group: {
-          _id,
+          _id: null,
           totalRevenue: {
             $sum: {
               $cond: [{ $eq: ['$status', 'paid'] }, '$finalAmount', 0]
@@ -263,8 +266,8 @@ router.get('/admin/stats', authenticateToken, async (req, res) => {
     ]);
 
     res.json({
-      success,
-      data[0] || {
+      success: true,
+      data: stats[0] || {
         totalRevenue: 0,
         totalPending: 0,
         totalOverdue: 0,
@@ -276,9 +279,8 @@ router.get('/admin/stats', authenticateToken, async (req, res) => {
     });
 
   } catch (error) {
-    res.status(500).json({ error.message });
+    res.status(500).json({ error: error.message });
   }
 });
 
 module.exports = router;
-

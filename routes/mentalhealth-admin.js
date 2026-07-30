@@ -3,7 +3,7 @@ const router = express.Router();
 const MentalHealthTherapist = require('../models/MentalHealthTherapist');
 const MentalHealthBooking = require('../models/MentalHealthBooking');
 const MentalHealthScreening = require('../models/MentalHealthScreening');
-const { authenticate} = require('../middleware/auth');
+const { authenticate: auth } = require('../middleware/auth');
 
 // ============================================
 // ADMIN MIDDLEWARE
@@ -12,11 +12,11 @@ const { authenticate} = require('../middleware/auth');
 const isAdmin = async (req, res, next) => {
   try {
     if (req.user.role !== 'admin') {
-      return res.status(403).json({ success, message: 'Admin access required' });
+      return res.status(403).json({ success: false, message: 'Admin access required' });
     }
     next();
   } catch (error) {
-    res.status(500).json({ success, message: 'Authorization error' });
+    res.status(500).json({ success: false, message: 'Authorization error' });
   }
 };
 
@@ -42,49 +42,50 @@ router.get('/therapists', auth, isAdmin, async (req, res) => {
     const total = await MentalHealthTherapist.countDocuments(query);
 
     res.json({
-      success,
-      data,
+      success: true,
+      data: therapists,
       pagination: {
-        page(page),
-        limit(limit),
+        page: parseInt(page),
+        limit: parseInt(limit),
         total,
-        pages.ceil(total / limit)
+        pages: Math.ceil(total / limit)
       }
     });
   } catch (error) {
     console.error('Admin therapists fetch error:', error);
-    res.status(500).json({ success, message: 'Failed to fetch therapists' });
+    res.status(500).json({ success: false, message: 'Failed to fetch therapists' });
   }
 });
 
-// GET /api/mentalhealth/admin/therapists/router.get('/therapists/', auth, isAdmin, async (req, res) => {
+// GET /api/mentalhealth/admin/therapists/:id
+router.get('/therapists/:id', auth, isAdmin, async (req, res) => {
   try {
     const therapist = await MentalHealthTherapist.findById(req.params.id).select('-password');
     if (!therapist) {
-      return res.status(404).json({ success, message: 'Therapist not found' });
+      return res.status(404).json({ success: false, message: 'Therapist not found' });
     }
-    res.json({ success, data});
+    res.json({ success: true, data: therapist });
   } catch (error) {
     console.error('Admin therapist fetch error:', error);
-    res.status(500).json({ success, message: 'Failed to fetch therapist' });
+    res.status(500).json({ success: false, message: 'Failed to fetch therapist' });
   }
 });
 
-// PUT /api/mentalhealth/admin/therapists//verify
-router.put('/therapists//verify', auth, isAdmin, async (req, res) => {
+// PUT /api/mentalhealth/admin/therapists/:id/verify
+router.put('/therapists/:id/verify', auth, isAdmin, async (req, res) => {
   try {
     const { status, rejectionReason } = req.body; // status: 'approved', 'rejected'
 
     if (!status || !['approved', 'rejected'].includes(status)) {
       return res.status(400).json({
-        success,
+        success: false,
         message: 'Valid status (approved/rejected) required'
       });
     }
 
     const therapist = await MentalHealthTherapist.findById(req.params.id);
     if (!therapist) {
-      return res.status(404).json({ success, message: 'Therapist not found' });
+      return res.status(404).json({ success: false, message: 'Therapist not found' });
     }
 
     therapist.verificationStatus = status;
@@ -98,23 +99,24 @@ router.put('/therapists//verify', auth, isAdmin, async (req, res) => {
     await therapist.save();
 
     res.json({
-      success,
+      success: true,
       message: `Therapist ${status}`,
-      data});
+      data: therapist
+    });
   } catch (error) {
     console.error('Therapist verification error:', error);
-    res.status(500).json({ success, message: 'Failed to verify therapist' });
+    res.status(500).json({ success: false, message: 'Failed to verify therapist' });
   }
 });
 
-// PUT /api/mentalhealth/admin/therapists//suspend
-router.put('/therapists//suspend', auth, isAdmin, async (req, res) => {
+// PUT /api/mentalhealth/admin/therapists/:id/suspend
+router.put('/therapists/:id/suspend', auth, isAdmin, async (req, res) => {
   try {
     const { isActive, reason } = req.body;
 
     const therapist = await MentalHealthTherapist.findById(req.params.id);
     if (!therapist) {
-      return res.status(404).json({ success, message: 'Therapist not found' });
+      return res.status(404).json({ success: false, message: 'Therapist not found' });
     }
 
     therapist.isActive = isActive;
@@ -128,20 +130,22 @@ router.put('/therapists//suspend', auth, isAdmin, async (req, res) => {
     await therapist.save();
 
     res.json({
-      success,
+      success: true,
       message: `Therapist ${isActive ? 'activated' : 'suspended'}`,
-      data});
+      data: therapist
+    });
   } catch (error) {
     console.error('Therapist suspension error:', error);
-    res.status(500).json({ success, message: 'Failed to update therapist status' });
+    res.status(500).json({ success: false, message: 'Failed to update therapist status' });
   }
 });
 
-// DELETE /api/mentalhealth/admin/therapists/router.delete('/therapists/', auth, isAdmin, async (req, res) => {
+// DELETE /api/mentalhealth/admin/therapists/:id
+router.delete('/therapists/:id', auth, isAdmin, async (req, res) => {
   try {
     const therapist = await MentalHealthTherapist.findById(req.params.id);
     if (!therapist) {
-      return res.status(404).json({ success, message: 'Therapist not found' });
+      return res.status(404).json({ success: false, message: 'Therapist not found' });
     }
 
     // Soft delete
@@ -150,12 +154,12 @@ router.put('/therapists//suspend', auth, isAdmin, async (req, res) => {
     await therapist.save();
 
     res.json({
-      success,
+      success: true,
       message: 'Therapist removed'
     });
   } catch (error) {
     console.error('Therapist deletion error:', error);
-    res.status(500).json({ success, message: 'Failed to remove therapist' });
+    res.status(500).json({ success: false, message: 'Failed to remove therapist' });
   }
 });
 
@@ -182,35 +186,36 @@ router.get('/bookings', auth, isAdmin, async (req, res) => {
     const total = await MentalHealthBooking.countDocuments(query);
 
     res.json({
-      success,
-      data,
+      success: true,
+      data: bookings,
       pagination: {
-        page(page),
-        limit(limit),
+        page: parseInt(page),
+        limit: parseInt(limit),
         total,
-        pages.ceil(total / limit)
+        pages: Math.ceil(total / limit)
       }
     });
   } catch (error) {
     console.error('Admin bookings fetch error:', error);
-    res.status(500).json({ success, message: 'Failed to fetch bookings' });
+    res.status(500).json({ success: false, message: 'Failed to fetch bookings' });
   }
 });
 
-// GET /api/mentalhealth/admin/bookings/router.get('/bookings/', auth, isAdmin, async (req, res) => {
+// GET /api/mentalhealth/admin/bookings/:id
+router.get('/bookings/:id', auth, isAdmin, async (req, res) => {
   try {
     const booking = await MentalHealthBooking.findById(req.params.id)
       .populate('therapistId', 'name phone specializations')
       .populate('patientId', 'name email phone');
 
     if (!booking) {
-      return res.status(404).json({ success, message: 'Booking not found' });
+      return res.status(404).json({ success: false, message: 'Booking not found' });
     }
 
-    res.json({ success, data});
+    res.json({ success: true, data: booking });
   } catch (error) {
     console.error('Admin booking fetch error:', error);
-    res.status(500).json({ success, message: 'Failed to fetch booking' });
+    res.status(500).json({ success: false, message: 'Failed to fetch booking' });
   }
 });
 
@@ -236,18 +241,18 @@ router.get('/screenings', auth, isAdmin, async (req, res) => {
     const total = await MentalHealthScreening.countDocuments(query);
 
     res.json({
-      success,
-      data,
+      success: true,
+      data: screenings,
       pagination: {
-        page(page),
-        limit(limit),
+        page: parseInt(page),
+        limit: parseInt(limit),
         total,
-        pages.ceil(total / limit)
+        pages: Math.ceil(total / limit)
       }
     });
   } catch (error) {
     console.error('Admin screenings fetch error:', error);
-    res.status(500).json({ success, message: 'Failed to fetch screenings' });
+    res.status(500).json({ success: false, message: 'Failed to fetch screenings' });
   }
 });
 
@@ -263,29 +268,31 @@ router.get('/dashboard', auth, isAdmin, async (req, res) => {
     const completedBookings = await MentalHealthBooking.countDocuments({ status: 'completed' });
 
     const totalScreenings = await MentalHealthScreening.countDocuments();
-    const crisisScreenings = await MentalHealthScreening.countDocuments({ requiresEmergency});
+    const crisisScreenings = await MentalHealthScreening.countDocuments({ requiresEmergency: true });
 
     res.json({
-      success,
+      success: true,
       data: {
         therapists: {
-          total,
-          pending,
-          approved},
+          total: totalTherapists,
+          pending: pendingTherapists,
+          approved: approvedTherapists
+        },
         bookings: {
-          total,
-          pending,
-          completed},
+          total: totalBookings,
+          pending: pendingBookings,
+          completed: completedBookings
+        },
         screenings: {
-          total,
-          crisis}
+          total: totalScreenings,
+          crisis: crisisScreenings
+        }
       }
     });
   } catch (error) {
     console.error('Admin dashboard error:', error);
-    res.status(500).json({ success, message: 'Failed to fetch dashboard data' });
+    res.status(500).json({ success: false, message: 'Failed to fetch dashboard data' });
   }
 });
 
 module.exports = router;
-

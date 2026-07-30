@@ -179,18 +179,18 @@ const userSchema = new mongoose.Schema({
     }],
     isVerified: { type: Boolean, default: false },
     isAvailable: { type: Boolean, default: false },
-    currentLocation: {
+        currentLocation: {
       type: { type: String, enum: ['Point'], default: 'Point' },
-      coordinates: { type: [Number] }             // [longitude, latitude]
+      coordinates: { type: [Number], default: [0, 0] }
     },
     lastLocationUpdate: { type: Date },
-    assignedVehicle: { type: String },            // vehicleId reference
+    assignedVehicle: { type: String },
     rating: { type: Number, default: 0 },
     totalTrips: { type: Number, default: 0 },
     totalEarnings: { type: Number, default: 0 },
     emergencyTripsCompleted: { type: Number, default: 0 },
-    acceptanceRate: { type: Number, default: 100 }, // Percentage
-    averageResponseTime: { type: Number },         // Seconds
+    acceptanceRate: { type: Number, default: 100 },
+    averageResponseTime: { type: Number },
     isOnTrip: { type: Boolean, default: false },
     currentTripId: { type: String },
     joinedAt: { type: Date, default: Date.now }
@@ -292,7 +292,7 @@ const userSchema = new mongoose.Schema({
   driverAssignedVehicle: { type: String },
   driverCurrentLocation: {
     type: { type: String, enum: ['Point'], default: 'Point' },
-    coordinates: { type: [Number] }
+    coordinates: { type: [Number], default: [0, 0] }
   },
   driverLastLocationUpdate: { type: Date },
   driverIsAvailable: { type: Boolean, default: false },
@@ -499,8 +499,8 @@ userSchema.index({ emailVerified: 1 });
 // 🚑 NEW: Ambulance indexes
 userSchema.index({ ambulanceCompanyName: 1 });
 userSchema.index({ ambulanceVerificationStatus: 1 });
-userSchema.index({ 'ambulanceDrivers.currentLocation': '2dsphere' });
-userSchema.index({ driverCurrentLocation: '2dsphere' });
+userSchema.index({ 'ambulanceDrivers.currentLocation': '2dsphere' }, { sparse: true });
+userSchema.index({ driverCurrentLocation: '2dsphere' }, { sparse: true });
 userSchema.index({ 'ambulanceDrivers.driverId': 1 });
 userSchema.index({ 'ambulanceDrivers.isAvailable': 1, 'ambulanceDrivers.isOnTrip': 1 });
 userSchema.index({ driverIsAvailable: 1, driverIsOnTrip: 1 });

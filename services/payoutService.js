@@ -5,15 +5,15 @@ const Payout = require('../models/Payout');
 
 const payoutService = {
   // Process weekly auto-payout
-  processWeeklyPayout() => {
+  processWeeklyPayout: async () => {
     const oneWeekAgo = new Date(); oneWeekAgo.setDate(oneWeekAgo.getDate() - 7);
     
     // Process Doctor Payouts
     const doctorBookings = await AyurvedaBooking.find({
       paymentStatus: 'paid',
       commissionPayoutStatus: 'pending',
-      doctor: { $ne},
-      paidAt: { $lte}
+      doctor: { $ne: null },
+      paidAt: { $lte: oneWeekAgo }
     });
     
     const doctorGroups = {};
@@ -32,43 +32,42 @@ const payoutService = {
       const payout = new Payout({
         payoutId: 'PAY' + Date.now() + Math.floor(Math.random() * 1000),
         providerType: 'doctor',
-        providerId,
-        providerName?.name || 'Doctor',
-        amount.total,
-        tdsDeducted,
+        providerId: docId,
+        providerName: doctor?.name || 'Doctor',
+        amount: data.total,
+        tdsDeducted: tds,
         netAmount,
-        bookingCount.bookings.length,
+        bookingCount: data.bookings.length,
         period: 'weekly',
-        periodStart,
-        periodEndDate(),
+        periodStart: oneWeekAgo,
+        periodEnd: new Date(),
         status: 'pending'
       });
       await payout.save();
       
       // Mark bookings as paid
       await AyurvedaBooking.updateMany(
-        { _id: { $in.bookings.map(b => b._id) } },
-        { commissionPayoutStatus: 'paid', payoutDateDate() }
+        { _id: { $in: data.bookings.map(b => b._id) } },
+        { commissionPayoutStatus: 'paid', payoutDate: new Date() }
       );
     }
     
-    return { doctorPayouts.keys(doctorGroups).length, totalDoctors.keys(doctorGroups).length };
+    return { doctorPayouts: Object.keys(doctorGroups).length, totalDoctors: Object.keys(doctorGroups).length };
   },
 
   // Get pending payouts
-  getPendingPayouts() => {
+  getPendingPayouts: async () => {
     return await Payout.find({ status: 'pending' }).sort({ createdAt: -1 });
   },
 
   // Mark payout as paid
-  markPaid(payoutId, transactionId) => {
+  markPaid: async (payoutId, transactionId) => {
     return await Payout.findOneAndUpdate(
       { payoutId },
-      { status: 'paid', paidAtDate(), transactionId },
-      { new}
+      { status: 'paid', paidAt: new Date(), transactionId },
+      { new: true }
     );
   }
 };
 
 module.exports = payoutService;
-

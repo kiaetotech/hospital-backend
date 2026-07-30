@@ -4,7 +4,7 @@ const crypto = require('crypto');
 
 // Redis client for caching (optional)
 // const redisClient = redis.createClient({
-//   url.env.REDIS_URL || 'redis://localhost:6379'
+//   url: process.env.REDIS_URL || 'redis://localhost:6379'
 // });
 // redisClient.connect().catch(console.error);
 
@@ -12,19 +12,19 @@ class InsuranceApiService {
   constructor() {
     this.providers = {
       starHealth: {
-        baseUrl.env.STAR_HEALTH_API_URL || 'https://api.starhealth.in/v1',
-        apiKey.env.STAR_HEALTH_API_KEY,
-        apiSecret.env.STAR_HEALTH_API_SECRET
+        baseUrl: process.env.STAR_HEALTH_API_URL || 'https://api.starhealth.in/v1',
+        apiKey: process.env.STAR_HEALTH_API_KEY,
+        apiSecret: process.env.STAR_HEALTH_API_SECRET
       },
       hdfcErgo: {
-        baseUrl.env.HDFC_ERGO_API_URL || 'https://api.hdfcergo.com/v1',
-        apiKey.env.HDFC_ERGO_API_KEY,
-        apiSecret.env.HDFC_ERGO_API_SECRET
+        baseUrl: process.env.HDFC_ERGO_API_URL || 'https://api.hdfcergo.com/v1',
+        apiKey: process.env.HDFC_ERGO_API_KEY,
+        apiSecret: process.env.HDFC_ERGO_API_SECRET
       },
       iciciLombard: {
-        baseUrl.env.ICICI_LOMBARD_API_URL || 'https://api.icicilombard.com/v1',
-        apiKey.env.ICICI_LOMBARD_API_KEY,
-        apiSecret.env.ICICI_LOMBARD_API_SECRET
+        baseUrl: process.env.ICICI_LOMBARD_API_URL || 'https://api.icicilombard.com/v1',
+        apiKey: process.env.ICICI_LOMBARD_API_KEY,
+        apiSecret: process.env.ICICI_LOMBARD_API_SECRET
       }
     };
   }
@@ -49,12 +49,12 @@ class InsuranceApiService {
 
       const timestamp = Date.now();
       const payload = {
-        planCode.planCode,
-        age.age,
-        sumInsured.sumInsured,
-        members.members || 1,
-        smoker.smoker || false,
-        pincode.pincode || '110001'
+        planCode: planData.planCode,
+        age: planData.age,
+        sumInsured: planData.sumInsured,
+        members: planData.members || 1,
+        smoker: planData.smoker || false,
+        pincode: planData.pincode || '110001'
       };
 
       const signature = this.generateSignature(
@@ -69,9 +69,9 @@ class InsuranceApiService {
         payload,
         {
           headers: {
-            'X-API-Key'.apiKey,
-            'X-Timestamp',
-            'X-Signature',
+            'X-API-Key': config.apiKey,
+            'X-Timestamp': timestamp,
+            'X-Signature': signature,
             'Content-Type': 'application/json'
           },
           timeout: 10000
@@ -79,17 +79,18 @@ class InsuranceApiService {
       );
 
       return {
-        success,
-        data.data,
-        provider};
+        success: true,
+        data: response.data,
+        provider: provider
+      };
 
     } catch (error) {
       console.error(`Premium API error (${provider}):`, error.message);
       return {
-        success,
-        error.message,
-        provider,
-        fallback.getFallbackQuote(provider, planData)
+        success: false,
+        error: error.message,
+        provider: provider,
+        fallback: this.getFallbackQuote(provider, planData)
       };
     }
   }
@@ -127,10 +128,11 @@ class InsuranceApiService {
     }
 
     return {
-      premium.round(basePremium),
-      gst.round(basePremium * 0.18),
-      total.round(basePremium * 1.18),
-      isFallback};
+      premium: Math.round(basePremium),
+      gst: Math.round(basePremium * 0.18),
+      total: Math.round(basePremium * 1.18),
+      isFallback: true
+    };
   }
 
   /**
@@ -159,7 +161,7 @@ class InsuranceApiService {
         `${config.baseUrl}/plans/${planCode}`,
         {
           headers: {
-            'X-API-Key'.apiKey,
+            'X-API-Key': config.apiKey,
             'Content-Type': 'application/json'
           },
           timeout: 10000
@@ -167,16 +169,18 @@ class InsuranceApiService {
       );
 
       return {
-        success,
-        data.data,
-        provider};
+        success: true,
+        data: response.data,
+        provider: provider
+      };
 
     } catch (error) {
       console.error(`Plan details API error (${provider}):`, error.message);
       return {
-        success,
-        error.message,
-        provider};
+        success: false,
+        error: error.message,
+        provider: provider
+      };
     }
   }
 
@@ -203,9 +207,9 @@ class InsuranceApiService {
         applicationData,
         {
           headers: {
-            'X-API-Key'.apiKey,
-            'X-Timestamp',
-            'X-Signature',
+            'X-API-Key': config.apiKey,
+            'X-Timestamp': timestamp,
+            'X-Signature': signature,
             'Content-Type': 'application/json'
           },
           timeout: 30000
@@ -213,18 +217,19 @@ class InsuranceApiService {
       );
 
       return {
-        success,
-        data.data,
-        provider,
-        policyNumber.data.policyNumber
+        success: true,
+        data: response.data,
+        provider: provider,
+        policyNumber: response.data.policyNumber
       };
 
     } catch (error) {
       console.error(`Policy submission error (${provider}):`, error.message);
       return {
-        success,
-        error.message,
-        provider};
+        success: false,
+        error: error.message,
+        provider: provider
+      };
     }
   }
 
@@ -243,7 +248,7 @@ class InsuranceApiService {
         claimData,
         {
           headers: {
-            'X-API-Key'.apiKey,
+            'X-API-Key': config.apiKey,
             'Content-Type': 'application/json'
           },
           timeout: 30000
@@ -251,18 +256,19 @@ class InsuranceApiService {
       );
 
       return {
-        success,
-        data.data,
-        provider,
-        claimId.data.claimId
+        success: true,
+        data: response.data,
+        provider: provider,
+        claimId: response.data.claimId
       };
 
     } catch (error) {
       console.error(`Claim submission error (${provider}):`, error.message);
       return {
-        success,
-        error.message,
-        provider};
+        success: false,
+        error: error.message,
+        provider: provider
+      };
     }
   }
 
@@ -280,7 +286,7 @@ class InsuranceApiService {
         `${config.baseUrl}/claims/${claimNumber}`,
         {
           headers: {
-            'X-API-Key'.apiKey,
+            'X-API-Key': config.apiKey,
             'Content-Type': 'application/json'
           },
           timeout: 10000
@@ -288,16 +294,18 @@ class InsuranceApiService {
       );
 
       return {
-        success,
-        data.data,
-        provider};
+        success: true,
+        data: response.data,
+        provider: provider
+      };
 
     } catch (error) {
       console.error(`Claim status API error (${provider}):`, error.message);
       return {
-        success,
-        error.message,
-        provider};
+        success: false,
+        error: error.message,
+        provider: provider
+      };
     }
   }
 
@@ -316,7 +324,7 @@ class InsuranceApiService {
         {
           params: { pincode },
           headers: {
-            'X-API-Key'.apiKey,
+            'X-API-Key': config.apiKey,
             'Content-Type': 'application/json'
           },
           timeout: 10000
@@ -324,19 +332,20 @@ class InsuranceApiService {
       );
 
       return {
-        success,
-        data.data,
-        provider};
+        success: true,
+        data: response.data,
+        provider: provider
+      };
 
     } catch (error) {
       console.error(`Network hospitals API error (${provider}):`, error.message);
       return {
-        success,
-        error.message,
-        provider};
+        success: false,
+        error: error.message,
+        provider: provider
+      };
     }
   }
 }
 
 module.exports = new InsuranceApiService();
-

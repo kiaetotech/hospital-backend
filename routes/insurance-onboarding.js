@@ -33,7 +33,7 @@ router.post('/register', async (req, res) => {
     // Validate required fields
     if (!companyName || !email || !phone || !password || !irdaRegistration) {
       return res.status(400).json({
-        success,
+        success: false,
         message: 'Missing required fields'
       });
     }
@@ -42,7 +42,7 @@ router.post('/register', async (req, res) => {
     const existingUser = await User.findOne({ email });
     if (existingUser) {
       return res.status(400).json({
-        success,
+        success: false,
         message: 'Email already registered'
       });
     }
@@ -51,26 +51,27 @@ router.post('/register', async (req, res) => {
     const existingCompany = await InsuranceCompany.findOne({ irdaRegistration });
     if (existingCompany) {
       return res.status(400).json({
-        success,
+        success: false,
         message: 'IRDAI registration number already registered'
       });
     }
 
     // Create user account
     const user = new User({
-      name|| companyName,
+      name: contactPerson || companyName,
       email,
       phone,
       password,
       role: 'insurance_company',
-      phoneVerified,
-      emailVerified});
+      phoneVerified: true,
+      emailVerified: true
+    });
     await user.save();
 
     // Create insurance company profile
     const company = new InsuranceCompany({
       companyName,
-      legalName|| companyName,
+      legalName: legalName || companyName,
       registrationNumber,
       irdaRegistration,
       gstNumber,
@@ -80,9 +81,9 @@ router.post('/register', async (req, res) => {
       website,
       address,
       bankDetails,
-      userId._id,
+      userId: user._id,
       status: 'pending_verification',
-      createdBy._id
+      createdBy: user._id
     });
 
     await company.save();
@@ -118,11 +119,11 @@ router.post('/register', async (req, res) => {
     );
 
     res.json({
-      success,
+      success: true,
       message: 'Registration submitted for verification',
       data: {
-        companyId._id,
-        userId._id,
+        companyId: company._id,
+        userId: user._id,
         status: 'pending_verification'
       }
     });
@@ -130,7 +131,7 @@ router.post('/register', async (req, res) => {
   } catch (error) {
     console.error('Registration error:', error);
     res.status(500).json({
-      success,
+      success: false,
       message: 'Registration failed: ' + error.message
     });
   }
@@ -142,38 +143,38 @@ router.post('/register', async (req, res) => {
 
 router.post('/documents', auth, upload.array('documents', 10), async (req, res) => {
   try {
-    const company = await InsuranceCompany.findOne({ userId.user.id });
+    const company = await InsuranceCompany.findOne({ userId: req.user.id });
     if (!company) {
       return res.status(404).json({
-        success,
+        success: false,
         message: 'Company not found'
       });
     }
 
     const files = req.files || [];
     const documents = files.map(file => ({
-      name.originalname,
-      url.path || file.location,
-      type.body.documentType,
-      uploadedAtDate()
+      name: file.originalname,
+      url: file.path || file.location,
+      type: req.body.documentType,
+      uploadedAt: new Date()
     }));
 
     company.documents.push(...documents);
     await company.save();
 
     res.json({
-      success,
+      success: true,
       message: 'Documents uploaded successfully',
       data: {
-        documents,
-        totalDocuments.documents.length
+        documents: documents,
+        totalDocuments: company.documents.length
       }
     });
 
   } catch (error) {
     console.error('Document upload error:', error);
     res.status(500).json({
-      success,
+      success: false,
       message: 'Failed to upload documents'
     });
   }
@@ -185,29 +186,29 @@ router.post('/documents', auth, upload.array('documents', 10), async (req, res) 
 
 router.get('/status', auth, async (req, res) => {
   try {
-    const company = await InsuranceCompany.findOne({ userId.user.id });
+    const company = await InsuranceCompany.findOne({ userId: req.user.id });
     if (!company) {
       return res.status(404).json({
-        success,
+        success: false,
         message: 'Company not found'
       });
     }
 
     const documentStatus = company.documents.map(doc => ({
-      type.type,
-      uploaded,
-      verified.verified || false
+      type: doc.type,
+      uploaded: true,
+      verified: doc.verified || false
     }));
 
     res.json({
-      success,
+      success: true,
       data: {
-        companyId._id,
-        companyName.companyName,
-        status.status,
-        isVerified.isVerified,
-        registeredAt.createdAt,
-        documentStatus,
+        companyId: company._id,
+        companyName: company.companyName,
+        status: company.status,
+        isVerified: company.isVerified,
+        registeredAt: company.createdAt,
+        documentStatus: documentStatus,
         documentsRequired: [
           'irda_certificate',
           'gst_certificate',
@@ -221,7 +222,7 @@ router.get('/status', auth, async (req, res) => {
   } catch (error) {
     console.error('Status check error:', error);
     res.status(500).json({
-      success,
+      success: false,
       message: 'Failed to get status'
     });
   }
@@ -236,7 +237,7 @@ router.get('/admin/pending', auth, async (req, res) => {
   try {
     if (req.user.role !== 'admin' && req.user.role !== 'super_admin') {
       return res.status(403).json({
-        success,
+        success: false,
         message: 'Admin access required'
       });
     }
@@ -246,24 +247,25 @@ router.get('/admin/pending', auth, async (req, res) => {
     }).populate('userId', 'name email phone');
 
     res.json({
-      success,
-      data});
+      success: true,
+      data: companies
+    });
 
   } catch (error) {
     console.error('Pending registrations error:', error);
     res.status(500).json({
-      success,
+      success: false,
       message: 'Failed to fetch pending registrations'
     });
   }
 });
 
 // Verify company (Admin only)
-router.post('/admin/verify/', auth, async (req, res) => {
+router.post('/admin/verify/:id', auth, async (req, res) => {
   try {
     if (req.user.role !== 'admin' && req.user.role !== 'super_admin') {
       return res.status(403).json({
-        success,
+        success: false,
         message: 'Admin access required'
       });
     }
@@ -273,7 +275,7 @@ router.post('/admin/verify/', auth, async (req, res) => {
 
     if (!company) {
       return res.status(404).json({
-        success,
+        success: false,
         message: 'Company not found'
       });
     }
@@ -294,7 +296,8 @@ router.post('/admin/verify/', auth, async (req, res) => {
 
       // Update user role
       await User.findByIdAndUpdate(company.userId, {
-        isVerified});
+        isVerified: true
+      });
 
       // Send notification
       await notificationService.sendEmail(
@@ -303,7 +306,7 @@ router.post('/admin/verify/', auth, async (req, res) => {
         {
           template: 'company_verified',
           data: {
-            companyName.companyName,
+            companyName: company.companyName,
             status: 'Verified',
             nextSteps: 'You can now create and manage insurance plans.'
           }
@@ -322,26 +325,26 @@ router.post('/admin/verify/', auth, async (req, res) => {
         {
           template: 'company_rejected',
           data: {
-            companyName.companyName,
-            reason|| 'Verification failed. Please contact support.'
+            companyName: company.companyName,
+            reason: notes || 'Verification failed. Please contact support.'
           }
         }
       );
     }
 
     res.json({
-      success,
-      message? 'Company verified successfully' : 'Company verification rejected',
-      data});
+      success: true,
+      message: approved ? 'Company verified successfully' : 'Company verification rejected',
+      data: company
+    });
 
   } catch (error) {
     console.error('Company verification error:', error);
     res.status(500).json({
-      success,
+      success: false,
       message: 'Failed to verify company'
     });
   }
 });
 
 module.exports = router;
-

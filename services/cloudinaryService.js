@@ -6,9 +6,9 @@ const streamifier = require('streamifier');
 // ============================================
 
 cloudinary.config({
-  cloud_name.env.CLOUDINARY_CLOUD_NAME,
-  api_key.env.CLOUDINARY_API_KEY,
-  api_secret.env.CLOUDINARY_API_SECRET
+  cloud_name: process.env.CLOUDINARY_CLOUD_NAME,
+  api_key: process.env.CLOUDINARY_API_KEY,
+  api_secret: process.env.CLOUDINARY_API_SECRET
 });
 
 // ============================================
@@ -19,7 +19,7 @@ const uploadFile = (fileBuffer, options = {}) => {
   return new Promise((resolve, reject) => {
     const uploadStream = cloudinary.uploader.upload_stream(
       {
-        folder.env.CLOUDINARY_FOLDER || 'hospital_documents',
+        folder: process.env.CLOUDINARY_FOLDER || 'hospital_documents',
         resource_type: 'auto',
         ...options
       },
@@ -47,11 +47,11 @@ const uploadMultipleFiles = async (files) => {
       public_id: `${Date.now()}_${file.originalname.replace(/\.[^/.]+$/, '')}` 
     });
     results.push({
-      fieldname.fieldname,
-      originalname.originalname,
-      url.secure_url,
-      public_id.public_id,
-      size.bytes
+      fieldname: file.fieldname,
+      originalname: file.originalname,
+      url: result.secure_url,
+      public_id: result.public_id,
+      size: result.bytes
     });
   }
   return results;
@@ -77,8 +77,8 @@ const deleteFile = async (publicId) => {
 
 const getSignedUrl = (publicId, expiresIn = 3600) => {
   return cloudinary.url(publicId, {
-    secure,
-    expires_at.floor(Date.now() / 1000) + expiresIn
+    secure: true,
+    expires_at: Math.floor(Date.now() / 1000) + expiresIn
   });
 };
 
@@ -93,4 +93,3 @@ module.exports = {
   getSignedUrl,
   cloudinary
 };
-

@@ -4,15 +4,15 @@ const XLSX = require('xlsx');
 const CustomPackage = require('../models/CustomPackage');
 const router = express.Router();
 
-const upload = multer({ storage.memoryStorage() });
+const upload = multer({ storage: multer.memoryStorage() });
 
 // Get all packages
 router.get('/', async (req, res) => {
   try {
-    const packages = await CustomPackage.find({ isActive}).sort({ createdAt: -1 });
+    const packages = await CustomPackage.find({ isActive: true }).sort({ createdAt: -1 });
     res.json(packages);
   } catch (error) {
-    res.status(500).json({ error.message });
+    res.status(500).json({ error: error.message });
   }
 });
 
@@ -33,9 +33,9 @@ router.post('/upload', upload.single('file'), async (req, res) => {
         if (row[`test${i}`]) {
           const testPrice = row[`price${i}`] || 0;
           tests.push({
-            testName[`test${i}`],
-            price,
-            category[`category${i}`] || 'General'
+            testName: row[`test${i}`],
+            price: testPrice,
+            category: row[`category${i}`] || 'General'
           });
           totalAmount += testPrice;
         }
@@ -44,26 +44,26 @@ router.post('/upload', upload.single('file'), async (req, res) => {
       const discountedAmount = totalAmount - (totalAmount * (row.discountPercent || 0) / 100);
       
       await CustomPackage.findOneAndUpdate(
-        { packageName.packageName },
+        { packageName: row.packageName },
         {
-          packageName.packageName,
-          description.description || '',
+          packageName: row.packageName,
+          description: row.description || '',
           tests,
           totalAmount,
-          discountedAmount,
-          discountPercent.discountPercent || 0,
-          popular.popular === 'Yes',
-          isActive},
-        { upsert}
+          discountedAmount: discountedAmount,
+          discountPercent: row.discountPercent || 0,
+          popular: row.popular === 'Yes',
+          isActive: true
+        },
+        { upsert: true }
       );
       count++;
     }
     
-    res.json({ success, count, message: `${count} packages uploaded` });
+    res.json({ success: true, count, message: `${count} packages uploaded` });
   } catch (error) {
-    res.status(500).json({ error.message });
+    res.status(500).json({ error: error.message });
   }
 });
 
 module.exports = router;
-

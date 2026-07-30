@@ -46,18 +46,18 @@ router.post('/register', async (req, res) => {
       registrationNumber,
       email,
       phone,
-      password,
+      password: hashedPassword,
       address,
-      loanProducts|| [],
-      commissionRate|| 2,
+      loanProducts: loanProducts || [],
+      commissionRate: commissionRate || 2,
       status: 'pending',
-      createdAtDate()
+      createdAt: new Date()
     });
     
     await lender.save();
     
     res.json({
-      success,
+      success: true,
       lenderId,
       message: 'Registration submitted for admin approval.'
     });
@@ -88,14 +88,14 @@ router.post('/login', async (req, res) => {
     const token = generateLenderToken(lender.lenderId, lender.email);
     
     res.json({
-      success,
+      success: true,
       token,
       lender: {
-        lenderId.lenderId,
-        businessName.businessName,
-        email.email,
-        status.status,
-        commissionRate.commissionRate
+        lenderId: lender.lenderId,
+        businessName: lender.businessName,
+        email: lender.email,
+        status: lender.status,
+        commissionRate: lender.commissionRate
       }
     });
   } catch (error) {
@@ -106,7 +106,7 @@ router.post('/login', async (req, res) => {
 // Get lender profile
 router.get('/profile', authenticate, authenticateLender, async (req, res) => {
   try {
-    const lender = await Lender.findOne({ lenderId.user.lenderId }).select('-password');
+    const lender = await Lender.findOne({ lenderId: req.user.lenderId }).select('-password');
     if (!lender) {
       return res.status(404).json({ error: 'Lender not found' });
     }
@@ -125,7 +125,7 @@ router.get('/applications', authenticate, authenticateLender, async (req, res) =
   try {
     const { status, page = 1, limit = 20 } = req.query;
     
-    const query = { lenderId.user.lenderId };
+    const query = { lenderId: req.user.lenderId };
     if (status) query.status = status;
     
     const applications = await LoanApplication.find(query)
@@ -138,8 +138,8 @@ router.get('/applications', authenticate, authenticateLender, async (req, res) =
     res.json({
       applications,
       total,
-      page(page),
-      totalPages.ceil(total / parseInt(limit))
+      page: parseInt(page),
+      totalPages: Math.ceil(total / parseInt(limit))
     });
   } catch (error) {
     res.status(500).json({ error: 'Failed to fetch applications' });
@@ -147,11 +147,11 @@ router.get('/applications', authenticate, authenticateLender, async (req, res) =
 });
 
 // Get single application details
-router.get('/applications/', authenticate, authenticateLender, async (req, res) => {
+router.get('/applications/:applicationId', authenticate, authenticateLender, async (req, res) => {
   try {
     const application = await LoanApplication.findOne({
-      applicationId.params.applicationId,
-      lenderId.user.lenderId
+      applicationId: req.params.applicationId,
+      lenderId: req.user.lenderId
     });
     
     if (!application) {
@@ -165,14 +165,14 @@ router.get('/applications/', authenticate, authenticateLender, async (req, res) 
 });
 
 // Update application status (approve/reject)
-router.put('/applications//status', authenticate, authenticateLender, async (req, res) => {
+router.put('/applications/:applicationId/status', authenticate, authenticateLender, async (req, res) => {
   try {
     const { applicationId } = req.params;
     const { status, note, sanctionedAmount, tenure, interestRate } = req.body;
     
     const application = await LoanApplication.findOne({
       applicationId,
-      lenderId.user.lenderId
+      lenderId: req.user.lenderId
     });
     
     if (!application) {
@@ -184,7 +184,7 @@ router.put('/applications//status', authenticate, authenticateLender, async (req
       status,
       note,
       updatedBy: 'lender',
-      timestampDate()
+      timestamp: new Date()
     });
     
     if (status === 'approved') {
@@ -204,21 +204,21 @@ router.put('/applications//status', authenticate, authenticateLender, async (req
     
     await application.save();
     
-    res.json({ success, application });
+    res.json({ success: true, application });
   } catch (error) {
     res.status(500).json({ error: 'Failed to update status' });
   }
 });
 
 // Request additional documents from patient
-router.post('/applications//request-document', authenticate, authenticateLender, async (req, res) => {
+router.post('/applications/:applicationId/request-document', authenticate, authenticateLender, async (req, res) => {
   try {
     const { applicationId } = req.params;
     const { documentType, description } = req.body;
     
     const application = await LoanApplication.findOne({
       applicationId,
-      lenderId.user.lenderId
+      lenderId: req.user.lenderId
     });
     
     if (!application) {
@@ -230,28 +230,28 @@ router.post('/applications//request-document', authenticate, authenticateLender,
       requestId,
       requestType: 'document',
       description: `${documentType}: ${description}`,
-      requestedAtDate(),
+      requestedAt: new Date(),
       status: 'pending'
     });
     
     application.status = 'document_pending';
     await application.save();
     
-    res.json({ success, requestId });
+    res.json({ success: true, requestId });
   } catch (error) {
     res.status(500).json({ error: 'Failed to request document' });
   }
 });
 
 // Mark loan as disbursed
-router.post('/applications//disburse', authenticate, authenticateLender, async (req, res) => {
+router.post('/applications/:applicationId/disburse', authenticate, authenticateLender, async (req, res) => {
   try {
     const { applicationId } = req.params;
     const { disbursedAmount, transactionId } = req.body;
     
     const application = await LoanApplication.findOne({
       applicationId,
-      lenderId.user.lenderId
+      lenderId: req.user.lenderId
     });
     
     if (!application) {
@@ -271,18 +271,18 @@ router.post('/applications//disburse', authenticate, authenticateLender, async (
       status: 'disbursed',
       note: `Amount ₹${actualDisbursedAmount} disbursed to hospital`,
       updatedBy: 'lender',
-      timestampDate()
+      timestamp: new Date()
     });
     
-    const lender = await Lender.findOne({ lenderId.user.lenderId });
+    const lender = await Lender.findOne({ lenderId: req.user.lenderId });
     const commissionAmount = (actualDisbursedAmount * lender.commissionRate) / 100;
     application.platformCommission = commissionAmount;
     
     await application.save();
     
     res.json({
-      success,
-      disbursedAmount,
+      success: true,
+      disbursedAmount: actualDisbursedAmount,
       commissionAmount,
       message: `Disbursed ₹${actualDisbursedAmount} to hospital. Platform commission: ₹${commissionAmount}`
     });
@@ -321,4 +321,3 @@ router.get('/stats', authenticate, authenticateLender, async (req, res) => {
 });
 
 module.exports = router;
-

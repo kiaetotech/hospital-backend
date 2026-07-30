@@ -113,9 +113,10 @@ const HEALTH_TIPS = {
 const triageSymptoms = (symptoms) => {
   if (!symptoms || symptoms.trim().length < 3) {
     return {
-      success,
+      success: false,
       message: 'Please describe your symptoms in more detail',
-      recommendation};
+      recommendation: null
+    };
   }
 
   const symptomsLower = symptoms.toLowerCase();
@@ -126,9 +127,9 @@ const triageSymptoms = (symptoms) => {
   for (const emergency of EMERGENCY_SYMPTOMS) {
     if (symptomsLower.includes(emergency)) {
       return {
-        success,
-        isEmergency,
-        message: '⚠️ URGENTsymptoms suggest a medical emergency.',
+        success: true,
+        isEmergency: true,
+        message: '⚠️ URGENT: Your symptoms suggest a medical emergency.',
         recommendation: {
           specialty: 'Emergency Medicine',
           action: 'Please call emergency services (108) or visit the nearest Emergency Room immediately.',
@@ -146,9 +147,10 @@ const triageSymptoms = (symptoms) => {
         if (!matchedSpecialties.has(data.specialty)) {
           matches.push({
             condition,
-            specialty.specialty,
-            confidence.confidence,
-            matchedKeyword});
+            specialty: data.specialty,
+            confidence: data.confidence,
+            matchedKeyword: keyword
+          });
           matchedSpecialties.add(data.specialty);
         }
         break;
@@ -185,22 +187,22 @@ const triageSymptoms = (symptoms) => {
   else if (matches.some(m => m.confidence === 'High')) severity = 'Medium';
 
   return {
-    success,
-    isEmergency,
+    success: true,
+    isEmergency: false,
     message: `Based on your symptoms, we recommend consulting a ${primaryRecommendation.specialty}.`,
     recommendation: {
-      specialty.specialty,
-      confidence.confidence,
+      specialty: primaryRecommendation.specialty,
+      confidence: primaryRecommendation.confidence,
       severity,
       action: `Book a ${primaryRecommendation.specialty} consultation`,
-      estimatedUrgency=== 'High' ? 'Within 24 hours' === 'Medium' ? 'Within 2-3 days' : 'When convenient'
+      estimatedUrgency: severity === 'High' ? 'Within 24 hours' : severity === 'Medium' ? 'Within 2-3 days' : 'When convenient'
     },
     allPossibleSpecialties: [...new Set(matches.map(m => m.specialty))],
-    matches.slice(0, 5), // Top 5 matches
-    healthTips.slice(0, 3), // Top 3 tips
+    matches: matches.slice(0, 5), // Top 5 matches
+    healthTips: tips.slice(0, 3), // Top 3 tips
     disclaimer: 'This is an AI-assisted recommendation. Always consult a qualified doctor for medical advice.',
-    analyzedSymptoms,
-    timestampDate().toISOString()
+    analyzedSymptoms: symptoms,
+    timestamp: new Date().toISOString()
   };
 };
 
@@ -221,9 +223,9 @@ const getAvailableSpecialties = () => {
 const quickTriage = (symptoms) => {
   const result = triageSymptoms(symptoms);
   return {
-    specialty.recommendation?.specialty || 'General Physician',
-    isEmergency.isEmergency || false,
-    confidence.recommendation?.confidence || 'Low'
+    specialty: result.recommendation?.specialty || 'General Physician',
+    isEmergency: result.isEmergency || false,
+    confidence: result.recommendation?.confidence || 'Low'
   };
 };
 
@@ -234,4 +236,3 @@ module.exports = {
   SYMPTOM_SPECIALTY_MAP,
   EMERGENCY_SYMPTOMS
 };
-

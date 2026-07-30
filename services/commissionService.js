@@ -9,7 +9,7 @@
  * Supports ALL 11 Tags with specialized sub-types,
  * performance-based adjustments, and admin configurability
  * 
- * Tags, Ambulance, Insurance, Homeopathy,
+ * Tags: Hospitals, Ambulance, Insurance, Homeopathy,
  *       Ayurveda, Caregivers, Health EMI, Corporate Health,
  *       Diagnostics, Mental Health, Online Doctor
  */
@@ -21,7 +21,8 @@
 const COMMISSION_RATES = {
   
   // ============================================
-  // 🏥 TAG 1// ============================================
+  // 🏥 TAG 1: HOSPITALS
+  // ============================================
   hospital: {
     opd: { type: 'percentage', rate: 15, label: 'OPD Consultation' },
     admission: { type: 'percentage', rate: 10, label: 'IPD Admission' },
@@ -32,7 +33,8 @@ const COMMISSION_RATES = {
   },
   
   // ============================================
-  // 🚑 TAG 2// ============================================
+  // 🚑 TAG 2: AMBULANCE
+  // ============================================
   ambulance: {
     emergency: { type: 'percentage', rate: 12, label: 'Emergency Ambulance' },
     scheduled: { type: 'percentage', rate: 18, label: 'Scheduled Ambulance' },
@@ -43,7 +45,7 @@ const COMMISSION_RATES = {
   },
   
   // ============================================
-  // 🛡️ TAG 3INSURANCE
+  // 🛡️ TAG 3: HEALTH INSURANCE
   // ============================================
   insurance: {
     new_policy: { type: 'percentage', rate: 15, label: 'New Policy' },
@@ -56,7 +58,8 @@ const COMMISSION_RATES = {
   },
   
   // ============================================
-  // 🌿 TAG 4// ============================================
+  // 🌿 TAG 4: HOMEOPATHY
+  // ============================================
   homeopathy: {
     consultation: { type: 'percentage', rate: 20, label: 'Consultation' },
     follow_up: { type: 'percentage', rate: 15, label: 'Follow-up' },
@@ -67,7 +70,8 @@ const COMMISSION_RATES = {
   },
   
   // ============================================
-  // 🧘 TAG 5// ============================================
+  // 🧘 TAG 5: AYURVEDA
+  // ============================================
   ayurveda: {
     consultation: { type: 'percentage', rate: 20, label: 'Consultation' },
     follow_up: { type: 'percentage', rate: 15, label: 'Follow-up' },
@@ -80,7 +84,8 @@ const COMMISSION_RATES = {
   },
   
   // ============================================
-  // 🏠 TAG 6// ============================================
+  // 🏠 TAG 6: CAREGIVERS
+  // ============================================
   caregiver: {
     daily_care: { type: 'percentage', rate: 15, label: 'Daily Care' },
     monthly_retainer: { type: 'percentage', rate: 12, label: 'Monthly Retainer' },
@@ -92,7 +97,7 @@ const COMMISSION_RATES = {
   },
   
   // ============================================
-  // 💰 TAG 7EMI / FINANCING
+  // 💰 TAG 7: HEALTH EMI / FINANCING
   // ============================================
   health_emi: {
     medical_loan: { type: 'percentage', rate: 3, label: 'Medical Loan' },
@@ -104,7 +109,7 @@ const COMMISSION_RATES = {
   },
   
   // ============================================
-  // 🏢 TAG 8HEALTH
+  // 🏢 TAG 8: CORPORATE HEALTH
   // ============================================
   corporate: {
     employee_checkup: { type: 'percentage', rate: 12, label: 'Employee Checkup' },
@@ -117,7 +122,8 @@ const COMMISSION_RATES = {
   },
   
   // ============================================
-  // 🔬 TAG 9// ============================================
+  // 🔬 TAG 9: DIAGNOSTICS
+  // ============================================
   diagnostics: {
     labtest: { type: 'percentage', rate: 25, label: 'Individual Lab Test' },
     health_package: { type: 'percentage', rate: 20, label: 'Health Package' },
@@ -129,7 +135,7 @@ const COMMISSION_RATES = {
   },
   
   // ============================================
-  // 🧠 TAG 10HEALTH
+  // 🧠 TAG 10: MENTAL HEALTH
   // ============================================
   mental_health: {
     individual_session: { type: 'percentage', rate: 20, label: 'Individual Session' },
@@ -143,7 +149,7 @@ const COMMISSION_RATES = {
   },
   
   // ============================================
-  // 📱 TAG 11DOCTOR
+  // 📱 TAG 11: ONLINE DOCTOR
   // ============================================
   online_doctor: {
     general_consult: { type: 'percentage', rate: 20, label: 'General Consultation' },
@@ -178,7 +184,7 @@ const FIXED_COMMISSIONS = {
 const TAG_CONFIGS = {
   
   // ============================================
-  // 🚑 TAG 2CONFIG
+  // 🚑 TAG 2: AMBULANCE CONFIG
   // ============================================
   ambulance: {
     emergencyDiscount: 3,
@@ -196,11 +202,11 @@ const TAG_CONFIGS = {
       { start: 9, end: 11, label: 'Morning Peak', adjustment: +2 },
       { start: 17, end: 20, label: 'Evening Peak', adjustment: +2 }
     ],
-    gst: { percentage: 5, includedInPrice}
+    gst: { percentage: 5, includedInPrice: true }
   },
 
   // ============================================
-  // 🏥 TAG 1CONFIG
+  // 🏥 TAG 1: HOSPITAL CONFIG
   // ============================================
   hospital: {
     platformFee: {
@@ -214,7 +220,7 @@ const TAG_CONFIGS = {
       { metric: 'completed_bookings', threshold: 500, discount: 2 },
       { metric: 'rating', threshold: 4.8, discount: 3 }
     ],
-    gst: { percentage: 5, includedInPrice},
+    gst: { percentage: 5, includedInPrice: true },
     cancellationFee: {
       before_24h: 0,
       before_6h: 25,
@@ -223,7 +229,7 @@ const TAG_CONFIGS = {
   },
 
   // ============================================
-  // 🛡️ TAG 3CONFIG
+  // 🛡️ TAG 3: INSURANCE CONFIG
   // ============================================
   insurance: {
     platformFee: {
@@ -232,13 +238,13 @@ const TAG_CONFIGS = {
     },
     renewalDiscount: 2,  // 2% less commission on renewals
     agentCommission: 50, // 50% of platform commission goes to agent
-    gst: { percentage: 18, includedInPrice},
+    gst: { percentage: 18, includedInPrice: true },
     minimumPayout: 5000,
     payoutFrequency: 'monthly'
   },
 
   // ============================================
-  // 🌿 TAG 4CONFIG
+  // 🌿 TAG 4: HOMEOPATHY CONFIG
   // ============================================
   homeopathy: {
     platformFee: {
@@ -251,11 +257,11 @@ const TAG_CONFIGS = {
       after_5_consults: 2,
       after_10_consults: 3
     },
-    gst: { percentage: 18, includedInPrice}
+    gst: { percentage: 18, includedInPrice: true }
   },
 
   // ============================================
-  // 🧘 TAG 5CONFIG
+  // 🧘 TAG 5: AYURVEDA CONFIG
   // ============================================
   ayurveda: {
     platformFee: {
@@ -267,11 +273,11 @@ const TAG_CONFIGS = {
     panchakarmaDiscount: 3,  // 3% off for long-duration Panchakarma
     productMargin: 30,       // Products have 60-80% margin, platform can take 25-30%
     seasonalDiscount: 2,     // Seasonal wellness packages
-    gst: { percentage: 18, includedInPrice}
+    gst: { percentage: 18, includedInPrice: true }
   },
 
   // ============================================
-  // 🏠 TAG 6CONFIG
+  // 🏠 TAG 6: CAREGIVERS CONFIG
   // ============================================
   caregiver: {
     platformFee: {
@@ -288,11 +294,11 @@ const TAG_CONFIGS = {
       above_4_5: 2,
       above_4_8: 3
     },
-    gst: { percentage: 18, includedInPrice}
+    gst: { percentage: 18, includedInPrice: true }
   },
 
   // ============================================
-  // 💰 TAG 7EMI CONFIG
+  // 💰 TAG 7: HEALTH EMI CONFIG
   // ============================================
   health_emi: {
     platformFee: {
@@ -301,11 +307,11 @@ const TAG_CONFIGS = {
     },
     lenderCommission: 70,  // 70% of commission goes to lender
     earlyRepaymentPenalty: 0,
-    gst: { percentage: 18, includedInPrice}
+    gst: { percentage: 18, includedInPrice: false }
   },
 
   // ============================================
-  // 🏢 TAG 8HEALTH CONFIG
+  // 🏢 TAG 8: CORPORATE HEALTH CONFIG
   // ============================================
   corporate: {
     platformFee: {
@@ -323,11 +329,11 @@ const TAG_CONFIGS = {
       '2_years': 1,
       '3_years': 2
     },
-    gst: { percentage: 18, includedInPrice}
+    gst: { percentage: 18, includedInPrice: true }
   },
 
   // ============================================
-  // 🔬 TAG 9CONFIG
+  // 🔬 TAG 9: DIAGNOSTICS CONFIG
   // ============================================
   diagnostics: {
     platformFee: {
@@ -342,11 +348,11 @@ const TAG_CONFIGS = {
       monthly_500_tests: 5
     },
     corporateDiscount: 5,
-    gst: { percentage: 18, includedInPrice}
+    gst: { percentage: 18, includedInPrice: true }
   },
 
   // ============================================
-  // 🧠 TAG 10HEALTH CONFIG
+  // 🧠 TAG 10: MENTAL HEALTH CONFIG
   // ============================================
   mental_health: {
     platformFee: {
@@ -365,11 +371,11 @@ const TAG_CONFIGS = {
       above_4_5: 2,
       above_4_8: 3
     },
-    gst: { percentage: 18, includedInPrice}
+    gst: { percentage: 18, includedInPrice: true }
   },
 
   // ============================================
-  // 📱 TAG 11DOCTOR CONFIG
+  // 📱 TAG 11: ONLINE DOCTOR CONFIG
   // ============================================
   online_doctor: {
     platformFee: {
@@ -386,7 +392,7 @@ const TAG_CONFIGS = {
       '200_consults_month': 5
     },
     peakHourIncentive: 1,       // 1% less commission during peak hours
-    gst: { percentage: 18, includedInPrice}
+    gst: { percentage: 18, includedInPrice: true }
   }
 };
 
@@ -434,7 +440,7 @@ const PERFORMANCE_RULES = {
 };
 
 // ============================================
-// MAPPING→ tag and sub-type
+// MAPPING: bookingType → tag and sub-type
 // ============================================
 
 const BOOKING_TYPE_MAP = {
@@ -510,7 +516,7 @@ const calculateCommission = (bookingType, amount, serviceId = null, metadata = {
   let breakdown = [];
   let adjustments = [];
   
-  // Case 1commission override
+  // Case 1: Fixed commission override
   if (serviceId && FIXED_COMMISSIONS[serviceId]) {
     const fixed = FIXED_COMMISSIONS[serviceId];
     commissionAmount = fixed.amount;
@@ -519,7 +525,7 @@ const calculateCommission = (bookingType, amount, serviceId = null, metadata = {
     breakdown.push({
       type: 'fixed',
       rate: 0,
-      amount.amount,
+      amount: fixed.amount,
       description: `Fixed commission for ${serviceId}`
     });
     return { 
@@ -529,12 +535,12 @@ const calculateCommission = (bookingType, amount, serviceId = null, metadata = {
       breakdown,
       adjustments,
       bookingType,
-      originalAmount,
-      netAmount- commissionAmount
+      originalAmount: amount,
+      netAmount: amount - commissionAmount
     };
   }
   
-  // Case 2rate config from mapping
+  // Case 2: Find rate config from mapping
   const mapped = BOOKING_TYPE_MAP[bookingType];
   let rateConfig = null;
   let tagConfig = null;
@@ -547,7 +553,7 @@ const calculateCommission = (bookingType, amount, serviceId = null, metadata = {
     }
   }
   
-  // Case 3booking types
+  // Case 3: Legacy booking types
   if (!rateConfig) {
     if (bookingType === 'opd') rateConfig = COMMISSION_RATES.hospital.opd;
     else if (bookingType === 'admission') rateConfig = COMMISSION_RATES.hospital.admission;
@@ -580,7 +586,7 @@ const calculateCommission = (bookingType, amount, serviceId = null, metadata = {
           type: 'performance',
           metric: 'rating',
           value: -rule.discount,
-          label.label,
+          label: rule.label,
           reason: `High rating incentive`
         });
         commissionRate = Math.max(commissionRate - rule.discount, 1);
@@ -596,7 +602,7 @@ const calculateCommission = (bookingType, amount, serviceId = null, metadata = {
           type: 'performance',
           metric: 'volume',
           value: -rule.discount,
-          label.label,
+          label: rule.label,
           reason: `High volume incentive`
         });
         commissionRate = Math.max(commissionRate - rule.discount, 1);
@@ -612,7 +618,7 @@ const calculateCommission = (bookingType, amount, serviceId = null, metadata = {
           type: 'performance',
           metric: 'cancellation',
           value: -rule.discount,
-          label.label,
+          label: rule.label,
           reason: `Low cancellation incentive`
         });
         commissionRate = Math.max(commissionRate - rule.discount, 1);
@@ -747,27 +753,27 @@ const calculateCommission = (bookingType, amount, serviceId = null, metadata = {
   
   // Build breakdown
   breakdown.push({
-    type,
-    baseRate.rate,
-    effectiveRate,
-    amount,
-    adjustments.map(a => a.reason),
+    type: commissionType,
+    baseRate: rateConfig.rate,
+    effectiveRate: commissionRate,
+    amount: commissionAmount,
+    adjustments: adjustments.map(a => a.reason),
     description: `${bookingType} commission`
   });
   
   return {
     commissionAmount,
     commissionRate,
-    baseRate.rate,
-    effectiveRate,
+    baseRate: rateConfig.rate,
+    effectiveRate: commissionRate,
     commissionType,
     breakdown,
     adjustments,
     bookingType,
-    tag?.tag || 'general',
-    subType?.subType || 'default',
-    originalAmount,
-    netAmount- commissionAmount
+    tag: mapped?.tag || 'general',
+    subType: mapped?.subType || 'default',
+    originalAmount: amount,
+    netAmount: amount - commissionAmount
   };
 };
 
@@ -803,40 +809,40 @@ const calculateBookingCommission = (booking) => {
   const serviceId = booking.hospitalId || booking.providerId || booking.caregiverId;
   
   return calculateCommission(bookingType, amount, serviceId, {
-    bookingId.bookingId,
-    patientName.patientName,
-    providerName.hospitalName || booking.providerName,
+    bookingId: booking.bookingId,
+    patientName: booking.patientName,
+    providerName: booking.hospitalName || booking.providerName,
     // Performance metadata
-    providerRating.driverRating || booking.providerRating || 0,
-    providerCompletedBookings.providerCompletedTrips || 0,
-    cancellationRate.providerCancellationRate,
+    providerRating: booking.driverRating || booking.providerRating || 0,
+    providerCompletedBookings: booking.providerCompletedTrips || 0,
+    cancellationRate: booking.providerCancellationRate,
     // 🚑 Ambulance metadata
-    emergencyType.emergencyType,
-    isEmergency.emergencyType === 'blitz' || booking.emergencyType === 'emergency',
-    isNightTime.isPeakHour || false,
-    isLongDistance.digitalTripSheet?.distance > 50 || false,
+    emergencyType: booking.emergencyType,
+    isEmergency: booking.emergencyType === 'blitz' || booking.emergencyType === 'emergency',
+    isNightTime: booking.isPeakHour || false,
+    isLongDistance: booking.digitalTripSheet?.distance > 50 || false,
     // 🧘 Ayurveda metadata
-    isPanchakarma=== 'ayurveda_panchakarma',
-    durationDays.durationDays || 0,
-    isSeasonal.isSeasonal || false,
+    isPanchakarma: bookingType === 'ayurveda_panchakarma',
+    durationDays: booking.durationDays || 0,
+    isSeasonal: booking.isSeasonal || false,
     // 🧠 Mental Health metadata
-    isCrisisSession.isCrisisSession || false,
-    sessionPackage.sessionPackage || 1,
-    isSubscription.isSubscription || false,
+    isCrisisSession: booking.isCrisisSession || false,
+    sessionPackage: booking.sessionPackage || 1,
+    isSubscription: booking.isSubscription || false,
     // 🏢 Corporate metadata
-    employeeCount.employeeCount || 0,
-    contractYears.contractYears || 1,
+    employeeCount: booking.employeeCount || 0,
+    contractYears: booking.contractYears || 1,
     // 🔬 Diagnostics metadata
-    isCorporateClient.isCorporateClient || false,
-    monthlyTestVolume.monthlyTestVolume || 0,
+    isCorporateClient: booking.isCorporateClient || false,
+    monthlyTestVolume: booking.monthlyTestVolume || 0,
     // 📱 Online Doctor metadata
-    isFollowUp.isFollowUp || false,
-    monthlyConsultVolume.monthlyConsultVolume || 0,
+    isFollowUp: booking.isFollowUp || false,
+    monthlyConsultVolume: booking.monthlyConsultVolume || 0,
     // 🏠 Caregiver metadata
-    monthsOfService.monthsOfService || 0,
+    monthsOfService: booking.monthsOfService || 0,
     // 🌿 Homeopathy metadata
-    isChronicTreatment.isChronicTreatment || false,
-    patientConsultCount.patientConsultCount || 0
+    isChronicTreatment: booking.isChronicTreatment || false,
+    patientConsultCount: booking.patientConsultCount || 0
   });
 };
 
@@ -847,8 +853,8 @@ const calculateBookingCommission = (booking) => {
 const calculateLoanCommission = (loanApplication) => {
   const amount = loanApplication.disbursedAmount || loanApplication.estimatedAmount || 0;
   return calculateCommission('loan', amount, loanApplication.lenderId, {
-    applicationId.applicationId,
-    lenderName.lender
+    applicationId: loanApplication.applicationId,
+    lenderName: loanApplication.lender
   });
 };
 
@@ -860,9 +866,9 @@ const calculateLoanCommission = (loanApplication) => {
 const calculateAmbulanceCommission = (bookingData) => {
   return calculateCommission('ambulance', bookingData.amount, bookingData.providerId, {
     ...bookingData,
-    isEmergency.emergencyType === 'blitz',
-    isNightTime.isNightTime || false,
-    isLongDistance.isLongDistance || false
+    isEmergency: bookingData.emergencyType === 'blitz',
+    isNightTime: bookingData.isNightTime || false,
+    isLongDistance: bookingData.isLongDistance || false
   });
 };
 
@@ -882,8 +888,8 @@ const calculateInsuranceCommission = (bookingData) => {
 const calculateAyurvedaCommission = (bookingData) => {
   return calculateCommission('ayurveda_consultation', bookingData.amount, bookingData.providerId, {
     ...bookingData,
-    isPanchakarma.subType === 'panchakarma',
-    durationDays.durationDays || 0
+    isPanchakarma: bookingData.subType === 'panchakarma',
+    durationDays: bookingData.durationDays || 0
   });
 };
 
@@ -971,11 +977,11 @@ const getCommissionRate = (bookingType, subType = 'default', providerId = null) 
 
 const getAllCommissionRates = () => {
   return {
-    rates_RATES,
-    configs_CONFIGS,
-    performanceRules_RULES,
-    bookingTypeMap_TYPE_MAP,
-    fixedCommissions_COMMISSIONS
+    rates: COMMISSION_RATES,
+    configs: TAG_CONFIGS,
+    performanceRules: PERFORMANCE_RULES,
+    bookingTypeMap: BOOKING_TYPE_MAP,
+    fixedCommissions: FIXED_COMMISSIONS
   };
 };
 
@@ -995,20 +1001,20 @@ const getTagSummary = () => {
     for (const [subType, rateInfo] of Object.entries(rates)) {
       if (subType === 'default') continue;
       tagRates[subType] = {
-        rate.rate,
-        type.type,
-        label.label,
-        platformFee.platformFee?.[subType] || 0,
-        gst.gst?.percentage || 18
+        rate: rateInfo.rate,
+        type: rateInfo.type,
+        label: rateInfo.label,
+        platformFee: config.platformFee?.[subType] || 0,
+        gst: config.gst?.percentage || 18
       };
     }
     
     summary[tag] = {
-      label(tag),
-      rates,
-      defaultRate.default.rate,
-      platformFee.platformFee || {},
-      performanceRules.performanceDiscounts || []
+      label: getTagLabel(tag),
+      rates: tagRates,
+      defaultRate: rates.default.rate,
+      platformFee: config.platformFee || {},
+      performanceRules: config.performanceDiscounts || []
     };
   }
   
@@ -1044,7 +1050,7 @@ const updateCommissionRate = (tag, subType, rateConfig) => {
         ...rateConfig
       };
       return { 
-        success, 
+        success: true, 
         message: `${tag}.${subType} updated to ${rateConfig.rate}%` 
       };
     }
@@ -1054,12 +1060,12 @@ const updateCommissionRate = (tag, subType, rateConfig) => {
         ...rateConfig
       };
       return { 
-        success, 
+        success: true, 
         message: `${tag} default updated to ${rateConfig.rate}%` 
       };
     }
   }
-  return { success, message: `Tag ${tag}.${subType} not found` };
+  return { success: false, message: `Tag ${tag}.${subType} not found` };
 };
 
 // ============================================
@@ -1069,9 +1075,9 @@ const updateCommissionRate = (tag, subType, rateConfig) => {
 const updateTagConfig = (tag, configUpdates) => {
   if (TAG_CONFIGS[tag]) {
     Object.assign(TAG_CONFIGS[tag], configUpdates);
-    return { success, message: `${tag} config updated`, config_CONFIGS[tag] };
+    return { success: true, message: `${tag} config updated`, config: TAG_CONFIGS[tag] };
   }
-  return { success, message: `Tag ${tag} not found` };
+  return { success: false, message: `Tag ${tag} not found` };
 };
 
 // ============================================
@@ -1080,12 +1086,12 @@ const updateTagConfig = (tag, configUpdates) => {
 
 const addFixedCommission = (providerId, config) => {
   FIXED_COMMISSIONS[providerId] = config;
-  return { success, message: `Fixed commission added for ${providerId}` };
+  return { success: true, message: `Fixed commission added for ${providerId}` };
 };
 
 const removeFixedCommission = (providerId) => {
   delete FIXED_COMMISSIONS[providerId];
-  return { success, message: `Fixed commission removed for ${providerId}` };
+  return { success: true, message: `Fixed commission removed for ${providerId}` };
 };
 
 // ============================================
@@ -1099,15 +1105,15 @@ const isNightTimeNow = () => {
 
 const getPeakHourInfo = (tag = 'ambulance') => {
   const config = TAG_CONFIGS[tag];
-  if (!config?.peakHours) return { isPeakHour, currentPeriod, adjustment: 0 };
+  if (!config?.peakHours) return { isPeakHour: false, currentPeriod: null, adjustment: 0 };
   
   const hour = new Date().getHours();
   const peakPeriod = config.peakHours.find(p => hour >= p.start && hour < p.end);
   
   return {
     isPeakHour: !!peakPeriod,
-    currentPeriod|| null,
-    adjustment? peakPeriod.adjustment : 0
+    currentPeriod: peakPeriod || null,
+    adjustment: peakPeriod ? peakPeriod.adjustment : 0
   };
 };
 
@@ -1160,4 +1166,3 @@ module.exports = {
   getPeakHourInfo,
   getTagForBookingType
 };
-
