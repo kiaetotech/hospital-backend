@@ -7,7 +7,7 @@ const { authenticateToken, authorizeRoles } = require('../middleware/auth');
 
 // Multer config for Excel upload
 const upload = multer({ 
-  storage.memoryStorage(),
+  multer.memoryStorage(),
   fileFilter: (req, file, cb) => {
     if (file.mimetype === 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' || 
         file.mimetype === 'application/vnd.ms-excel') {
