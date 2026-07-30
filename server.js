@@ -385,6 +385,7 @@ const router = new AIRouter(capabilityRegistry, orchestrator, providerManager, h
 
 // Import ALL Agents (.js files)
 const HospitalAgent = require('./ai-core/agents/business/HospitalAgent.js').HospitalAgent;
+const TestingAgent = require('./ai-core/agents/intelligence/TestingAgent.js').TestingAgent;
 const DoctorAgent = require('./ai-core/agents/business/DoctorAgent.js').DoctorAgent;
 const DiagnosticsAgent = require('./ai-core/agents/business/DiagnosticsAgent.js').DiagnosticsAgent;
 const AmbulanceAgent = require('./ai-core/agents/business/AmbulanceAgent.js').AmbulanceAgent;
@@ -465,6 +466,9 @@ capabilityRegistry.register(ceoAgent.getRegistration());
 
 const strategyAgent = new StrategyAgent(providerManager);
 capabilityRegistry.register(strategyAgent.getRegistration());
+
+const testingAgent = new TestingAgent(providerManager);
+capabilityRegistry.registerAgent(testingAgent);
 
 console.log('🤖 AI Router initialized with 18 agents');
 
