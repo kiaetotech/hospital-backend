@@ -60,6 +60,16 @@ router.get('/medical-data', (req, res) => {
   }
 });
 
+// Get all hospitals (simple list)
+router.get('/', async (req, res) => {
+  try {
+    const hospitals = await Hospital.find({}).select('-password').limit(50).lean();
+    res.json({ success: true, count: hospitals.length, data: hospitals });
+  } catch (error) {
+    res.status(500).json({ success: false, message: error.message });
+  }
+});
+
 // Search hospitals with advanced filters
 router.get('/search', async (req, res) => {
   try {
