@@ -324,7 +324,7 @@ try { authRoutes = require('./routes/auth'); } catch(e) { console.warn('⚠️ a
 try { caregiverRoutes = require('./routes/caregivers'); } catch(e) { console.warn('⚠️ caregivers route missing'); caregiverRoutes = (req,res) => res.status(404).json({error:'Route not available'}); }
 try { diagnosticsRoutes = require('./routes/diagnostics'); } catch(e) { console.warn('⚠️ diagnostics route missing'); diagnosticsRoutes = (req,res) => res.status(404).json({error:'Route not available'}); }
 try { diagnosticsUploadRoutes = require('./routes/diagnostics-upload'); } catch(e) { console.warn('⚠️ diagnostics-upload route missing'); diagnosticsUploadRoutes = (req,res) => res.status(404).json({error:'Route not available'}); }
-try { ambulanceRoutes = require('./routes/ambulance'); } catch(e) { console.warn('⚠️ ambulance route missing'); ambulanceRoutes = (req,res) => res.status(404).json({error:'Route not available'}); }
+try { ambulanceRoutes = require('./routes/ambulance'); } catch(e) { console.warn('⚠️ ambulance route missing: ' + e.message); ambulanceRoutes = (req,res) => res.status(404).json({error:'Route not available'}); }
 try { healthPackageRoutes = require('./routes/healthPackageRoutes'); } catch(e) { console.warn('⚠️ healthPackageRoutes route missing'); healthPackageRoutes = (req,res) => res.status(404).json({error:'Route not available'}); }
 try { testRoutes = require('./routes/tests'); } catch(e) { console.warn('⚠️ tests route missing'); testRoutes = (req,res) => res.status(404).json({error:'Route not available'}); }
 try { uploadRoutes = require('./routes/upload'); } catch(e) { console.warn('⚠️ upload route missing'); uploadRoutes = (req,res) => res.status(404).json({error:'Route not available'}); }
