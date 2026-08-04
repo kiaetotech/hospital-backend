@@ -716,6 +716,232 @@ router.post('/emergency-contacts', authenticateToken, async (req, res) => {
 });
 
 // ============================================
+// 🆕 CORPORATE HEALTH ROUTES
+// ============================================
+
+// Toggle corporate serving status
+router.put('/corporate/toggle', authenticateToken, async (req, res) => {
+  try {
+    const Ambulance = require('../models/Ambulance');
+    const { ambulanceId } = req.body;
+    if (!ambulanceId) {
+      return res.status(400).json({ success: false, message: 'Ambulance ID required' });
+    }
+
+    const ambulance = await Ambulance.findById(ambulanceId);
+    if (!ambulance) {
+      return res.status(404).json({ success: false, message: 'Ambulance not found' });
+    }
+
+    const enable = req.body.enable !== false;
+    await ambulance.toggleCorporate(enable);
+
+    res.json({
+      success: true,
+      message: `Corporate ${enable ? 'enabled' : 'disabled'} successfully`,
+      data: { servesCorporate: ambulance.servesCorporate }
+    });
+  } catch (error) {
+    res.status(500).json({ success: false, message: error.message });
+  }
+});
+
+// Get corporate packages
+router.get('/corporate/packages', authenticateToken, async (req, res) => {
+  try {
+    const Ambulance = require('../models/Ambulance');
+    const { ambulanceId } = req.query;
+    if (!ambulanceId) {
+      return res.status(400).json({ success: false, message: 'Ambulance ID required' });
+    }
+
+    const ambulance = await Ambulance.findById(ambulanceId).select('servesCorporate corporatePackages');
+    if (!ambulance) {
+      return res.status(404).json({ success: false, message: 'Ambulance not found' });
+    }
+
+    res.json({
+      success: true,
+      data: {
+        servesCorporate: ambulance.servesCorporate,
+        packages: ambulance.corporatePackages || []
+      }
+    });
+  } catch (error) {
+    res.status(500).json({ success: false, message: error.message });
+  }
+});
+
+// Create corporate package
+router.post('/corporate/packages', authenticateToken, async (req, res) => {
+  try {
+    const Ambulance = require('../models/Ambulance');
+    const { ambulanceId, packageName, packageType, description, servicesIncluded, pricePerEmployee, discountedPricePerEmployee, minEmployees, maxEmployees, validityDays, numberOfVehicles, vehicleTypes, coverageRadiusKm, responseTimeMinutes, availableCities, dedicatedPOC, slaTerms } = req.body;
+
+    if (!ambulanceId) {
+      return res.status(400).json({ success: false, message: 'Ambulance ID required' });
+    }
+    if (!packageName || !pricePerEmployee) {
+      return res.status(400).json({ success: false, message: 'Package name and price per employee are required' });
+    }
+
+    const ambulance = await Ambulance.findById(ambulanceId);
+    if (!ambulance) {
+      return res.status(404).json({ success: false, message: 'Ambulance not found' });
+    }
+
+    const packageData = {
+      packageName,
+      packageType: packageType || 'ambulance_retainer',
+      description: description || '',
+      servicesIncluded: servicesIncluded || [],
+      pricePerEmployee,
+      discountedPricePerEmployee,
+      minEmployees: minEmployees || 50,
+      maxEmployees,
+      validityDays: validityDays || 365,
+      numberOfVehicles: numberOfVehicles || 1,
+      vehicleTypes: vehicleTypes || ['basic'],
+      coverageRadiusKm: coverageRadiusKm || 20,
+      responseTimeMinutes: responseTimeMinutes || 30,
+      availableCities: availableCities || [],
+      dedicatedPOC: dedicatedPOC || {},
+      slaTerms: slaTerms || ''
+    };
+
+    await ambulance.addCorporatePackage(packageData);
+
+    res.json({
+      success: true,
+      message: 'Corporate package added successfully',
+      data: ambulance.corporatePackages[ambulance.corporatePackages.length - 1]
+    });
+  } catch (error) {
+    res.status(500).json({ success: false, message: error.message });
+  }
+});
+
+// Update corporate package
+router.put('/corporate/packages/:packageId', authenticateToken, async (req, res) => {
+  try {
+    const Ambulance = require('../models/Ambulance');
+    const { ambulanceId } = req.body;
+    if (!ambulanceId) {
+      return res.status(400).json({ success: false, message: 'Ambulance ID required' });
+    }
+
+    const ambulance = await Ambulance.findById(ambulanceId);
+    if (!ambulance) {
+      return res.status(404).json({ success: false, message: 'Ambulance not found' });
+    }
+
+    const pkg = ambulance.corporatePackages.id(req.params.packageId);
+    if (!pkg) {
+      return res.status(404).json({ success: false, message: 'Package not found' });
+    }
+
+    const updatableFields = [
+      'packageName', 'packageType', 'description', 'servicesIncluded',
+      'pricePerEmployee', 'discountedPricePerEmployee', 'minEmployees',
+      'maxEmployees', 'validityDays', 'numberOfVehicles', 'vehicleTypes',
+      'coverageRadiusKm', 'responseTimeMinutes', 'availableCities',
+      'dedicatedPOC', 'slaTerms', 'isActive'
+    ];
+
+    updatableFields.forEach(field => {
+      if (req.body[field] !== undefined) {
+        pkg[field] = req.body[field];
+      }
+    });
+
+    pkg.updatedAt = new Date();
+    await ambulance.save();
+
+    res.json({ success: true, message: 'Corporate package updated', data: pkg });
+  } catch (error) {
+    res.status(500).json({ success: false, message: error.message });
+  }
+});
+
+// Delete corporate package
+router.delete('/corporate/packages/:packageId', authenticateToken, async (req, res) => {
+  try {
+    const Ambulance = require('../models/Ambulance');
+    const { ambulanceId } = req.body;
+    if (!ambulanceId) {
+      return res.status(400).json({ success: false, message: 'Ambulance ID required' });
+    }
+
+    const ambulance = await Ambulance.findById(ambulanceId);
+    if (!ambulance) {
+      return res.status(404).json({ success: false, message: 'Ambulance not found' });
+    }
+
+    const pkg = ambulance.corporatePackages.id(req.params.packageId);
+    if (!pkg) {
+      return res.status(404).json({ success: false, message: 'Package not found' });
+    }
+
+    pkg.remove();
+    await ambulance.save();
+
+    res.json({ success: true, message: 'Corporate package deleted' });
+  } catch (error) {
+    res.status(500).json({ success: false, message: error.message });
+  }
+});
+
+// Get corporate enquiries
+router.get('/corporate/enquiries', authenticateToken, async (req, res) => {
+  try {
+    const Ambulance = require('../models/Ambulance');
+    const { ambulanceId } = req.query;
+    if (!ambulanceId) {
+      return res.status(400).json({ success: false, message: 'Ambulance ID required' });
+    }
+
+    const ambulance = await Ambulance.findById(ambulanceId).select('corporateEnquiries');
+    if (!ambulance) {
+      return res.status(404).json({ success: false, message: 'Ambulance not found' });
+    }
+
+    res.json({ success: true, data: ambulance.corporateEnquiries || [] });
+  } catch (error) {
+    res.status(500).json({ success: false, message: error.message });
+  }
+});
+
+// Update enquiry status
+router.put('/corporate/enquiries/:enquiryId', authenticateToken, async (req, res) => {
+  try {
+    const Ambulance = require('../models/Ambulance');
+    const { ambulanceId } = req.body;
+    if (!ambulanceId) {
+      return res.status(400).json({ success: false, message: 'Ambulance ID required' });
+    }
+
+    const ambulance = await Ambulance.findById(ambulanceId);
+    if (!ambulance) {
+      return res.status(404).json({ success: false, message: 'Ambulance not found' });
+    }
+
+    const enquiry = ambulance.corporateEnquiries.id(req.params.enquiryId);
+    if (!enquiry) {
+      return res.status(404).json({ success: false, message: 'Enquiry not found' });
+    }
+
+    if (req.body.status) {
+      enquiry.status = req.body.status;
+    }
+
+    await ambulance.save();
+    res.json({ success: true, message: 'Enquiry updated', data: enquiry });
+  } catch (error) {
+    res.status(500).json({ success: false, message: error.message });
+  }
+});
+
+// ============================================
 // EXPORT
 // ============================================
 
