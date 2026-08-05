@@ -113,13 +113,13 @@ class TestingAgent extends BaseAgent {
     this.results.flows.push(await this.testEndpoint('POST', '/api/otp/send', { phone: '9876543210' }, '📱 Send OTP'));
 
     // 4. Bookings
-    this.results.flows.push(await this.testEndpoint('GET', '/api/bookings', null, '📋 Bookings List'));
+    this.results.flows.push(await this.testEndpoint('POST', '/api/bookings/create', { patientName: 'Test', patientPhone: '9876543210', patientAge: 30, patientGender: 'Male' }, '📋 Create Booking'));
 
     // 5. Payment
     this.results.flows.push(await this.testEndpoint('POST', '/api/payment/create-order', { amount: 500, bookingType: 'opd', bookingId: 'test123' }, '💳 Create Payment'));
 
     // 6. Ambulance
-    this.results.flows.push(await this.testEndpoint('GET', '/api/ambulance/search?city=Mumbai', null, '🚑 Ambulance Search'));
+    this.results.flows.push(await this.testEndpoint('GET', '/api/ambulance/nearby-ambulances', null, '🚑 Nearby Ambulances'));
 
     // 7. Diagnostics
     this.results.flows.push(await this.testEndpoint('GET', '/api/diagnostics/search?city=Mumbai', null, '🔬 Diagnostics Search'));
@@ -149,7 +149,7 @@ class TestingAgent extends BaseAgent {
     this.results.flows.push(await this.testEndpoint('GET', '/api/loan/partners', null, '💰 Loan Partners'));
 
     // 16. Reviews
-    this.results.flows.push(await this.testEndpoint('GET', '/api/reviews', null, '⭐ Reviews'));
+    this.results.flows.push(await this.testEndpoint('GET', '/api/reviews/provider/test123', null, '⭐ Provider Reviews'));
 
     // 17. Global Search
     this.results.flows.push(await this.testEndpoint('GET', '/api/search?q=hospital', null, '🔍 Global Search'));
