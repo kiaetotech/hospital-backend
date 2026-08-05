@@ -601,13 +601,28 @@ app.get('/api/ai/cost', (req, res) => {
   });
 });
 
+// Debug route - test all route loading
+app.get('/api/debug/routes', (req, res) => {
+  const results = {};
+  const routeFiles = ['ambulance', 'bookings', 'reviews'];
+  routeFiles.forEach(file => {
+    try {
+      require('./routes/' + file);
+      results[file] = 'OK';
+    } catch(e) {
+      results[file] = e.message;
+    }
+  });
+  res.json({ success: true, results });
+});
+
 console.log('🤖 AI Routes loaded:');
 console.log('   📡 POST /api/ai/route        - Process AI request');
 console.log('   📋 GET  /api/ai/agents       - List all agents');
 console.log('   📋 GET  /api/ai/agents/:id   - Get agent details');
 console.log('   🩺 GET  /api/ai/health       - AI system health');
 console.log('   💰 GET  /api/ai/cost         - AI cost tracking');
-
+console.log('   🐛 GET  /api/debug/routes    - Debug route loading');
 // ============================================
 // ROUTE MOUNTING
 // ============================================
