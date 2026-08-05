@@ -607,10 +607,21 @@ app.get('/api/debug/routes', (req, res) => {
   const routeFiles = ['ambulance', 'bookings', 'reviews'];
   routeFiles.forEach(file => {
     try {
+      delete require.cache[require.resolve('./routes/' + file)];
       require('./routes/' + file);
       results[file] = 'OK';
     } catch(e) {
       results[file] = e.message;
+    }
+  });
+  // Also test services
+  const services = ['ambulanceDispatchService', 'locationCacheService'];
+  services.forEach(svc => {
+    try {
+      require('./services/' + svc);
+      results['service/' + svc] = 'OK';
+    } catch(e) {
+      results['service/' + svc] = e.message;
     }
   });
   res.json({ success: true, results });
