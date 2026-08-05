@@ -614,14 +614,20 @@ app.get('/api/debug/routes', (req, res) => {
       results[file] = e.message;
     }
   });
-  // Also test services
-  const services = ['ambulanceDispatchService', 'locationCacheService'];
-  services.forEach(svc => {
+    // Test all ambulance route dependencies
+  const allDeps = [
+    './models/Booking', './models/User', './models/Transaction', 
+    './models/EmergencyContact', './middleware/auth',
+    './services/ambulanceDispatchService', './services/locationCacheService',
+    './services/commissionService', './services/notificationService',
+    './services/smsService'
+  ];
+  allDeps.forEach(dep => {
     try {
-      require('./services/' + svc);
-      results['service/' + svc] = 'OK';
+      require(dep);
+      results['dep: ' + dep] = 'OK';
     } catch(e) {
-      results['service/' + svc] = e.message;
+      results['dep: ' + dep] = e.message;
     }
   });
   res.json({ success: true, results });
