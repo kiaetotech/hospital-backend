@@ -329,9 +329,9 @@ try { healthPackageRoutes = require('./routes/healthPackageRoutes'); } catch(e) 
 try { testRoutes = require('./routes/tests'); } catch(e) { console.warn('⚠️ tests route missing'); testRoutes = (req,res) => res.status(404).json({error:'Route not available'}); }
 try { uploadRoutes = require('./routes/upload'); } catch(e) { console.warn('⚠️ upload route missing'); uploadRoutes = (req,res) => res.status(404).json({error:'Route not available'}); }
 try { providerAuthRoutes = require('./routes/providerAuth'); } catch(e) { console.warn('⚠️ providerAuth route missing'); providerAuthRoutes = (req,res) => res.status(404).json({error:'Route not available'}); }
-try { bookingRoutes = require('./routes/bookings'); } catch(e) { console.warn('⚠️ bookings route missing'); bookingRoutes = (req,res) => res.status(404).json({error:'Route not available'}); }
+try { bookingRoutes = require('./routes/bookings'); } catch(e) { console.warn('⚠️ bookings route missing: ' + e.message); bookingRoutes = (req,res) => res.status(404).json({error:'Route not available'}); }
 try { razorpayRoutes = require('./routes/payment'); } catch(e) { console.warn('⚠️ payment route missing'); razorpayRoutes = (req,res) => res.status(404).json({error:'Route not available'}); }
-try { reviewRoutes = require('./routes/reviews'); } catch(e) { console.warn('⚠️ reviews route missing'); reviewRoutes = (req,res) => res.status(404).json({error:'Route not available'}); }
+try { reviewRoutes = require('./routes/reviews'); } catch(e) { console.warn('⚠️ reviews route missing: ' + e.message); reviewRoutes = (req,res) => res.status(404).json({error:'Route not available'}); }
 try { adminRoutes = require('./routes/admin'); } catch(e) { console.warn('⚠️ admin route missing'); adminRoutes = (req,res) => res.status(404).json({error:'Route not available'}); }
 try { bookingStatusRoutes = require('./routes/booking-status'); } catch(e) { console.warn('⚠️ booking-status route missing'); bookingStatusRoutes = (req,res) => res.status(404).json({error:'Route not available'}); }
 try { customPackageRoutes = require('./routes/custom-packages'); } catch(e) { console.warn('⚠️ custom-packages route missing'); customPackageRoutes = (req,res) => res.status(404).json({error:'Route not available'}); }
