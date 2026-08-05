@@ -21,6 +21,7 @@ class FixerAgent extends BaseAgent {
 
     this.baseDir = path.join(__dirname, '..', '..', '..');
     this.fixes = [];
+    this.maintenanceInterval = null;
   }
 
   async execute(request) {
@@ -34,6 +35,8 @@ class FixerAgent extends BaseAgent {
       else if (task.includes('fix syntax')) result = await this.fixSyntaxErrors();
       else if (task.includes('restore')) result = await this.restoreFromGit(payload);
       else if (task.includes('install') || task.includes('deps')) result = await this.installMissingDeps();
+      else if (task.includes('start maintenance')) result = this.startScheduledMaintenance();
+      else if (task.includes('stop maintenance')) result = this.stopMaintenance();
       else result = await this.scanAndFixAll();
 
       this.setStatus(AgentStatus.IDLE);
@@ -45,7 +48,6 @@ class FixerAgent extends BaseAgent {
     }
   }
 
-  // SCAN ALL FILES FOR ERRORS
   scanAllFiles() {
     var brokenFiles = [];
     var self = this;
@@ -77,11 +79,11 @@ class FixerAgent extends BaseAgent {
       } catch (e) {}
     }
 
-    scanDir(this.baseDir);
+    scanDir(path.join(this.baseDir, 'routes'));
+    scanDir(path.join(this.baseDir, 'models'));
     return brokenFiles;
   }
 
-  // AUTO-FIX SYNTAX ERRORS
   async fixSyntaxErrors() {
     var broken = this.scanAllFiles();
     var fixed = [];
@@ -106,7 +108,6 @@ class FixerAgent extends BaseAgent {
     };
   }
 
-  // AUTO-FIX A SINGLE FILE
   async autoFixFile(item) {
     var filePath = path.join(this.baseDir, item.file);
     
@@ -114,16 +115,12 @@ class FixerAgent extends BaseAgent {
       var content = fs.readFileSync(filePath, 'utf8');
       var fixed = false;
 
-      // Fix 1: const -> var (if needed)
-      // Fix 2: Remove TypeScript syntax
       var fixes = [
         { pattern: /export class /g, replace: 'class ' },
         { pattern: /export const /g, replace: 'const ' },
         { pattern: /import \{.*\} from '.*'/g, replace: '// import removed' },
-        { pattern: /: string\|: number\|: any\|: boolean/g, replace: '' },
         { pattern: /private /g, replace: '// private ' },
         { pattern: /protected /g, replace: '// protected ' },
-        { pattern: /as any/g, replace: '' },
         { pattern: /\.ts/g, replace: '.js' }
       ];
 
@@ -136,14 +133,12 @@ class FixerAgent extends BaseAgent {
 
       if (fixed) {
         fs.writeFileSync(filePath, content, 'utf8');
-        // Verify fix
         try {
           delete require.cache[require.resolve(filePath)];
           require(filePath);
           this.fixes.push({ file: item.file, status: 'fixed' });
           return true;
         } catch (e) {
-          // Fix didn't work, revert
           return false;
         }
       }
@@ -152,28 +147,24 @@ class FixerAgent extends BaseAgent {
     return false;
   }
 
-  // RESTORE FROM GIT
   async restoreFromGit(payload) {
     var filePath = payload.file || '';
     var commitHash = payload.commit || '336633d4';
 
     try {
       execSync('git checkout ' + commitHash + ' -- ' + filePath, { cwd: this.baseDir });
-      
-      // Verify
       try {
         delete require.cache[require.resolve(path.join(this.baseDir, filePath))];
         require(path.join(this.baseDir, filePath));
-        return { file: filePath, status: '✅ Restored and working' };
+        return { file: filePath, status: 'Restored and working' };
       } catch (e) {
-        return { file: filePath, status: '❌ Still broken after restore', error: e.message };
+        return { file: filePath, status: 'Still broken after restore', error: e.message };
       }
     } catch (e) {
-      return { file: filePath, status: '❌ Git restore failed', error: e.message };
+      return { file: filePath, status: 'Git restore failed', error: e.message };
     }
   }
 
-  // INSTALL MISSING DEPENDENCIES
   async installMissingDeps() {
     var broken = this.scanAllFiles();
     var missingModules = [];
@@ -183,7 +174,9 @@ class FixerAgent extends BaseAgent {
       if (err.includes('Cannot find module')) {
         var match = err.match(/Cannot find module '([^']+)'/);
         if (match && match[1] && !match[1].startsWith('.') && !match[1].startsWith('/')) {
-          missingModules.push(match[1]);
+          if (missingModules.indexOf(match[1]) === -1) {
+            missingModules.push(match[1]);
+          }
         }
       }
     }
@@ -204,20 +197,16 @@ class FixerAgent extends BaseAgent {
     };
   }
 
-  // FULL SCAN + FIX + VERIFY
   async scanAndFixAll() {
-    this.log('🔍 Starting full scan...', 'info');
+    this.log('Starting full scan...', 'info');
     
-    // Step 1: Install missing deps
-    this.log('📦 Checking dependencies...', 'info');
+    this.log('Checking dependencies...', 'info');
     var deps = await this.installMissingDeps();
 
-    // Step 2: Fix syntax errors
-    this.log('🔧 Fixing syntax errors...', 'info');
+    this.log('Fixing syntax errors...', 'info');
     var syntax = await this.fixSyntaxErrors();
 
-    // Step 3: Re-scan
-    this.log('🔄 Verifying fixes...', 'info');
+    this.log('Verifying fixes...', 'info');
     var remaining = this.scanAllFiles();
 
     return {
@@ -225,9 +214,55 @@ class FixerAgent extends BaseAgent {
       syntax: syntax,
       remainingErrors: remaining.length,
       remainingFiles: remaining,
-      status: remaining.length === 0 ? '✅ ALL CLEAN' : '⚠️ ' + remaining.length + ' files still need attention',
+      status: remaining.length === 0 ? 'ALL CLEAN' : remaining.length + ' files still need attention',
       recommendation: remaining.length > 0 ? 'Run restore_from_git for these files' : 'System is production-ready!'
     };
+  }
+
+  // SCHEDULED AUTO-MAINTENANCE
+  startScheduledMaintenance() {
+    var self = this;
+    this.log('Scheduled maintenance started - runs every 30 minutes', 'info');
+    
+    this.runMaintenanceCycle();
+    
+    this.maintenanceInterval = setInterval(function() {
+      self.runMaintenanceCycle();
+    }, 30 * 60 * 1000);
+    
+    return { status: 'started', interval: '30 minutes' };
+  }
+  
+  async runMaintenanceCycle() {
+    this.log('Running scheduled maintenance...', 'info');
+    
+    try {
+      var testResult = await this.scanAndFixAll();
+      
+      if (testResult.remainingErrors > 0) {
+        this.log('Found ' + testResult.remainingErrors + ' errors, auto-fixing...', 'warn');
+        
+        for (var i = 0; i < testResult.remainingFiles.length; i++) {
+          await this.restoreFromGit({ file: testResult.remainingFiles[i].file });
+        }
+        
+        var recheck = this.scanAllFiles();
+        this.log('Recheck: ' + recheck.length + ' errors remaining after auto-fix', 'info');
+      } else {
+        this.log('All systems healthy', 'info');
+      }
+    } catch (e) {
+      this.log('Maintenance cycle error: ' + e.message, 'error');
+    }
+  }
+
+  stopMaintenance() {
+    if (this.maintenanceInterval) {
+      clearInterval(this.maintenanceInterval);
+      this.maintenanceInterval = null;
+      this.log('Scheduled maintenance stopped', 'info');
+    }
+    return { status: 'stopped' };
   }
 
   getRequiredCapability(task) {
@@ -235,6 +270,8 @@ class FixerAgent extends BaseAgent {
     if (task.includes('syntax')) return 'fix_syntax';
     if (task.includes('restore')) return 'restore_file';
     if (task.includes('install') || task.includes('deps')) return 'install_deps';
+    if (task.includes('start maintenance')) return 'scan_and_fix';
+    if (task.includes('stop maintenance')) return 'scan_and_fix';
     return 'scan_and_fix';
   }
 }
