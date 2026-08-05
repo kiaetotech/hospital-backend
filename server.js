@@ -551,12 +551,17 @@ app.post('/api/ai/test', async (req, res) => {
 });
 
 app.post('/api/ai/fix', async (req, res) => {
-  try {
-    const result = await fixerAgent.execute(req.body);
-    res.json(result);
-  } catch (error) {
-    res.status(500).json({ success: false, error: error.message });
-  }
+  // Respond immediately, run fix in background
+  res.json({ success: true, message: 'Auto-fix started in background. Check /api/ai/health for progress.' });
+  
+  setTimeout(async () => {
+    try {
+      await fixerAgent.execute(req.body);
+      console.log('✅ Auto-fix completed');
+    } catch (e) {
+      console.error('Auto-fix error:', e.message);
+    }
+  }, 1000);
 });
 
 // Get agent by ID
