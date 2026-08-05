@@ -405,6 +405,7 @@ const MemoryAgent = require('./ai-core/agents/intelligence/MemoryAgent.js').Memo
 const NotificationAgent = require('./ai-core/agents/intelligence/NotificationAgent.js').NotificationAgent;
 const CEOAgent = require('./ai-core/agents/executive/CEOAgent.js').CEOAgent;
 const StrategyAgent = require('./ai-core/agents/executive/StrategyAgent.js').StrategyAgent;
+const FixerAgent = require('./ai-core/agents/intelligence/FixerAgent.js').FixerAgent;
 
 // Register all 18 agents with the registry
 const hospitalAgent = new HospitalAgent(providerManager);
@@ -469,6 +470,9 @@ capabilityRegistry.register(strategyAgent.getRegistration());
 
 const testingAgent = new TestingAgent(providerManager);
 capabilityRegistry.register(testingAgent);
+
+const fixerAgent = new FixerAgent(providerManager);
+capabilityRegistry.register(fixerAgent);
 
 console.log('🤖 AI Router initialized with 18 agents');
 
@@ -540,6 +544,15 @@ app.get('/api/ai/agents', (req, res) => {
 app.post('/api/ai/test', async (req, res) => {
   try {
     const result = await testingAgent.execute(req.body);
+    res.json(result);
+  } catch (error) {
+    res.status(500).json({ success: false, error: error.message });
+  }
+});
+
+app.post('/api/ai/fix', async (req, res) => {
+  try {
+    const result = await fixerAgent.execute(req.body);
     res.json(result);
   } catch (error) {
     res.status(500).json({ success: false, error: error.message });
