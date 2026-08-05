@@ -240,14 +240,20 @@ class FixerAgent extends BaseAgent {
       var testResult = await this.scanAndFixAll();
       
       if (testResult.remainingErrors > 0) {
-        this.log('Found ' + testResult.remainingErrors + ' errors, auto-fixing...', 'warn');
+        this.log('Found ' + testResult.remainingErrors + ' errors', 'warn');
         
-        for (var i = 0; i < testResult.remainingFiles.length; i++) {
-          await this.restoreFromGit({ file: testResult.remainingFiles[i].file });
+        // Only try git restore if git is available
+        try {
+          execSync('git --version', { cwd: this.baseDir, stdio: 'pipe' });
+          for (var i = 0; i < testResult.remainingFiles.length; i++) {
+            await this.restoreFromGit({ file: testResult.remainingFiles[i].file });
+          }
+        } catch (gitErr) {
+          this.log('Git not available - skipping git restore', 'info');
         }
         
         var recheck = this.scanAllFiles();
-        this.log('Recheck: ' + recheck.length + ' errors remaining after auto-fix', 'info');
+        this.log('Recheck: ' + recheck.length + ' errors remaining', 'info');
       } else {
         this.log('All systems healthy', 'info');
       }
