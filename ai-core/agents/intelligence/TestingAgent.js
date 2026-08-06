@@ -25,7 +25,7 @@ class TestingAgent extends BaseAgent {
     this.testToken = null;
   }
 
-  async execute(request) {
+    async execute(request) {
     this.setStatus(AgentStatus.BUSY);
     var task = request.task;
     var payload = request.payload || {};
@@ -35,6 +35,7 @@ class TestingAgent extends BaseAgent {
       if (task.includes('models')) result = await this.testModels();
       else if (task.includes('routes')) result = await this.testRoutes();
       else if (task.includes('e2e') || task.includes('journey') || task.includes('patient')) result = await this.testE2EFlows();
+      else if (task.includes('frontend') || task.includes('scan')) result = await this.scanFrontendAPIs();
       else if (task.includes('flows') || task.includes('all')) result = await this.testAllFlows();
       else if (task.includes('report')) result = await this.generateReport();
       else result = await this.testAll();
@@ -250,13 +251,80 @@ class TestingAgent extends BaseAgent {
     return { summary: this.results.summary, flows: this.results.flows, aiAnalysis: response.content, provider: response.provider };
   }
 
-  getRequiredCapability(task) {
+  // SCAN FRONTEND FOR MISSING BACKEND ROUTES
+  async scanFrontendAPIs() {
+    var frontendDir = 'D:\\hospital-frontend\\src';
+    if (!fs.existsSync(frontendDir)) {
+      return { error: 'Frontend directory not found at ' + frontendDir, tip: 'Set correct path in TestingAgent' };
+    }
+    
+    var apiCalls = [];
+    var self = this;
+    
+    function scanDir(dir) {
+      try {
+        var files = fs.readdirSync(dir);
+        for (var i = 0; i < files.length; i++) {
+          var fp = path.join(dir, files[i]);
+          if (fs.statSync(fp).isDirectory() && files[i] !== 'node_modules' && files[i] !== '.git') {
+            scanDir(fp);
+          } else if (files[i].match(/\.(js|jsx|ts|tsx)$/)) {
+            var content = fs.readFileSync(fp, 'utf8');
+            var matches = content.match(/['"`](\/api\/[^'"`\s?]+)/g);
+            if (matches) {
+              for (var j = 0; j < matches.length; j++) {
+                var url = matches[j].replace(/['"`]/g, '').split('?')[0];
+                if (url.startsWith('/api/') && url.length > 8 && apiCalls.indexOf(url) === -1) {
+                  apiCalls.push(url);
+                }
+              }
+            }
+          }
+        }
+      } catch (e) {}
+    }
+    
+    this.log('Scanning frontend API calls...', 'info');
+    scanDir(frontendDir);
+    
+    var results = [];
+    for (var k = 0; k < apiCalls.length; k++) {
+      try {
+        var response = await axios({ 
+          method: 'GET', 
+          url: this.baseURL + apiCalls[k], 
+          timeout: 5000, 
+          validateStatus: function(s) { return true; } 
+        });
+        results.push({
+          endpoint: apiCalls[k],
+          status: response.status,
+          state: response.status === 200 ? '✅ OK' : response.status === 404 ? '❌ MISSING' : response.status === 403 ? '🔒 NEEDS AUTH' : '⚠️ ' + response.status
+        });
+      } catch (e) {
+        results.push({ endpoint: apiCalls[k], status: 0, state: '❌ ERROR: ' + e.message.substring(0, 50) });
+      }
+    }
+    
+    var missing = results.filter(function(r) { return r.state.includes('MISSING') || r.state.includes('ERROR'); });
+    
+    return {
+      totalFrontendAPIs: apiCalls.length,
+      tested: results.length,
+      missing: missing.length,
+      details: results,
+      summary: missing.length === 0 ? '✅ ALL FRONTEND APIs HAVE BACKEND ROUTES' : '❌ ' + missing.length + ' ROUTES MISSING',
+      missingRoutes: missing
+    };
+  }
+
+      getRequiredCapability(task) {
     if (task.includes('models')) return 'test_models';
     if (task.includes('routes')) return 'test_routes';
     if (task.includes('e2e') || task.includes('journey') || task.includes('patient')) return 'test_e2e';
+    if (task.includes('frontend') || task.includes('scan')) return 'scan_frontend';
     if (task.includes('flows') || task.includes('all')) return 'test_all_flows';
     return 'generate_report';
   }
-}
 
 module.exports = { TestingAgent };
