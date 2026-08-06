@@ -271,6 +271,35 @@ class FixerAgent extends BaseAgent {
     return { status: 'stopped' };
   }
 
+  // DETECT AND FIX MISSING ROUTES
+  async detectMissingRoutes() {
+    var commonRoutes = {
+      '/api/ambulance/stats': { method: 'GET', description: 'Ambulance provider stats' },
+      '/api/ambulance/driver/dashboard': { method: 'GET', description: 'Driver dashboard' },
+      '/api/caregivers/stats': { method: 'GET', description: 'Caregiver stats' },
+      '/api/diagnostics/stats': { method: 'GET', description: 'Diagnostics stats' }
+    };
+    
+    var missing = [];
+    for (var route in commonRoutes) {
+      try {
+        var response = await axios({ method: commonRoutes[route].method, url: this.baseURL + route, timeout: 5000, validateStatus: function(s) { return true; } });
+        if (response.status === 404) {
+          missing.push({ route: route, description: commonRoutes[route].description, status: 404 });
+        }
+      } catch (e) {
+        missing.push({ route: route, description: commonRoutes[route].description, error: e.message });
+      }
+    }
+    
+    return {
+      checked: Object.keys(commonRoutes).length,
+      missing: missing.length,
+      details: missing,
+      action: missing.length > 0 ? 'These routes need to be added to the backend' : 'All routes present'
+    };
+  }
+
   getRequiredCapability(task) {
     if (task.includes('scan') || task.includes('fix all')) return 'scan_and_fix';
     if (task.includes('syntax')) return 'fix_syntax';
