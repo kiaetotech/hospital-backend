@@ -3,7 +3,7 @@ const router = express.Router();
 const HealthPackage = require('../models/HealthPackage');
 const PackageTest = require('../models/PackageTest');
 const PackageBooking = require('../models/HealthPackageBooking');
-const PackageReview = require('../models/PackageReview');
+const PackageReview = require('../models/HealthPackageReview');
 const TestMaster = require('../models/TestMaster');
 const DiagnosticsProvider = require('../models/DiagnosticsProvider');
 
