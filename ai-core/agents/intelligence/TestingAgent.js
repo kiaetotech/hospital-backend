@@ -318,7 +318,7 @@ class TestingAgent extends BaseAgent {
     };
   }
 
-      getRequiredCapability(task) {
+        getRequiredCapability(task) {
     if (task.includes('models')) return 'test_models';
     if (task.includes('routes')) return 'test_routes';
     if (task.includes('e2e') || task.includes('journey') || task.includes('patient')) return 'test_e2e';
@@ -326,5 +326,6 @@ class TestingAgent extends BaseAgent {
     if (task.includes('flows') || task.includes('all')) return 'test_all_flows';
     return 'generate_report';
   }
+}
 
 module.exports = { TestingAgent };
