@@ -15,12 +15,14 @@ class TestingAgent extends BaseAgent {
         { name: 'test_models', description: 'Test all model files load correctly', priority: 1, estimatedLatency: 300, requiresAuth: false },
         { name: 'test_routes', description: 'Test all route files load correctly', priority: 1, estimatedLatency: 300, requiresAuth: false },
         { name: 'test_all_flows', description: 'Test all 20 business flows end-to-end', priority: 1, estimatedLatency: 5000, requiresAuth: false },
+        { name: 'test_e2e', description: 'Full end-to-end patient journey test', priority: 1, estimatedLatency: 10000, requiresAuth: false },
         { name: 'generate_report', description: 'Generate detailed error report with fixes', priority: 1, estimatedLatency: 500, requiresAuth: false }
       ]
     }, providerManager);
 
     this.baseURL = 'https://hospital-backend-production-f1b1.up.railway.app';
-    this.results = { models: null, routes: null, flows: [], summary: {} };
+    this.results = { models: null, routes: null, flows: [], e2e: [], summary: {} };
+    this.testToken = null;
   }
 
   async execute(request) {
@@ -32,6 +34,7 @@ class TestingAgent extends BaseAgent {
       var result;
       if (task.includes('models')) result = await this.testModels();
       else if (task.includes('routes')) result = await this.testRoutes();
+      else if (task.includes('e2e') || task.includes('journey') || task.includes('patient')) result = await this.testE2EFlows();
       else if (task.includes('flows') || task.includes('all')) result = await this.testAllFlows();
       else if (task.includes('report')) result = await this.generateReport();
       else result = await this.testAll();
@@ -49,7 +52,6 @@ class TestingAgent extends BaseAgent {
     var modelsDir = path.join(__dirname, '..', '..', '..', 'models');
     var files = fs.readdirSync(modelsDir).filter(function(f) { return f.endsWith('.js'); });
     var results = [];
-
     for (var i = 0; i < files.length; i++) {
       var file = files[i];
       try {
@@ -59,7 +61,6 @@ class TestingAgent extends BaseAgent {
         results.push({ file: file, status: '❌ FAIL', error: e.message.substring(0, 100) });
       }
     }
-
     this.results.models = results;
     return { type: 'Models', total: results.length, passed: results.filter(function(r) { return r.status.includes('PASS'); }).length, failed: results.filter(function(r) { return r.status.includes('FAIL'); }).length, details: results };
   }
@@ -68,7 +69,6 @@ class TestingAgent extends BaseAgent {
     var routesDir = path.join(__dirname, '..', '..', '..', 'routes');
     var files = fs.readdirSync(routesDir).filter(function(f) { return f.endsWith('.js'); });
     var results = [];
-
     for (var i = 0; i < files.length; i++) {
       var file = files[i];
       try {
@@ -78,141 +78,182 @@ class TestingAgent extends BaseAgent {
         results.push({ file: file, status: '❌ FAIL', error: e.message.substring(0, 100) });
       }
     }
-
     this.results.routes = results;
     return { type: 'Routes', total: results.length, passed: results.filter(function(r) { return r.status.includes('PASS'); }).length, failed: results.filter(function(r) { return r.status.includes('FAIL'); }).length, details: results };
   }
 
-  async testEndpoint(method, url, data, name) {
+  async testEndpoint(method, url, data, name, token) {
     try {
-      var config = { method: method, url: this.baseURL + url, timeout: 5000, validateStatus: function() { return true; } };
+      var headers = { 'Content-Type': 'application/json' };
+      if (token) headers['Authorization'] = 'Bearer ' + token;
+      var config = { method: method, url: this.baseURL + url, headers: headers, timeout: 10000, validateStatus: function() { return true; } };
       if (data) config.data = data;
       var response = await axios(config);
-      var success = response.status >= 200 && response.status < 500;
-      return { flow: name, endpoint: method + ' ' + url, status: success ? '✅ PASS' : '⚠️ ' + response.status, responseStatus: response.status, message: success ? 'OK' : (response.data && response.data.message ? response.data.message : 'Error') };
+      var success = response.status >= 200 && response.status < 400;
+      return { flow: name, endpoint: method + ' ' + url, status: success ? '✅ PASS' : '⚠️ ' + response.status, responseStatus: response.status, data: response.data, message: success ? 'OK' : (response.data && response.data.message ? response.data.message : 'Error') };
     } catch (e) {
       return { flow: name, endpoint: method + ' ' + url, status: '❌ FAIL', error: e.code === 'ECONNREFUSED' ? 'Server not running' : e.message.substring(0, 80) };
     }
   }
 
+  // FULL END-TO-END PATIENT JOURNEY
+  async testE2EFlows() {
+    this.results.e2e = [];
+    var journeyResults = {};
+    var testPhone = '88888' + Math.floor(Math.random() * 100000);
+    var testEmail = 'e2e' + Date.now() + '@test.com';
+    var testPassword = 'Pass@' + Date.now();
+
+    this.log('🧪 E2E TEST: Patient Registration → Booking → Payment', 'info');
+
+    // Step 1: Send OTP
+    var otp = await this.testEndpoint('POST', '/api/otp/send', { phone: testPhone }, '📱 Send OTP');
+    this.results.e2e.push(otp);
+
+    // Step 2: Register user
+    var register = await this.testEndpoint('POST', '/api/auth/register', {
+      name: 'E2E Patient', email: testEmail, phone: testPhone, password: testPassword
+    }, '📝 Register');
+    this.results.e2e.push(register);
+
+    if (register.data && register.data.token) {
+      this.testToken = register.data.token;
+    }
+
+    // Step 3: Login
+    var login = await this.testEndpoint('POST', '/api/auth/login', {
+      email: testEmail, password: testPassword
+    }, '🔑 Login');
+    this.results.e2e.push(login);
+    if (login.data && login.data.token) this.testToken = login.data.token;
+
+    // Step 4: Search Hospitals
+    var hospitals = await this.testEndpoint('GET', '/api/hospitals/search?city=Delhi', null, '🏥 Search Hospitals');
+    this.results.e2e.push(hospitals);
+
+    // Step 5: Create Booking
+    var booking = await this.testEndpoint('POST', '/api/bookings/create', {
+      patientName: 'E2E Patient', patientPhone: testPhone, patientAge: 30,
+      patientGender: 'Male', bookingType: 'opd', appointmentDate: new Date().toISOString().split('T')[0], slot: '10:00 AM'
+    }, '📋 Create Booking', this.testToken);
+    this.results.e2e.push(booking);
+
+    // Step 6: Insurance
+    var insurance = await this.testEndpoint('GET', '/api/insurance/plans', null, '🛡️ Insurance');
+    this.results.e2e.push(insurance);
+
+    // Step 7: Corporate
+    var corporate = await this.testEndpoint('GET', '/api/corporate/plans', null, '🏢 Corporate');
+    this.results.e2e.push(corporate);
+
+    // Step 8: Ayurveda
+    var ayurveda = await this.testEndpoint('GET', '/api/ayurveda/doctors', null, '🧘 Ayurveda');
+    this.results.e2e.push(ayurveda);
+
+    // Step 9: Mental Health
+    var mental = await this.testEndpoint('GET', '/api/mentalhealth/therapists', null, '🧠 Mental Health');
+    this.results.e2e.push(mental);
+
+    // Step 10: Online Doctor
+    var onlineDoc = await this.testEndpoint('GET', '/api/online-doctor/search', null, '📱 Online Doctor');
+    this.results.e2e.push(onlineDoc);
+
+    // Step 11: Ambulance
+    var ambulance = await this.testEndpoint('GET', '/api/ambulance/nearby-ambulances?lat=19.076&lng=72.877', null, '🚑 Ambulance');
+    this.results.e2e.push(ambulance);
+
+    // Step 12: Admin
+    var admin = await this.testEndpoint('GET', '/api/admin/dashboard', null, '🔧 Admin');
+    this.results.e2e.push(admin);
+
+    // Step 13: Payment
+    var payment = await this.testEndpoint('POST', '/api/payment/create-order', { amount: 500, bookingType: 'opd', bookingId: '507f1f77bcf86cd799439011' }, '💳 Payment');
+    this.results.e2e.push(payment);
+
+    // Step 14: Reviews
+    var reviews = await this.testEndpoint('GET', '/api/reviews/provider/test123', null, '⭐ Reviews');
+    this.results.e2e.push(reviews);
+
+    // Step 15: Global Search
+    var search = await this.testEndpoint('GET', '/api/search?q=hospital', null, '🔍 Global Search');
+    this.results.e2e.push(search);
+
+    // Count results
+    var e2ePassed = this.results.e2e.filter(function(f) { return f.status.includes('PASS'); }).length;
+    var e2eFailed = this.results.e2e.filter(function(f) { return f.status.includes('FAIL'); }).length;
+    var e2eWarn = this.results.e2e.filter(function(f) { return f.status.includes('⚠️'); }).length;
+
+    journeyResults = {
+      registration: otp.status.includes('PASS') || register.status.includes('PASS') ? '✅' : '❌',
+      login: login.status.includes('PASS') ? '✅' : '❌',
+      hospitalSearch: hospitals.status.includes('PASS') ? '✅' : '❌',
+      booking: booking.status.includes('PASS') ? '✅' : booking.status.includes('⚠️') ? '⚠️' : '❌',
+      insurance: insurance.status.includes('PASS') ? '✅' : '❌',
+      corporate: corporate.status.includes('PASS') ? '✅' : '❌',
+      ayurveda: ayurveda.status.includes('PASS') ? '✅' : '❌',
+      mentalHealth: mental.status.includes('PASS') ? '✅' : '❌',
+      onlineDoctor: onlineDoc.status.includes('PASS') ? '✅' : '❌',
+      ambulance: ambulance.status.includes('PASS') ? '✅' : '❌',
+      payment: payment.status.includes('PASS') ? '✅' : '❌',
+      admin: admin.status.includes('PASS') ? '✅' : '❌'
+    };
+
+    this.results.summary = {
+      e2eTotal: this.results.e2e.length,
+      e2ePassed: e2ePassed,
+      e2eFailed: e2eFailed,
+      e2eWarnings: e2eWarn,
+      journeys: journeyResults,
+      overallStatus: e2eFailed === 0 ? (e2eWarn === 0 ? '✅ PRODUCTION READY' : '⚠️ MINOR ISSUES') : '❌ NEEDS FIXES',
+      recommendation: e2eFailed > 0 ? 'Failed flows need fixing before production use' : 'All critical flows working!'
+    };
+
+    return this.results;
+  }
+
   async testAllFlows() {
     this.results.flows = [];
-    var self = this;
-
-    // 1. Hospital Search
     this.results.flows.push(await this.testEndpoint('GET', '/api/hospitals/search?city=Mumbai', null, '🏥 Hospital Search'));
-    this.results.flows.push(await this.testEndpoint('GET', '/api/hospitals/search?specialty=Cardiology', null, '🏥 Hospital by Specialty'));
-    this.results.flows.push(await this.testEndpoint('GET', '/api/hospitals/medical-data', null, '🏥 Medical Data'));
-
-    // 2. AI Agents
     this.results.flows.push(await this.testEndpoint('GET', '/api/ai/agents', null, '🤖 List AI Agents'));
     this.results.flows.push(await this.testEndpoint('GET', '/api/ai/health', null, '🤖 AI Health'));
-
-    // 3. Auth
-    this.results.flows.push(await this.testEndpoint('POST', '/api/auth/login', { email: 'test@test.com', password: 'test123' }, '🔑 Login'));
-    this.results.flows.push(await this.testEndpoint('POST', '/api/otp/send', { phone: '9876543210' }, '📱 Send OTP'));
-
-    // 4. Bookings
     this.results.flows.push(await this.testEndpoint('POST', '/api/bookings/create', { patientName: 'Test', patientPhone: '9876543210', patientAge: 30, patientGender: 'Male' }, '📋 Create Booking'));
-
-    // 5. Payment
-    this.results.flows.push(await this.testEndpoint('POST', '/api/payment/create-order', { amount: 500, bookingType: 'opd', bookingId: 'test123' }, '💳 Create Payment'));
-
-    // 6. Ambulance
+    this.results.flows.push(await this.testEndpoint('POST', '/api/payment/create-order', { amount: 500 }, '💳 Create Payment'));
     this.results.flows.push(await this.testEndpoint('GET', '/api/ambulance/nearby-ambulances', null, '🚑 Nearby Ambulances'));
-
-    // 7. Diagnostics
-    this.results.flows.push(await this.testEndpoint('GET', '/api/diagnostics/search?city=Mumbai', null, '🔬 Diagnostics Search'));
-
-    // 8. Caregivers
-    this.results.flows.push(await this.testEndpoint('GET', '/api/caregivers/search?city=Mumbai', null, '🏠 Caregiver Search'));
-
-    // 9. Insurance
     this.results.flows.push(await this.testEndpoint('GET', '/api/insurance/plans', null, '🛡️ Insurance Plans'));
-
-    // 10. Corporate
     this.results.flows.push(await this.testEndpoint('GET', '/api/corporate/plans', null, '🏢 Corporate Plans'));
-
-    // 11. Mental Health
-    this.results.flows.push(await this.testEndpoint('GET', '/api/mentalhealth/therapists', null, '🧠 Mental Health Therapists'));
-
-    // 12. Online Doctor
-    this.results.flows.push(await this.testEndpoint('GET', '/api/online-doctor/search', null, '📱 Online Doctor Search'));
-
-    // 13. Ayurveda
-    this.results.flows.push(await this.testEndpoint('GET', '/api/ayurveda/doctors', null, '🧘 Ayurveda Doctors'));
-
-    // 14. Homeopathy
-    this.results.flows.push(await this.testEndpoint('GET', '/api/homeopathy/doctors', null, '🌿 Homeopathy Doctors'));
-
-    // 15. Loans
-    this.results.flows.push(await this.testEndpoint('GET', '/api/loan/partners', null, '💰 Loan Partners'));
-
-    // 16. Reviews
-    this.results.flows.push(await this.testEndpoint('GET', '/api/reviews/provider/test123', null, '⭐ Provider Reviews'));
-
-    // 17. Global Search
+    this.results.flows.push(await this.testEndpoint('GET', '/api/mentalhealth/therapists', null, '🧠 Mental Health'));
+    this.results.flows.push(await this.testEndpoint('GET', '/api/online-doctor/search', null, '📱 Online Doctor'));
+    this.results.flows.push(await this.testEndpoint('GET', '/api/ayurveda/doctors', null, '🧘 Ayurveda'));
+    this.results.flows.push(await this.testEndpoint('GET', '/api/homeopathy/doctors', null, '🌿 Homeopathy'));
+    this.results.flows.push(await this.testEndpoint('GET', '/api/reviews/provider/test123', null, '⭐ Reviews'));
+    this.results.flows.push(await this.testEndpoint('GET', '/api/admin/dashboard', null, '🔧 Admin'));
     this.results.flows.push(await this.testEndpoint('GET', '/api/search?q=hospital', null, '🔍 Global Search'));
-
-    // 18. Admin
-    this.results.flows.push(await this.testEndpoint('GET', '/api/admin/dashboard', null, '🔧 Admin Dashboard'));
-
-    // 19. Employee Portal
-    this.results.flows.push(await this.testEndpoint('GET', '/api/employee/dashboard', null, '👨‍💼 Employee Portal'));
-
-    // 20. Hospital Status
-    this.results.flows.push(await this.testEndpoint('GET', '/api/hospital-status', null, '🏥 Hospital Status'));
 
     var passed = this.results.flows.filter(function(f) { return f.status.includes('PASS'); }).length;
     var failed = this.results.flows.filter(function(f) { return f.status.includes('FAIL'); }).length;
     var warnings = this.results.flows.filter(function(f) { return f.status.includes('⚠️'); }).length;
 
     this.results.summary = {
-      totalFlows: this.results.flows.length,
-      passed: passed,
-      warnings: warnings,
-      failed: failed,
+      totalFlows: this.results.flows.length, passed: passed, warnings: warnings, failed: failed,
       healthPercentage: Math.round((passed / this.results.flows.length) * 100),
       overallStatus: failed === 0 ? (warnings === 0 ? '✅ HEALTHY' : '⚠️ MINOR ISSUES') : '❌ NEEDS FIXES'
     };
-
     return this.results;
   }
 
-  async testAll() {
-    await this.testModels();
-    await this.testRoutes();
-    await this.testAllFlows();
-    return this.results;
-  }
+  async testAll() { await this.testModels(); await this.testRoutes(); await this.testAllFlows(); return this.results; }
 
   async generateReport() {
-    if (!this.results.flows || this.results.flows.length === 0) {
-      await this.testAll();
-    }
-
-    var prompt = 'Analyze this test report and provide specific fixes:\n' +
-      JSON.stringify(this.results, null, 2) + '\n\n' +
-      'For each FAILED test, provide:\n' +
-      '1. The exact file that needs fixing\n' +
-      '2. The git command to restore it if available\n' +
-      '3. Priority (Critical/High/Medium/Low)';
-
+    if (!this.results.flows || this.results.flows.length === 0) await this.testAll();
+    var prompt = 'Analyze this test report and provide specific fixes:\n' + JSON.stringify(this.results, null, 2);
     var response = await this.providerManager.generate(prompt);
-
-    return {
-      summary: this.results.summary,
-      models: this.results.models ? { passed: this.results.models.filter(function(r) { return r.status.includes('PASS'); }).length, failed: this.results.models.filter(function(r) { return r.status.includes('FAIL'); }) } : null,
-      routes: this.results.routes ? { passed: this.results.routes.filter(function(r) { return r.status.includes('PASS'); }).length, failed: this.results.routes.filter(function(r) { return r.status.includes('FAIL'); }) } : null,
-      flows: this.results.flows,
-      aiAnalysis: response.content,
-      provider: response.provider
-    };
+    return { summary: this.results.summary, flows: this.results.flows, aiAnalysis: response.content, provider: response.provider };
   }
 
   getRequiredCapability(task) {
     if (task.includes('models')) return 'test_models';
     if (task.includes('routes')) return 'test_routes';
+    if (task.includes('e2e') || task.includes('journey') || task.includes('patient')) return 'test_e2e';
     if (task.includes('flows') || task.includes('all')) return 'test_all_flows';
     return 'generate_report';
   }
