@@ -5,7 +5,7 @@ const InsuranceClaim = require('../models/InsuranceClaim');
 const InsurancePolicy = require('../models/InsurancePolicy');
 const InsuranceCompany = require('../models/InsuranceCompany');
 const { authenticate: auth } = require('../middleware/auth');
-const upload = require('../middleware/upload');
+const upload = require('../middleware/upload').upload;
 const notificationService = require('../services/notificationService');
 
 // ============================================
