@@ -7,49 +7,32 @@ const router = express.Router();
 // ============================================
 
 // GET /api/corporate-hub/packages
-// Browse all corporate packages across all tags
 router.get('/packages', async (req, res) => {
   try {
-    const { city, tag, minEmployees, page = 1, limit = 20 } = req.query;
+    var city = req.query.city;
+    var tag = req.query.tag;
+    var minEmployees = req.query.minEmployees;
+    var page = req.query.page || 1;
+    var limit = req.query.limit || 20;
 
-    const results = {
-      hospitals: [],
-      onlineDoctors: [],
-      diagnostics: [],
-      mentalHealth: [],
-      ayurveda: [],
-      homeopathy: [],
-      caregivers: [],
-      ambulance: []
-    };
-
-    const queryFilter = {};
-    if (city) queryFilter.city = { $regex, $options: 'i' };
+    var results = { hospitals: [], onlineDoctors: [], diagnostics: [], mentalHealth: [], ayurveda: [], homeopathy: [], caregivers: [], ambulance: [] };
 
     // 1. Hospitals
     try {
-      const Hospital = require('../models/Hospital');
-      const hospitals = await Hospital.find({ servesCorporate, is_active, is_verified, ...(city ? { 'address.city'.city } : {}) })
-        .select('name address corporatePackages ratings contact')
-        .limit(parseInt(limit));
+      var Hospital = require('../models/Hospital');
+      var cityFilter = city ? { 'address.city': city } : {};
+      var hospitals = await Hospital.find({ servesCorporate: true, is_active: true, is_verified: true, ...cityFilter })
+        .select('name address corporatePackages ratings contact').limit(parseInt(limit));
       
-      hospitals.forEach(h => {
-        h.corporatePackages?.filter(p => p.isActive).forEach(p => {
+      hospitals.forEach(function(h) {
+        (h.corporatePackages || []).filter(function(p) { return p.isActive; }).forEach(function(p) {
           results.hospitals.push({
-            _id._id,
-            packageName.packageName,
-            packageType.packageType,
-            description.description,
-            pricePerEmployee.pricePerEmployee,
-            discountedPricePerEmployee.discountedPricePerEmployee,
-            minEmployees.minEmployees,
-            validityDays.validityDays,
-            servicesIncluded.servicesIncluded,
-            providerId._id,
-            providerName.name,
-            providerCity.address?.city,
-            providerRating.ratings?.average,
-            tag: 'hospitals'
+            _id: h._id, packageName: p.packageName, packageType: p.packageType,
+            description: p.description, pricePerEmployee: p.pricePerEmployee,
+            discountedPricePerEmployee: p.discountedPricePerEmployee, minEmployees: p.minEmployees,
+            validityDays: p.validityDays, servicesIncluded: p.servicesIncluded,
+            providerId: h._id, providerName: h.name, providerCity: h.address ? h.address.city : '',
+            providerRating: h.ratings ? h.ratings.average : 0, tag: 'hospitals'
           });
         });
       });
@@ -57,27 +40,19 @@ router.get('/packages', async (req, res) => {
 
     // 2. Online Doctors
     try {
-      const OnlineDoctor = require('../models/OnlineDoctor');
-      const doctors = await OnlineDoctor.find({ servesCorporate, isActive, verificationStatus: 'verified' })
-        .select('name specialization corporatePackages ratingSummary consultationFee')
-        .limit(parseInt(limit));
+      var OnlineDoctor = require('../models/OnlineDoctor');
+      var doctors = await OnlineDoctor.find({ servesCorporate: true, isActive: true, verificationStatus: 'verified' })
+        .select('name specialization corporatePackages ratingSummary consultationFee').limit(parseInt(limit));
       
-      doctors.forEach(d => {
-        d.corporatePackages?.filter(p => p.isActive).forEach(p => {
+      doctors.forEach(function(d) {
+        (d.corporatePackages || []).filter(function(p) { return p.isActive; }).forEach(function(p) {
           results.onlineDoctors.push({
-            _id._id,
-            packageName.packageName,
-            packageType.packageType,
-            description.description,
-            pricePerEmployee.pricePerEmployee,
-            discountedPricePerEmployee.discountedPricePerEmployee,
-            minEmployees.minEmployees,
-            consultationLimitPerEmployee.consultationLimitPerEmployee,
-            providerId._id,
-            providerName.name,
-            providerSpecialization.specialization,
-            providerRating.ratingSummary?.averageRating,
-            tag: 'online-doctor'
+            _id: d._id, packageName: p.packageName, packageType: p.packageType,
+            description: p.description, pricePerEmployee: p.pricePerEmployee,
+            discountedPricePerEmployee: p.discountedPricePerEmployee, minEmployees: p.minEmployees,
+            consultationLimitPerEmployee: p.consultationLimitPerEmployee,
+            providerId: d._id, providerName: d.name, providerSpecialization: d.specialization,
+            providerRating: d.ratingSummary ? d.ratingSummary.averageRating : 0, tag: 'online-doctor'
           });
         });
       });
@@ -85,27 +60,19 @@ router.get('/packages', async (req, res) => {
 
     // 3. Diagnostics
     try {
-      const DiagnosticsProvider = require('../models/DiagnosticsProvider');
-      const providers = await DiagnosticsProvider.find({ servesCorporate, is_active, partner_status: 'Approved', ...(city ? { city.city } : {}) })
-        .select('provider_name city rating corporatePackages corporateDiscount homeCollectionCorporate')
-        .limit(parseInt(limit));
+      var DiagnosticsProvider = require('../models/DiagnosticsProvider');
+      var diagCityFilter = city ? { city: city } : {};
+      var providers = await DiagnosticsProvider.find({ servesCorporate: true, is_active: true, partner_status: 'Approved', ...diagCityFilter })
+        .select('provider_name city rating corporatePackages corporateDiscount homeCollectionCorporate').limit(parseInt(limit));
       
-      providers.forEach(pr => {
-        pr.corporatePackages?.filter(p => p.isActive).forEach(p => {
+      providers.forEach(function(pr) {
+        (pr.corporatePackages || []).filter(function(p) { return p.isActive; }).forEach(function(p) {
           results.diagnostics.push({
-            _id._id,
-            packageName.name,
-            packageType: 'diagnostic_package',
-            description.description,
-            pricePerEmployee.pricePerEmployee,
-            categories.categories,
-            tests.tests,
-            providerId._id,
-            providerName.provider_name,
-            providerCity.city,
-            providerRating.rating,
-            homeCollection.homeCollectionCorporate,
-            tag: 'diagnostics'
+            _id: pr._id, packageName: p.name, packageType: 'diagnostic_package',
+            description: p.description, pricePerEmployee: p.pricePerEmployee,
+            categories: p.categories, tests: p.tests,
+            providerId: pr._id, providerName: pr.provider_name, providerCity: pr.city,
+            providerRating: pr.rating, homeCollection: pr.homeCollectionCorporate, tag: 'diagnostics'
           });
         });
       });
@@ -113,27 +80,19 @@ router.get('/packages', async (req, res) => {
 
     // 4. Mental Health
     try {
-      const MentalHealthTherapist = require('../models/MentalHealthTherapist');
-      const therapists = await MentalHealthTherapist.find({ servesCorporate, isActive, verificationStatus: 'approved', ...(city ? { city.city } : {}) })
-        .select('name city specializations rating corporatePackages')
-        .limit(parseInt(limit));
+      var MentalHealthTherapist = require('../models/MentalHealthTherapist');
+      var mhCityFilter = city ? { city: city } : {};
+      var therapists = await MentalHealthTherapist.find({ servesCorporate: true, isActive: true, verificationStatus: 'approved', ...mhCityFilter })
+        .select('name city specializations rating corporatePackages').limit(parseInt(limit));
       
-      therapists.forEach(t => {
-        t.corporatePackages?.filter(p => p.isActive).forEach(p => {
+      therapists.forEach(function(t) {
+        (t.corporatePackages || []).filter(function(p) { return p.isActive; }).forEach(function(p) {
           results.mentalHealth.push({
-            _id._id,
-            packageName.packageName,
-            packageType.packageType,
-            description.description,
-            pricePerEmployee.pricePerEmployee,
-            sessionsPerEmployee.sessionsPerEmployee,
-            anonymityGuaranteed.anonymityGuaranteed,
-            providerId._id,
-            providerName.name,
-            providerCity.city,
-            providerRating.rating,
-            specializations.specializations,
-            tag: 'mental-health'
+            _id: t._id, packageName: p.packageName, packageType: p.packageType,
+            description: p.description, pricePerEmployee: p.pricePerEmployee,
+            sessionsPerEmployee: p.sessionsPerEmployee, anonymityGuaranteed: p.anonymityGuaranteed,
+            providerId: t._id, providerName: t.name, providerCity: t.city,
+            providerRating: t.rating, specializations: t.specializations, tag: 'mental-health'
           });
         });
       });
@@ -141,28 +100,19 @@ router.get('/packages', async (req, res) => {
 
     // 5. Ayurveda
     try {
-      const AyurvedaDoctor = require('../models/AyurvedaDoctor');
-      const ayurDoctors = await AyurvedaDoctor.find({ servesCorporate, isActive, verificationStatus: 'approved', ...(city ? { 'address.city'.city } : {}) })
-        .select('name address specialization rating corporateWellnessPackages corporateDiscount')
-        .limit(parseInt(limit));
+      var AyurvedaDoctor = require('../models/AyurvedaDoctor');
+      var ayurCityFilter = city ? { 'address.city': city } : {};
+      var ayurDoctors = await AyurvedaDoctor.find({ servesCorporate: true, isActive: true, verificationStatus: 'approved', ...ayurCityFilter })
+        .select('name address specialization rating corporateWellnessPackages corporateDiscount').limit(parseInt(limit));
       
-      ayurDoctors.forEach(d => {
-        d.corporateWellnessPackages?.filter(p => p.isActive).forEach(p => {
+      ayurDoctors.forEach(function(d) {
+        (d.corporateWellnessPackages || []).filter(function(p) { return p.isActive; }).forEach(function(p) {
           results.ayurveda.push({
-            _id._id,
-            packageName.name,
-            packageType.category || 'general_wellness',
-            description.description,
-            pricePerEmployee.pricePerEmployee,
-            duration.duration,
-            sessions.sessions,
-            therapies.therapies,
-            benefits.benefits,
-            providerId._id,
-            providerName.name,
-            providerCity.address?.city,
-            providerRating.rating,
-            tag: 'ayurveda'
+            _id: d._id, packageName: p.name, packageType: p.category || 'general_wellness',
+            description: p.description, pricePerEmployee: p.pricePerEmployee,
+            duration: p.duration, sessions: p.sessions, therapies: p.therapies, benefits: p.benefits,
+            providerId: d._id, providerName: d.name, providerCity: d.address ? d.address.city : '',
+            providerRating: d.rating, tag: 'ayurveda'
           });
         });
       });
@@ -170,27 +120,19 @@ router.get('/packages', async (req, res) => {
 
     // 6. Homeopathy
     try {
-      const HomeopathyDoctor = require('../models/HomeopathyDoctor');
-      const homeoDoctors = await HomeopathyDoctor.find({ servesCorporate, isActive, verificationStatus: 'approved', ...(city ? { 'address.city'.city } : {}) })
-        .select('name address specialization rating corporateWellnessPackages corporateDiscount')
-        .limit(parseInt(limit));
+      var HomeopathyDoctor = require('../models/HomeopathyDoctor');
+      var homeoCityFilter = city ? { 'address.city': city } : {};
+      var homeoDoctors = await HomeopathyDoctor.find({ servesCorporate: true, isActive: true, verificationStatus: 'approved', ...homeoCityFilter })
+        .select('name address specialization rating corporateWellnessPackages corporateDiscount').limit(parseInt(limit));
       
-      homeoDoctors.forEach(d => {
-        d.corporateWellnessPackages?.filter(p => p.isActive).forEach(p => {
+      homeoDoctors.forEach(function(d) {
+        (d.corporateWellnessPackages || []).filter(function(p) { return p.isActive; }).forEach(function(p) {
           results.homeopathy.push({
-            _id._id,
-            packageName.name,
-            packageType.category || 'general_wellness',
-            description.description,
-            pricePerEmployee.pricePerEmployee,
-            duration.duration,
-            sessions.sessions,
-            therapies.therapies,
-            providerId._id,
-            providerName.name,
-            providerCity.address?.city,
-            providerRating.rating,
-            tag: 'homeopathy'
+            _id: d._id, packageName: p.name, packageType: p.category || 'general_wellness',
+            description: p.description, pricePerEmployee: p.pricePerEmployee,
+            duration: p.duration, sessions: p.sessions, therapies: p.therapies,
+            providerId: d._id, providerName: d.name, providerCity: d.address ? d.address.city : '',
+            providerRating: d.rating, tag: 'homeopathy'
           });
         });
       });
@@ -198,25 +140,19 @@ router.get('/packages', async (req, res) => {
 
     // 7. Caregivers
     try {
-      const Caregiver = require('../models/Caregiver');
-      const caregivers = await Caregiver.find({ servesCorporate, isActive, isVerified, ...(city ? { 'location.city'.city } : {}) })
-        .select('fullName location specializations ratings corporatePackages')
-        .limit(parseInt(limit));
+      var Caregiver = require('../models/Caregiver');
+      var cgCityFilter = city ? { 'location.city': city } : {};
+      var caregivers = await Caregiver.find({ servesCorporate: true, isActive: true, isVerified: true, ...cgCityFilter })
+        .select('fullName location specializations ratings corporatePackages').limit(parseInt(limit));
       
-      caregivers.forEach(c => {
-        c.corporatePackages?.filter(p => p.isActive).forEach(p => {
+      caregivers.forEach(function(c) {
+        (c.corporatePackages || []).filter(function(p) { return p.isActive; }).forEach(function(p) {
           results.caregivers.push({
-            _id._id,
-            packageName.packageName,
-            packageType.packageType,
-            description.description,
-            pricePerEmployee.pricePerEmployee,
-            careHoursPerMonth.careHoursPerMonth,
-            providerId._id,
-            providerName.fullName,
-            providerCity.location?.city,
-            providerRating.ratings?.average,
-            tag: 'caregivers'
+            _id: c._id, packageName: p.packageName, packageType: p.packageType,
+            description: p.description, pricePerEmployee: p.pricePerEmployee,
+            careHoursPerMonth: p.careHoursPerMonth,
+            providerId: c._id, providerName: c.fullName, providerCity: c.location ? c.location.city : '',
+            providerRating: c.ratings ? c.ratings.average : 0, tag: 'caregivers'
           });
         });
       });
@@ -224,138 +160,88 @@ router.get('/packages', async (req, res) => {
 
     // 8. Ambulance
     try {
-      const Ambulance = require('../models/Ambulance');
-      const ambulances = await Ambulance.find({ servesCorporate, isAvailable, ...(city ? { city.city } : {}) })
-        .select('providerName city type corporatePackages')
-        .limit(parseInt(limit));
+      var Ambulance = require('../models/Ambulance');
+      var ambCityFilter = city ? { city: city } : {};
+      var ambulances = await Ambulance.find({ servesCorporate: true, isAvailable: true, ...ambCityFilter })
+        .select('providerName city type corporatePackages').limit(parseInt(limit));
       
-      ambulances.forEach(a => {
-        a.corporatePackages?.filter(p => p.isActive).forEach(p => {
+      ambulances.forEach(function(a) {
+        (a.corporatePackages || []).filter(function(p) { return p.isActive; }).forEach(function(p) {
           results.ambulance.push({
-            _id._id,
-            packageName.packageName,
-            packageType.packageType,
-            description.description,
-            pricePerEmployee.pricePerEmployee,
-            numberOfVehicles.numberOfVehicles,
-            coverageRadiusKm.coverageRadiusKm,
-            responseTimeMinutes.responseTimeMinutes,
-            providerId._id,
-            providerName.providerName,
-            providerCity.city,
-            vehicleType.type,
-            tag: 'ambulance'
+            _id: a._id, packageName: p.packageName, packageType: p.packageType,
+            description: p.description, pricePerEmployee: p.pricePerEmployee,
+            numberOfVehicles: p.numberOfVehicles, coverageRadiusKm: p.coverageRadiusKm,
+            responseTimeMinutes: p.responseTimeMinutes,
+            providerId: a._id, providerName: a.providerName, providerCity: a.city,
+            vehicleType: a.type, tag: 'ambulance'
           });
         });
       });
     } catch (e) { console.log('Ambulance fetch skipped:', e.message); }
 
-    // Flatten all packages
-    const allPackages = [
-      ...results.hospitals,
-      ...results.onlineDoctors,
-      ...results.diagnostics,
-      ...results.mentalHealth,
-      ...results.ayurveda,
-      ...results.homeopathy,
-      ...results.caregivers,
-      ...results.ambulance
-    ];
+    // Flatten
+    var allPackages = results.hospitals.concat(results.onlineDoctors, results.diagnostics, results.mentalHealth, results.ayurveda, results.homeopathy, results.caregivers, results.ambulance);
 
-    // Filter by tag if specified
-    let filteredPackages = allPackages;
-    if (tag && results[tag]) {
-      filteredPackages = results[tag];
-    }
+    var filteredPackages = allPackages;
+    if (tag && results[tag]) { filteredPackages = results[tag]; }
+    if (minEmployees) { filteredPackages = filteredPackages.filter(function(p) { return p.minEmployees <= parseInt(minEmployees); }); }
 
-    // Filter by minEmployees
-    if (minEmployees) {
-      filteredPackages = filteredPackages.filter(p => p.minEmployees <= parseInt(minEmployees));
-    }
-
-    // Pagination
-    const total = filteredPackages.length;
-    const skip = (parseInt(page) - 1) * parseInt(limit);
-    const paginatedPackages = filteredPackages.slice(skip, skip + parseInt(limit));
+    var total = filteredPackages.length;
+    var skip = (parseInt(page) - 1) * parseInt(limit);
+    var paginatedPackages = filteredPackages.slice(skip, skip + parseInt(limit));
 
     res.json({
-      success,
-      data,
+      success: true,
+      data: paginatedPackages,
       summary: {
-        hospitals.hospitals.length,
-        onlineDoctors.onlineDoctors.length,
-        diagnostics.diagnostics.length,
-        mentalHealth.mentalHealth.length,
-        ayurveda.ayurveda.length,
-        homeopathy.homeopathy.length,
-        caregivers.caregivers.length,
-        ambulance.ambulance.length
+        hospitals: results.hospitals.length, onlineDoctors: results.onlineDoctors.length,
+        diagnostics: results.diagnostics.length, mentalHealth: results.mentalHealth.length,
+        ayurveda: results.ayurveda.length, homeopathy: results.homeopathy.length,
+        caregivers: results.caregivers.length, ambulance: results.ambulance.length
       },
-      pagination: {
-        page(page),
-        limit(limit),
-        total,
-        pages.ceil(total / parseInt(limit))
-      }
+      pagination: { page: parseInt(page), limit: parseInt(limit), total: total, pages: Math.ceil(total / parseInt(limit)) }
     });
-
   } catch (error) {
     console.error('Corporate Hub aggregation error:', error);
-    res.status(500).json({ success, message.message });
+    res.status(500).json({ success: false, message: error.message });
   }
 });
 
-// GET /api/corporate-hub/stats - Summary stats for corporate hub page
+// GET /api/corporate-hub/stats
 router.get('/stats', async (req, res) => {
   try {
-    const Hospital = require('../models/Hospital');
-    const OnlineDoctor = require('../models/OnlineDoctor');
-    const DiagnosticsProvider = require('../models/DiagnosticsProvider');
-    const MentalHealthTherapist = require('../models/MentalHealthTherapist');
-    const AyurvedaDoctor = require('../models/AyurvedaDoctor');
-    const HomeopathyDoctor = require('../models/HomeopathyDoctor');
-    const Caregiver = require('../models/Caregiver');
-    const Ambulance = require('../models/Ambulance');
+    var Hospital = require('../models/Hospital');
+    var OnlineDoctor = require('../models/OnlineDoctor');
+    var DiagnosticsProvider = require('../models/DiagnosticsProvider');
+    var MentalHealthTherapist = require('../models/MentalHealthTherapist');
+    var AyurvedaDoctor = require('../models/AyurvedaDoctor');
+    var HomeopathyDoctor = require('../models/HomeopathyDoctor');
+    var Caregiver = require('../models/Caregiver');
+    var Ambulance = require('../models/Ambulance');
 
-    const [
-      hospitalCount, doctorCount, diagnosticsCount, therapistCount,
-      ayurvedaCount, homeopathyCount, caregiverCount, ambulanceCount
-    ] = await Promise.all([
-      Hospital.countDocuments({ servesCorporate, is_active, is_verified}),
-      OnlineDoctor.countDocuments({ servesCorporate, isActive, verificationStatus: 'verified' }),
-      DiagnosticsProvider.countDocuments({ servesCorporate, is_active, partner_status: 'Approved' }),
-      MentalHealthTherapist.countDocuments({ servesCorporate, isActive, verificationStatus: 'approved' }),
-      AyurvedaDoctor.countDocuments({ servesCorporate, isActive, verificationStatus: 'approved' }),
-      HomeopathyDoctor.countDocuments({ servesCorporate, isActive, verificationStatus: 'approved' }),
-      Caregiver.countDocuments({ servesCorporate, isActive, isVerified}),
-      Ambulance.countDocuments({ servesCorporate, isAvailable})
+    var counts = await Promise.all([
+      Hospital.countDocuments({ servesCorporate: true, is_active: true, is_verified: true }),
+      OnlineDoctor.countDocuments({ servesCorporate: true, isActive: true, verificationStatus: 'verified' }),
+      DiagnosticsProvider.countDocuments({ servesCorporate: true, is_active: true, partner_status: 'Approved' }),
+      MentalHealthTherapist.countDocuments({ servesCorporate: true, isActive: true, verificationStatus: 'approved' }),
+      AyurvedaDoctor.countDocuments({ servesCorporate: true, isActive: true, verificationStatus: 'approved' }),
+      HomeopathyDoctor.countDocuments({ servesCorporate: true, isActive: true, verificationStatus: 'approved' }),
+      Caregiver.countDocuments({ servesCorporate: true, isActive: true, isVerified: true }),
+      Ambulance.countDocuments({ servesCorporate: true, isAvailable: true })
     ]);
 
-    const totalProviders = hospitalCount + doctorCount + diagnosticsCount + therapistCount + ayurvedaCount + homeopathyCount + caregiverCount + ambulanceCount;
+    var totalProviders = counts[0] + counts[1] + counts[2] + counts[3] + counts[4] + counts[5] + counts[6] + counts[7];
 
     res.json({
-      success,
+      success: true,
       data: {
-        totalProviders,
-        companiesServed: 0, // Will grow as companies register
-        employeesCovered: 0,
-        servicesAvailable: 8,
-        breakdown: {
-          hospitals,
-          onlineDoctors,
-          diagnostics,
-          mentalHealth,
-          ayurveda,
-          homeopathy,
-          caregivers,
-          ambulance}
+        totalProviders: totalProviders, companiesServed: 0, employeesCovered: 0, servicesAvailable: 8,
+        breakdown: { hospitals: counts[0], onlineDoctors: counts[1], diagnostics: counts[2], mentalHealth: counts[3], ayurveda: counts[4], homeopathy: counts[5], caregivers: counts[6], ambulance: counts[7] }
       }
     });
   } catch (error) {
-    res.status(500).json({ success, message.message });
+    res.status(500).json({ success: false, message: error.message });
   }
 });
 
 module.exports = router;
-
-// fix 
