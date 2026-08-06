@@ -4,7 +4,8 @@ const mongoose = require('mongoose');
 const InsuranceCompany = require('../models/InsuranceCompany');
 const User = require('../models/User');
 const auth = require('../middleware/auth');
-const upload = require('../middleware/upload').upload;
+const multer = require('multer');
+const upload = multer({ storage: multer.memoryStorage() });
 const notificationService = require('../services/notificationService');
 
 // ============================================
