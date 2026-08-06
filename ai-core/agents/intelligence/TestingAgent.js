@@ -25,7 +25,7 @@ class TestingAgent extends BaseAgent {
     this.testToken = null;
   }
 
-    async execute(request) {
+       async execute(request) {
     this.setStatus(AgentStatus.BUSY);
     var task = request.task;
     var payload = request.payload || {};
@@ -35,7 +35,7 @@ class TestingAgent extends BaseAgent {
       if (task.includes('models')) result = await this.testModels();
       else if (task.includes('routes')) result = await this.testRoutes();
       else if (task.includes('e2e') || task.includes('journey') || task.includes('patient')) result = await this.testE2EFlows();
-      else if (task.includes('frontend') || task.includes('scan')) result = await this.scanFrontendAPIs();
+      else if (task.includes('production') || task.includes('audit') || task.includes('full scan')) result = await this.productionScan();
       else if (task.includes('flows') || task.includes('all')) result = await this.testAllFlows();
       else if (task.includes('report')) result = await this.generateReport();
       else result = await this.testAll();
@@ -318,12 +318,195 @@ class TestingAgent extends BaseAgent {
     };
   }
 
+  // ==========================================
+  // 🔥 PRODUCTION READINESS SCANNER
+  // Scans for ALL real-world issues
+  // ==========================================
+  async productionScan() {
+    var report = {
+      timestamp: new Date().toISOString(),
+      overallStatus: 'PENDING',
+      sections: {}
+    };
+
+    // 1. ROUTE HEALTH CHECK
+    this.log('🔍 Checking route health...', 'info');
+    var routes = await this.testRoutes();
+    report.sections.routes = {
+      total: routes.total,
+      passed: routes.passed,
+      failed: routes.failed,
+      status: routes.failed === 0 ? '✅' : '❌'
+    };
+
+    // 2. MODEL HEALTH CHECK
+    this.log('🔍 Checking model health...', 'info');
+    var models = await this.testModels();
+    report.sections.models = {
+      total: models.total,
+      passed: models.passed,
+      failed: models.failed,
+      status: models.failed === 0 ? '✅' : '❌'
+    };
+
+    // 3. E2E FLOW CHECK
+    this.log('🔍 Running E2E flows...', 'info');
+    var e2e = await this.testE2EFlows();
+    report.sections.e2e = e2e.summary;
+
+    // 4. CORS CHECK
+    this.log('🔍 Checking CORS...', 'info');
+    var corsResult = { status: '✅', details: [] };
+    var origins = [
+      'https://hospital-frontend-kiaeto.vercel.app',
+      'https://hospital-frontend-zeta-rosy.vercel.app',
+      'http://localhost:3000'
+    ];
+    for (var o = 0; o < origins.length; o++) {
+      try {
+        var corsResp = await axios({ 
+          method: 'OPTIONS', 
+          url: this.baseURL + '/api/auth/login', 
+          headers: { 'Origin': origins[o], 'Access-Control-Request-Method': 'POST' },
+          timeout: 5000,
+          validateStatus: function(s) { return true; }
+        });
+        corsResult.details.push({
+          origin: origins[o],
+          status: corsResp.status === 204 ? '✅' : '❌ ' + corsResp.status,
+          allowed: corsResp.headers['access-control-allow-origin'] ? true : false
+        });
+      } catch (e) {
+        corsResult.details.push({ origin: origins[o], status: '❌', error: e.message });
+      }
+    }
+    corsResult.status = corsResult.details.every(function(d) { return d.allowed; }) ? '✅' : '❌';
+    report.sections.cors = corsResult;
+
+    // 5. AUTH CHECK
+    this.log('🔍 Checking authentication...', 'info');
+    var authResult = { status: '⚠️', details: [] };
+    var authRoutes = [
+      { path: '/api/auth/login', method: 'POST', name: 'Login' },
+      { path: '/api/otp/send', method: 'POST', name: 'OTP Send' },
+      { path: '/api/bookings', method: 'GET', name: 'Bookings (protected)' },
+      { path: '/api/admin/dashboard', method: 'GET', name: 'Admin (protected)' }
+    ];
+    for (var a = 0; a < authRoutes.length; a++) {
+      try {
+        var ar = authRoutes[a];
+        var resp = await axios({ method: ar.method, url: this.baseURL + ar.path, timeout: 5000, validateStatus: function(s) { return true; } });
+        authResult.details.push({
+          route: ar.name,
+          path: ar.path,
+          status: resp.status,
+          state: resp.status === 200 ? '✅ Public' : resp.status === 401 ? '✅ Protected' : resp.status === 403 ? '✅ Protected' : resp.status === 404 ? '❌ Missing' : '⚠️ ' + resp.status
+        });
+      } catch (e) {
+        authResult.details.push({ route: ar.name, path: ar.path, status: '❌', error: e.message });
+      }
+    }
+    report.sections.auth = authResult;
+
+    // 6. DATABASE CHECK
+    this.log('🔍 Checking database...', 'info');
+    var dbResult = { status: '⚠️', details: [] };
+    try {
+      var mongoCheck = await axios({ method: 'GET', url: this.baseURL + '/api/health', timeout: 5000 });
+      dbResult.details.push({ service: 'MongoDB', status: mongoCheck.data && mongoCheck.data.services && mongoCheck.data.services.mongodb === 'connected' ? '✅' : '❌' });
+    } catch (e) {
+      dbResult.details.push({ service: 'MongoDB', status: '❌', error: 'Cannot connect' });
+    }
+    try {
+      var redisCheck = await axios({ method: 'GET', url: this.baseURL + '/api/health', timeout: 5000 });
+      dbResult.details.push({ service: 'Redis', status: redisCheck.data && redisCheck.data.services && redisCheck.data.services.redis === 'connected' ? '✅' : '⚠️ Unavailable' });
+    } catch (e) {
+      dbResult.details.push({ service: 'Redis', status: '⚠️', error: 'Not available' });
+    }
+    report.sections.database = dbResult;
+
+    // 7. FRONTEND-BACKEND SYNC CHECK
+    this.log('🔍 Checking frontend-backend sync...', 'info');
+    var frontendResult = { status: '⚠️', scannedFiles: 0, apisFound: 0, missingRoutes: 0, details: [] };
+    var frontendDir = 'D:\\hospital-frontend\\src';
+    if (fs.existsSync(frontendDir)) {
+      var apiCalls = [];
+      var self = this;
+      function scanFE(dir) {
+        try {
+          var files = fs.readdirSync(dir);
+          for (var i = 0; i < files.length; i++) {
+            var fp = path.join(dir, files[i]);
+            if (fs.statSync(fp).isDirectory() && files[i] !== 'node_modules' && files[i] !== '.git') {
+              scanFE(fp);
+            } else if (files[i].match(/\.(js|jsx|ts|tsx)$/)) {
+              var content = fs.readFileSync(fp, 'utf8');
+              var matches = content.match(/['"`](\/api\/[^'"`\s?]+)/g);
+              if (matches) {
+                for (var j = 0; j < matches.length; j++) {
+                  var url = matches[j].replace(/['"`]/g, '').split('?')[0];
+                  if (url.startsWith('/api/') && url.length > 8 && apiCalls.indexOf(url) === -1) {
+                    apiCalls.push(url);
+                  }
+                }
+              }
+            }
+          }
+        } catch (e) {}
+      }
+      scanFE(frontendDir);
+      frontendResult.scannedFiles = 'Multiple';
+      frontendResult.apisFound = apiCalls.length;
+      
+      for (var k = 0; k < apiCalls.length; k++) {
+        try {
+          var check = await axios({ method: 'GET', url: this.baseURL + apiCalls[k], timeout: 5000, validateStatus: function(s) { return true; } });
+          if (check.status === 404) {
+            frontendResult.missingRoutes++;
+            frontendResult.details.push({ endpoint: apiCalls[k], status: '❌ MISSING' });
+          }
+        } catch (e) {
+          frontendResult.details.push({ endpoint: apiCalls[k], status: '❌ ERROR' });
+        }
+      }
+    }
+    frontendResult.status = frontendResult.missingRoutes === 0 ? '✅' : '❌ ' + frontendResult.missingRoutes + ' routes missing';
+    report.sections.frontendSync = frontendResult;
+
+    // 8. AI AGENTS CHECK
+    this.log('🔍 Checking AI agents...', 'info');
+    try {
+      var agentsResp = await axios({ method: 'GET', url: this.baseURL + '/api/ai/agents', timeout: 5000 });
+      report.sections.aiAgents = {
+        status: agentsResp.data && agentsResp.data.count > 0 ? '✅ ' + agentsResp.data.count + ' agents' : '❌',
+        count: agentsResp.data ? agentsResp.data.count : 0
+      };
+    } catch (e) {
+      report.sections.aiAgents = { status: '❌', error: e.message };
+    }
+
+    // FINAL VERDICT
+    var allPassed = true;
+    var sections = Object.keys(report.sections);
+    for (var s = 0; s < sections.length; s++) {
+      if (report.sections[sections[s]].status && report.sections[sections[s]].status.includes('❌')) {
+        allPassed = false;
+      }
+    }
+    report.overallStatus = allPassed ? '✅ PRODUCTION READY' : '❌ ISSUES FOUND - Check sections for details';
+    report.recommendation = allPassed ? 'System is ready for real users!' : 'Fix the failing sections before going live';
+
+    this.results.summary = report;
+    return report;
+  }
+
         getRequiredCapability(task) {
     if (task.includes('models')) return 'test_models';
     if (task.includes('routes')) return 'test_routes';
     if (task.includes('e2e') || task.includes('journey') || task.includes('patient')) return 'test_e2e';
     if (task.includes('frontend') || task.includes('scan')) return 'scan_frontend';
     if (task.includes('flows') || task.includes('all')) return 'test_all_flows';
+    if (task.includes('production') || task.includes('scan all') || task.includes('audit')) return 'production_scan';
     return 'generate_report';
   }
 }

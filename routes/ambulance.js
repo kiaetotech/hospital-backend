@@ -941,26 +941,28 @@ router.put('/corporate/enquiries/:enquiryId', authenticateToken, async (req, res
   }
 });
 
-// Provider stats
+// Provider stats - works with any authenticated user
 router.get('/stats', authenticateToken, async (req, res) => {
   try {
-    const Booking = require('../models/Booking');
-    const bookings = await Booking.countDocuments({ providerId: req.user.id });
-    const activeBookings = await Booking.countDocuments({ providerId: req.user.id, status: 'active' });
+    var providerId = req.user.id || req.user._id || req.user.userId;
+    var bookings = await Booking.countDocuments({ 
+      $or: [
+        { providerId: providerId },
+        { userId: providerId },
+        { driverId: providerId }
+      ]
+    });
+    var activeBookings = await Booking.countDocuments({ 
+      $or: [
+        { providerId: providerId },
+        { userId: providerId }
+      ],
+      status: { $in: ['active', 'pending', 'confirmed', 'en_route', 'in_progress'] }
+    });
     res.json({ success: true, data: { totalBookings: bookings, activeBookings: activeBookings } });
   } catch (error) {
     res.status(500).json({ success: false, message: error.message });
   }
 });
-
-// ============================================
-// EXPORT
-// ============================================
-
-module.exports = router;
-
-// ============================================
-// EXPORT
-// ============================================
 
 module.exports = router;
