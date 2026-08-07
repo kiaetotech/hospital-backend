@@ -723,7 +723,15 @@ router.post('/emergency-contacts', authenticateToken, async (req, res) => {
 async function getFleet(userId, userName) {
   let fleet = await AmbulanceFleet.findOne({ ownerType: 'ambulance_provider', ownerId: userId });
   if (!fleet) {
-    fleet = new AmbulanceFleet({ ownerType: 'ambulance_provider', ownerId: userId, providerName: userName || 'Provider' });
+    const user = await User.findById(userId);
+    fleet = new AmbulanceFleet({ 
+      ownerType: 'ambulance_provider', ownerId: userId, 
+      providerName: userName || user?.name || 'Provider',
+      contactPhone: user?.phone || '', contactEmail: user?.email || '',
+      city: user?.ambulanceCompanyAddress?.city || ''
+    });
+    if (user?.ambulanceFleet?.length > 0) fleet.vehicles = user.ambulanceFleet.map(v => ({ vehicleNumber: v.vehicleNumber || '', type: v.type || 'basic', status: 'available' }));
+    if (user?.ambulanceDrivers?.length > 0) fleet.drivers = user.ambulanceDrivers.map(d => ({ name: d.name || '', phone: d.phone || '', licenseNumber: d.licenseNumber || '', status: 'available' }));
     await fleet.save();
   }
   return fleet;
