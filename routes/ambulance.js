@@ -938,4 +938,12 @@ router.get('/vehicles-fix', authenticateToken, async (req, res) => {
   }
 });
 
+router.post('/reset-fleet', authenticateToken, async (req, res) => {
+  try {
+    const providerId = req.user.id || req.user._id;
+    await AmbulanceFleet.deleteMany({ ownerType: 'ambulance_provider', ownerId: providerId });
+    res.json({ success: true, message: 'Fleet reset. Refresh dashboard.' });
+  } catch (error) { res.status(500).json({ success: false, message: error.message }); }
+});
+
 module.exports = router;// fix 
