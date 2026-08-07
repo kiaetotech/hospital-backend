@@ -984,13 +984,36 @@ router.put('/profile', authenticateToken, async (req, res) => {
   }
 });
 
-// GET /ambulance/vehicles - Get all vehicles
+// GET /ambulance/vehicles - Get vehicles from User or Ambulance model
 router.get('/vehicles', authenticateToken, async (req, res) => {
   try {
     const providerId = req.user.id || req.user._id;
-    const ambulance = await require('../models/Ambulance').findOne({ userId: providerId });
-    if (!ambulance) return res.json({ success: true, data: [] });
-    res.json({ success: true, data: ambulance.vehicles || [] });
+    const Ambulance = require('../models/Ambulance');
+    const User = require('../models/User');
+    
+    // Try Ambulance model first
+    let ambulance = await Ambulance.findOne({ userId: providerId });
+    if (ambulance && ambulance.vehicles && ambulance.vehicles.length > 0) {
+      return res.json({ success: true, data: ambulance.vehicles });
+    }
+    
+    // Fall back to User model
+    const user = await User.findById(providerId);
+    if (user && user.ambulanceDrivers && user.ambulanceDrivers.length > 0) {
+      return res.json({ 
+        success: true, 
+        data: user.ambulanceDrivers.map(d => ({
+          _id: d._id || d.driverId,
+          vehicleNumber: d.vehicleNumber || 'N/A',
+          type: d.vehicleType || 'Basic',
+          driver: d.name || 'N/A',
+          driverPhone: d.phone || 'N/A',
+          status: d.isAvailable ? 'available' : 'offline'
+        }))
+      });
+    }
+    
+    res.json({ success: true, data: [] });
   } catch (error) {
     res.status(500).json({ success: false, message: error.message });
   }
@@ -1045,19 +1068,37 @@ router.delete('/vehicles/:id', authenticateToken, async (req, res) => {
   }
 });
 
-// GET /ambulance/drivers - Get all drivers
+// GET /ambulance/drivers - Get drivers from User or Ambulance model
 router.get('/drivers', authenticateToken, async (req, res) => {
   try {
     const providerId = req.user.id || req.user._id;
     const Ambulance = require('../models/Ambulance');
-    const ambulance = await Ambulance.findOne({ userId: providerId });
-    if (!ambulance) return res.json({ success: true, data: [] });
-    res.json({ success: true, data: ambulance.drivers || [] });
+    const User = require('../models/User');
+    
+    let ambulance = await Ambulance.findOne({ userId: providerId });
+    if (ambulance && ambulance.drivers && ambulance.drivers.length > 0) {
+      return res.json({ success: true, data: ambulance.drivers });
+    }
+    
+    const user = await User.findById(providerId);
+    if (user && user.ambulanceDrivers && user.ambulanceDrivers.length > 0) {
+      return res.json({ 
+        success: true, 
+        data: user.ambulanceDrivers.map(d => ({
+          _id: d._id || d.driverId,
+          name: d.name || 'N/A',
+          phone: d.phone || 'N/A',
+          licenseNumber: d.licenseNumber || 'N/A',
+          status: d.isAvailable ? 'available' : 'offline'
+        }))
+      });
+    }
+    
+    res.json({ success: true, data: [] });
   } catch (error) {
     res.status(500).json({ success: false, message: error.message });
   }
 });
-
 // POST /ambulance/drivers - Add driver
 router.post('/drivers', authenticateToken, async (req, res) => {
   try {
@@ -1144,6 +1185,28 @@ router.get('/reports', authenticateToken, async (req, res) => {
       { $group: { _id: null, total: { $sum: '$amount' } } }
     ]);
     res.json({ success: true, data: { totalBookings, completedBookings, totalRevenue: revenue[0]?.total || 0 } });
+  } catch (error) {
+    res.status(500).json({ success: false, message: error.message });
+  }
+});
+
+// ============================================
+// EMERGENCY FIX: Vehicles from User model if Ambulance missing
+// ============================================
+router.get('/vehicles-fix', authenticateToken, async (req, res) => {
+  try {
+    const User = require('../models/User');
+    const user = await User.findById(req.user.id || req.user._id);
+    res.json({ 
+      success: true, 
+      data: (user?.ambulanceDrivers || []).map(d => ({
+        vehicleNumber: d.vehicleNumber || 'N/A',
+        type: d.vehicleType || 'Basic', 
+        driver: d.name || 'N/A',
+        driverPhone: d.phone || 'N/A',
+        status: 'available'
+      }))
+    });
   } catch (error) {
     res.status(500).json({ success: false, message: error.message });
   }
