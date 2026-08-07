@@ -999,16 +999,17 @@ router.get('/vehicles', authenticateToken, async (req, res) => {
     
     // Fall back to User model
     const user = await User.findById(providerId);
-    if (user && user.ambulanceDrivers && user.ambulanceDrivers.length > 0) {
+    if (user && user.ambulanceFleet && user.ambulanceFleet.length > 0) {
+      const drv = (user.ambulanceDrivers && user.ambulanceDrivers[0]) || {};
       return res.json({ 
         success: true, 
-        data: user.ambulanceDrivers.map(d => ({
-          _id: d._id || d.driverId,
-          vehicleNumber: d.vehicleNumber || 'N/A',
-          type: d.vehicleType || 'Basic',
-          driver: d.name || 'N/A',
-          driverPhone: d.phone || 'N/A',
-          status: d.isAvailable ? 'available' : 'offline'
+        data: user.ambulanceFleet.map(v => ({
+          _id: v._id,
+          vehicleNumber: v.vehicleNumber || 'N/A',
+          type: v.type || 'Basic',
+          driver: drv.name || 'N/A',
+          driverPhone: drv.phone || 'N/A',
+          status: v.status || 'available'
         }))
       });
     }

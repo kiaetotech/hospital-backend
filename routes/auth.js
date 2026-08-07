@@ -4,20 +4,41 @@ const bcrypt = require('bcryptjs');
 const jwt = require('jsonwebtoken');
 const User = require('../models/User');
 
-// Register
 router.post('/register', async (req, res) => {
   try {
-    const { name, email, phone, password, role } = req.body;
-    
+    const { name, email, phone, password, role, vehicleNumber, ambulanceType, driverName, driverPhone } = req.body;
+
     const existingUser = await User.findOne({ $or: [{ email }, { phone }] });
     if (existingUser) {
       return res.status(400).json({ success: false, message: 'User already exists' });
     }
-    
+
     const hashedPassword = await bcrypt.hash(password, 10);
-    const user = new User({ name, email, phone, password: hashedPassword, role });
-    await user.save();
     
+    const userData = { name, email, phone, password: hashedPassword, role };
+    
+    // Save ambulance registration data
+    if (role === 'ambulance_provider') {
+      if (vehicleNumber || ambulanceType || driverName || driverPhone) {
+        userData.ambulanceFleet = [{
+          vehicleNumber: vehicleNumber || '',
+          type: ambulanceType || 'Basic',
+          status: 'available'
+        }];
+        userData.ambulanceDrivers = [{
+          name: driverName || '',
+          phone: driverPhone || '',
+          licenseNumber: '',
+          status: 'available',
+          isAvailable: true
+        }];
+      }
+      userData.ambulanceVerificationStatus = 'pending';
+    }
+    
+    const user = new User(userData);
+    await user.save();
+
     const token = jwt.sign({ id: user._id, role: user.role }, process.env.JWT_SECRET, { expiresIn: '7d' });
     res.status(201).json({ success: true, token, user: { id: user._id, name, email, role } });
   } catch (error) {
