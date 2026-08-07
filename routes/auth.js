@@ -81,4 +81,29 @@ router.post('/reset-password', async (req, res) => {
   }
 });
 
+router.post('/migrate-ambulance-data', async (req, res) => {
+  try {
+    const { email } = req.body;
+    const user = await User.findOne({ email, role: 'ambulance_provider' });
+    if (!user) return res.status(404).json({ success: false, message: 'Not found' });
+    
+    // Set from registration form data (these fields exist from your registration)
+    user.ambulanceFleet = [{
+      vehicleNumber: user.ambulanceCompanyAddress?.vehicleNumber || 'REG001',
+      type: 'basic',
+      status: 'available'
+    }];
+    user.ambulanceDrivers = [{
+      name: user.name || 'Driver',
+      phone: user.phone || '',
+      status: 'available'
+    }];
+    await user.save();
+    
+    res.json({ success: true, message: 'Data migrated', fleet: user.ambulanceFleet, drivers: user.ambulanceDrivers });
+  } catch (error) {
+    res.status(500).json({ success: false, message: error.message });
+  }
+});
+
 module.exports = router;
