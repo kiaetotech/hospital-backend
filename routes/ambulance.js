@@ -726,7 +726,15 @@ router.put('/corporate/toggle', authenticateToken, async (req, res) => {
     const providerId = req.user.id || req.user._id;
     let ambulance = await Ambulance.findOne({ userId: providerId });
     if (!ambulance) {
-      ambulance = new Ambulance({ userId: providerId, providerName: req.user.name || 'Provider' });
+            const user = await User.findById(providerId);
+      ambulance = new Ambulance({ 
+        userId: providerId, 
+        providerName: user?.name || 'Provider',
+        city: user?.ambulanceCompanyAddress?.city || '',
+        driverPhone: user?.phone || '',
+        driverName: user?.name || '',
+        vehicleNumber: (user?.ambulanceFleet && user.ambulanceFleet[0]?.vehicleNumber) || ''
+      });
       await ambulance.save();
     }
 
