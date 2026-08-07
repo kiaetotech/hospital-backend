@@ -965,4 +965,199 @@ router.get('/stats', authenticateToken, async (req, res) => {
   }
 });
 
+// ============================================
+// 🚑 PROVIDER DASHBOARD ENDPOINTS
+// ============================================
+
+// GET /ambulance/profile - Get provider profile
+router.get('/profile', authenticateToken, async (req, res) => {
+  try {
+    const providerId = req.user.id || req.user._id;
+    const user = await User.findById(providerId).select('-password');
+    if (!user) return res.status(404).json({ success: false, message: 'Provider not found' });
+    res.json({ success: true, data: user });
+  } catch (error) {
+    res.status(500).json({ success: false, message: error.message });
+  }
+});
+
+// PUT /ambulance/profile - Update provider profile
+router.put('/profile', authenticateToken, async (req, res) => {
+  try {
+    const providerId = req.user.id || req.user._id;
+    const updates = req.body;
+    delete updates.password;
+    delete updates.role;
+    const user = await User.findByIdAndUpdate(providerId, updates, { new: true }).select('-password');
+    res.json({ success: true, data: user });
+  } catch (error) {
+    res.status(500).json({ success: false, message: error.message });
+  }
+});
+
+// GET /ambulance/vehicles - Get all vehicles
+router.get('/vehicles', authenticateToken, async (req, res) => {
+  try {
+    const providerId = req.user.id || req.user._id;
+    const ambulance = await require('../models/Ambulance').findOne({ userId: providerId });
+    if (!ambulance) return res.json({ success: true, data: [] });
+    res.json({ success: true, data: ambulance.vehicles || [] });
+  } catch (error) {
+    res.status(500).json({ success: false, message: error.message });
+  }
+});
+
+// POST /ambulance/vehicles - Add vehicle
+router.post('/vehicles', authenticateToken, async (req, res) => {
+  try {
+    const providerId = req.user.id || req.user._id;
+    const Ambulance = require('../models/Ambulance');
+    let ambulance = await Ambulance.findOne({ userId: providerId });
+    if (!ambulance) {
+      ambulance = new Ambulance({ userId: providerId, providerName: req.user.name || 'Ambulance Provider' });
+    }
+    ambulance.vehicles.push(req.body);
+    await ambulance.save();
+    res.json({ success: true, data: ambulance.vehicles[ambulance.vehicles.length - 1] });
+  } catch (error) {
+    res.status(500).json({ success: false, message: error.message });
+  }
+});
+
+// PUT /ambulance/vehicles/:id - Update vehicle
+router.put('/vehicles/:id', authenticateToken, async (req, res) => {
+  try {
+    const providerId = req.user.id || req.user._id;
+    const Ambulance = require('../models/Ambulance');
+    const ambulance = await Ambulance.findOne({ userId: providerId });
+    if (!ambulance) return res.status(404).json({ success: false, message: 'Not found' });
+    const vehicle = ambulance.vehicles.id(req.params.id);
+    if (!vehicle) return res.status(404).json({ success: false, message: 'Vehicle not found' });
+    Object.assign(vehicle, req.body);
+    await ambulance.save();
+    res.json({ success: true, data: vehicle });
+  } catch (error) {
+    res.status(500).json({ success: false, message: error.message });
+  }
+});
+
+// DELETE /ambulance/vehicles/:id - Delete vehicle
+router.delete('/vehicles/:id', authenticateToken, async (req, res) => {
+  try {
+    const providerId = req.user.id || req.user._id;
+    const Ambulance = require('../models/Ambulance');
+    const ambulance = await Ambulance.findOne({ userId: providerId });
+    if (!ambulance) return res.status(404).json({ success: false, message: 'Not found' });
+    ambulance.vehicles.pull(req.params.id);
+    await ambulance.save();
+    res.json({ success: true, message: 'Vehicle removed' });
+  } catch (error) {
+    res.status(500).json({ success: false, message: error.message });
+  }
+});
+
+// GET /ambulance/drivers - Get all drivers
+router.get('/drivers', authenticateToken, async (req, res) => {
+  try {
+    const providerId = req.user.id || req.user._id;
+    const Ambulance = require('../models/Ambulance');
+    const ambulance = await Ambulance.findOne({ userId: providerId });
+    if (!ambulance) return res.json({ success: true, data: [] });
+    res.json({ success: true, data: ambulance.drivers || [] });
+  } catch (error) {
+    res.status(500).json({ success: false, message: error.message });
+  }
+});
+
+// POST /ambulance/drivers - Add driver
+router.post('/drivers', authenticateToken, async (req, res) => {
+  try {
+    const providerId = req.user.id || req.user._id;
+    const Ambulance = require('../models/Ambulance');
+    let ambulance = await Ambulance.findOne({ userId: providerId });
+    if (!ambulance) {
+      ambulance = new Ambulance({ userId: providerId, providerName: req.user.name || 'Ambulance Provider' });
+    }
+    ambulance.drivers.push(req.body);
+    await ambulance.save();
+    res.json({ success: true, data: ambulance.drivers[ambulance.drivers.length - 1] });
+  } catch (error) {
+    res.status(500).json({ success: false, message: error.message });
+  }
+});
+
+// PUT /ambulance/drivers/:id - Update driver
+router.put('/drivers/:id', authenticateToken, async (req, res) => {
+  try {
+    const providerId = req.user.id || req.user._id;
+    const Ambulance = require('../models/Ambulance');
+    const ambulance = await Ambulance.findOne({ userId: providerId });
+    if (!ambulance) return res.status(404).json({ success: false, message: 'Not found' });
+    const driver = ambulance.drivers.id(req.params.id);
+    if (!driver) return res.status(404).json({ success: false, message: 'Driver not found' });
+    Object.assign(driver, req.body);
+    await ambulance.save();
+    res.json({ success: true, data: driver });
+  } catch (error) {
+    res.status(500).json({ success: false, message: error.message });
+  }
+});
+
+// DELETE /ambulance/drivers/:id - Delete driver
+router.delete('/drivers/:id', authenticateToken, async (req, res) => {
+  try {
+    const providerId = req.user.id || req.user._id;
+    const Ambulance = require('../models/Ambulance');
+    const ambulance = await Ambulance.findOne({ userId: providerId });
+    if (!ambulance) return res.status(404).json({ success: false, message: 'Not found' });
+    ambulance.drivers.pull(req.params.id);
+    await ambulance.save();
+    res.json({ success: true, message: 'Driver removed' });
+  } catch (error) {
+    res.status(500).json({ success: false, message: error.message });
+  }
+});
+
+// GET /ambulance/bookings - Get provider bookings
+router.get('/bookings', authenticateToken, async (req, res) => {
+  try {
+    const providerId = req.user.id || req.user._id;
+    const { status, limit = 20, page = 1 } = req.query;
+    const query = { providerId: providerId };
+    if (status && status !== 'all') query.status = status;
+    const bookings = await Booking.find(query).sort({ createdAt: -1 }).skip((page - 1) * limit).limit(parseInt(limit));
+    const total = await Booking.countDocuments(query);
+    res.json({ success: true, data: bookings, pagination: { total, page: parseInt(page), pages: Math.ceil(total / limit) } });
+  } catch (error) {
+    res.status(500).json({ success: false, message: error.message });
+  }
+});
+
+// PUT /ambulance/bookings/:id - Update booking status
+router.put('/bookings/:id', authenticateToken, async (req, res) => {
+  try {
+    const booking = await Booking.findByIdAndUpdate(req.params.id, { status: req.body.status }, { new: true });
+    if (!booking) return res.status(404).json({ success: false, message: 'Booking not found' });
+    res.json({ success: true, data: booking });
+  } catch (error) {
+    res.status(500).json({ success: false, message: error.message });
+  }
+});
+
+// GET /ambulance/reports - Get reports
+router.get('/reports', authenticateToken, async (req, res) => {
+  try {
+    const providerId = req.user.id || req.user._id;
+    const totalBookings = await Booking.countDocuments({ providerId });
+    const completedBookings = await Booking.countDocuments({ providerId, status: 'completed' });
+    const revenue = await Transaction.aggregate([
+      { $match: { providerId: providerId.toString(), status: 'completed' } },
+      { $group: { _id: null, total: { $sum: '$amount' } } }
+    ]);
+    res.json({ success: true, data: { totalBookings, completedBookings, totalRevenue: revenue[0]?.total || 0 } });
+  } catch (error) {
+    res.status(500).json({ success: false, message: error.message });
+  }
+});
+
 module.exports = router;
