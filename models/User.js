@@ -11,22 +11,7 @@ const userSchema = new mongoose.Schema({
   password: { type: String, required: true },
   role: { 
     type: String, 
-    enum: [
-      'patient', 
-      'caregiver', 
-      'admin',
-      // ============================================
-      // NEW INSURANCE ROLES (ADDED)
-      // ============================================
-      'insurance_company',   // Insurance company admin
-      'insurance_agent',     // Insurance agent/broker
-      'corporate_hr',        // Corporate HR for employee plans
-      // ============================================
-      // 🚑 NEW AMBULANCE ROLES (ADDED)
-      // ============================================
-      'ambulance_provider',  // Ambulance company/fleet owner
-      'ambulance_driver'     // Individual ambulance driver
-    ], 
+    enum: ['hospital', 'diagnostics_provider', 'caregiver_provider', 'lender', 'online_doctor', 'ayurveda_doctor', 'homeopathy_doctor', 'therapist', 'corporate_hr', 'admin', 'patient', 'ambulance_provider', 'insurance_company'], 
     default: 'patient' 
   },
   isVerified: { type: Boolean, default: false },
