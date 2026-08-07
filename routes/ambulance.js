@@ -825,8 +825,22 @@ router.put('/profile', authenticateToken, async (req, res) => {
 
 router.get('/vehicles', authenticateToken, async (req, res) => {
   try {
-    const fleet = await getFleet(req.user.id || req.user._id, req.user.name);
-    res.json({ success: true, data: fleet.vehicles || [] });
+    const providerId = req.user.id || req.user._id;
+    let fleet = await AmbulanceFleet.findOne({ ownerType: 'ambulance_provider', ownerId: providerId });
+    if (fleet && fleet.vehicles && fleet.vehicles.length > 0) {
+      return res.json({ success: true, data: fleet.vehicles });
+    }
+    const user = await User.findById(providerId);
+    if (user && user.ambulanceDrivers && user.ambulanceDrivers.length > 0) {
+      return res.json({ success: true, data: user.ambulanceDrivers.map(d => ({
+        vehicleNumber: d.vehicleNumber || 'N/A',
+        type: d.vehicleType || 'Basic',
+        driver: d.name || 'N/A',
+        driverPhone: d.phone || 'N/A',
+        status: 'available'
+      })) });
+    }
+    res.json({ success: true, data: [] });
   } catch (error) { res.status(500).json({ success: false, message: error.message }); }
 });
 
@@ -858,8 +872,22 @@ router.delete('/vehicles/:id', authenticateToken, async (req, res) => {
 
 router.get('/drivers', authenticateToken, async (req, res) => {
   try {
-    const fleet = await getFleet(req.user.id || req.user._id, req.user.name);
-    res.json({ success: true, data: fleet.drivers || [] });
+    const providerId = req.user.id || req.user._id;
+    let fleet = await AmbulanceFleet.findOne({ ownerType: 'ambulance_provider', ownerId: providerId });
+    if (fleet && fleet.drivers && fleet.drivers.length > 0) {
+      return res.json({ success: true, data: fleet.drivers });
+    }
+    const user = await User.findById(providerId);
+    if (user && user.ambulanceDrivers && user.ambulanceDrivers.length > 0) {
+      return res.json({ success: true, data: user.ambulanceDrivers.map(d => ({
+        _id: d._id || d.driverId,
+        name: d.name || 'N/A',
+        phone: d.phone || 'N/A',
+        licenseNumber: d.licenseNumber || 'N/A',
+        status: 'available'
+      })) });
+    }
+    res.json({ success: true, data: [] });
   } catch (error) { res.status(500).json({ success: false, message: error.message }); }
 });
 
