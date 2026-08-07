@@ -1,5 +1,6 @@
 // D:\hospital backend\routes\ambulance.js
 
+const AmbulanceFleet = require('../models/AmbulanceFleet');
 const express = require('express');
 const router = express.Router();
 const Booking = require('../models/Booking');
@@ -716,209 +717,58 @@ router.post('/emergency-contacts', authenticateToken, async (req, res) => {
 });
 
 // ============================================
-// 🆕 CORPORATE HEALTH ROUTES
+// 🏢 CORPORATE HEALTH ROUTES (AmbulanceFleet)
 // ============================================
 
-// Toggle corporate serving status
+async function getFleet(userId, userName) {
+  let fleet = await AmbulanceFleet.findOne({ ownerType: 'ambulance_provider', ownerId: userId });
+  if (!fleet) {
+    fleet = new AmbulanceFleet({ ownerType: 'ambulance_provider', ownerId: userId, providerName: userName || 'Provider' });
+    await fleet.save();
+  }
+  return fleet;
+}
+
 router.put('/corporate/toggle', authenticateToken, async (req, res) => {
   try {
-    const Ambulance = require('../models/Ambulance');
-    const providerId = req.user.id || req.user._id;
-    let ambulance = await Ambulance.findOne({ userId: providerId });
-    if (!ambulance) {
-            const user = await User.findById(providerId);
-      ambulance = new Ambulance({ 
-        userId: providerId, 
-        providerName: user?.name || 'Provider',
-        city: user?.ambulanceCompanyAddress?.city || '',
-        driverPhone: user?.phone || '',
-        driverName: user?.name || '',
-        vehicleNumber: (user?.ambulanceFleet && user.ambulanceFleet[0]?.vehicleNumber) || ''
-      });
-      await ambulance.save();
-    }
-
-    const enable = req.body.enable !== false;
-    await ambulance.toggleCorporate(enable);
-
-    res.json({
-      success: true,
-      message: `Corporate ${enable ? 'enabled' : 'disabled'} successfully`,
-      data: { servesCorporate: ambulance.servesCorporate }
-    });
-  } catch (error) {
-    res.status(500).json({ success: false, message: error.message });
-  }
+    const fleet = await getFleet(req.user.id || req.user._id, req.user.name);
+    fleet.servesCorporate = req.body.enable !== false; await fleet.save();
+    res.json({ success: true, data: { servesCorporate: fleet.servesCorporate } });
+  } catch (error) { res.status(500).json({ success: false, message: error.message }); }
 });
 
-// Get corporate packages
 router.get('/corporate/packages', authenticateToken, async (req, res) => {
   try {
-    const Ambulance = require('../models/Ambulance');
-    const providerId = req.user.id || req.user._id;
-    let ambulance = await Ambulance.findOne({ userId: providerId });
-    if (!ambulance) {
-      return res.json({ success: true, data: { servesCorporate: false, packages: [] } });
-    }
-    res.json({ success: true, data: { servesCorporate: ambulance.servesCorporate || false, packages: ambulance.corporatePackages || [] } });
-  } catch (error) {
-    res.status(500).json({ success: false, message: error.message });
-  }
+    const fleet = await getFleet(req.user.id || req.user._id, req.user.name);
+    res.json({ success: true, data: { servesCorporate: fleet.servesCorporate || false, packages: fleet.corporatePackages || [] } });
+  } catch (error) { res.status(500).json({ success: false, message: error.message }); }
 });
 
-// Create corporate package
 router.post('/corporate/packages', authenticateToken, async (req, res) => {
   try {
-    const Ambulance = require('../models/Ambulance');
-    const providerId = req.user.id || req.user._id;
-    const { packageName, packageType, description, servicesIncluded, pricePerEmployee, discountedPricePerEmployee, minEmployees, maxEmployees, validityDays, numberOfVehicles, vehicleTypes, coverageRadiusKm, responseTimeMinutes, availableCities, dedicatedPOC, slaTerms } = req.body;
-
-    if (!packageName || !pricePerEmployee) {
-      return res.status(400).json({ success: false, message: 'Package name and price per employee are required' });
-    }
-
-    let ambulance = await Ambulance.findOne({ userId: providerId });
-    if (!ambulance) {
-      ambulance = new Ambulance({ userId: providerId, providerName: req.user.name || 'Provider' });
-      await ambulance.save();
-    }
-
-    const packageData = {
-      packageName,
-      packageType: packageType || 'ambulance_retainer',
-      description: description || '',
-      servicesIncluded: servicesIncluded || [],
-      pricePerEmployee,
-      discountedPricePerEmployee,
-      minEmployees: minEmployees || 50,
-      maxEmployees,
-      validityDays: validityDays || 365,
-      numberOfVehicles: numberOfVehicles || 1,
-      vehicleTypes: vehicleTypes || ['basic'],
-      coverageRadiusKm: coverageRadiusKm || 20,
-      responseTimeMinutes: responseTimeMinutes || 30,
-      availableCities: availableCities || [],
-      dedicatedPOC: dedicatedPOC || {},
-      slaTerms: slaTerms || ''
-    };
-
-    await ambulance.addCorporatePackage(packageData);
-
-    res.json({
-      success: true,
-      message: 'Corporate package added successfully',
-      data: ambulance.corporatePackages[ambulance.corporatePackages.length - 1]
-    });
-  } catch (error) {
-    res.status(500).json({ success: false, message: error.message });
-  }
+    const fleet = await getFleet(req.user.id || req.user._id, req.user.name);
+    const { packageName, pricePerEmployee } = req.body;
+    if (!packageName || !pricePerEmployee) return res.status(400).json({ success: false, message: 'Name and price required' });
+    fleet.corporatePackages.push({ ...req.body, isActive: true, createdAt: new Date() }); await fleet.save();
+    res.json({ success: true, data: fleet.corporatePackages[fleet.corporatePackages.length - 1] });
+  } catch (error) { res.status(500).json({ success: false, message: error.message }); }
 });
 
-// Update corporate package
-router.put('/corporate/packages/:packageId', authenticateToken, async (req, res) => {
-  try {
-    const Ambulance = require('../models/Ambulance');
-    const providerId = req.user.id || req.user._id;
-
-    let ambulance = await Ambulance.findOne({ userId: providerId });
-    if (!ambulance) {
-      return res.status(404).json({ success: false, message: 'Ambulance not found' });
-    }
-
-    const pkg = ambulance.corporatePackages.id(req.params.packageId);
-    if (!pkg) {
-      return res.status(404).json({ success: false, message: 'Package not found' });
-    }
-
-    const updatableFields = [
-      'packageName', 'packageType', 'description', 'servicesIncluded',
-      'pricePerEmployee', 'discountedPricePerEmployee', 'minEmployees',
-      'maxEmployees', 'validityDays', 'numberOfVehicles', 'vehicleTypes',
-      'coverageRadiusKm', 'responseTimeMinutes', 'availableCities',
-      'dedicatedPOC', 'slaTerms', 'isActive'
-    ];
-
-    updatableFields.forEach(field => {
-      if (req.body[field] !== undefined) {
-        pkg[field] = req.body[field];
-      }
-    });
-
-    pkg.updatedAt = new Date();
-    await ambulance.save();
-
-    res.json({ success: true, message: 'Corporate package updated', data: pkg });
-  } catch (error) {
-    res.status(500).json({ success: false, message: error.message });
-  }
-});
-
-// Delete corporate package
-router.delete('/corporate/packages/:packageId', authenticateToken, async (req, res) => {
-  try {
-    const Ambulance = require('../models/Ambulance');
-    const providerId = req.user.id || req.user._id;
-
-    let ambulance = await Ambulance.findOne({ userId: providerId });
-    if (!ambulance) {
-      return res.status(404).json({ success: false, message: 'Ambulance not found' });
-    }
-
-    const pkg = ambulance.corporatePackages.id(req.params.packageId);
-    if (!pkg) {
-      return res.status(404).json({ success: false, message: 'Package not found' });
-    }
-
-    pkg.remove();
-    await ambulance.save();
-
-    res.json({ success: true, message: 'Corporate package deleted' });
-  } catch (error) {
-    res.status(500).json({ success: false, message: error.message });
-  }
-});
-
-// Get corporate enquiries
 router.get('/corporate/enquiries', authenticateToken, async (req, res) => {
   try {
-    const Ambulance = require('../models/Ambulance');
-    const providerId = req.user.id || req.user._id;
-    let ambulance = await Ambulance.findOne({ userId: providerId });
-    if (!ambulance) return res.json({ success: true, data: [] });
-    res.json({ success: true, data: ambulance.corporateEnquiries || [] });
-  } catch (error) {
-    res.status(500).json({ success: false, message: error.message });
-  }
+    const fleet = await getFleet(req.user.id || req.user._id, req.user.name);
+    res.json({ success: true, data: fleet.corporateEnquiries || [] });
+  } catch (error) { res.status(500).json({ success: false, message: error.message }); }
 });
 
-// Update enquiry status
 router.put('/corporate/enquiries/:enquiryId', authenticateToken, async (req, res) => {
   try {
-    const Ambulance = require('../models/Ambulance');
-    const providerId = req.user.id || req.user._id;
-    if (!ambulanceId) {
-      return res.status(400).json({ success: false, message: 'Ambulance ID required' });
-    }
-
-    let ambulance = await Ambulance.findOne({ userId: providerId });
-    if (!ambulance) {
-      return res.status(404).json({ success: false, message: 'Ambulance not found' });
-    }
-
-    const enquiry = ambulance.corporateEnquiries.id(req.params.enquiryId);
-    if (!enquiry) {
-      return res.status(404).json({ success: false, message: 'Enquiry not found' });
-    }
-
-    if (req.body.status) {
-      enquiry.status = req.body.status;
-    }
-
-    await ambulance.save();
-    res.json({ success: true, message: 'Enquiry updated', data: enquiry });
-  } catch (error) {
-    res.status(500).json({ success: false, message: error.message });
-  }
+    const fleet = await getFleet(req.user.id || req.user._id, req.user.name);
+    const enquiry = fleet.corporateEnquiries.id(req.params.enquiryId);
+    if (!enquiry) return res.status(404).json({ success: false, message: 'Enquiry not found' });
+    if (req.body.status) enquiry.status = req.body.status; await fleet.save();
+    res.json({ success: true, data: enquiry });
+  } catch (error) { res.status(500).json({ success: false, message: error.message }); }
 });
 
 // Provider stats - works with any authenticated user
@@ -946,240 +796,116 @@ router.get('/stats', authenticateToken, async (req, res) => {
 });
 
 // ============================================
-// 🚑 PROVIDER DASHBOARD ENDPOINTS
+// 🚑 PROVIDER DASHBOARD ENDPOINTS (AmbulanceFleet)
 // ============================================
 
-// GET /ambulance/profile - Get provider profile
 router.get('/profile', authenticateToken, async (req, res) => {
   try {
-    const providerId = req.user.id || req.user._id;
-    const user = await User.findById(providerId).select('-password');
+    const user = await User.findById(req.user.id || req.user._id).select('-password');
     if (!user) return res.status(404).json({ success: false, message: 'Provider not found' });
     res.json({ success: true, data: user });
-  } catch (error) {
-    res.status(500).json({ success: false, message: error.message });
-  }
+  } catch (error) { res.status(500).json({ success: false, message: error.message }); }
 });
 
-// PUT /ambulance/profile - Update provider profile
 router.put('/profile', authenticateToken, async (req, res) => {
   try {
-    const providerId = req.user.id || req.user._id;
-    const updates = req.body;
-    delete updates.password;
-    delete updates.role;
-    const user = await User.findByIdAndUpdate(providerId, updates, { new: true }).select('-password');
+    const updates = { ...req.body }; delete updates.password; delete updates.role;
+    const user = await User.findByIdAndUpdate(req.user.id || req.user._id, updates, { new: true }).select('-password');
     res.json({ success: true, data: user });
-  } catch (error) {
-    res.status(500).json({ success: false, message: error.message });
-  }
+  } catch (error) { res.status(500).json({ success: false, message: error.message }); }
 });
 
-// GET /ambulance/vehicles - Get vehicles from User or Ambulance model
 router.get('/vehicles', authenticateToken, async (req, res) => {
   try {
-    const providerId = req.user.id || req.user._id;
-    const Ambulance = require('../models/Ambulance');
-    const User = require('../models/User');
-    
-    // Try Ambulance model first
-    let ambulance = await Ambulance.findOne({ userId: providerId });
-    if (ambulance && ambulance.vehicles && ambulance.vehicles.length > 0) {
-      return res.json({ success: true, data: ambulance.vehicles });
-    }
-    
-    // Fall back to User model
-    const user = await User.findById(providerId);
-    if (user && user.ambulanceFleet && user.ambulanceFleet.length > 0) {
-      const drv = (user.ambulanceDrivers && user.ambulanceDrivers[0]) || {};
-      return res.json({ 
-        success: true, 
-        data: user.ambulanceFleet.map(v => ({
-          _id: v._id,
-          vehicleNumber: v.vehicleNumber || 'N/A',
-          type: v.type || 'Basic',
-          driver: drv.name || 'N/A',
-          driverPhone: drv.phone || 'N/A',
-          status: v.status || 'available'
-        }))
-      });
-    }
-    
-    res.json({ success: true, data: [] });
-  } catch (error) {
-    res.status(500).json({ success: false, message: error.message });
-  }
+    const fleet = await getFleet(req.user.id || req.user._id, req.user.name);
+    res.json({ success: true, data: fleet.vehicles || [] });
+  } catch (error) { res.status(500).json({ success: false, message: error.message }); }
 });
 
-// POST /ambulance/vehicles - Add vehicle
 router.post('/vehicles', authenticateToken, async (req, res) => {
   try {
-    const providerId = req.user.id || req.user._id;
-    const Ambulance = require('../models/Ambulance');
-    let ambulance = await Ambulance.findOne({ userId: providerId });
-    if (!ambulance) {
-      ambulance = new Ambulance({ userId: providerId, providerName: req.user.name || 'Ambulance Provider' });
-    }
-    ambulance.vehicles.push(req.body);
-    await ambulance.save();
-    res.json({ success: true, data: ambulance.vehicles[ambulance.vehicles.length - 1] });
-  } catch (error) {
-    res.status(500).json({ success: false, message: error.message });
-  }
+    const fleet = await getFleet(req.user.id || req.user._id, req.user.name);
+    fleet.vehicles.push(req.body); fleet.updatedAt = new Date(); await fleet.save();
+    res.json({ success: true, data: fleet.vehicles[fleet.vehicles.length - 1] });
+  } catch (error) { res.status(500).json({ success: false, message: error.message }); }
 });
 
-// PUT /ambulance/vehicles/:id - Update vehicle
 router.put('/vehicles/:id', authenticateToken, async (req, res) => {
   try {
-    const providerId = req.user.id || req.user._id;
-    const Ambulance = require('../models/Ambulance');
-    const ambulance = await Ambulance.findOne({ userId: providerId });
-    if (!ambulance) return res.status(404).json({ success: false, message: 'Not found' });
-    const vehicle = ambulance.vehicles.id(req.params.id);
-    if (!vehicle) return res.status(404).json({ success: false, message: 'Vehicle not found' });
-    Object.assign(vehicle, req.body);
-    await ambulance.save();
-    res.json({ success: true, data: vehicle });
-  } catch (error) {
-    res.status(500).json({ success: false, message: error.message });
-  }
+    const fleet = await getFleet(req.user.id || req.user._id, req.user.name);
+    const v = fleet.vehicles.id(req.params.id);
+    if (!v) return res.status(404).json({ success: false, message: 'Not found' });
+    Object.assign(v, req.body); fleet.updatedAt = new Date(); await fleet.save();
+    res.json({ success: true, data: v });
+  } catch (error) { res.status(500).json({ success: false, message: error.message }); }
 });
 
-// DELETE /ambulance/vehicles/:id - Delete vehicle
 router.delete('/vehicles/:id', authenticateToken, async (req, res) => {
   try {
-    const providerId = req.user.id || req.user._id;
-    const Ambulance = require('../models/Ambulance');
-    const ambulance = await Ambulance.findOne({ userId: providerId });
-    if (!ambulance) return res.status(404).json({ success: false, message: 'Not found' });
-    ambulance.vehicles.pull(req.params.id);
-    await ambulance.save();
-    res.json({ success: true, message: 'Vehicle removed' });
-  } catch (error) {
-    res.status(500).json({ success: false, message: error.message });
-  }
+    const fleet = await getFleet(req.user.id || req.user._id, req.user.name);
+    fleet.vehicles.pull(req.params.id); fleet.updatedAt = new Date(); await fleet.save();
+    res.json({ success: true, message: 'Removed' });
+  } catch (error) { res.status(500).json({ success: false, message: error.message }); }
 });
 
-// GET /ambulance/drivers - Get drivers from User or Ambulance model
 router.get('/drivers', authenticateToken, async (req, res) => {
   try {
-    const providerId = req.user.id || req.user._id;
-    const Ambulance = require('../models/Ambulance');
-    const User = require('../models/User');
-    
-    let ambulance = await Ambulance.findOne({ userId: providerId });
-    if (ambulance && ambulance.drivers && ambulance.drivers.length > 0) {
-      return res.json({ success: true, data: ambulance.drivers });
-    }
-    
-    const user = await User.findById(providerId);
-    if (user && user.ambulanceDrivers && user.ambulanceDrivers.length > 0) {
-      return res.json({ 
-        success: true, 
-        data: user.ambulanceDrivers.map(d => ({
-          _id: d._id || d.driverId,
-          name: d.name || 'N/A',
-          phone: d.phone || 'N/A',
-          licenseNumber: d.licenseNumber || 'N/A',
-          status: d.isAvailable ? 'available' : 'offline'
-        }))
-      });
-    }
-    
-    res.json({ success: true, data: [] });
-  } catch (error) {
-    res.status(500).json({ success: false, message: error.message });
-  }
+    const fleet = await getFleet(req.user.id || req.user._id, req.user.name);
+    res.json({ success: true, data: fleet.drivers || [] });
+  } catch (error) { res.status(500).json({ success: false, message: error.message }); }
 });
-// POST /ambulance/drivers - Add driver
+
 router.post('/drivers', authenticateToken, async (req, res) => {
   try {
-    const providerId = req.user.id || req.user._id;
-    const Ambulance = require('../models/Ambulance');
-    let ambulance = await Ambulance.findOne({ userId: providerId });
-    if (!ambulance) {
-      ambulance = new Ambulance({ userId: providerId, providerName: req.user.name || 'Ambulance Provider' });
-    }
-    ambulance.drivers.push(req.body);
-    await ambulance.save();
-    res.json({ success: true, data: ambulance.drivers[ambulance.drivers.length - 1] });
-  } catch (error) {
-    res.status(500).json({ success: false, message: error.message });
-  }
+    const fleet = await getFleet(req.user.id || req.user._id, req.user.name);
+    fleet.drivers.push(req.body); fleet.updatedAt = new Date(); await fleet.save();
+    res.json({ success: true, data: fleet.drivers[fleet.drivers.length - 1] });
+  } catch (error) { res.status(500).json({ success: false, message: error.message }); }
 });
 
-// PUT /ambulance/drivers/:id - Update driver
 router.put('/drivers/:id', authenticateToken, async (req, res) => {
   try {
-    const providerId = req.user.id || req.user._id;
-    const Ambulance = require('../models/Ambulance');
-    const ambulance = await Ambulance.findOne({ userId: providerId });
-    if (!ambulance) return res.status(404).json({ success: false, message: 'Not found' });
-    const driver = ambulance.drivers.id(req.params.id);
-    if (!driver) return res.status(404).json({ success: false, message: 'Driver not found' });
-    Object.assign(driver, req.body);
-    await ambulance.save();
-    res.json({ success: true, data: driver });
-  } catch (error) {
-    res.status(500).json({ success: false, message: error.message });
-  }
+    const fleet = await getFleet(req.user.id || req.user._id, req.user.name);
+    const d = fleet.drivers.id(req.params.id);
+    if (!d) return res.status(404).json({ success: false, message: 'Not found' });
+    Object.assign(d, req.body); fleet.updatedAt = new Date(); await fleet.save();
+    res.json({ success: true, data: d });
+  } catch (error) { res.status(500).json({ success: false, message: error.message }); }
 });
 
-// DELETE /ambulance/drivers/:id - Delete driver
 router.delete('/drivers/:id', authenticateToken, async (req, res) => {
   try {
-    const providerId = req.user.id || req.user._id;
-    const Ambulance = require('../models/Ambulance');
-    const ambulance = await Ambulance.findOne({ userId: providerId });
-    if (!ambulance) return res.status(404).json({ success: false, message: 'Not found' });
-    ambulance.drivers.pull(req.params.id);
-    await ambulance.save();
-    res.json({ success: true, message: 'Driver removed' });
-  } catch (error) {
-    res.status(500).json({ success: false, message: error.message });
-  }
+    const fleet = await getFleet(req.user.id || req.user._id, req.user.name);
+    fleet.drivers.pull(req.params.id); fleet.updatedAt = new Date(); await fleet.save();
+    res.json({ success: true, message: 'Removed' });
+  } catch (error) { res.status(500).json({ success: false, message: error.message }); }
 });
 
-// GET /ambulance/bookings - Get provider bookings
 router.get('/bookings', authenticateToken, async (req, res) => {
   try {
     const providerId = req.user.id || req.user._id;
     const { status, limit = 20, page = 1 } = req.query;
-    const query = { providerId: providerId };
+    const query = { providerId };
     if (status && status !== 'all') query.status = status;
-    const bookings = await Booking.find(query).sort({ createdAt: -1 }).skip((page - 1) * limit).limit(parseInt(limit));
-    const total = await Booking.countDocuments(query);
+    const [bookings, total] = await Promise.all([Booking.find(query).sort({ createdAt: -1 }).skip((page - 1) * limit).limit(parseInt(limit)), Booking.countDocuments(query)]);
     res.json({ success: true, data: bookings, pagination: { total, page: parseInt(page), pages: Math.ceil(total / limit) } });
-  } catch (error) {
-    res.status(500).json({ success: false, message: error.message });
-  }
+  } catch (error) { res.status(500).json({ success: false, message: error.message }); }
 });
 
-// PUT /ambulance/bookings/:id - Update booking status
-router.put('/bookings/:id', authenticateToken, async (req, res) => {
+router.get('/stats', authenticateToken, async (req, res) => {
   try {
-    const booking = await Booking.findByIdAndUpdate(req.params.id, { status: req.body.status }, { new: true });
-    if (!booking) return res.status(404).json({ success: false, message: 'Booking not found' });
-    res.json({ success: true, data: booking });
-  } catch (error) {
-    res.status(500).json({ success: false, message: error.message });
-  }
+    const fleet = await getFleet(req.user.id || req.user._id, req.user.name);
+    res.json({ success: true, data: { totalBookings: 0, activeBookings: 0, totalVehicles: fleet.vehicles?.length || 0, totalDrivers: fleet.drivers?.length || 0 } });
+  } catch (error) { res.status(500).json({ success: false, message: error.message }); }
 });
 
-// GET /ambulance/reports - Get reports
 router.get('/reports', authenticateToken, async (req, res) => {
   try {
+    const fleet = await getFleet(req.user.id || req.user._id, req.user.name);
     const providerId = req.user.id || req.user._id;
-    const totalBookings = await Booking.countDocuments({ providerId });
-    const completedBookings = await Booking.countDocuments({ providerId, status: 'completed' });
-    const revenue = await Transaction.aggregate([
-      { $match: { providerId: providerId.toString(), status: 'completed' } },
-      { $group: { _id: null, total: { $sum: '$amount' } } }
-    ]);
-    res.json({ success: true, data: { totalBookings, completedBookings, totalRevenue: revenue[0]?.total || 0 } });
-  } catch (error) {
-    res.status(500).json({ success: false, message: error.message });
-  }
+    const [total, completed] = await Promise.all([Booking.countDocuments({ providerId }), Booking.countDocuments({ providerId, status: 'completed' })]);
+    res.json({ success: true, data: { totalBookings: total, completedBookings: completed, totalVehicles: fleet.vehicles?.length || 0, totalDrivers: fleet.drivers?.length || 0 } });
+  } catch (error) { res.status(500).json({ success: false, message: error.message }); }
 });
 
 // ============================================
