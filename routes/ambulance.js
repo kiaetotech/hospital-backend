@@ -750,23 +750,12 @@ router.put('/corporate/toggle', authenticateToken, async (req, res) => {
 router.get('/corporate/packages', authenticateToken, async (req, res) => {
   try {
     const Ambulance = require('../models/Ambulance');
-    const { ambulanceId } = req.query;
-    if (!ambulanceId) {
-      return res.status(400).json({ success: false, message: 'Ambulance ID required' });
-    }
-
-    const ambulance = await Ambulance.findById(ambulanceId).select('servesCorporate corporatePackages');
+    const providerId = req.user.id || req.user._id;
+    let ambulance = await Ambulance.findOne({ userId: providerId });
     if (!ambulance) {
-      return res.status(404).json({ success: false, message: 'Ambulance not found' });
+      return res.json({ success: true, data: { servesCorporate: false, packages: [] } });
     }
-
-    res.json({
-      success: true,
-      data: {
-        servesCorporate: ambulance.servesCorporate,
-        packages: ambulance.corporatePackages || []
-      }
-    });
+    res.json({ success: true, data: { servesCorporate: ambulance.servesCorporate || false, packages: ambulance.corporatePackages || [] } });
   } catch (error) {
     res.status(500).json({ success: false, message: error.message });
   }
@@ -1160,4 +1149,4 @@ router.get('/reports', authenticateToken, async (req, res) => {
   }
 });
 
-module.exports = router;
+module.exports = router;// fix 
