@@ -406,6 +406,11 @@ const NotificationAgent = require('./ai-core/agents/intelligence/NotificationAge
 const CEOAgent = require('./ai-core/agents/executive/CEOAgent.js').CEOAgent;
 const StrategyAgent = require('./ai-core/agents/executive/StrategyAgent.js').StrategyAgent;
 const FixerAgent = require('./ai-core/agents/intelligence/FixerAgent.js').FixerAgent;
+const APITestAgent = require('./ai-core/agents/engineering/APITestAgent.js').APITestAgent;
+const FlowTestAgent = require('./ai-core/agents/engineering/FlowTestAgent.js').FlowTestAgent;
+const AuthTestAgent = require('./ai-core/agents/engineering/AuthTestAgent.js').AuthTestAgent;
+const FrontendSyncAgent = require('./ai-core/agents/engineering/FrontendSyncAgent.js').FrontendSyncAgent;
+const SupervisorAgent = require('./ai-core/agents/engineering/SupervisorAgent.js').SupervisorAgent;
 
 // Register all 18 agents with the registry
 const hospitalAgent = new HospitalAgent(providerManager);
@@ -474,7 +479,22 @@ capabilityRegistry.register(testingAgent);
 const fixerAgent = new FixerAgent(providerManager);
 capabilityRegistry.register(fixerAgent);
 
-console.log('🤖 AI Router initialized with 18 agents');
+const apiTestAgent = new APITestAgent(providerManager);
+capabilityRegistry.register(apiTestAgent);
+
+const flowTestAgent = new FlowTestAgent(providerManager);
+capabilityRegistry.register(flowTestAgent);
+
+const authTestAgent = new AuthTestAgent(providerManager);
+capabilityRegistry.register(authTestAgent);
+
+const frontendSyncAgent = new FrontendSyncAgent(providerManager);
+capabilityRegistry.register(frontendSyncAgent);
+
+const supervisorAgent = new SupervisorAgent(providerManager);
+capabilityRegistry.register(supervisorAgent);
+
+console.log('🤖 AI Router initialized with 27 agents (18 Business + 5 Engineering + 4 Support)');
 
 // ============================================
 // AI ROUTES
@@ -550,18 +570,24 @@ app.post('/api/ai/test', async (req, res) => {
   }
 });
 
-app.post('/api/ai/fix', async (req, res) => {
-  // Respond immediately, run fix in background
-  res.json({ success: true, message: 'Auto-fix started in background. Check /api/ai/health for progress.' });
-  
-  setTimeout(async () => {
-    try {
-      await fixerAgent.execute(req.body);
-      console.log('✅ Auto-fix completed');
-    } catch (e) {
-      console.error('Auto-fix error:', e.message);
-    }
-  }, 1000);
+app.post('/api/ai/apitest', async (req, res) => {
+  try { const result = await apiTestAgent.execute(req.body); res.json(result); } catch (e) { res.status(500).json({ success: false, error: e.message }); }
+});
+
+app.post('/api/ai/flowtest', async (req, res) => {
+  try { const result = await flowTestAgent.execute(req.body); res.json(result); } catch (e) { res.status(500).json({ success: false, error: e.message }); }
+});
+
+app.post('/api/ai/authtest', async (req, res) => {
+  try { const result = await authTestAgent.execute(req.body); res.json(result); } catch (e) { res.status(500).json({ success: false, error: e.message }); }
+});
+
+app.post('/api/ai/synctest', async (req, res) => {
+  try { const result = await frontendSyncAgent.execute(req.body); res.json(result); } catch (e) { res.status(500).json({ success: false, error: e.message }); }
+});
+
+app.post('/api/ai/supervisor', async (req, res) => {
+  try { const result = await supervisorAgent.execute(req.body); res.json(result); } catch (e) { res.status(500).json({ success: false, error: e.message }); }
 });
 
 // Get agent by ID
