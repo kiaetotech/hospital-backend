@@ -723,14 +723,11 @@ router.post('/emergency-contacts', authenticateToken, async (req, res) => {
 router.put('/corporate/toggle', authenticateToken, async (req, res) => {
   try {
     const Ambulance = require('../models/Ambulance');
-    const { ambulanceId } = req.body;
-    if (!ambulanceId) {
-      return res.status(400).json({ success: false, message: 'Ambulance ID required' });
-    }
-
-    const ambulance = await Ambulance.findById(ambulanceId);
+    const providerId = req.user.id || req.user._id;
+    let ambulance = await Ambulance.findOne({ userId: providerId });
     if (!ambulance) {
-      return res.status(404).json({ success: false, message: 'Ambulance not found' });
+      ambulance = new Ambulance({ userId: providerId, providerName: req.user.name || 'Provider' });
+      await ambulance.save();
     }
 
     const enable = req.body.enable !== false;
@@ -765,18 +762,17 @@ router.get('/corporate/packages', authenticateToken, async (req, res) => {
 router.post('/corporate/packages', authenticateToken, async (req, res) => {
   try {
     const Ambulance = require('../models/Ambulance');
-    const { ambulanceId, packageName, packageType, description, servicesIncluded, pricePerEmployee, discountedPricePerEmployee, minEmployees, maxEmployees, validityDays, numberOfVehicles, vehicleTypes, coverageRadiusKm, responseTimeMinutes, availableCities, dedicatedPOC, slaTerms } = req.body;
+    const providerId = req.user.id || req.user._id;
+    const { packageName, packageType, description, servicesIncluded, pricePerEmployee, discountedPricePerEmployee, minEmployees, maxEmployees, validityDays, numberOfVehicles, vehicleTypes, coverageRadiusKm, responseTimeMinutes, availableCities, dedicatedPOC, slaTerms } = req.body;
 
-    if (!ambulanceId) {
-      return res.status(400).json({ success: false, message: 'Ambulance ID required' });
-    }
     if (!packageName || !pricePerEmployee) {
       return res.status(400).json({ success: false, message: 'Package name and price per employee are required' });
     }
 
-    const ambulance = await Ambulance.findById(ambulanceId);
+    let ambulance = await Ambulance.findOne({ userId: providerId });
     if (!ambulance) {
-      return res.status(404).json({ success: false, message: 'Ambulance not found' });
+      ambulance = new Ambulance({ userId: providerId, providerName: req.user.name || 'Provider' });
+      await ambulance.save();
     }
 
     const packageData = {
@@ -814,12 +810,9 @@ router.post('/corporate/packages', authenticateToken, async (req, res) => {
 router.put('/corporate/packages/:packageId', authenticateToken, async (req, res) => {
   try {
     const Ambulance = require('../models/Ambulance');
-    const { ambulanceId } = req.body;
-    if (!ambulanceId) {
-      return res.status(400).json({ success: false, message: 'Ambulance ID required' });
-    }
+    const providerId = req.user.id || req.user._id;
 
-    const ambulance = await Ambulance.findById(ambulanceId);
+    let ambulance = await Ambulance.findOne({ userId: providerId });
     if (!ambulance) {
       return res.status(404).json({ success: false, message: 'Ambulance not found' });
     }
@@ -856,12 +849,9 @@ router.put('/corporate/packages/:packageId', authenticateToken, async (req, res)
 router.delete('/corporate/packages/:packageId', authenticateToken, async (req, res) => {
   try {
     const Ambulance = require('../models/Ambulance');
-    const { ambulanceId } = req.body;
-    if (!ambulanceId) {
-      return res.status(400).json({ success: false, message: 'Ambulance ID required' });
-    }
+    const providerId = req.user.id || req.user._id;
 
-    const ambulance = await Ambulance.findById(ambulanceId);
+    let ambulance = await Ambulance.findOne({ userId: providerId });
     if (!ambulance) {
       return res.status(404).json({ success: false, message: 'Ambulance not found' });
     }
@@ -884,16 +874,9 @@ router.delete('/corporate/packages/:packageId', authenticateToken, async (req, r
 router.get('/corporate/enquiries', authenticateToken, async (req, res) => {
   try {
     const Ambulance = require('../models/Ambulance');
-    const { ambulanceId } = req.query;
-    if (!ambulanceId) {
-      return res.status(400).json({ success: false, message: 'Ambulance ID required' });
-    }
-
-    const ambulance = await Ambulance.findById(ambulanceId).select('corporateEnquiries');
-    if (!ambulance) {
-      return res.status(404).json({ success: false, message: 'Ambulance not found' });
-    }
-
+    const providerId = req.user.id || req.user._id;
+    let ambulance = await Ambulance.findOne({ userId: providerId });
+    if (!ambulance) return res.json({ success: true, data: [] });
     res.json({ success: true, data: ambulance.corporateEnquiries || [] });
   } catch (error) {
     res.status(500).json({ success: false, message: error.message });
@@ -904,12 +887,12 @@ router.get('/corporate/enquiries', authenticateToken, async (req, res) => {
 router.put('/corporate/enquiries/:enquiryId', authenticateToken, async (req, res) => {
   try {
     const Ambulance = require('../models/Ambulance');
-    const { ambulanceId } = req.body;
+    const providerId = req.user.id || req.user._id;
     if (!ambulanceId) {
       return res.status(400).json({ success: false, message: 'Ambulance ID required' });
     }
 
-    const ambulance = await Ambulance.findById(ambulanceId);
+    let ambulance = await Ambulance.findOne({ userId: providerId });
     if (!ambulance) {
       return res.status(404).json({ success: false, message: 'Ambulance not found' });
     }
