@@ -1140,6 +1140,21 @@ mongoose.connect(DB_URI)
   });
 
 // ============================================
+// AUTO-MAINTENANCE: Runs every 30 minutes
+// ============================================
+const axios = require('axios');
+setInterval(async () => {
+  try {
+    console.log('🤖 AUTO-MAINTENANCE: Running tests...');
+    await axios.post('http://localhost:8080/api/ai/supervisor', { task: 'run_all_tests' }, { timeout: 60000 });
+    console.log('✅ AUTO-MAINTENANCE: Tests complete');
+  } catch(e) {
+    console.log('⚠️ AUTO-MAINTENANCE: ' + e.message);
+  }
+}, 30 * 60 * 1000);
+console.log('🕐 Auto-maintenance scheduled every 30 minutes');
+
+// ============================================
 // SERVER START
 // ============================================
 const PORT = process.env.PORT || 5001;
