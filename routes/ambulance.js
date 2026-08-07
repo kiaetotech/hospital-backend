@@ -831,10 +831,11 @@ router.get('/vehicles', authenticateToken, async (req, res) => {
       return res.json({ success: true, data: fleet.vehicles });
     }
     const user = await User.findById(providerId);
+    const fleetV = (user?.ambulanceFleet && user.ambulanceFleet[0]) || {};
     if (user && user.ambulanceDrivers && user.ambulanceDrivers.length > 0) {
-      return res.json({ success: true, data: user.ambulanceDrivers.map(d => ({
-        vehicleNumber: d.vehicleNumber || 'N/A',
-        type: d.vehicleType || 'Basic',
+      return res.json({ success: true, data: user.ambulanceDrivers.map((d, i) => ({
+        vehicleNumber: (user.ambulanceFleet && user.ambulanceFleet[i]) ? user.ambulanceFleet[i].vehicleNumber : fleetV.vehicleNumber || 'N/A',
+        type: (user.ambulanceFleet && user.ambulanceFleet[i]) ? user.ambulanceFleet[i].type : fleetV.type || 'Basic',
         driver: d.name || 'N/A',
         driverPhone: d.phone || 'N/A',
         status: 'available'
@@ -877,7 +878,7 @@ router.get('/drivers', authenticateToken, async (req, res) => {
     if (fleet && fleet.drivers && fleet.drivers.length > 0) {
       return res.json({ success: true, data: fleet.drivers });
     }
-    const user = await User.findById(providerId);
+     const user = await User.findById(providerId);
     if (user && user.ambulanceDrivers && user.ambulanceDrivers.length > 0) {
       return res.json({ success: true, data: user.ambulanceDrivers.map(d => ({
         _id: d._id || d.driverId,
