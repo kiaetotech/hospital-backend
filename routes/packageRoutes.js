@@ -212,4 +212,64 @@ router.delete('/:packageId', authenticateHospital, async (req, res) => {
   }
 });
 
+// ============================================
+// PUBLIC SEARCH ROUTE (ADDED)
+// ============================================
+
+// GET /api/packages/search - Search health packages
+router.get('/search', async (req, res) => {
+  try {
+    var { q, city, min_price, max_price, category, page = 1, limit = 20 } = req.query;
+    var hospitals = await Hospital.find({ 
+      is_active: true, 
+      'pricing.health_packages': { $exists: true, $not: { $size: 0 } }
+    }).select('name address pricing.health_packages ratings').lean();
+
+    var allPackages = [];
+    hospitals.forEach(function(h) {
+      (h.pricing?.health_packages || []).forEach(function(pkg) {
+        if (q && !pkg.name?.toLowerCase().includes(q.toLowerCase())) return;
+        if (city && h.address?.city && !h.address.city.toLowerCase().includes(city.toLowerCase())) return;
+        if (min_price && pkg.discounted_price < parseFloat(min_price)) return;
+        if (max_price && pkg.discounted_price > parseFloat(max_price)) return;
+        
+        allPackages.push({
+          _id: pkg._id,
+          name: pkg.name,
+          original_price: pkg.original_price,
+          discounted_price: pkg.discounted_price,
+          includes_names: pkg.includes_names || [],
+          hospital_name: h.name,
+          hospital_city: h.address?.city || '',
+          hospital_rating: h.ratings?.average || 0
+        });
+      });
+    });
+
+    var total = allPackages.length;
+    var skip = (parseInt(page) - 1) * parseInt(limit);
+    var paginated = allPackages.slice(skip, skip + parseInt(limit));
+
+    res.json({ success: true, data: paginated, total: total, page: parseInt(page), totalPages: Math.ceil(total / parseInt(limit)) });
+  } catch (error) {
+    res.status(500).json({ success: false, message: error.message });
+  }
+});
+
+// GET /api/packages - List all packages
+router.get('/', async (req, res) => {
+  try {
+    var hospitals = await Hospital.find({ is_active: true, 'pricing.health_packages': { $exists: true, $not: { $size: 0 } } }).select('name pricing.health_packages').limit(20).lean();
+    var packages = [];
+    hospitals.forEach(function(h) {
+      (h.pricing?.health_packages || []).forEach(function(pkg) {
+        packages.push({ ...pkg, hospital_name: h.name });
+      });
+    });
+    res.json({ success: true, count: packages.length, data: packages });
+  } catch (error) {
+    res.status(500).json({ success: false, message: error.message });
+  }
+});
+
 module.exports = router;// force  

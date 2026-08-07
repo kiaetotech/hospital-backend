@@ -157,4 +157,23 @@ router.get('/admin/pending', async (req, res) => {
   }
 });
 
+// ============================================
+// PUBLIC: LIST CENTERS
+// ============================================
+router.get('/', async (req, res) => {
+  try {
+    var { city, type, page = 1, limit = 20 } = req.query;
+    var query = { isActive: true, verificationStatus: 'approved' };
+    if (city) query['address.city'] = { $regex: city, $options: 'i' };
+    if (type) query.type = type;
+    
+    var centers = await WellnessCenter.find(query).select('-password').skip((page - 1) * limit).limit(parseInt(limit)).lean();
+    var total = await WellnessCenter.countDocuments(query);
+    
+    res.json({ success: true, data: centers, total: total, page: parseInt(page), totalPages: Math.ceil(total / parseInt(limit)) });
+  } catch (error) {
+    res.status(500).json({ success: false, message: error.message });
+  }
+});
+
 module.exports = router;

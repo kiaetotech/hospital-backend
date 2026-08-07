@@ -944,4 +944,9 @@ router.get('/transactions/hospital/:hospitalId', async (req, res) => {
   }
 });
 
+// GET /api/payment - Health check
+router.get('/', (req, res) => {
+  res.json({ success: true, service: 'Payment Gateway', status: 'active', version: '2.0' });
+});
+
 module.exports = router;

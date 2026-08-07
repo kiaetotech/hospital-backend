@@ -45,6 +45,66 @@ const calculateDistance = (lat1, lon1, lat2, lon2) => {
 };
 
 // ============================================
+// PATIENT SEARCH ROUTE (ADDED)
+// ============================================
+
+// GET /api/diagnostics/search - Search tests and providers
+router.get('/search', async (req, res) => {
+  try {
+    var { q, city, lat, lng, category, page = 1, limit = 20 } = req.query;
+    var query = { is_active: true };
+
+    if (q) {
+      query.$or = [
+        { test_name: { $regex: q, $options: 'i' } },
+        { search_keywords: { $regex: q, $options: 'i' } },
+        { major_category_name: { $regex: q, $options: 'i' } }
+      ];
+    }
+    if (category) query.major_category_name = category;
+
+    var tests = await TestMaster.find(query).skip((page - 1) * limit).limit(parseInt(limit)).lean();
+    var total = await TestMaster.countDocuments(query);
+
+    // If city provided, get pricing from providers in that city
+    if (city) {
+      var providers = await DiagnosticsProvider.find({ city: { $regex: city, $options: 'i' }, is_active: true }).select('_id').lean();
+      var providerIds = providers.map(function(p) { return p._id; });
+      var testIds = tests.map(function(t) { return t._id; });
+      var pricing = await TestPricing.find({ test_id: { $in: testIds }, provider_id: { $in: providerIds }, is_active: true }).populate('provider_id', 'provider_name rating city').lean();
+      
+      var priceMap = {};
+      pricing.forEach(function(p) {
+        if (p.provider_id) {
+          var tid = p.test_id.toString();
+          if (!priceMap[tid]) priceMap[tid] = [];
+          priceMap[tid].push({ provider: p.provider_id.provider_name, price: p.discounted_price, rating: p.provider_id.rating });
+        }
+      });
+      
+      tests = tests.map(function(t) {
+        return { ...t, providers: priceMap[t._id.toString()] || [], lowestPrice: priceMap[t._id.toString()] ? Math.min.apply(null, priceMap[t._id.toString()].map(function(p) { return p.price; })) : null };
+      });
+    }
+
+    res.json({ success: true, data: tests, total: total, page: parseInt(page), totalPages: Math.ceil(total / parseInt(limit)) });
+  } catch (error) {
+    res.status(500).json({ success: false, message: error.message });
+  }
+});
+
+// GET /api/diagnostics - List all available tests
+router.get('/', async (req, res) => {
+  try {
+    var tests = await TestMaster.find({ is_active: true }).limit(50).lean();
+    var categories = await TestMaster.distinct('major_category_name');
+    res.json({ success: true, count: tests.length, categories: categories, data: tests });
+  } catch (error) {
+    res.status(500).json({ success: false, message: error.message });
+  }
+});
+
+// ============================================
 // YOUR EXISTING ROUTES (PRESERVED)
 // ============================================
 

@@ -67,4 +67,15 @@ router.get('/rating/:providerId', async (req, res) => {
   }
 });
 
+// GET /api/reviews - List recent reviews
+router.get('/', async (req, res) => {
+  try {
+    var { limit = 20 } = req.query;
+    var reviews = await Review.find({}).sort({ createdAt: -1 }).limit(parseInt(limit));
+    res.json({ success: true, data: reviews });
+  } catch (error) {
+    res.status(500).json({ success: false, message: error.message });
+  }
+});
+
 module.exports = router;

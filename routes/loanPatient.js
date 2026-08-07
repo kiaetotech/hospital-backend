@@ -750,4 +750,16 @@ router.get('/test', (req, res) => {
   });
 });
 
+// ============================================
+// PUBLIC: LIST LOAN PARTNERS
+// ============================================
+router.get('/partners', async (req, res) => {
+  try {
+    var lenders = await Lender.find({ status: 'active' }).select('-password -apiConfig').lean();
+    res.json({ success: true, count: lenders.length, data: lenders });
+  } catch (error) {
+    res.status(500).json({ success: false, message: error.message });
+  }
+});
+
 module.exports = router;

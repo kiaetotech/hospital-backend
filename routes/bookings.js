@@ -106,4 +106,16 @@ router.put('/:bookingId/status', async (req, res) => {
   }
 });
 
+// GET /api/bookings - List bookings (requires auth or phone)
+router.get('/', async (req, res) => {
+  try {
+    var { phone, limit = 20 } = req.query;
+    if (!phone) return res.status(400).json({ success: false, message: 'Phone number required' });
+    var bookings = await Booking.find({ patientPhone: phone }).sort({ createdAt: -1 }).limit(parseInt(limit));
+    res.json({ success: true, data: bookings });
+  } catch (error) {
+    res.status(500).json({ success: false, message: error.message });
+  }
+});
+
 module.exports = router;
