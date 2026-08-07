@@ -74,7 +74,7 @@ class APITestAgent extends BaseAgent {
       { method: 'GET', path: '/api/insurance/plans', name: 'Insurance Plans' },
       
       // 💰 HEALTH EMI
-      { method: 'GET', path: '/api/loan/partners', name: 'Loan Partners' },
+      { method: 'GET', path: '/api/loan/patient/partners', name: 'Loan Partners' },
       
       // 🏢 CORPORATE
       { method: 'GET', path: '/api/corporate/plans', name: 'Corporate Plans' },
