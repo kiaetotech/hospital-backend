@@ -83,14 +83,15 @@ router.post('/reset-password', async (req, res) => {
 
 router.post('/migrate-ambulance-data', async (req, res) => {
   try {
-    const { email, vehicleNumber } = req.body;
+    const { email, vehicleNumber, type } = req.body;
     const user = await User.findOne({ email, role: 'ambulance_provider' });
     if (!user) return res.status(404).json({ success: false, message: 'Not found' });
     
     if (user.ambulanceFleet && user.ambulanceFleet.length > 0) {
       user.ambulanceFleet[0].vehicleNumber = vehicleNumber || user.ambulanceFleet[0].vehicleNumber;
+      user.ambulanceFleet[0].type = type || user.ambulanceFleet[0].type || 'basic';
     } else {
-      user.ambulanceFleet = [{ vehicleNumber: vehicleNumber || 'N/A', type: 'Basic', status: 'available' }];
+      user.ambulanceFleet = [{ vehicleNumber: vehicleNumber || 'N/A', type: type || 'basic', status: 'available' }];
     }
     await user.save();
     
