@@ -998,4 +998,17 @@ router.patch('/fix-type', authenticateToken, async (req, res) => {
   } catch (error) { res.status(500).json({ success: false, message: error.message }); }
 });
 
+router.patch('/fix-type-raw', authenticateToken, async (req, res) => {
+  try {
+    const { type } = req.body;
+    if (!type) return res.status(400).json({ success: false, message: 'Type required' });
+    const result = await User.updateOne(
+      { _id: req.user.id || req.user._id, 'ambulanceFleet._id': req.body.fleetId || { $exists: true } },
+      { $set: { 'ambulanceFleet.$[elem].type': type } },
+      { arrayFilters: [{ 'elem._id': { $exists: true } }] }
+    );
+    res.json({ success: true, matched: result.matchedCount, modified: result.modifiedCount });
+  } catch (error) { res.status(500).json({ success: false, message: error.message }); }
+});
+
 module.exports = router;// fix 
