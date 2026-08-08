@@ -457,8 +457,23 @@ return res.json({
   }
 });
   } catch (error) {
-    return res.status(500).json({ success: false, error: error.message });
-  }
+  console.error('====================================');
+  console.error('❌ SCHEDULE TRANSPORT ERROR');
+  console.error('Name:', error.name);
+  console.error('Message:', error.message);
+  console.error('Stack:', error.stack);
+  console.error(
+    'Request body:',
+    JSON.stringify(req.body, null, 2)
+  );
+  console.error('====================================');
+
+  return res.status(500).json({
+    success: false,
+    error: error.message,
+    errorName: error.name
+  });
+}
 });
 
 // ─────────────────────────────────────────────
