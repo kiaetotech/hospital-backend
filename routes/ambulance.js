@@ -881,10 +881,116 @@ router.get('/vehicles', authenticateToken, async (req, res) => {
 
 router.post('/vehicles', authenticateToken, async (req, res) => {
   try {
-    const fleet = await getFleet(req.user.id || req.user._id, req.user.name);
-    fleet.vehicles.push(req.body); fleet.updatedAt = new Date(); await fleet.save();
-    res.json({ success: true, data: fleet.vehicles[fleet.vehicles.length - 1] });
-  } catch (error) { res.status(500).json({ success: false, message: error.message }); }
+    console.log('========== ADD VEHICLE START ==========');
+    console.log('USER:', JSON.stringify(req.user));
+    console.log('BODY:', JSON.stringify(req.body, null, 2));
+
+    const providerId = req.user.id || req.user._id;
+
+    console.log('PROVIDER ID:', providerId);
+
+    if (!providerId) {
+      return res.status(401).json({
+        success: false,
+        message: 'Provider ID missing'
+      });
+    }
+
+    const fleet = await getFleet(providerId, req.user.name);
+
+    console.log('FLEET FOUND:', !!fleet);
+    console.log('FLEET ID:', fleet?._id);
+    console.log('VEHICLES BEFORE:', fleet?.vehicles?.length);
+
+    if (!Array.isArray(fleet.vehicles)) {
+      fleet.vehicles = [];
+    }
+
+    const vehicle = {
+      vehicleNumber: String(req.body.vehicleNumber || '').trim(),
+      type: req.body.type || 'basic',
+      model: String(req.body.model || '').trim(),
+
+      year:
+        req.body.year !== undefined &&
+        req.body.year !== null &&
+        req.body.year !== ''
+          ? Number(req.body.year)
+          : undefined,
+
+      equipment: Array.isArray(req.body.equipment)
+        ? req.body.equipment.map(String)
+        : [],
+
+      baseFare: Number(req.body.baseFare) || 0,
+      perKmRate: Number(req.body.perKmRate) || 0,
+      nightCharge: Number(req.body.nightCharge) || 0,
+      waitingCharge: Number(req.body.waitingCharge) || 0,
+
+      driverName: String(req.body.driverName || '').trim(),
+      driverPhone: String(req.body.driverPhone || '').trim(),
+
+      status: 'available',
+
+      location: {
+        lat: 0,
+        lng: 0
+      }
+    };
+
+    console.log(
+      'VEHICLE:',
+      JSON.stringify(vehicle, null, 2)
+    );
+
+    fleet.vehicles.push(vehicle);
+    fleet.updatedAt = new Date();
+
+    console.log(
+      'VEHICLES AFTER:',
+      fleet.vehicles.length
+    );
+
+    console.log('ABOUT TO SAVE FLEET');
+
+    await fleet.save();
+
+    console.log('========== VEHICLE SAVED ==========');
+
+    const savedVehicle =
+      fleet.vehicles[fleet.vehicles.length - 1];
+
+    return res.status(201).json({
+      success: true,
+      message: 'Vehicle saved successfully',
+      data: savedVehicle
+    });
+
+  } catch (error) {
+
+    console.error('==========================================');
+    console.error('🚨 ADD VEHICLE FAILED');
+    console.error('ERROR NAME:', error.name);
+    console.error('ERROR MESSAGE:', error.message);
+    console.error('ERROR CODE:', error.code);
+    console.error('ERROR STACK:', error.stack);
+
+    if (error.errors) {
+      console.error(
+        'MONGOOSE VALIDATION ERRORS:',
+        JSON.stringify(error.errors, null, 2)
+      );
+    }
+
+    console.error('==========================================');
+
+    return res.status(500).json({
+      success: false,
+      message: error.message,
+      errorName: error.name,
+      errorCode: error.code
+    });
+  }
 });
 
 router.put('/vehicles/:id', authenticateToken, async (req, res) => {
