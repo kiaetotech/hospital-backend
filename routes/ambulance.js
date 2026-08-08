@@ -407,24 +407,55 @@ router.post('/schedule-transport', authenticateToken, async (req, res) => {
 
     await booking.save();
 
-    await smsService.sendAmbulanceSMS(patientPhone, 'scheduled_confirmed', {
+console.log(
+  '✅ Scheduled ambulance booking saved:',
+  booking.bookingId
+);
+
+// SMS notification must NOT make the booking fail.
+// If SMS provider/configuration is unavailable,
+// the booking should still be successfully created.
+try {
+  await smsService.sendAmbulanceSMS(
+    patientPhone,
+    'scheduled_confirmed',
+    {
       date: new Date(scheduledDate).toLocaleDateString('en-IN'),
       time: scheduledTime || 'Scheduled',
       pickupAddress,
-      hospitalName: hospitalName || destinationAddress,
+      hospitalName:
+        hospitalName || destinationAddress,
       vehicleType: ambulanceType,
       bookingId: booking.bookingId
-    });
+    }
+  );
 
-    return res.json({
-      success: true,
-      message: 'Ambulance scheduled successfully',
-      data: {
-        bookingId: booking.bookingId,
-        scheduledDate, scheduledTime,
-        fareEstimate: fareEstimate.breakdown
-      }
-    });
+  console.log(
+    '✅ Scheduled ambulance SMS sent:',
+    booking.bookingId
+  );
+
+} catch (smsError) {
+
+  console.error(
+    '⚠️ Scheduled ambulance SMS failed:',
+    smsError.message
+  );
+
+  // Do NOT return 500 here.
+  // The ambulance booking has already been saved.
+}
+
+return res.json({
+  success: true,
+  message: 'Ambulance scheduled successfully',
+  data: {
+    bookingId: booking.bookingId,
+    scheduledDate,
+    scheduledTime,
+    fareEstimate: fareEstimate.breakdown
+  }
+});
   } catch (error) {
     return res.status(500).json({ success: false, error: error.message });
   }
