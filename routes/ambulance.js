@@ -828,14 +828,17 @@ router.get('/vehicles', authenticateToken, async (req, res) => {
     const providerId = req.user.id || req.user._id;
     let fleet = await AmbulanceFleet.findOne({ ownerType: 'ambulance_provider', ownerId: providerId });
     if (fleet && fleet.vehicles && fleet.vehicles.length > 0) {
-      return res.json({ success: true, data: fleet.vehicles });
+      return res.json({ success: true, data: fleet.vehicles.map(v => ({
+        _id: v._id, vehicleNumber: v.vehicleNumber, type: v.type || 'basic',
+        driver: v.driver || 'N/A', driverPhone: v.driverPhone || 'N/A', status: v.status || 'available'
+      })) });
     }
     const user = await User.findById(providerId);
-    const fleetV = (user?.ambulanceFleet && user.ambulanceFleet[0]) || {};
     if (user && user.ambulanceDrivers && user.ambulanceDrivers.length > 0) {
       return res.json({ success: true, data: user.ambulanceDrivers.map((d, i) => ({
-        vehicleNumber: (user.ambulanceFleet && user.ambulanceFleet[i]) ? user.ambulanceFleet[i].vehicleNumber : fleetV.vehicleNumber || 'N/A',
-        type: (user.ambulanceFleet && user.ambulanceFleet[i]) ? user.ambulanceFleet[i].type : fleetV.type || 'Basic',
+        _id: d._id || d.driverId,
+        vehicleNumber: (user.ambulanceFleet && user.ambulanceFleet[i]) ? (user.ambulanceFleet[i].vehicleNumber || 'N/A') : 'N/A',
+        type: (user.ambulanceFleet && user.ambulanceFleet[i] && user.ambulanceFleet[i].type) ? user.ambulanceFleet[i].type : 'basic',
         driver: d.name || 'N/A',
         driverPhone: d.phone || 'N/A',
         status: 'available'
@@ -843,7 +846,7 @@ router.get('/vehicles', authenticateToken, async (req, res) => {
     }
     res.json({ success: true, data: [] });
   } catch (error) { res.status(500).json({ success: false, message: error.message }); }
-});
+});;
 
 router.post('/vehicles', authenticateToken, async (req, res) => {
   try {
