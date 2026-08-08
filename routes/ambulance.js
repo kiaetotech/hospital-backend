@@ -978,4 +978,23 @@ router.post('/reset-fleet', authenticateToken, async (req, res) => {
   } catch (error) { res.status(500).json({ success: false, message: error.message }); }
 });
 
+router.patch('/fix-type', authenticateToken, async (req, res) => {
+  try {
+    const { type } = req.body;
+    if (!type) return res.status(400).json({ success: false, message: 'Type required' });
+    const user = await User.findById(req.user.id || req.user._id);
+    if (!user || user.role !== 'ambulance_provider') return res.status(404).json({ success: false, message: 'Not found' });
+    if (user.ambulanceFleet && user.ambulanceFleet.length > 0) {
+      user.ambulanceFleet[0].type = type;
+      await user.save();
+    }
+    const fleet = await AmbulanceFleet.findOne({ ownerType: 'ambulance_provider', ownerId: user._id });
+    if (fleet && fleet.vehicles && fleet.vehicles.length > 0) {
+      fleet.vehicles[0].type = type;
+      await fleet.save();
+    }
+    res.json({ success: true, message: `Type set to ${type}` });
+  } catch (error) { res.status(500).json({ success: false, message: error.message }); }
+});
+
 module.exports = router;// fix 
