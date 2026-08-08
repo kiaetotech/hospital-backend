@@ -8,6 +8,9 @@ const User = require('../models/User');
 const Transaction = require('../models/Transaction');
 const EmergencyContact = require('../models/EmergencyContact');
 const { authenticateToken } = require('../middleware/auth');
+
+// AmbulanceFleet.vehicleSchema allowed values
+const ALLOWED_VEHICLE_TYPES = ['basic', 'cardiac', 'ventilator', 'neonatal', 'wheelchair'];
 const dispatchService = require('../services/ambulanceDispatchService');
 const locationCache = require('../services/locationCacheService');
 const commissionService = require('../services/commissionService');
@@ -779,27 +782,51 @@ router.put('/corporate/enquiries/:enquiryId', authenticateToken, async (req, res
   } catch (error) { res.status(500).json({ success: false, message: error.message }); }
 });
 
-// Provider stats - works with any authenticated user
+// Provider stats - single consolidated endpoint
 router.get('/stats', authenticateToken, async (req, res) => {
   try {
-    var providerId = req.user.id || req.user._id || req.user.userId;
-    var bookings = await Booking.countDocuments({ 
-      $or: [
-        { providerId: providerId },
-        { userId: providerId },
-        { driverId: providerId }
-      ]
+    const providerId = req.user.id || req.user._id || req.user.userId;
+
+    if (!providerId) {
+      return res.status(401).json({
+        success: false,
+        message: 'Provider ID missing'
+      });
+    }
+
+    const [fleet, totalBookings, activeBookings] = await Promise.all([
+      getFleet(providerId, req.user.name),
+      Booking.countDocuments({
+        $or: [
+          { providerId },
+          { userId: providerId },
+          { driverId: providerId }
+        ]
+      }),
+      Booking.countDocuments({
+        $or: [
+          { providerId },
+          { userId: providerId }
+        ],
+        status: { $in: ['active', 'pending', 'confirmed', 'en_route', 'in_progress'] }
+      })
+    ]);
+
+    return res.json({
+      success: true,
+      data: {
+        totalBookings,
+        activeBookings,
+        totalVehicles: fleet.vehicles?.length || 0,
+        totalDrivers: fleet.drivers?.length || 0
+      }
     });
-    var activeBookings = await Booking.countDocuments({ 
-      $or: [
-        { providerId: providerId },
-        { userId: providerId }
-      ],
-      status: { $in: ['active', 'pending', 'confirmed', 'en_route', 'in_progress'] }
-    });
-    res.json({ success: true, data: { totalBookings: bookings, activeBookings: activeBookings } });
   } catch (error) {
-    res.status(500).json({ success: false, message: error.message });
+    console.error('AMBULANCE STATS ERROR:', error);
+    return res.status(500).json({
+      success: false,
+      message: error.message
+    });
   }
 });
 
@@ -807,14 +834,105 @@ router.get('/stats', authenticateToken, async (req, res) => {
 // 🚑 PROVIDER DASHBOARD ENDPOINTS (AmbulanceFleet)
 // ============================================
 
+// ============================================
+// GET AMBULANCE PROVIDER PROFILE
+// ============================================
 router.get('/profile', authenticateToken, async (req, res) => {
   try {
-    const user = await User.findById(req.user.id || req.user._id).select('-password');
-    if (!user) return res.status(404).json({ success: false, message: 'Provider not found' });
-    res.json({ success: true, data: user });
-  } catch (error) { res.status(500).json({ success: false, message: error.message }); }
+    const providerId = req.user.id || req.user._id;
+
+    if (!providerId) {
+      return res.status(401).json({
+        success: false,
+        message: 'Provider ID missing'
+      });
+    }
+
+    const user = await User.findById(providerId)
+      .select('-password');
+
+    if (!user) {
+      return res.status(404).json({
+        success: false,
+        message: 'Ambulance provider not found'
+      });
+    }
+
+    const address = user.ambulanceCompanyAddress || {};
+    const settings = user.ambulanceSettings || {};
+
+    const coordinates =
+      settings.serviceAreaCoordinates?.center || {};
+
+    const serviceArea =
+      settings.serviceArea || '';
+
+    const serviceAreas = serviceArea
+      ? serviceArea
+          .split(',')
+          .map(area => area.trim())
+          .filter(Boolean)
+      : [];
+
+    return res.json({
+      success: true,
+      data: {
+        _id: user._id,
+        name: user.name || '',
+        phone: user.phone || '',
+        email: user.email || '',
+
+        ambulanceCompanyAddress: {
+          address: address.line1 || '',
+          city: address.city || '',
+          coordinates: {
+            lat: coordinates.lat ?? '',
+            lng: coordinates.lng ?? ''
+          }
+        },
+
+        ambulanceSettings: {
+          operatingHours: {
+            open:
+              settings.operatingHours?.open ||
+              '00:00',
+
+            close:
+              settings.operatingHours?.close ||
+              '23:59'
+          },
+
+          acceptsEmergency:
+            settings.acceptsEmergency !== false,
+
+          acceptsScheduled:
+            settings.acceptsScheduled !== false,
+
+          acceptsIntercity:
+            settings.acceptsIntercity === true
+        },
+
+        serviceAreas,
+
+        isAvailable:
+          user.isAvailable === true
+      }
+    });
+
+  } catch (error) {
+    console.error('GET AMBULANCE PROFILE ERROR:', error);
+    console.error(error.stack);
+
+    return res.status(500).json({
+      success: false,
+      message: error.message
+    });
+  }
 });
 
+// ============================================
+// UPDATE AMBULANCE PROVIDER PROFILE
+// ============================================
 router.put('/profile', authenticateToken, async (req, res) => {
   try {
     const providerId = req.user.id || req.user._id;
@@ -869,13 +987,16 @@ router.put('/profile', authenticateToken, async (req, res) => {
 
     // ==========================================
     // COMPANY ADDRESS
+    // User.js schema uses:
+    // line1, line2, city, state, pincode, country
     // ==========================================
 
-    user.ambulanceCompanyAddress =
-      user.ambulanceCompanyAddress || {};
+    if (!user.ambulanceCompanyAddress) {
+      user.ambulanceCompanyAddress = {};
+    }
 
     if (address !== undefined) {
-      user.ambulanceCompanyAddress.address =
+      user.ambulanceCompanyAddress.line1 =
         String(address).trim();
     }
 
@@ -885,55 +1006,107 @@ router.put('/profile', authenticateToken, async (req, res) => {
     }
 
     // ==========================================
-    // COORDINATES
-    // ==========================================
-
-    user.ambulanceCompanyAddress.coordinates =
-      user.ambulanceCompanyAddress.coordinates || {};
-
-    if (lat !== undefined && lat !== '') {
-      user.ambulanceCompanyAddress.coordinates.lat =
-        Number(lat);
-    }
-
-    if (lng !== undefined && lng !== '') {
-      user.ambulanceCompanyAddress.coordinates.lng =
-        Number(lng);
-    }
-
-    // ==========================================
     // AMBULANCE SETTINGS
     // ==========================================
 
-    user.ambulanceSettings =
-      user.ambulanceSettings || {};
+    if (!user.ambulanceSettings) {
+      user.ambulanceSettings = {};
+    }
+
+    // ==========================================
+    // SERVICE AREAS
+    // User.js has serviceArea as a String
+    // ==========================================
+
+    if (Array.isArray(serviceAreas)) {
+      user.ambulanceSettings.serviceArea =
+        serviceAreas
+          .map(area => String(area).trim())
+          .filter(Boolean)
+          .join(', ');
+    } else if (typeof serviceAreas === 'string') {
+      user.ambulanceSettings.serviceArea =
+        serviceAreas.trim();
+    }
+
+    // ==========================================
+    // LATITUDE / LONGITUDE
+    // User.js stores these at:
+    // ambulanceSettings.serviceAreaCoordinates.center
+    // ==========================================
+
+    if (
+      (lat !== undefined && lat !== '') ||
+      (lng !== undefined && lng !== '')
+    ) {
+      if (!user.ambulanceSettings.serviceAreaCoordinates) {
+        user.ambulanceSettings.serviceAreaCoordinates = {};
+      }
+
+      if (!user.ambulanceSettings.serviceAreaCoordinates.center) {
+        user.ambulanceSettings.serviceAreaCoordinates.center = {};
+      }
+
+      if (lat !== undefined && lat !== '') {
+        user.ambulanceSettings
+          .serviceAreaCoordinates
+          .center
+          .lat = Number(lat);
+      }
+
+      if (lng !== undefined && lng !== '') {
+        user.ambulanceSettings
+          .serviceAreaCoordinates
+          .center
+          .lng = Number(lng);
+      }
+    }
+
+    // ==========================================
+    // OPERATING HOURS
+    // ==========================================
 
     if (operatingHours !== undefined) {
-      user.ambulanceSettings.operatingHours =
-        operatingHours;
+      if (!user.ambulanceSettings.operatingHours) {
+        user.ambulanceSettings.operatingHours = {};
+      }
+
+      if (operatingHours.open !== undefined) {
+        user.ambulanceSettings.operatingHours.open =
+          String(operatingHours.open);
+      }
+
+      if (operatingHours.close !== undefined) {
+        user.ambulanceSettings.operatingHours.close =
+          String(operatingHours.close);
+      }
     }
+
+    // ==========================================
+    // ACCEPT EMERGENCY
+    // ==========================================
 
     if (acceptsEmergency !== undefined) {
       user.ambulanceSettings.acceptsEmergency =
         Boolean(acceptsEmergency);
     }
 
+    // ==========================================
+    // ACCEPT SCHEDULED
+    // ==========================================
+
     if (acceptsScheduled !== undefined) {
       user.ambulanceSettings.acceptsScheduled =
         Boolean(acceptsScheduled);
     }
 
+    // ==========================================
+    // INTERCITY
+    // ==========================================
+
     if (acceptsIntercity !== undefined) {
       user.ambulanceSettings.acceptsIntercity =
         Boolean(acceptsIntercity);
-    }
-
-    // ==========================================
-    // SERVICE AREAS
-    // ==========================================
-
-    if (Array.isArray(serviceAreas)) {
-      user.serviceAreas = serviceAreas;
     }
 
     // ==========================================
@@ -944,10 +1117,23 @@ router.put('/profile', authenticateToken, async (req, res) => {
       user.isAvailable = Boolean(isAvailable);
     }
 
+    // ==========================================
+    // SAVE TO MONGODB
+    // ==========================================
+
     await user.save();
+
+    // ==========================================
+    // RETURN SAVED PROFILE
+    // ==========================================
 
     const updatedUser = await User.findById(providerId)
       .select('-password');
+
+    console.log(
+      '✅ Ambulance provider profile saved:',
+      providerId
+    );
 
     return res.json({
       success: true,
@@ -956,8 +1142,12 @@ router.put('/profile', authenticateToken, async (req, res) => {
     });
 
   } catch (error) {
-    console.error('AMBULANCE PROFILE UPDATE ERROR:', error);
-    console.error(error.stack);
+    console.error('====================================');
+    console.error('❌ AMBULANCE PROFILE UPDATE ERROR');
+    console.error('Name:', error.name);
+    console.error('Message:', error.message);
+    console.error('Stack:', error.stack);
+    console.error('====================================');
 
     return res.status(500).json({
       success: false,
@@ -966,14 +1156,81 @@ router.put('/profile', authenticateToken, async (req, res) => {
   }
 });
 
+// ============================================
+// UPDATE AMBULANCE PROVIDER LOCATION
+// ============================================
 router.put('/location', authenticateToken, async (req, res) => {
   try {
+    const providerId = req.user.id || req.user._id;
+
+    if (!providerId) {
+      return res.status(401).json({
+        success: false,
+        message: 'Provider ID missing'
+      });
+    }
+
     const { lat, lng } = req.body;
-    await User.findByIdAndUpdate(req.user.id || req.user._id, {
-      'ambulanceCompanyAddress.coordinates': { lat: lat || 0, lng: lng || 0 }
+
+    const user = await User.findById(providerId);
+
+    if (!user) {
+      return res.status(404).json({
+        success: false,
+        message: 'Ambulance provider not found'
+      });
+    }
+
+    if (!user.ambulanceSettings) {
+      user.ambulanceSettings = {};
+    }
+
+    if (!user.ambulanceSettings.serviceAreaCoordinates) {
+      user.ambulanceSettings.serviceAreaCoordinates = {};
+    }
+
+    if (!user.ambulanceSettings.serviceAreaCoordinates.center) {
+      user.ambulanceSettings.serviceAreaCoordinates.center = {};
+    }
+
+    if (lat !== undefined && lat !== '') {
+      user.ambulanceSettings.serviceAreaCoordinates.center.lat =
+        Number(lat);
+    }
+
+    if (lng !== undefined && lng !== '') {
+      user.ambulanceSettings.serviceAreaCoordinates.center.lng =
+        Number(lng);
+    }
+
+    await user.save();
+
+    return res.json({
+      success: true,
+      message: 'Location updated successfully',
+      data: {
+        lat:
+          user.ambulanceSettings
+            .serviceAreaCoordinates
+            .center
+            .lat ?? 0,
+
+        lng:
+          user.ambulanceSettings
+            .serviceAreaCoordinates
+            .center
+            .lng ?? 0
+      }
     });
-    res.json({ success: true, message: 'Location updated' });
-  } catch (error) { res.status(500).json({ success: false, message: error.message }); }
+
+  } catch (error) {
+    console.error('AMBULANCE LOCATION UPDATE ERROR:', error);
+
+    return res.status(500).json({
+      success: false,
+      message: error.message
+    });
+  }
 });
 
 router.get('/vehicles', authenticateToken, async (req, res) => {
@@ -1036,6 +1293,15 @@ router.post('/vehicles', authenticateToken, async (req, res) => {
       return res.status(401).json({
         success: false,
         message: 'Provider ID missing'
+      });
+    }
+
+    const vehicleType = String(req.body.type || 'basic').trim().toLowerCase();
+
+    if (!ALLOWED_VEHICLE_TYPES.includes(vehicleType)) {
+      return res.status(400).json({
+        success: false,
+        message: `Invalid ambulance type '${vehicleType}'. Allowed types: ${ALLOWED_VEHICLE_TYPES.join(', ')}`
       });
     }
 
@@ -1141,7 +1407,21 @@ router.put('/vehicles/:id', authenticateToken, async (req, res) => {
     const fleet = await getFleet(req.user.id || req.user._id, req.user.name);
     const v = fleet.vehicles.id(req.params.id);
     if (!v) return res.status(404).json({ success: false, message: 'Not found' });
-    Object.assign(v, req.body); fleet.updatedAt = new Date(); await fleet.save();
+
+    if (req.body.type !== undefined) {
+      const vehicleType = String(req.body.type).trim().toLowerCase();
+      if (!ALLOWED_VEHICLE_TYPES.includes(vehicleType)) {
+        return res.status(400).json({
+          success: false,
+          message: `Invalid ambulance type '${vehicleType}'. Allowed types: ${ALLOWED_VEHICLE_TYPES.join(', ')}`
+        });
+      }
+      req.body.type = vehicleType;
+    }
+
+    Object.assign(v, req.body);
+    fleet.updatedAt = new Date();
+    await fleet.save();
     res.json({ success: true, data: v });
   } catch (error) { res.status(500).json({ success: false, message: error.message }); }
 });
@@ -1220,12 +1500,6 @@ router.get('/bookings', authenticateToken, async (req, res) => {
   } catch (error) { res.status(500).json({ success: false, message: error.message }); }
 });
 
-router.get('/stats', authenticateToken, async (req, res) => {
-  try {
-    const fleet = await getFleet(req.user.id || req.user._id, req.user.name);
-    res.json({ success: true, data: { totalBookings: 0, activeBookings: 0, totalVehicles: fleet.vehicles?.length || 0, totalDrivers: fleet.drivers?.length || 0 } });
-  } catch (error) { res.status(500).json({ success: false, message: error.message }); }
-});
 
 router.get('/reports', authenticateToken, async (req, res) => {
   try {
@@ -1270,18 +1544,27 @@ router.patch('/fix-type', authenticateToken, async (req, res) => {
   try {
     const { type } = req.body;
     if (!type) return res.status(400).json({ success: false, message: 'Type required' });
+
+    const normalizedType = String(type).trim().toLowerCase();
+    if (!ALLOWED_VEHICLE_TYPES.includes(normalizedType)) {
+      return res.status(400).json({
+        success: false,
+        message: `Invalid ambulance type '${normalizedType}'. Allowed types: ${ALLOWED_VEHICLE_TYPES.join(', ')}`
+      });
+    }
+
     const user = await User.findById(req.user.id || req.user._id);
     if (!user || user.role !== 'ambulance_provider') return res.status(404).json({ success: false, message: 'Not found' });
     if (user.ambulanceFleet && user.ambulanceFleet.length > 0) {
-      user.ambulanceFleet[0].type = type;
+      user.ambulanceFleet[0].type = normalizedType;
       await user.save();
     }
     const fleet = await AmbulanceFleet.findOne({ ownerType: 'ambulance_provider', ownerId: user._id });
     if (fleet && fleet.vehicles && fleet.vehicles.length > 0) {
-      fleet.vehicles[0].type = type;
+      fleet.vehicles[0].type = normalizedType;
       await fleet.save();
     }
-    res.json({ success: true, message: `Type set to ${type}` });
+    res.json({ success: true, message: `Type set to ${normalizedType}` });
   } catch (error) { res.status(500).json({ success: false, message: error.message }); }
 });
 
@@ -1289,9 +1572,18 @@ router.patch('/fix-type-raw', authenticateToken, async (req, res) => {
   try {
     const { type } = req.body;
     if (!type) return res.status(400).json({ success: false, message: 'Type required' });
+
+    const normalizedType = String(type).trim().toLowerCase();
+    if (!ALLOWED_VEHICLE_TYPES.includes(normalizedType)) {
+      return res.status(400).json({
+        success: false,
+        message: `Invalid ambulance type '${normalizedType}'. Allowed types: ${ALLOWED_VEHICLE_TYPES.join(', ')}`
+      });
+    }
+
     const result = await User.updateOne(
       { _id: req.user.id || req.user._id, 'ambulanceFleet._id': req.body.fleetId || { $exists: true } },
-      { $set: { 'ambulanceFleet.$[elem].type': type } },
+      { $set: { 'ambulanceFleet.$[elem].type': normalizedType } },
       { arrayFilters: [{ 'elem._id': { $exists: true } }] }
     );
     res.json({ success: true, matched: result.matchedCount, modified: result.modifiedCount });
