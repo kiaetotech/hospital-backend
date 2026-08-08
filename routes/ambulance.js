@@ -817,10 +817,153 @@ router.get('/profile', authenticateToken, async (req, res) => {
 
 router.put('/profile', authenticateToken, async (req, res) => {
   try {
-    const updates = { ...req.body }; delete updates.password; delete updates.role;
-    const user = await User.findByIdAndUpdate(req.user.id || req.user._id, updates, { new: true }).select('-password');
-    res.json({ success: true, data: user });
-  } catch (error) { res.status(500).json({ success: false, message: error.message }); }
+    const providerId = req.user.id || req.user._id;
+
+    if (!providerId) {
+      return res.status(401).json({
+        success: false,
+        message: 'Provider ID missing'
+      });
+    }
+
+    const {
+      name,
+      phone,
+      email,
+      address,
+      city,
+      lat,
+      lng,
+      operatingHours,
+      acceptsEmergency,
+      acceptsScheduled,
+      acceptsIntercity,
+      serviceAreas,
+      isAvailable
+    } = req.body;
+
+    const user = await User.findById(providerId);
+
+    if (!user) {
+      return res.status(404).json({
+        success: false,
+        message: 'Provider not found'
+      });
+    }
+
+    // ==========================================
+    // BASIC PROFILE
+    // ==========================================
+
+    if (name !== undefined) {
+      user.name = String(name).trim();
+    }
+
+    if (phone !== undefined) {
+      user.phone = String(phone).trim();
+    }
+
+    if (email !== undefined) {
+      user.email = String(email).trim();
+    }
+
+    // ==========================================
+    // COMPANY ADDRESS
+    // ==========================================
+
+    user.ambulanceCompanyAddress =
+      user.ambulanceCompanyAddress || {};
+
+    if (address !== undefined) {
+      user.ambulanceCompanyAddress.address =
+        String(address).trim();
+    }
+
+    if (city !== undefined) {
+      user.ambulanceCompanyAddress.city =
+        String(city).trim();
+    }
+
+    // ==========================================
+    // COORDINATES
+    // ==========================================
+
+    user.ambulanceCompanyAddress.coordinates =
+      user.ambulanceCompanyAddress.coordinates || {};
+
+    if (lat !== undefined && lat !== '') {
+      user.ambulanceCompanyAddress.coordinates.lat =
+        Number(lat);
+    }
+
+    if (lng !== undefined && lng !== '') {
+      user.ambulanceCompanyAddress.coordinates.lng =
+        Number(lng);
+    }
+
+    // ==========================================
+    // AMBULANCE SETTINGS
+    // ==========================================
+
+    user.ambulanceSettings =
+      user.ambulanceSettings || {};
+
+    if (operatingHours !== undefined) {
+      user.ambulanceSettings.operatingHours =
+        operatingHours;
+    }
+
+    if (acceptsEmergency !== undefined) {
+      user.ambulanceSettings.acceptsEmergency =
+        Boolean(acceptsEmergency);
+    }
+
+    if (acceptsScheduled !== undefined) {
+      user.ambulanceSettings.acceptsScheduled =
+        Boolean(acceptsScheduled);
+    }
+
+    if (acceptsIntercity !== undefined) {
+      user.ambulanceSettings.acceptsIntercity =
+        Boolean(acceptsIntercity);
+    }
+
+    // ==========================================
+    // SERVICE AREAS
+    // ==========================================
+
+    if (Array.isArray(serviceAreas)) {
+      user.serviceAreas = serviceAreas;
+    }
+
+    // ==========================================
+    // AVAILABILITY
+    // ==========================================
+
+    if (isAvailable !== undefined) {
+      user.isAvailable = Boolean(isAvailable);
+    }
+
+    await user.save();
+
+    const updatedUser = await User.findById(providerId)
+      .select('-password');
+
+    return res.json({
+      success: true,
+      message: 'Profile updated successfully',
+      data: updatedUser
+    });
+
+  } catch (error) {
+    console.error('AMBULANCE PROFILE UPDATE ERROR:', error);
+    console.error(error.stack);
+
+    return res.status(500).json({
+      success: false,
+      message: error.message
+    });
+  }
 });
 
 router.put('/location', authenticateToken, async (req, res) => {
