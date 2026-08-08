@@ -728,10 +728,10 @@ async function getFleet(userId, userName) {
       ownerType: 'ambulance_provider', ownerId: userId, 
       providerName: userName || user?.name || 'Provider',
       contactPhone: user?.phone || '', contactEmail: user?.email || '',
-      city: user?.ambulanceCompanyAddress?.city || ''
+      city: user?.ambulanceCompanyAddress?.city || '',
+      vehicles: [],
+      drivers: []
     });
-    if (user?.ambulanceFleet?.length > 0) fleet.vehicles = user.ambulanceFleet.map(v => ({ vehicleNumber: v.vehicleNumber || '', type: v.type || 'basic', status: 'available' }));
-    if (user?.ambulanceDrivers?.length > 0) fleet.drivers = user.ambulanceDrivers.map(d => ({ name: d.name || '', phone: d.phone || '', licenseNumber: d.licenseNumber || '', status: 'available' }));
     await fleet.save();
   }
   return fleet;
