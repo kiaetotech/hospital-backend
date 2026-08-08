@@ -834,11 +834,12 @@ router.get('/vehicles', authenticateToken, async (req, res) => {
       })) });
     }
     const user = await User.findById(providerId);
+    const fleetType = (user?.ambulanceFleet && user.ambulanceFleet.length > 0) ? (user.ambulanceFleet[0].type || 'basic') : 'basic';
     if (user && user.ambulanceDrivers && user.ambulanceDrivers.length > 0) {
       return res.json({ success: true, data: user.ambulanceDrivers.map((d, i) => ({
         _id: d._id || d.driverId,
         vehicleNumber: (user.ambulanceFleet && user.ambulanceFleet[i]) ? (user.ambulanceFleet[i].vehicleNumber || 'N/A') : 'N/A',
-        type: (user.ambulanceFleet && user.ambulanceFleet[i] && user.ambulanceFleet[i].type) ? user.ambulanceFleet[i].type : 'basic',
+        type: fleetType,
         driver: d.name || 'N/A',
         driverPhone: d.phone || 'N/A',
         status: 'available'
@@ -846,7 +847,7 @@ router.get('/vehicles', authenticateToken, async (req, res) => {
     }
     res.json({ success: true, data: [] });
   } catch (error) { res.status(500).json({ success: false, message: error.message }); }
-});;
+});
 
 router.post('/vehicles', authenticateToken, async (req, res) => {
   try {
