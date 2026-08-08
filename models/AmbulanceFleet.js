@@ -2,7 +2,7 @@ const mongoose = require('mongoose');
 
 const vehicleSchema = new mongoose.Schema({
   vehicleNumber: { type: String },
-  type: { type: String, enum: ['basic', 'cardiac', 'ventilator', 'neonatal', 'wheelchair'], default: 'basic' },
+  type: { type: String, default: 'basic' },
   status: { type: String, enum: ['available', 'on_trip', 'maintenance', 'offline'], default: 'available' },
   make: { type: String },
   model: { type: String },
