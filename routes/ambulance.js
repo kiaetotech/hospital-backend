@@ -355,125 +355,176 @@ router.get('/surge-check', async (req, res) => {
 // POST /ambulance/schedule-transport
 // 📅 Book non-emergency ambulance
 // ─────────────────────────────────────────────
-router.post('/schedule-transport', authenticateToken, async (req, res) => {
+// ============================================
+// GET /ambulance/nearby-ambulances
+// Find available ambulances + provider pricing
+// ============================================
+router.get('/nearby-ambulances', async (req, res) => {
   try {
     const {
-      patientName, patientPhone, patientAge, patientGender,
-      pickupAddress, pickupLat, pickupLng,
-      destinationAddress, destinationLat, destinationLng,
-      hospitalName, ambulanceType = 'basic',
-      scheduledDate, scheduledTime,
-      requiresOxygen, requiresAttendant, mobilityType,
-      specialRequirements, isRecurring, recurringDays
-    } = req.body;
+      lat,
+      lng,
+      radius = 25,
+      vehicleType,
+      limit = 20
+    } = req.query;
 
-    const fareEstimate = commissionService.calculateAmbulanceFare({
-      baseFare: 500,
-      distance: 10,
-      ambulanceType,
-      isEmergency: false,
-      oxygenRequired: requiresOxygen
-    });
-
-    const booking = new Booking({
-      userId: req.user.userId || req.user.id,
-      bookingType: 'ambulance',
-      emergencyType: 'scheduled',
-      patientName, patientPhone, patientAge, patientGender,
-      ambulanceType,
-      pickupAddress,
-      pickupCoordinates: { lat: pickupLat, lng: pickupLng },
-      dropAddress: destinationAddress,
-      hospitalDestination: {
-        hospitalName: hospitalName || destinationAddress,
-        address: destinationAddress,
-        coordinates: { lat: destinationLat, lng: destinationLng }
-      },
-      appointmentDate: new Date(`${scheduledDate}T${scheduledTime || '10:00'}`),
-      originalAmount: fareEstimate.breakdown.total,
-      finalAmount: fareEstimate.breakdown.total,
-      fareBreakdown: fareEstimate.breakdown,
-      scheduledTransport: {
-        isRecurring: isRecurring || false,
-        recurringDays: recurringDays || [],
-        requiresOxygen: requiresOxygen || false,
-        requiresAttendant: requiresAttendant || false,
-        mobilityType: mobilityType || 'walking',
-        specialEquipment: []
-      },
-      specialRequirements,
-      status: 'pending'
-    });
-
-    await booking.save();
-
-console.log(
-  '✅ Scheduled ambulance booking saved:',
-  booking.bookingId
-);
-
-// SMS notification must NOT make the booking fail.
-// If SMS provider/configuration is unavailable,
-// the booking should still be successfully created.
-try {
-  await smsService.sendAmbulanceSMS(
-    patientPhone,
-    'scheduled_confirmed',
-    {
-      date: new Date(scheduledDate).toLocaleDateString('en-IN'),
-      time: scheduledTime || 'Scheduled',
-      pickupAddress,
-      hospitalName:
-        hospitalName || destinationAddress,
-      vehicleType: ambulanceType,
-      bookingId: booking.bookingId
+    if (
+      lat === undefined ||
+      lng === undefined ||
+      lat === '' ||
+      lng === ''
+    ) {
+      return res.status(400).json({
+        success: false,
+        error: 'Coordinates required'
+      });
     }
-  );
 
-  console.log(
-    '✅ Scheduled ambulance SMS sent:',
-    booking.bookingId
-  );
+    const drivers =
+      await locationCache.ambulance.findNearbyDrivers(
+        parseFloat(lat),
+        parseFloat(lng),
+        parseFloat(radius),
+        {
+          vehicleType:
+            vehicleType || null,
 
-} catch (smsError) {
+          limit:
+            parseInt(limit, 10),
 
-  console.error(
-    '⚠️ Scheduled ambulance SMS failed:',
-    smsError.message
-  );
+          requireAvailable: true
+        }
+      );
 
-  // Do NOT return 500 here.
-  // The ambulance booking has already been saved.
-}
+    const results = [];
 
-return res.json({
-  success: true,
-  message: 'Ambulance scheduled successfully',
-  data: {
-    bookingId: booking.bookingId,
-    scheduledDate,
-    scheduledTime,
-    fareEstimate: fareEstimate.breakdown
-  }
-});
+    for (const driver of drivers) {
+
+      if (!driver.providerId) {
+        continue;
+      }
+
+      const fleet =
+        await AmbulanceFleet.findOne({
+          ownerType: 'ambulance_provider',
+          ownerId: driver.providerId,
+          isActive: true
+        });
+
+      if (!fleet) {
+        continue;
+      }
+
+      let vehicle = null;
+
+      // First try vehicleId if the driver location
+      // already contains it.
+      if (driver.vehicleId) {
+        vehicle =
+          fleet.vehicles.id(
+            driver.vehicleId
+          );
+      }
+
+      // Otherwise find by driver ID / vehicle number.
+      if (!vehicle && driver.vehicleNumber) {
+        vehicle =
+          fleet.vehicles.find(
+            v =>
+              v.vehicleNumber ===
+              driver.vehicleNumber
+          );
+      }
+
+      // Final fallback: match vehicle type.
+      if (!vehicle) {
+        vehicle =
+          fleet.vehicles.find(
+            v =>
+              String(v.type || '')
+                .toLowerCase() ===
+                String(driver.vehicleType || '')
+                .toLowerCase() &&
+              v.status === 'available'
+          );
+      }
+
+      if (!vehicle) {
+        continue;
+      }
+
+      results.push({
+        driverId:
+          driver.driverId,
+
+        providerId:
+          driver.providerId,
+
+        vehicleId:
+          vehicle._id,
+
+        vehicleNumber:
+          vehicle.vehicleNumber || '',
+
+        vehicleType:
+          vehicle.type || 'basic',
+
+        driverName:
+          vehicle.driverName || '',
+
+        driverPhone:
+          vehicle.driverPhone || '',
+
+        distance:
+          driver.distance,
+
+        rating:
+          driver.rating || 0,
+
+        estimatedETA:
+          Math.max(
+            5,
+            Math.round(
+              driver.distance * 2
+            )
+          ),
+
+        // PROVIDER-ENTERED PRICING
+        pricing: {
+          baseFare:
+            Number(vehicle.baseFare) || 0,
+
+          perKmRate:
+            Number(vehicle.perKmRate) || 0,
+
+          nightCharge:
+            Number(vehicle.nightCharge) || 0,
+
+          waitingCharge:
+            Number(vehicle.waitingCharge) || 0
+        }
+      });
+    }
+
+    return res.json({
+      success: true,
+      count: results.length,
+      data: results
+    });
+
   } catch (error) {
-  console.error('====================================');
-  console.error('❌ SCHEDULE TRANSPORT ERROR');
-  console.error('Name:', error.name);
-  console.error('Message:', error.message);
-  console.error('Stack:', error.stack);
-  console.error(
-    'Request body:',
-    JSON.stringify(req.body, null, 2)
-  );
-  console.error('====================================');
 
-  return res.status(500).json({
-    success: false,
-    error: error.message,
-    errorName: error.name
-  });
-}
+    console.error(
+      'NEARBY AMBULANCE ERROR:',
+      error
+    );
+
+    return res.status(500).json({
+      success: false,
+      error: error.message
+    });
+  }
 });
 
 // ─────────────────────────────────────────────
