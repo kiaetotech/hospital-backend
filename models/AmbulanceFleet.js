@@ -2,18 +2,33 @@ const mongoose = require('mongoose');
 
 const vehicleSchema = new mongoose.Schema({
   vehicleNumber: { type: String },
-  type: { type: String, enum: ['basic', 'icu', 'cardiac', 'ventilator', 'neonatal', 'wheelchair'], default: 'basic' },
+  type: { type: String, enum: ['basic', 'cardiac', 'ventilator', 'neonatal', 'wheelchair'], default: 'basic' },
   status: { type: String, enum: ['available', 'on_trip', 'maintenance', 'offline'], default: 'available' },
   make: { type: String },
   model: { type: String },
   year: { type: Number },
-  registrationDate: { type: Date }
+  registrationDate: { type: Date },
+  equipment: [{ type: String }],
+  baseFare: { type: Number },
+  perKmRate: { type: Number },
+  nightCharge: { type: Number },
+  waitingCharge: { type: Number },
+  driverName: { type: String },
+  driverPhone: { type: String },
+  driverLicense: { type: String },
+  driverExperience: { type: String },
+  location: {
+    lat: { type: Number, default: 0 },
+    lng: { type: Number, default: 0 }
+  },
+  city: { type: String }
 });
 
 const driverSchema = new mongoose.Schema({
   name: { type: String },
   phone: { type: String },
   licenseNumber: { type: String },
+  experience: { type: String },
   status: { type: String, enum: ['available', 'on_trip', 'offline'], default: 'available' },
   rating: { type: Number, default: 4.5 },
   totalTrips: { type: Number, default: 0 },

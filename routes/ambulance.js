@@ -823,14 +823,39 @@ router.put('/profile', authenticateToken, async (req, res) => {
   } catch (error) { res.status(500).json({ success: false, message: error.message }); }
 });
 
+router.put('/location', authenticateToken, async (req, res) => {
+  try {
+    const { lat, lng } = req.body;
+    await User.findByIdAndUpdate(req.user.id || req.user._id, {
+      'ambulanceCompanyAddress.coordinates': { lat: lat || 0, lng: lng || 0 }
+    });
+    res.json({ success: true, message: 'Location updated' });
+  } catch (error) { res.status(500).json({ success: false, message: error.message }); }
+});
+
 router.get('/vehicles', authenticateToken, async (req, res) => {
   try {
     const providerId = req.user.id || req.user._id;
     let fleet = await AmbulanceFleet.findOne({ ownerType: 'ambulance_provider', ownerId: providerId });
     if (fleet && fleet.vehicles && fleet.vehicles.length > 0) {
       return res.json({ success: true, data: fleet.vehicles.map(v => ({
-        _id: v._id, vehicleNumber: v.vehicleNumber, type: v.type || 'basic',
-        driver: v.driver || 'N/A', driverPhone: v.driverPhone || 'N/A', status: v.status || 'available'
+        _id: v._id,
+        vehicleNumber: v.vehicleNumber || 'N/A',
+        type: v.type || 'basic',
+        model: v.model || '',
+        year: v.year || '',
+        equipment: v.equipment || [],
+        baseFare: v.baseFare || 0,
+        perKmRate: v.perKmRate || 0,
+        nightCharge: v.nightCharge || 0,
+        waitingCharge: v.waitingCharge || 0,
+        driver: v.driverName || 'N/A',
+        driverPhone: v.driverPhone || 'N/A',
+        driverLicense: v.driverLicense || '',
+        driverExperience: v.driverExperience || '',
+        location: v.location || { lat: 0, lng: 0 },
+        city: v.city || '',
+        status: v.status || 'available'
       })) });
     }
     const user = await User.findById(providerId);
@@ -840,8 +865,13 @@ router.get('/vehicles', authenticateToken, async (req, res) => {
         _id: d._id || d.driverId,
         vehicleNumber: (user.ambulanceFleet && user.ambulanceFleet[i]) ? (user.ambulanceFleet[i].vehicleNumber || 'N/A') : 'N/A',
         type: fleetType,
+        model: '', year: '', equipment: [], baseFare: 0, perKmRate: 0, nightCharge: 0, waitingCharge: 0,
         driver: d.name || 'N/A',
         driverPhone: d.phone || 'N/A',
+        driverLicense: d.licenseNumber || '',
+        driverExperience: d.experience || '',
+        location: { lat: 0, lng: 0 },
+        city: '',
         status: 'available'
       })) });
     }
@@ -880,15 +910,23 @@ router.get('/drivers', authenticateToken, async (req, res) => {
     const providerId = req.user.id || req.user._id;
     let fleet = await AmbulanceFleet.findOne({ ownerType: 'ambulance_provider', ownerId: providerId });
     if (fleet && fleet.drivers && fleet.drivers.length > 0) {
-      return res.json({ success: true, data: fleet.drivers });
+      return res.json({ success: true, data: fleet.drivers.map(d => ({
+        _id: d._id,
+        name: d.name || 'N/A',
+        phone: d.phone || 'N/A',
+        licenseNumber: d.licenseNumber || 'N/A',
+        experience: d.experience || '',
+        status: d.status || 'available'
+      })) });
     }
-     const user = await User.findById(providerId);
+    const user = await User.findById(providerId);
     if (user && user.ambulanceDrivers && user.ambulanceDrivers.length > 0) {
       return res.json({ success: true, data: user.ambulanceDrivers.map(d => ({
         _id: d._id || d.driverId,
         name: d.name || 'N/A',
         phone: d.phone || 'N/A',
         licenseNumber: d.licenseNumber || 'N/A',
+        experience: d.experience || '',
         status: 'available'
       })) });
     }
