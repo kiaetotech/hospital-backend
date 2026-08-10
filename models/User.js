@@ -198,6 +198,7 @@ const userSchema = new mongoose.Schema({
     acceptsEmergency: { type: Boolean, default: true },
     acceptsScheduled: { type: Boolean, default: true },
     acceptsIntercity: { type: Boolean, default: false },
+    isAvailable: { type: Boolean, default: false },
     emergencyResponseTime: { type: Number },       // Target response time in minutes
     maxConcurrentEmergencies: { type: Number, default: 5 },
     autoAcceptEmergencies: { type: Boolean, default: false },
