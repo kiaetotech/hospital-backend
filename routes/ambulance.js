@@ -2160,8 +2160,8 @@ router.get('/search', async (req, res) => {
         
         if (!provider || !provider.isAvailable) continue;
 
-        const providerLat = provider.ambulanceCompanyAddress?.coordinates?.lat;
-        const providerLng = provider.ambulanceCompanyAddress?.coordinates?.lng;
+        const providerLat = provider.ambulanceSettings?.serviceAreaCoordinates?.center?.lat || provider.ambulanceCompanyAddress?.coordinates?.lat;
+        const providerLng = provider.ambulanceSettings?.serviceAreaCoordinates?.center?.lng || provider.ambulanceCompanyAddress?.coordinates?.lng;
 
         // Calculate distance if coordinates available
         let distance = null;
