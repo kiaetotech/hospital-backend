@@ -264,36 +264,6 @@ router.post('/update-location', authenticateToken, async (req, res) => {
 });
 
 // ─────────────────────────────────────────────
-// GET /ambulance/nearby-ambulances
-// 📍 Find nearby available ambulances
-// ─────────────────────────────────────────────
-router.get('/nearby-ambulances', async (req, res) => {
-  try {
-    const { lat, lng, radius = 5, vehicleType, limit = 10 } = req.query;
-    if (!lat || !lng) return res.status(400).json({ success: false, error: 'Coordinates required' });
-
-    const drivers = await locationCache.ambulance.findNearbyDrivers(
-      parseFloat(lat), parseFloat(lng), parseFloat(radius), {
-        vehicleType: vehicleType || null,
-        limit: parseInt(limit),
-        requireAvailable: true
-      }
-    );
-
-    return res.json({
-      success: true, count: drivers.length,
-      data: drivers.map(d => ({
-        driverId: d.driverId, distance: d.distance,
-        vehicleType: d.vehicleType, rating: d.rating || 0,
-        estimatedETA: Math.round(d.distance * 2)
-      }))
-    });
-  } catch (error) {
-    return res.status(500).json({ success: false, error: error.message });
-  }
-});
-
-// ─────────────────────────────────────────────
 // GET /ambulance/active-emergency/:bookingId
 // 📍 Live tracking for active emergency
 // ─────────────────────────────────────────────
@@ -518,6 +488,478 @@ router.get('/nearby-ambulances', async (req, res) => {
     console.error(
       'NEARBY AMBULANCE ERROR:',
       error
+    );
+
+    return res.status(500).json({
+      success: false,
+      error: error.message
+    });
+  }
+});
+
+// ============================================
+// POST /ambulance/schedule-transport
+// Schedule non-emergency ambulance
+// Uses ONLY provider-entered vehicle pricing
+// ============================================
+router.post('/schedule-transport', authenticateToken, async (req, res) => {
+  try {
+    const {
+      patientName,
+      patientPhone,
+      patientAge,
+      patientGender,
+
+      pickupAddress,
+      pickupLat,
+      pickupLng,
+
+      destinationAddress,
+      destinationLat,
+      destinationLng,
+
+      hospitalName,
+      ambulanceType = 'basic',
+
+      scheduledDate,
+      scheduledTime,
+
+      requiresOxygen,
+      requiresAttendant,
+      mobilityType,
+
+      specialRequirements,
+      isRecurring,
+      recurringDays,
+
+      providerId,
+      vehicleId
+    } = req.body;
+
+    // --------------------------------------------
+    // BASIC VALIDATION
+    // --------------------------------------------
+    const patientLat = Number(pickupLat);
+    const patientLng = Number(pickupLng);
+    const destinationLatNum = Number(destinationLat);
+    const destinationLngNum = Number(destinationLng);
+
+    if (
+      !Number.isFinite(patientLat) ||
+      !Number.isFinite(patientLng) ||
+      !Number.isFinite(destinationLatNum) ||
+      !Number.isFinite(destinationLngNum)
+    ) {
+      return res.status(400).json({
+        success: false,
+        error: 'Valid pickup and destination coordinates are required'
+      });
+    }
+
+    if (!providerId) {
+      return res.status(400).json({
+        success: false,
+        error: 'Ambulance provider is required'
+      });
+    }
+
+    if (!vehicleId) {
+      return res.status(400).json({
+        success: false,
+        error: 'Ambulance vehicle is required'
+      });
+    }
+
+    if (!scheduledDate) {
+      return res.status(400).json({
+        success: false,
+        error: 'Scheduled date is required'
+      });
+    }
+
+    // --------------------------------------------
+    // FIND THE AUTHORITATIVE PROVIDER FLEET
+    // --------------------------------------------
+    const fleet = await AmbulanceFleet.findOne({
+      ownerType: 'ambulance_provider',
+      ownerId: providerId,
+      isActive: true,
+      isVerified: true
+    });
+
+    if (!fleet) {
+      return res.status(404).json({
+        success: false,
+        error: 'Selected ambulance provider is not available'
+      });
+    }
+
+    // --------------------------------------------
+    // FIND EXACT VEHICLE SELECTED BY PATIENT
+    // --------------------------------------------
+    const vehicle = fleet.vehicles.id(vehicleId);
+
+    if (!vehicle) {
+      return res.status(404).json({
+        success: false,
+        error: 'Selected ambulance vehicle was not found'
+      });
+    }
+
+    // --------------------------------------------
+    // VEHICLE MUST ACTUALLY BE AVAILABLE
+    // --------------------------------------------
+    if (vehicle.status !== 'available') {
+      return res.status(409).json({
+        success: false,
+        error: 'Selected ambulance is no longer available. Please select another ambulance.'
+      });
+    }
+
+    // --------------------------------------------
+    // PROVIDER-ENTERED PRICING
+    // NEVER USE CLIENT-SENT PRICES
+    // NEVER USE DUMMY BASE FARE
+    // --------------------------------------------
+    const baseFare = Number(vehicle.baseFare);
+    const perKmRate = Number(vehicle.perKmRate);
+    const nightCharge = Number(vehicle.nightCharge || 0);
+    const waitingCharge = Number(vehicle.waitingCharge || 0);
+
+    if (
+      !Number.isFinite(baseFare) ||
+      !Number.isFinite(perKmRate) ||
+      baseFare < 0 ||
+      perKmRate < 0 ||
+      nightCharge < 0 ||
+      waitingCharge < 0
+    ) {
+      return res.status(422).json({
+        success: false,
+        error: 'Selected ambulance provider has not configured valid pricing'
+      });
+    }
+
+    // --------------------------------------------
+    // CALCULATE DISTANCE
+    // Server calculates this independently.
+    // --------------------------------------------
+    const earthRadiusKm = 6371;
+
+    const dLat =
+      ((destinationLatNum - patientLat) * Math.PI) / 180;
+
+    const dLng =
+      ((destinationLngNum - patientLng) * Math.PI) / 180;
+
+    const a =
+      Math.sin(dLat / 2) *
+        Math.sin(dLat / 2) +
+      Math.cos((patientLat * Math.PI) / 180) *
+        Math.cos((destinationLatNum * Math.PI) / 180) *
+        Math.sin(dLng / 2) *
+        Math.sin(dLng / 2);
+
+    const c =
+      2 *
+      Math.atan2(
+        Math.sqrt(a),
+        Math.sqrt(1 - a)
+      );
+
+    const distanceKm =
+      earthRadiusKm * c;
+
+    // --------------------------------------------
+    // NIGHT CHARGE
+    // Uses provider's configured nightCharge.
+    // --------------------------------------------
+    const scheduledDateTime = new Date(
+      `${scheduledDate}T${scheduledTime || '10:00'}`
+    );
+
+    if (Number.isNaN(scheduledDateTime.getTime())) {
+      return res.status(400).json({
+        success: false,
+        error: 'Invalid scheduled date or time'
+      });
+    }
+
+    const scheduledHour =
+      scheduledDateTime.getHours();
+
+    const isNightTime =
+      scheduledHour >= 22 ||
+      scheduledHour < 6;
+
+    const appliedNightCharge =
+      isNightTime
+        ? nightCharge
+        : 0;
+
+    // --------------------------------------------
+    // WAITING CHARGE
+    // No waiting minutes are requested by the
+    // current scheduling form, therefore no
+    // waiting charge is added to the booking.
+    // --------------------------------------------
+    const waitingMinutes = 0;
+
+    const appliedWaitingCharge =
+      waitingCharge * waitingMinutes;
+
+    // --------------------------------------------
+    // FINAL PROVIDER FARE
+    // --------------------------------------------
+    const distanceCharge =
+      distanceKm * perKmRate;
+
+    const totalFare =
+      baseFare +
+      distanceCharge +
+      appliedNightCharge +
+      appliedWaitingCharge;
+
+    const roundedTotalFare =
+      Math.round(totalFare * 100) / 100;
+
+    const roundedDistance =
+      Math.round(distanceKm * 100) / 100;
+
+    // --------------------------------------------
+    // CREATE BOOKING
+    // --------------------------------------------
+    const booking = new Booking({
+      userId:
+        req.user.userId ||
+        req.user.id ||
+        req.user._id,
+
+      bookingType: 'ambulance',
+      emergencyType: 'scheduled',
+
+      patientName,
+      patientPhone,
+      patientAge,
+      patientGender,
+
+      ambulanceType:
+        vehicle.type ||
+        ambulanceType ||
+        'basic',
+
+      providerId: fleet.ownerId,
+      vehicleId: vehicle._id,
+
+      providerName:
+        fleet.providerName || '',
+
+      vehicleNumber:
+        vehicle.vehicleNumber || '',
+
+      driverName:
+        vehicle.driverName || '',
+
+      driverPhone:
+        vehicle.driverPhone || '',
+
+      pickupAddress,
+
+      pickupCoordinates: {
+        lat: patientLat,
+        lng: patientLng
+      },
+
+      dropAddress:
+        destinationAddress,
+
+      hospitalDestination: {
+        hospitalName:
+          hospitalName ||
+          destinationAddress,
+
+        address:
+          destinationAddress,
+
+        coordinates: {
+          lat: destinationLatNum,
+          lng: destinationLngNum
+        }
+      },
+
+      appointmentDate:
+        scheduledDateTime,
+
+      originalAmount:
+        roundedTotalFare,
+
+      finalAmount:
+        roundedTotalFare,
+
+      fareBreakdown: {
+        baseFare,
+        distanceKm: roundedDistance,
+        perKmRate,
+        distanceCharge:
+          Math.round(distanceCharge * 100) / 100,
+
+        nightCharge:
+          appliedNightCharge,
+
+        waitingCharge:
+          appliedWaitingCharge,
+
+        waitingMinutes,
+
+        total:
+          roundedTotalFare
+      },
+
+      scheduledTransport: {
+        isRecurring:
+          Boolean(isRecurring),
+
+        recurringDays:
+          Array.isArray(recurringDays)
+            ? recurringDays
+            : [],
+
+        requiresOxygen:
+          Boolean(requiresOxygen),
+
+        requiresAttendant:
+          Boolean(requiresAttendant),
+
+        mobilityType:
+          mobilityType || 'walking',
+
+        specialEquipment: []
+      },
+
+      specialRequirements,
+
+      status: 'pending'
+    });
+
+    await booking.save();
+
+    console.log(
+      'SCHEDULED AMBULANCE BOOKING CREATED:',
+      {
+        bookingId: booking.bookingId,
+        providerId: String(fleet.ownerId),
+        vehicleId: String(vehicle._id),
+        vehicleNumber: vehicle.vehicleNumber,
+        distanceKm: roundedDistance,
+        totalFare: roundedTotalFare
+      }
+    );
+
+    // --------------------------------------------
+    // SMS
+    // SMS failure must NOT cancel the booking.
+    // --------------------------------------------
+    try {
+      await smsService.sendAmbulanceSMS(
+        patientPhone,
+        'scheduled_confirmed',
+        {
+          date:
+            scheduledDateTime.toLocaleDateString('en-IN'),
+
+          time:
+            scheduledTime || 'Scheduled',
+
+          pickupAddress,
+
+          hospitalName:
+            hospitalName ||
+            destinationAddress,
+
+          vehicleType:
+            vehicle.type ||
+            ambulanceType,
+
+          bookingId:
+            booking.bookingId
+        }
+      );
+
+      console.log(
+        'Scheduled ambulance SMS sent:',
+        booking.bookingId
+      );
+
+    } catch (smsError) {
+      console.error(
+        'Scheduled ambulance SMS failed:',
+        smsError.message
+      );
+    }
+
+    // --------------------------------------------
+    // RESPONSE
+    // --------------------------------------------
+    return res.json({
+      success: true,
+      message:
+        'Ambulance scheduled successfully',
+
+      data: {
+        bookingId:
+          booking.bookingId,
+
+        providerId:
+          String(fleet.ownerId),
+
+        vehicleId:
+          String(vehicle._id),
+
+        vehicleNumber:
+          vehicle.vehicleNumber || '',
+
+        providerName:
+          fleet.providerName || '',
+
+        ambulanceType:
+          vehicle.type || ambulanceType,
+
+        scheduledDate,
+        scheduledTime,
+
+        distanceKm:
+          roundedDistance,
+
+        fareEstimate: {
+          baseFare,
+          perKmRate,
+          distanceCharge:
+            Math.round(distanceCharge * 100) / 100,
+
+          nightCharge:
+            appliedNightCharge,
+
+          waitingCharge:
+            appliedWaitingCharge,
+
+          total:
+            roundedTotalFare
+        }
+      }
+    });
+
+  } catch (error) {
+    console.error(
+      '===================================='
+    );
+
+    console.error(
+      'SCHEDULE TRANSPORT ERROR:',
+      error
+    );
+
+    console.error(
+      '===================================='
     );
 
     return res.status(500).json({
@@ -1685,6 +2127,125 @@ router.patch('/fix-type-raw', authenticateToken, async (req, res) => {
     );
     res.json({ success: true, matched: result.matchedCount, modified: result.modifiedCount });
   } catch (error) { res.status(500).json({ success: false, message: error.message }); }
+});
+
+// ============================================
+// SEARCH AVAILABLE AMBULANCES (DATABASE + CACHE)
+// ============================================
+router.get('/search', async (req, res) => {
+  try {
+    const { lat, lng, city, type, radius = 25, limit = 20 } = req.query;
+
+    let results = [];
+
+    // 1. Search AmbulanceFleet for available vehicles
+    const fleetQuery = {
+      'vehicles.status': 'available'
+    };
+    
+    if (city) {
+      fleetQuery.city = { $regex: city, $options: 'i' };
+    }
+
+    const fleets = await AmbulanceFleet.find(fleetQuery)
+      .populate('ownerId', 'name phone email ambulanceCompanyAddress ambulanceSettings')
+      .limit(parseInt(limit));
+
+    for (const fleet of fleets) {
+      const availableVehicles = fleet.vehicles.filter(v => v.status === 'available');
+      
+      for (const vehicle of availableVehicles) {
+        // Get provider location from User model
+        const provider = await User.findById(fleet.ownerId).select('ambulanceCompanyAddress isAvailable');
+        
+        if (!provider || !provider.isAvailable) continue;
+
+        const providerLat = provider.ambulanceCompanyAddress?.coordinates?.lat;
+        const providerLng = provider.ambulanceCompanyAddress?.coordinates?.lng;
+
+        // Calculate distance if coordinates available
+        let distance = null;
+        if (lat && lng && providerLat && providerLng) {
+          const R = 6371;
+          const dLat = (providerLat - parseFloat(lat)) * Math.PI / 180;
+          const dLng = (providerLng - parseFloat(lng)) * Math.PI / 180;
+          const a = Math.sin(dLat/2) ** 2 + Math.cos(parseFloat(lat) * Math.PI/180) * Math.cos(providerLat * Math.PI/180) * Math.sin(dLng/2) ** 2;
+          distance = Math.round(R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a)) * 100) / 100;
+        }
+
+        // Filter by type if specified
+        if (type && type !== 'all' && vehicle.type !== type) continue;
+
+        // Filter by radius if coordinates available
+        if (distance !== null && distance > parseFloat(radius)) continue;
+
+        results.push({
+          providerId: fleet.ownerId,
+          providerName: fleet.providerName,
+          providerPhone: fleet.contactPhone,
+          vehicleId: vehicle._id,
+          vehicleNumber: vehicle.vehicleNumber,
+          vehicleType: vehicle.type,
+          driverName: vehicle.driverName || 'Not assigned',
+          driverPhone: vehicle.driverPhone || '',
+          equipment: vehicle.equipment || [],
+          baseFare: vehicle.baseFare || 0,
+          perKmRate: vehicle.perKmRate || 0,
+          nightCharge: vehicle.nightCharge || 0,
+          waitingCharge: vehicle.waitingCharge || 0,
+          distance: distance,
+          estimatedETA: distance ? Math.round(distance * 2) : null,
+          providerLat,
+          providerLng,
+          status: 'available'
+        });
+      }
+    }
+
+    // 2. Also check locationCache for live drivers
+    if (lat && lng) {
+      try {
+        const liveDrivers = await locationCache.ambulance.findNearbyDrivers(
+          parseFloat(lat), parseFloat(lng), parseFloat(radius), {
+            limit: parseInt(limit),
+            requireAvailable: true
+          }
+        );
+
+        for (const driver of liveDrivers) {
+          // Check if already in results
+          const exists = results.find(r => 
+            r.vehicleId?.toString() === driver.vehicleId?.toString()
+          );
+          if (!exists) {
+            results.push({
+              driverId: driver.driverId,
+              vehicleType: driver.vehicleType || 'basic',
+              distance: driver.distance,
+              estimatedETA: Math.round(driver.distance * 2),
+              rating: driver.rating || 0,
+              status: 'live'
+            });
+          }
+        }
+      } catch (cacheErr) {
+        console.log('Location cache search skipped:', cacheErr.message);
+      }
+    }
+
+    // Sort by distance
+    results.sort((a, b) => (a.distance || 999) - (b.distance || 999));
+
+    res.json({
+      success: true,
+      count: results.length,
+      data: results.slice(0, parseInt(limit))
+    });
+
+  } catch (error) {
+    console.error('Ambulance search error:', error);
+    res.status(500).json({ success: false, message: error.message });
+  }
 });
 
 module.exports = router;// fix 
