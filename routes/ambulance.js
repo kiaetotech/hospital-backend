@@ -1454,7 +1454,7 @@ router.get('/profile', authenticateToken, async (req, res) => {
         serviceAreas,
 
         isAvailable:
-          user.isAvailable === true
+          user.ambulanceSettings?.isAvailable === true
       }
     });
 
@@ -1652,8 +1652,11 @@ router.put('/profile', authenticateToken, async (req, res) => {
     // AVAILABILITY
     // ==========================================
 
-    if (isAvailable !== undefined) {
-      user.isAvailable = Boolean(isAvailable);
+        if (isAvailable !== undefined) {
+      if (!user.ambulanceSettings) {
+        user.ambulanceSettings = {};
+      }
+      user.ambulanceSettings.isAvailable = Boolean(isAvailable);
     }
 
     // ==========================================
@@ -2158,7 +2161,7 @@ router.get('/search', async (req, res) => {
         // Get provider location from User model
         const provider = await User.findById(fleet.ownerId).select('ambulanceCompanyAddress isAvailable');
         
-        if (!provider || !provider.isAvailable) continue;
+                if (!provider || !provider.ambulanceSettings?.isAvailable) continue;
 
         const providerLat = provider.ambulanceSettings?.serviceAreaCoordinates?.center?.lat || provider.ambulanceCompanyAddress?.coordinates?.lat;
         const providerLng = provider.ambulanceSettings?.serviceAreaCoordinates?.center?.lng || provider.ambulanceCompanyAddress?.coordinates?.lng;
