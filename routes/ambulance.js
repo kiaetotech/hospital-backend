@@ -2159,7 +2159,7 @@ router.get('/search', async (req, res) => {
       
       for (const vehicle of availableVehicles) {
         // Get provider location from User model
-        const provider = await User.findById(fleet.ownerId).select('ambulanceCompanyAddress isAvailable');
+        const provider = await User.findById(fleet.ownerId).select('ambulanceCompanyAddress ambulanceSettings.isAvailable');
         
                 if (!provider || !provider.ambulanceSettings?.isAvailable) continue;
 
