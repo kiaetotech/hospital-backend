@@ -762,11 +762,16 @@ router.post('/schedule-transport', authenticateToken, async (req, res) => {
       driverPhone:
         vehicle.driverPhone || '',
 
-      pickupAddress,
+            pickupAddress,
 
       pickupCoordinates: {
         lat: patientLat,
         lng: patientLng
+      },
+
+      location: {
+        type: 'Point',
+        coordinates: [patientLng, patientLat]
       },
 
       dropAddress:
