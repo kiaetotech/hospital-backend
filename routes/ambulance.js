@@ -581,11 +581,10 @@ router.post('/schedule-transport', authenticateToken, async (req, res) => {
     // FIND THE AUTHORITATIVE PROVIDER FLEET
     // --------------------------------------------
     const fleet = await AmbulanceFleet.findOne({
-      ownerType: 'ambulance_provider',
-      ownerId: providerId,
-      isActive: true,
-      isVerified: true
-    });
+  ownerType: 'ambulance_provider',
+  ownerId: providerId,
+  isActive: true
+});
 
     if (!fleet) {
       return res.status(404).json({
