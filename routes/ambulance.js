@@ -726,6 +726,29 @@ router.post('/schedule-transport', authenticateToken, async (req, res) => {
       Math.round(distanceKm * 100) / 100;
 
     // --------------------------------------------
+    // PREVENT DOUBLE BOOKING OF THE SAME VEHICLE
+    // --------------------------------------------
+    const appointmentDate = scheduledDateTime;
+    const windowStart = new Date(appointmentDate.getTime() - 2 * 60 * 60 * 1000);
+    const windowEnd = new Date(appointmentDate.getTime() + 2 * 60 * 60 * 1000);
+
+    const conflictingBooking = await Booking.findOne({
+      providerId: fleet.ownerId,
+      vehicleId: vehicle._id,
+      bookingType: 'ambulance',
+      emergencyType: 'scheduled',
+      status: { $in: ['pending', 'confirmed', 'driver_assigned', 'driver_en_route', 'driver_arrived', 'patient_onboard'] },
+      appointmentDate: { $gte: windowStart, $lte: windowEnd }
+    }).lean();
+
+    if (conflictingBooking) {
+      return res.status(409).json({
+        success: false,
+        error: 'This ambulance is already booked around the selected time. Please select another ambulance or time.'
+      });
+    }
+
+    // --------------------------------------------
     // CREATE BOOKING
     // --------------------------------------------
     const booking = new Booking({
@@ -970,6 +993,53 @@ router.post('/schedule-transport', authenticateToken, async (req, res) => {
       success: false,
       error: error.message
     });
+  }
+});
+
+// ─────────────────────────────────────────────
+// POST /ambulance/cancel-booking/:bookingId
+// Cancel a patient's scheduled ambulance booking.
+// Refund amount is calculated by Booking.refundEligibility.
+// A payment gateway refund, if applicable, can be processed by the payment service.
+// ─────────────────────────────────────────────
+router.post('/cancel-booking/:bookingId', authenticateToken, async (req, res) => {
+  try {
+    const userId = String(req.user.userId || req.user.id || req.user._id);
+    const booking = await Booking.findOne({
+      bookingId: req.params.bookingId,
+      userId
+    });
+
+    if (!booking) {
+      return res.status(404).json({ success: false, error: 'Booking not found' });
+    }
+
+    if (!['ambulance', 'ambulance_emergency'].includes(booking.bookingType)) {
+      return res.status(400).json({ success: false, error: 'This is not an ambulance booking' });
+    }
+
+    if (!['pending', 'confirmed'].includes(booking.status)) {
+      return res.status(409).json({ success: false, error: `Booking cannot be cancelled in status: ${booking.status}` });
+    }
+
+    const reason = String(req.body?.reason || 'Cancelled by patient').trim();
+    await booking.cancelBooking(reason, userId);
+
+    return res.json({
+      success: true,
+      message: 'Ambulance booking cancelled',
+      data: {
+        bookingId: booking.bookingId,
+        status: booking.status,
+        refundAmount: booking.cancellation?.refundAmount || 0,
+        refundPercentage: booking.cancellation?.refundPercentage || 0,
+        cancellationFee: booking.cancellation?.cancellationFee || 0,
+        refundStatus: booking.cancellation?.refundStatus || 'not_applicable'
+      }
+    });
+  } catch (error) {
+    console.error('Ambulance cancellation error:', error);
+    return res.status(500).json({ success: false, error: error.message });
   }
 });
 

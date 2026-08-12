@@ -724,6 +724,7 @@ bookingSchema.methods.cancelBooking = async function(reason, cancelledBy) {
     refundStatus: refundInfo.eligible ? 'pending' : 'not_applicable'
   };
   
+  this.statusHistory = this.statusHistory || [];
   this.statusHistory.push({
     status: 'cancelled',
     timestamp: new Date(),
