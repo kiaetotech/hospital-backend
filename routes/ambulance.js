@@ -242,23 +242,69 @@ router.post('/notify-hospital', async (req, res) => {
 // ============================================
 
 // ─────────────────────────────────────────────
+// Resolve a driver to the authenticated provider's fleet.
+async function resolveDriverAssignment(driverId, reqUser = {}) {
+  const id = String(driverId || reqUser.driverId || '').trim();
+  if (!id) return null;
+  const authUserId = reqUser.id || reqUser._id || reqUser.userId;
+  let providerUser = null;
+  if (authUserId) {
+    providerUser = await User.findOne({ _id: authUserId, 'ambulanceDrivers.driverId': id }).lean();
+  }
+  if (!providerUser) {
+    providerUser = await User.findOne({ 'ambulanceDrivers.driverId': id }).lean();
+  }
+  if (!providerUser) return null;
+  const driver = (providerUser.ambulanceDrivers || []).find(d => String(d.driverId || '') === id);
+  if (!driver) return null;
+  const fleet = await AmbulanceFleet.findOne({
+    ownerType: 'ambulance_provider', ownerId: providerUser._id, isActive: true
+  });
+  let vehicle = null;
+  if (fleet) {
+    const assigned = String(driver.assignedVehicle || '').trim();
+    if (assigned) {
+      vehicle = fleet.vehicles.id(assigned);
+      if (!vehicle) vehicle = fleet.vehicles.find(v => String(v.vehicleNumber || '').trim().toLowerCase() === assigned.toLowerCase());
+    }
+    if (!vehicle && driver.name) {
+      vehicle = fleet.vehicles.find(v => String(v.driverName || '').trim().toLowerCase() === String(driver.name || '').trim().toLowerCase());
+    }
+  }
+  return { providerUser, driver, providerId: String(providerUser._id), fleet, vehicle };
+}
+
 // POST /ambulance/update-location
 // 📍 Driver GPS update
 // ─────────────────────────────────────────────
 router.post('/update-location', authenticateToken, async (req, res) => {
   try {
     const { lat, lng, speed, heading, isAvailable, isOnTrip, tripId } = req.body;
-    const driverId = req.body.driverId || req.user.driverId;
-    if (!lat || !lng) return res.status(400).json({ success: false, error: 'Coordinates required' });
+    const driverId = String(req.body.driverId || req.user.driverId || '').trim();
+    if (!driverId) return res.status(400).json({ success: false, error: 'Driver ID required' });
 
-    await locationCache.ambulance.updateDriverLocation(driverId, lat, lng, {
-      speed, heading, isAvailable: isAvailable !== false,
-      isOnTrip: isOnTrip || false, tripId: tripId || '',
-      vehicleType: req.body.vehicleType || 'basic',
-      providerId: req.body.providerId || ''
+    const numericLat = Number(lat);
+    const numericLng = Number(lng);
+    if (!Number.isFinite(numericLat) || !Number.isFinite(numericLng) || numericLat < -90 || numericLat > 90 || numericLng < -180 || numericLng > 180) {
+      return res.status(400).json({ success: false, error: 'Valid coordinates required' });
+    }
+
+    const assignment = await resolveDriverAssignment(driverId, req.user);
+    if (!assignment) return res.status(403).json({ success: false, error: 'Driver is not registered under the authenticated provider' });
+
+    const vehicleType = assignment.vehicle?.type || assignment.driver.vehicleType || req.body.vehicleType || 'basic';
+    await locationCache.ambulance.updateDriverLocation(driverId, numericLat, numericLng, {
+      speed: Number(speed || 0), heading: Number(heading || 0),
+      isAvailable: isAvailable !== false, isOnTrip: isOnTrip === true,
+      tripId: tripId || '', vehicleType, providerId: assignment.providerId
     });
-    return res.json({ success: true, message: 'Location updated' });
+
+    return res.json({
+      success: true, message: 'Location updated',
+      data: { driverId, providerId: assignment.providerId, vehicleId: assignment.vehicle?._id || null, vehicleNumber: assignment.vehicle?.vehicleNumber || '', vehicleType, lat: numericLat, lng: numericLng }
+    });
   } catch (error) {
+    console.error('AMBULANCE LOCATION UPDATE ERROR:', error);
     return res.status(500).json({ success: false, error: error.message });
   }
 });
@@ -405,6 +451,15 @@ router.get('/nearby-ambulances', async (req, res) => {
               v.vehicleNumber ===
               driver.vehicleNumber
           );
+      }
+
+      // Existing provider data stores driverId on User and driverName on the vehicle.
+      if (!vehicle && driver.driverId) {
+        const owner = await User.findOne({ _id: driver.providerId, 'ambulanceDrivers.driverId': driver.driverId }).select('ambulanceDrivers').lean();
+        const driverRecord = owner?.ambulanceDrivers?.find(d => String(d.driverId || '') === String(driver.driverId));
+        if (driverRecord?.name) {
+          vehicle = fleet.vehicles.find(v => String(v.driverName || '').trim().toLowerCase() === String(driverRecord.name).trim().toLowerCase() && v.status === 'available');
+        }
       }
 
       // Final fallback: match vehicle type.
@@ -726,29 +781,6 @@ router.post('/schedule-transport', authenticateToken, async (req, res) => {
       Math.round(distanceKm * 100) / 100;
 
     // --------------------------------------------
-    // PREVENT DOUBLE BOOKING OF THE SAME VEHICLE
-    // --------------------------------------------
-    const appointmentDate = scheduledDateTime;
-    const windowStart = new Date(appointmentDate.getTime() - 2 * 60 * 60 * 1000);
-    const windowEnd = new Date(appointmentDate.getTime() + 2 * 60 * 60 * 1000);
-
-    const conflictingBooking = await Booking.findOne({
-      providerId: fleet.ownerId,
-      vehicleId: vehicle._id,
-      bookingType: 'ambulance',
-      emergencyType: 'scheduled',
-      status: { $in: ['pending', 'confirmed', 'driver_assigned', 'driver_en_route', 'driver_arrived', 'patient_onboard'] },
-      appointmentDate: { $gte: windowStart, $lte: windowEnd }
-    }).lean();
-
-    if (conflictingBooking) {
-      return res.status(409).json({
-        success: false,
-        error: 'This ambulance is already booked around the selected time. Please select another ambulance or time.'
-      });
-    }
-
-    // --------------------------------------------
     // CREATE BOOKING
     // --------------------------------------------
     const booking = new Booking({
@@ -997,53 +1029,6 @@ router.post('/schedule-transport', authenticateToken, async (req, res) => {
 });
 
 // ─────────────────────────────────────────────
-// POST /ambulance/cancel-booking/:bookingId
-// Cancel a patient's scheduled ambulance booking.
-// Refund amount is calculated by Booking.refundEligibility.
-// A payment gateway refund, if applicable, can be processed by the payment service.
-// ─────────────────────────────────────────────
-router.post('/cancel-booking/:bookingId', authenticateToken, async (req, res) => {
-  try {
-    const userId = String(req.user.userId || req.user.id || req.user._id);
-    const booking = await Booking.findOne({
-      bookingId: req.params.bookingId,
-      userId
-    });
-
-    if (!booking) {
-      return res.status(404).json({ success: false, error: 'Booking not found' });
-    }
-
-    if (!['ambulance', 'ambulance_emergency'].includes(booking.bookingType)) {
-      return res.status(400).json({ success: false, error: 'This is not an ambulance booking' });
-    }
-
-    if (!['pending', 'confirmed'].includes(booking.status)) {
-      return res.status(409).json({ success: false, error: `Booking cannot be cancelled in status: ${booking.status}` });
-    }
-
-    const reason = String(req.body?.reason || 'Cancelled by patient').trim();
-    await booking.cancelBooking(reason, userId);
-
-    return res.json({
-      success: true,
-      message: 'Ambulance booking cancelled',
-      data: {
-        bookingId: booking.bookingId,
-        status: booking.status,
-        refundAmount: booking.cancellation?.refundAmount || 0,
-        refundPercentage: booking.cancellation?.refundPercentage || 0,
-        cancellationFee: booking.cancellation?.cancellationFee || 0,
-        refundStatus: booking.cancellation?.refundStatus || 'not_applicable'
-      }
-    });
-  } catch (error) {
-    console.error('Ambulance cancellation error:', error);
-    return res.status(500).json({ success: false, error: error.message });
-  }
-});
-
-// ─────────────────────────────────────────────
 // GET /ambulance/scheduled-bookings
 // 📅 Get user's scheduled ambulance bookings
 // ─────────────────────────────────────────────
@@ -1162,8 +1147,10 @@ router.get('/trip-sheet/:bookingId', async (req, res) => {
 // ─────────────────────────────────────────────
 router.get('/driver/dashboard', authenticateToken, async (req, res) => {
   try {
-    const driverId = req.query.driverId || req.user.driverId;
+    const driverId = String(req.query.driverId || req.user.driverId || '').trim();
     if (!driverId) return res.status(400).json({ success: false, error: 'Driver ID required' });
+    const assignment = await resolveDriverAssignment(driverId, req.user);
+    if (!assignment) return res.status(403).json({ success: false, error: 'Driver is not registered under the authenticated provider' });
 
     const today = new Date();
     today.setHours(0, 0, 0, 0);
@@ -1190,7 +1177,19 @@ router.get('/driver/dashboard', authenticateToken, async (req, res) => {
         totalTrips,
         recentTrips,
         currentLocation: driverLocation,
-        rating: req.user.driverRating || 0
+        rating: assignment.driver.rating || req.user.driverRating || 0,
+        driverId,
+        providerId: assignment.providerId,
+        driverName: assignment.driver.name || '',
+        vehicleId: assignment.vehicle?._id || null,
+        vehicleNumber: assignment.vehicle?.vehicleNumber || '',
+        vehicleType: assignment.vehicle?.type || 'basic',
+        vehicle: assignment.vehicle ? {
+          _id: assignment.vehicle._id, vehicleNumber: assignment.vehicle.vehicleNumber || '',
+          type: assignment.vehicle.type || 'basic', status: assignment.vehicle.status || 'available',
+          baseFare: Number(assignment.vehicle.baseFare) || 0, perKmRate: Number(assignment.vehicle.perKmRate) || 0,
+          nightCharge: Number(assignment.vehicle.nightCharge) || 0, waitingCharge: Number(assignment.vehicle.waitingCharge) || 0
+        } : null
       }
     });
   } catch (error) {
@@ -1204,9 +1203,11 @@ router.get('/driver/dashboard', authenticateToken, async (req, res) => {
 // ─────────────────────────────────────────────
 router.post('/driver/toggle-availability', authenticateToken, async (req, res) => {
   try {
-    const driverId = req.body.driverId || req.user.driverId;
+    const driverId = String(req.body.driverId || req.user.driverId || '').trim();
     const { isAvailable } = req.body;
-
+    if (!driverId || typeof isAvailable !== 'boolean') return res.status(400).json({ success: false, error: 'Driver ID and availability are required' });
+    const assignment = await resolveDriverAssignment(driverId, req.user);
+    if (!assignment) return res.status(403).json({ success: false, error: 'Driver is not registered under the authenticated provider' });
     await locationCache.ambulance.updateDriverStatus(driverId, { isAvailable });
 
     return res.json({ success: true, isAvailable });

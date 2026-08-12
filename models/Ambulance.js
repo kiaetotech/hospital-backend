@@ -1,21 +1,36 @@
 const mongoose = require('mongoose');
 
 const ambulanceSchema = new mongoose.Schema({
-  providerName: { type: String, required: true },
-  vehicleNumber: { type: String, required: true, unique: true },
-  type: { type: String, enum: ['basic', 'icu', 'cardiac'], default: 'basic' },
-  driverName: { type: String, required: true },
-  driverPhone: { type: String, required: true },
+  providerId: { type: mongoose.Schema.Types.ObjectId, ref: 'User', required: true },
+  providerName: { type: String },
+  vehicleNumber: { type: String, required: true },
+  type: { type: String, enum: ['basic', 'cardiac', 'ventilator', 'neonatal', 'wheelchair'], default: 'basic' },
+  model: { type: String },
+  year: { type: String },
+  equipment: [{ type: String }],
+  driverName: { type: String },
+  driverPhone: { type: String },
+  driverLicense: { type: String },
+  driverExperience: { type: String },
   driverRating: { type: Number, default: 4.5 },
-  basePrice: { type: Number, default: 500 },
-  pricePerKm: { type: Number, default: 20 },
+  baseFare: { type: Number, default: 500 },
+  perKmRate: { type: Number, default: 25 },
+  nightCharge: { type: Number, default: 200 },
+  waitingCharge: { type: Number, default: 100 },
   location: {
-    lat: { type: Number },
-    lng: { type: Number }
+    lat: { type: Number, default: 0 },
+    lng: { type: Number, default: 0 },
+    updatedAt: { type: Date }
   },
   isAvailable: { type: Boolean, default: true },
-  city: { type: String, required: true },
-  createdAt: { type: Date, default: Date.now }
+  city: { type: String },
+  serviceAreas: [{ type: String }],
+  status: { type: String, enum: ['available', 'on_trip', 'offline', 'maintenance'], default: 'available' },
+  createdAt: { type: Date, default: Date.now },
+  updatedAt: { type: Date, default: Date.now }
 });
+
+ambulanceSchema.index({ city: 1, type: 1, isAvailable: 1 });
+ambulanceSchema.index({ 'location': '2dsphere' });
 
 module.exports = mongoose.model('Ambulance', ambulanceSchema);
