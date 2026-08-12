@@ -3,6 +3,7 @@ const router = express.Router();
 const bcrypt = require('bcryptjs');
 const jwt = require('jsonwebtoken');
 const User = require('../models/User');
+const { authenticateToken } = require('../middleware/auth');
 
 router.post('/register', async (req, res) => {
   try {
@@ -96,6 +97,33 @@ router.post('/migrate-ambulance-data', async (req, res) => {
     await user.save();
     
     res.json({ success: true, message: 'Updated', fleet: user.ambulanceFleet });
+  } catch (error) {
+    res.status(500).json({ success: false, message: error.message });
+  }
+});
+
+// Get patient profile
+router.get('/patient/profile', authenticateToken, async (req, res) => {
+  try {
+    const user = await User.findById(req.user.id).select('name email phone patientAddress patientLocation');
+    res.json({ success: true, data: user });
+  } catch (error) {
+    res.status(500).json({ success: false, message: error.message });
+  }
+});
+
+// Update patient profile
+router.put('/patient/profile', authenticateToken, async (req, res) => {
+  try {
+    const { patientAddress, patientLocation, name, phone } = req.body;
+    const updates = {};
+    if (patientAddress) updates.patientAddress = patientAddress;
+    if (patientLocation) updates.patientLocation = patientLocation;
+    if (name) updates.name = name;
+    if (phone) updates.phone = phone;
+    
+    const user = await User.findByIdAndUpdate(req.user.id, { $set: updates }, { new: true }).select('-password');
+    res.json({ success: true, data: user });
   } catch (error) {
     res.status(500).json({ success: false, message: error.message });
   }

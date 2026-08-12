@@ -14,6 +14,18 @@ const userSchema = new mongoose.Schema({
     enum: ['hospital', 'diagnostics_provider', 'caregiver_provider', 'lender', 'online_doctor', 'ayurveda_doctor', 'homeopathy_doctor', 'therapist', 'corporate_hr', 'admin', 'patient', 'ambulance_provider', 'insurance_company'], 
     default: 'patient' 
   },
+     // Patient profile fields
+  patientAddress: {
+    line1: { type: String },
+    line2: { type: String },
+    city: { type: String },
+    state: { type: String },
+    pincode: { type: String }
+  },
+  patientLocation: {
+    lat: { type: Number },
+    lng: { type: Number }
+  },
   isVerified: { type: Boolean, default: false },
   createdAt: { type: Date, default: Date.now },
 
