@@ -2326,4 +2326,20 @@ router.get('/search', async (req, res) => {
   }
 });
 
+// Get single ambulance by provider and vehicle
+router.get('/vehicle/:providerId/:vehicleId', async (req, res) => {
+  try {
+    const { providerId, vehicleId } = req.params;
+    const fleet = await AmbulanceFleet.findOne({ ownerId: providerId });
+    if (!fleet) return res.status(404).json({ success: false, message: 'Provider not found' });
+    const vehicle = fleet.vehicles.id(vehicleId);
+    if (!vehicle) return res.status(404).json({ success: false, message: 'Vehicle not found' });
+    res.json({ success: true, data: vehicle });
+  } catch (error) {
+    res.status(500).json({ success: false, message: error.message });
+  }
+});
+
+module.exports = router;
+
 module.exports = router;// fix 
