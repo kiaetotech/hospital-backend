@@ -379,9 +379,11 @@ router.get('/surge-check', async (req, res) => {
   try {
     const { lat, lng } = req.query;
     if (!lat || !lng) return res.status(400).json({ success: false, error: 'Coordinates required' });
-
-    const surgeInfo = await dispatchService.checkSurgePricing(parseFloat(lat), parseFloat(lng));
-    return res.json({ success: true, data: surgeInfo });
+    // Simple surge calculation - no external service dependency
+    const hour = new Date().getHours();
+    const isPeakHour = (hour >= 8 && hour <= 11) || (hour >= 17 && hour <= 21);
+    const surgeMultiplier = isPeakHour ? 1.5 : 1.0;
+    return res.json({ success: true, data: { surgeMultiplier, isPeakHour } });
   } catch (error) {
     return res.status(500).json({ success: false, error: error.message });
   }
