@@ -1173,8 +1173,16 @@ router.get('/scheduled-bookings', authenticateToken, async (req, res) => {
 router.get('/my-bookings', authenticateToken, async (req, res) => {
   try {
     const { type, limit = 20, page = 1 } = req.query;
+    const user = await User.findById(req.user.id || req.user._id);
+    const userPhone = user?.phone || '';
+    const userPhoneAlt = userPhone.replace('+91', '');
+
     const query = {
-      userId: req.user.userId || req.user.id,
+      $or: [
+        { userId: req.user.userId || req.user.id },
+        { patientPhone: userPhone },
+        { patientPhone: userPhoneAlt }
+      ],
       bookingType: { $in: ['ambulance', 'ambulance_emergency'] }
     };
     
