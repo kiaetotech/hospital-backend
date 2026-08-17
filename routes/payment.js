@@ -47,8 +47,7 @@ router.post('/create-order', async (req, res) => {
       amount: amount,
       netAmount: amount,
       userId: req.body.userId || 'guest',
-      bookingId: bookingId,
-      bookingType: bookingType || 'general',
+      bookingType: bookingType || 'other',
       paymentGateway: 'razorpay',
       status: 'initiated',
       initiatedAt: new Date()
@@ -477,8 +476,7 @@ router.post('/create-order-v2', async (req, res) => {
       discountAmount: discountAmount,
       netAmount: finalAmountToPay,
       userId: userId || 'guest',
-      bookingId: bookingId,
-      bookingType: bookingType || 'general',
+      bookingType: bookingType || 'other',
       paymentGateway: 'razorpay',
       status: 'initiated',
       initiatedAt: new Date()
@@ -547,7 +545,6 @@ router.post('/ayurveda-create-order', async (req, res) => {
       discountAmount: discountAmount,
       netAmount: finalAmount,
       userId: req.body.userId || 'guest',
-      bookingId: bookingId,
       bookingType: 'ayurveda_consultation',
       paymentGateway: 'razorpay',
       status: 'initiated',
