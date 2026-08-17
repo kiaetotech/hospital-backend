@@ -177,6 +177,30 @@ router.post('/cancel-emergency/:bookingId', async (req, res) => {
   }
 });
 
+// Cancel scheduled ambulance booking
+router.put('/cancel-booking/:bookingId', authenticateToken, async (req, res) => {
+  try {
+    const { bookingId } = req.params;
+    const { reason } = req.body;
+    const booking = await Booking.findOne({ bookingId });
+    if (!booking) return res.status(404).json({ success: false, message: 'Booking not found' });
+    
+    booking.status = 'cancelled';
+    booking.cancellation = {
+      reason: reason || 'Cancelled by patient',
+      cancelledAt: new Date(),
+      refundAmount: 0,
+      refundPercentage: 0,
+      refundStatus: 'not_applicable'
+    };
+    await booking.save();
+    
+    res.json({ success: true, message: 'Booking cancelled', data: { refundAmount: 0, refundPercentage: 0 } });
+  } catch (error) {
+    res.status(500).json({ success: false, message: error.message });
+  }
+});
+
 // ─────────────────────────────────────────────
 // POST /ambulance/send-sos-sms
 // 🚑 Send SOS to emergency contacts
