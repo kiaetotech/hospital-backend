@@ -105,9 +105,9 @@ router.post('/emergency-dispatch', async (req, res) => {
         message: 'Ambulance dispatched from fleet',
         data: {
           bookingId,
-          driver: {
-            name: nearestVehicle.driverName || 'Driver',
-            phone: nearestVehicle.driverPhone || 'N/A',
+            driver: {
+            name: nearestVehicle.driverName || nearestProvider.name || 'Driver',
+            phone: nearestVehicle.driverPhone || nearestProvider.phone || 'N/A',
             vehicleNumber: nearestVehicle.vehicleNumber,
             rating: 4.5
           },
