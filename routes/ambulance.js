@@ -123,7 +123,7 @@ router.post('/emergency-dispatch', async (req, res) => {
           providerId: nearestProvider._id,
           providerName: nearestProvider.name,
           vehicleId: nearestVehicle._id,
-          status: 'dispatched',
+          status: 'confirmed',
           tripOtp,
           location: { type: 'Point', coordinates: [parseFloat(pickupLng), parseFloat(pickupLat)] },
           originalAmount: Number(nearestVehicle.baseFare) || 0,
