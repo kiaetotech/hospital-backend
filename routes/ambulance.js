@@ -103,16 +103,43 @@ router.post('/emergency-dispatch', async (req, res) => {
       }
     }
 
-    if (nearestVehicle && nearestProvider) {
-      const bookingId = 'EMG' + Date.now();
+          const bookingId = 'EMG' + Date.now();
       const tripOtp = Math.floor(1000 + Math.random() * 9000);
-      
+
+      try {
+        const emergencyBooking = new Booking({
+          bookingId,
+          bookingType: 'ambulance_emergency',
+          emergencyType: 'blitz',
+          patientName: patientName || 'Emergency Patient',
+          patientPhone,
+          pickupAddress: pickupAddress || 'GPS Location',
+          pickupCoordinates: { lat: parseFloat(pickupLat), lng: parseFloat(pickupLng) },
+          vehicleNumber: nearestVehicle.vehicleNumber,
+          driverName: nearestVehicle.driverName || nearestProvider.name,
+          driverPhone: nearestVehicle.driverPhone || nearestProvider.phone,
+          providerId: nearestProvider._id,
+          providerName: nearestProvider.name,
+          vehicleId: nearestVehicle._id,
+          status: 'dispatched',
+          tripOtp,
+          location: { type: 'Point', coordinates: [parseFloat(pickupLng), parseFloat(pickupLat)] },
+          originalAmount: Number(nearestVehicle.baseFare) || 0,
+          finalAmount: Number(nearestVehicle.baseFare) || 0,
+          emergencyRequestedAt: new Date(),
+          createdAt: new Date()
+        });
+        await emergencyBooking.save();
+      } catch (saveError) {
+        console.error('Emergency booking save failed:', saveError);
+      }
+
       return res.status(200).json({
         success: true,
         message: 'Ambulance dispatched from fleet',
         data: {
           bookingId,
-            driver: {
+          driver: {
             name: nearestVehicle.driverName || nearestProvider.name || 'Driver',
             phone: nearestVehicle.driverPhone || nearestProvider.phone || 'N/A',
             vehicleNumber: nearestVehicle.vehicleNumber,
@@ -125,7 +152,6 @@ router.post('/emergency-dispatch', async (req, res) => {
           }
         }
       });
-    }
 
     return res.status(200).json({
       success: false,
