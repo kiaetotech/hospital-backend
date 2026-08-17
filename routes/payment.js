@@ -66,9 +66,13 @@ router.post('/create-order', async (req, res) => {
       transactionId: transaction.transactionId,
       key_id: process.env.RAZORPAY_KEY_ID
     });
-  } catch (error) {
+    } catch (error) {
     console.error('Error creating order:', error);
-    res.status(500).json({ success: false, message: error.message });
+    res.status(500).json({ 
+      success: false, 
+      message: error.message || 'Razorpay order failed',
+      razorpayError: error.error?.description || error.toString()
+    });
   }
 });
 
