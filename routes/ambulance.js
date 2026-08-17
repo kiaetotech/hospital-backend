@@ -109,7 +109,9 @@ router.post('/emergency-dispatch', async (req, res) => {
       try {
         const emergencyBooking = new Booking({
           bookingId,
+          userId: userId || 'guest',
           bookingType: 'ambulance_emergency',
+          appointmentDate: new Date(),
           emergencyType: 'blitz',
           patientName: patientName || 'Emergency Patient',
           patientPhone,
