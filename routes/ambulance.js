@@ -78,6 +78,13 @@ router.post('/emergency-dispatch', async (req, res) => {
     for (const fleet of fleets) {
       const provider = await User.findById(fleet.ownerId);
       if (!provider?.ambulanceSettings?.isAvailable) continue;
+
+	const availableVehicles = fleet.vehicles.filter(v => 
+        v.status === 'available' && 
+        Number(v.baseFare) > 0 && 
+        Number(v.perKmRate) > 0
+      );
+      if (availableVehicles.length === 0) continue;
       
       const providerLat = provider.ambulanceSettings?.serviceAreaCoordinates?.center?.lat || provider.ambulanceCompanyAddress?.coordinates?.lat;
       const providerLng = provider.ambulanceSettings?.serviceAreaCoordinates?.center?.lng || provider.ambulanceCompanyAddress?.coordinates?.lng;
@@ -92,7 +99,7 @@ router.post('/emergency-dispatch', async (req, res) => {
       if (distance < minDistance) {
         minDistance = distance;
         nearestProvider = provider;
-        nearestVehicle = fleet.vehicles.find(v => v.status === 'available');
+        nearestVehicle = availableVehicles.find(v => v.status === 'available');
       }
     }
 
@@ -113,8 +120,8 @@ router.post('/emergency-dispatch', async (req, res) => {
           },
           tripOtp,
           fareEstimate: {
-            baseFare: nearestVehicle.baseFare || 500,
-            perKmRate: nearestVehicle.perKmRate || 25
+            baseFare: Number(nearestVehicle.baseFare) || 0,
+            perKmRate: Number(nearestVehicle.perKmRate) || 0
           }
         }
       });
