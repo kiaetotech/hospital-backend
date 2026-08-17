@@ -10,8 +10,8 @@ const transactionSchema = new mongoose.Schema({
   // ============================================
   
   transactionId: { type: String, unique: true, required: true },
-  applicationId: { type: String, required: true },
-  lenderId: { type: String, required: true },
+  applicationId: { type: String },
+  lenderId: { type: String },
   
   type: { 
     type: String, 
