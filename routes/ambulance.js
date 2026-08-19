@@ -282,9 +282,44 @@ router.put('/cancel-booking/:bookingId', authenticateToken, async (req, res) => 
       refundPercentage: 0,
       refundStatus: 'not_applicable'
     };
+
+    // If payment was made, process refund
+    if (booking.paymentStatus === 'paid' && booking.paymentId) {
+      try {
+        const Razorpay = require('razorpay');
+        const razorpay = new Razorpay({
+          key_id: process.env.RAZORPAY_KEY_ID,
+          key_secret: process.env.RAZORPAY_KEY_SECRET
+        });
+        
+        const refund = await razorpay.payments.refund(booking.paymentId, {
+          amount: Math.round(booking.finalAmount * 100)
+        });
+        
+        booking.paymentStatus = 'refunded';
+        booking.refundId = refund.id;
+        booking.refundAmount = booking.finalAmount;
+        booking.refundedAt = new Date();
+        booking.refundStatus = 'processed';
+        booking.cancellation.refundAmount = booking.finalAmount;
+        booking.cancellation.refundPercentage = 100;
+        booking.cancellation.refundStatus = 'processed';
+      } catch (refundError) {
+        console.error('Refund failed:', refundError.message);
+        booking.cancellation.refundStatus = 'failed';
+      }
+    }
+    
     await booking.save();
     
-    res.json({ success: true, message: 'Booking cancelled', data: { refundAmount: 0, refundPercentage: 0 } });
+    res.json({ 
+      success: true, 
+      message: 'Booking cancelled', 
+      data: { 
+        refundAmount: booking.cancellation.refundAmount || 0, 
+        refundPercentage: booking.cancellation.refundPercentage || 0 
+      } 
+    });
   } catch (error) {
     res.status(500).json({ success: false, message: error.message });
   }
