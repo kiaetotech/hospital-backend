@@ -304,9 +304,10 @@ router.put('/cancel-booking/:bookingId', authenticateToken, async (req, res) => 
         booking.cancellation.refundAmount = booking.finalAmount;
         booking.cancellation.refundPercentage = 100;
         booking.cancellation.refundStatus = 'processed';
-      } catch (refundError) {
-        console.error('Refund failed:', refundError.message);
+       } catch (refundError) {
+        console.error('Refund failed:', JSON.stringify(refundError.error || refundError));
         booking.cancellation.refundStatus = 'failed';
+        booking.cancellation.refundError = refundError.error?.description || refundError.message || 'Unknown error';
       }
     }
     
