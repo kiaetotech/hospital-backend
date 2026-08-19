@@ -281,17 +281,29 @@ router.post('/verify', async (req, res) => {
       }
     }
     
-    // ============================================
-    // CASE 4: Ambulance (PRESERVED)
+        // ============================================
+    // CASE 4: Ambulance
     // ============================================
     else if (bookingType === 'ambulance') {
-      booking = new Booking({
-        ...commonBookingData,
-        ambulanceType: ambulanceType || 'basic',
-        pickupAddress: pickupAddress || '',
-        dropAddress: dropAddress || ''
-      });
-      await booking.save();
+      booking = await Booking.findOne({ bookingId: newBookingId });
+      if (booking) {
+        booking.paymentStatus = 'paid';
+        booking.paymentId = razorpay_payment_id;
+        booking.orderId = razorpay_order_id;
+        booking.razorpayOrderId = razorpay_order_id;
+        booking.razorpayPaymentId = razorpay_payment_id;
+        booking.razorpaySignature = razorpay_signature;
+        booking.status = 'confirmed';
+        await booking.save();
+      } else {
+        booking = new Booking({
+          ...commonBookingData,
+          ambulanceType: ambulanceType || 'basic',
+          pickupAddress: pickupAddress || '',
+          dropAddress: dropAddress || ''
+        });
+        await booking.save();
+      }
     }
     
     // ============================================
