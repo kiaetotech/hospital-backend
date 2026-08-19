@@ -2523,6 +2523,25 @@ router.post('/cleanup-bookings', authenticateToken, async (req, res) => {
   }
 });
 
+// Delete specific bookings by IDs
+router.post('/delete-bookings', authenticateToken, async (req, res) => {
+  try {
+    const { bookingIds } = req.body;
+    if (!Array.isArray(bookingIds) || bookingIds.length === 0) {
+      return res.status(400).json({ success: false, message: 'No bookings selected' });
+    }
+    
+    const result = await Booking.deleteMany({
+      bookingId: { $in: bookingIds },
+      userId: req.user.id || req.user._id
+    });
+    
+    res.json({ success: true, deleted: result.deletedCount, message: `Deleted ${result.deletedCount} bookings` });
+  } catch (error) {
+    res.status(500).json({ success: false, message: error.message });
+  }
+});
+
 module.exports = router;
 
 module.exports = router;// fix 
