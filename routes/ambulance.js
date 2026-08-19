@@ -292,8 +292,13 @@ router.put('/cancel-booking/:bookingId', authenticateToken, async (req, res) => 
           key_secret: process.env.RAZORPAY_KEY_SECRET
         });
         
+         // Get actual captured amount from transaction
+        const Transaction = require('../models/Transaction');
+        const transaction = await Transaction.findOne({ paymentId: booking.paymentId });
+        const refundableAmount = transaction?.netAmount || booking.finalAmount || 0;
+        
         const refund = await razorpay.payments.refund(booking.paymentId, {
-          amount: Math.round(booking.finalAmount * 100)
+          amount: Math.round(refundableAmount * 100)
         });
         
         booking.paymentStatus = 'refunded';
