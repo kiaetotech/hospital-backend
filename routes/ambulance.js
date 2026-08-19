@@ -2504,6 +2504,25 @@ router.get('/vehicle/:providerId/:vehicleId', async (req, res) => {
   }
 });
 
+// Delete cancelled bookings older than X days
+router.post('/cleanup-bookings', authenticateToken, async (req, res) => {
+  try {
+    const { days = 30, status = 'cancelled' } = req.body;
+    const cutoff = new Date();
+    cutoff.setDate(cutoff.getDate() - days);
+    
+    const result = await Booking.deleteMany({
+      userId: req.user.id || req.user._id,
+      status,
+      createdAt: { $lt: cutoff }
+    });
+    
+    res.json({ success: true, deleted: result.deletedCount, message: `Deleted ${result.deletedCount} old ${status} bookings` });
+  } catch (error) {
+    res.status(500).json({ success: false, message: error.message });
+  }
+});
+
 module.exports = router;
 
 module.exports = router;// fix 
