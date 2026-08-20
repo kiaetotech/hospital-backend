@@ -10,7 +10,7 @@ const EmergencyContact = require('../models/EmergencyContact');
 const { authenticateToken } = require('../middleware/auth');
 
 // AmbulanceFleet.vehicleSchema allowed values
-const ALLOWED_VEHICLE_TYPES = ['basic', 'cardiac', 'ventilator', 'neonatal', 'wheelchair'];
+const ALLOWED_VEHICLE_TYPES = ['basic', 'bls', 'als', 'cardiac', 'ventilator', 'neonatal', 'air', 'bike', 'mortuary', 'ptv', 'wheelchair'];
 const dispatchService = require('../services/ambulanceDispatchService');
 const locationCache = require('../services/locationCacheService');
 const commissionService = require('../services/commissionService');
