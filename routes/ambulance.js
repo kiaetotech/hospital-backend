@@ -2542,6 +2542,28 @@ router.post('/delete-bookings', authenticateToken, async (req, res) => {
   }
 });
 
+// Get available cities from ambulance providers
+router.get('/cities', async (req, res) => {
+  try {
+    const providers = await User.find({ 
+      role: 'ambulance_provider', 
+      'ambulanceSettings.isAvailable': true 
+    }).select('ambulanceCompanyAddress.city ambulanceSettings.serviceArea');
+    
+    const cities = new Set();
+    providers.forEach(p => {
+      const city = p.ambulanceCompanyAddress?.city;
+      if (city) cities.add(city.trim());
+      const area = p.ambulanceSettings?.serviceArea;
+      if (area) area.split(',').forEach(c => cities.add(c.trim()));
+    });
+    
+    res.json({ success: true, data: [...cities].filter(Boolean) });
+  } catch (error) {
+    res.status(500).json({ success: false, message: error.message });
+  }
+});
+
 module.exports = router;
 
 module.exports = router;// fix 
