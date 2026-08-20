@@ -82,7 +82,7 @@ const bookingSchema = new mongoose.Schema({
   
   ambulanceType: { 
     type: String,
-    enum: ['basic', 'cardiac', 'ventilator', 'neonatal', 'mortuary', 'wheelchair']
+    enum: ['basic', 'bls', 'als', 'cardiac', 'ventilator', 'neonatal', 'air', 'bike', 'mortuary', 'ptv', 'wheelchair']
   },
   pickupAddress: { type: String },
   dropAddress: { type: String },
