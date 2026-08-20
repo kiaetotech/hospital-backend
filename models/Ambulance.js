@@ -4,7 +4,7 @@ const ambulanceSchema = new mongoose.Schema({
   providerId: { type: mongoose.Schema.Types.ObjectId, ref: 'User', required: true },
   providerName: { type: String },
   vehicleNumber: { type: String, required: true },
-  type: { type: String, enum: ['basic', 'cardiac', 'ventilator', 'neonatal', 'wheelchair'], default: 'basic' },
+  type: { type: String, enum: ['basic', 'bls', 'als', 'cardiac', 'ventilator', 'neonatal', 'air', 'bike', 'mortuary', 'ptv', 'wheelchair'], default: 'basic' },
   model: { type: String },
   year: { type: String },
   equipment: [{ type: String }],
