@@ -40,7 +40,11 @@ let redis = null;
 
 const getRedisClient = () => {
   if (!redis) {
-    redis = new Redis(redisConfig);
+    if (process.env.REDIS_URL) {
+      redis = new Redis(process.env.REDIS_URL);
+    } else {
+      redis = new Redis(redisConfig);
+    }
     redis.on('connect', () => console.log('📍 Redis connected - Location service ready'));
     redis.on('error', (err) => console.error('📍 Redis error:', err.message));
   }
