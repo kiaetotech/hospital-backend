@@ -2573,10 +2573,10 @@ router.post('/driver-login', async (req, res) => {
     const driver = provider.ambulanceDrivers.find(d => d.phone === phone);
     const jwt = require('jsonwebtoken');
     const token = jwt.sign(
-      { id: provider._id, driverId: driver._id, name: driver.name, role: 'ambulance_driver' },
-      process.env.JWT_SECRET,
-      { expiresIn: '7d' }
-    );
+  { id: provider._id, driverId: driver._id, name: driver.name, role: 'ambulance_driver' },
+  process.env.JWT_SECRET || 'hospital_platform_secret_key_2024',
+  { expiresIn: '7d' }
+);
     res.json({ success: true, token, driver: { id: driver._id, name: driver.name, phone: driver.phone } });
   } catch (error) {
     res.status(500).json({ success: false, message: error.message });
