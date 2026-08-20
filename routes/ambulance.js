@@ -2564,6 +2564,25 @@ router.get('/cities', async (req, res) => {
   }
 });
 
+// Driver login with phone + OTP
+router.post('/driver-login', async (req, res) => {
+  try {
+    const { phone } = req.body;
+    const provider = await User.findOne({ 'ambulanceDrivers.phone': phone });
+    if (!provider) return res.status(404).json({ success: false, message: 'Driver not found' });
+    const driver = provider.ambulanceDrivers.find(d => d.phone === phone);
+    const jwt = require('jsonwebtoken');
+    const token = jwt.sign(
+      { id: provider._id, driverId: driver._id, name: driver.name, role: 'ambulance_driver' },
+      process.env.JWT_SECRET,
+      { expiresIn: '7d' }
+    );
+    res.json({ success: true, token, driver: { id: driver._id, name: driver.name, phone: driver.phone } });
+  } catch (error) {
+    res.status(500).json({ success: false, message: error.message });
+  }
+});
+
 module.exports = router;
 
 module.exports = router;// fix 
