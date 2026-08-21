@@ -17,6 +17,7 @@
  */
 
 const Booking = require('../models/Booking');
+const mongoose = require('mongoose');
 const User = require('../models/User');
 const EmergencyContact = require('../models/EmergencyContact');
 const Transaction = require('../models/Transaction');
@@ -167,7 +168,7 @@ const enrichPatientData = async (emergencyData) => {
   let ambulancePreferences = {};
 
   // Get emergency profile if user is registered
-  if (userId) {
+  if (userId && userId !== 'guest' && mongoose.Types.ObjectId.isValid(userId)) {
     const emergencyProfile = await EmergencyContact.findByUserId(userId);
     
     if (emergencyProfile) {
