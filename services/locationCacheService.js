@@ -439,6 +439,49 @@ const ambulanceLocation = {
     }
   },
 
+  setDriverOnTrip: async (driverId, tripId) => {
+    try {
+      const redis = getRedisClient();
+      const key = KEY_PREFIXES.ambulance.driverLocation + driverId;
+      const data = await redis.get(key);
+      if (!data) return null;
+      const parsed = JSON.parse(data);
+      parsed.isOnTrip = true;
+      parsed.tripId = tripId;
+      parsed.lastUpdate = new Date().toISOString();
+      await redis.setex(key, TTL_CONFIG.ambulance.driver, JSON.stringify(parsed));
+      return parsed;
+    } catch (error) {
+      return null;
+    }
+  },
+
+  clearDriverTrip: async (driverId) => {
+    try {
+      const redis = getRedisClient();
+      const key = KEY_PREFIXES.ambulance.driverLocation + driverId;
+      const data = await redis.get(key);
+      if (!data) return null;
+      const parsed = JSON.parse(data);
+      parsed.isOnTrip = false;
+      parsed.tripId = '';
+      parsed.lastUpdate = new Date().toISOString();
+      await redis.setex(key, TTL_CONFIG.ambulance.driver, JSON.stringify(parsed));
+      return parsed;
+    } catch (error) {
+      return null;
+    }
+  },
+
+  isDriverOnline: async (driverId) => {
+    try {
+      const location = await ambulanceLocation.getDriverLocation(driverId);
+      return location ? location.isAvailable : false;
+    } catch (error) {
+      return false;
+    }
+  },
+
   updateDriverLocation: async (driverId, lat, lng, metadata = {}) => {
     const redis = getRedisClient();
     const key = KEY_PREFIXES.ambulance.driverLocation + driverId;
