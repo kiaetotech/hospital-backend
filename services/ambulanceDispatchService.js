@@ -446,6 +446,7 @@ const findAndDispatchDrivers = async (booking, fareEstimate) => {
   
   while (retryCount < DISPATCH_CONFIG.maxRetryAttempts && !driverFound) {
     // Find nearby drivers
+   console.log(`Searching with coordinates: lat=${booking.pickupCoordinates.lat}, lng=${booking.pickupCoordinates.lng}, radius=${radius}`);
     const drivers = await locationCache.ambulance.findNearbyDrivers(
       booking.pickupCoordinates.lat,
       booking.pickupCoordinates.lng,
