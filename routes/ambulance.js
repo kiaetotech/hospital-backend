@@ -2598,12 +2598,7 @@ router.post('/driver-login', async (req, res) => {
     res.status(500).json({ success: false, message: error.message });
   }
 });
-    res.json({ success: true, token, driver: { id: driver._id, name: driver.name, phone: driver.phone } });
-  } catch (error) {
-    res.status(500).json({ success: false, message: error.message });
-  }
-});
-
+    
 module.exports = router;
 
 module.exports = router;// fix 
