@@ -2564,36 +2564,32 @@ router.get('/cities', async (req, res) => {
   }
 });
 
-// Driver login with phone + OTP
+// Driver login with phone
 router.post('/driver-login', async (req, res) => {
   try {
     const { phone } = req.body;
     const cleanPhone = phone.replace('+91', '');
     
-    const provider = await User.findOne({ 
-      $or: [
-        { 'ambulanceDrivers.phone': phone },
-        { 'ambulanceDrivers.phone': `+91${cleanPhone}` },
-        { 'ambulanceDrivers.phone': cleanPhone }
-      ]
+    const fleet = await AmbulanceFleet.findOne({
+      'vehicles.driverPhone': { $in: [phone, cleanPhone, `+91${cleanPhone}`] }
     });
     
-    if (!provider) return res.status(404).json({ success: false, message: 'Driver not found' });
+    if (!fleet) return res.status(404).json({ success: false, message: 'Driver not found' });
     
-    const driver = provider.ambulanceDrivers.find(d => 
-      d.phone === phone || d.phone === `+91${cleanPhone}` || d.phone === cleanPhone
+    const vehicle = fleet.vehicles.find(v => 
+      v.driverPhone === phone || v.driverPhone === cleanPhone || v.driverPhone === `+91${cleanPhone}`
     );
     
-    if (!driver) return res.status(404).json({ success: false, message: 'Driver not found' });
+    if (!vehicle) return res.status(404).json({ success: false, message: 'Driver not found' });
     
     const jwt = require('jsonwebtoken');
     const token = jwt.sign(
-      { id: provider._id, driverId: driver._id, name: driver.name, role: 'ambulance_driver' },
+      { id: fleet.ownerId, driverId: vehicle._id, name: vehicle.driverName, role: 'ambulance_driver' },
       process.env.JWT_SECRET || 'hospital_platform_secret_key_2024',
       { expiresIn: '7d' }
     );
     
-    res.json({ success: true, token, driver: { id: driver._id, name: driver.name, phone: driver.phone } });
+    res.json({ success: true, token, driver: { id: vehicle._id, name: vehicle.driverName, phone: vehicle.driverPhone } });
   } catch (error) {
     res.status(500).json({ success: false, message: error.message });
   }
