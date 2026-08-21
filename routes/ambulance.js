@@ -142,11 +142,14 @@ router.post('/emergency-dispatch', async (req, res) => {
       await emergencyBooking.save();
       
       // Emit socket event to driver
+            // Emit socket event to driver using socket utility
       try {
         const io = req.app.get('io');
-        if (io) {
-          const driverRoom = 'driver:' + nearestVehicle._id;
-          io.to(driverRoom).emit('emergency:new_request', {
+        const socketUtils = require('../socket/ambulanceSocket');
+        
+        if (io && socketUtils) {
+          const driverId = nearestVehicle._id.toString();
+          const emergencyData = {
             bookingId,
             patientName: patientName || 'Emergency Patient',
             patientCondition: patientCondition || 'Emergency',
@@ -154,8 +157,18 @@ router.post('/emergency-dispatch', async (req, res) => {
             distance: Math.round(minDistance * 10) / 10,
             estimatedFare: Number(nearestVehicle.baseFare) || 0,
             tripOtp
-          });
-          console.log(`📡 Socket emergency alert emitted to driver room: ${driverRoom}`);
+          };
+          
+          // Try direct socket emit first
+          const sent = socketUtils.sendEmergencyToDriver(io, driverId, emergencyData);
+          
+          if (sent) {
+            console.log(`📡 Emergency alert sent directly to driver ${driverId}`);
+          } else {
+            // Fallback: emit to room
+            io.to(`driver:${driverId}`).emit('emergency:new_request', emergencyData);
+            console.log(`📡 Emergency alert emitted to driver room: driver:${driverId}`);
+          }
         }
       } catch (socketError) {
         console.error('Socket emit failed:', socketError.message);
