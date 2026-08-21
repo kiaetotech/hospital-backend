@@ -434,8 +434,19 @@ async function resolveDriverAssignment(driverId, reqUser = {}) {
 router.post('/update-location', authenticateToken, async (req, res) => {
   try {
     const { lat, lng, speed, heading, isAvailable, isOnTrip, tripId } = req.body;
-    const driverId = String(req.body.driverId || req.user.driverId || '').trim();
-    if (!driverId) return res.status(400).json({ success: false, error: 'Driver ID required' });
+    
+    let driverId;
+    let assignment = null;
+    
+    if (req.user.role === 'ambulance_driver') {
+      driverId = String(req.user.driverId || '');
+      if (!driverId) return res.status(400).json({ success: false, error: 'Driver ID missing in token' });
+    } else {
+      driverId = String(req.body.driverId || req.user.driverId || '').trim();
+      if (!driverId) return res.status(400).json({ success: false, error: 'Driver ID required' });
+      assignment = await resolveDriverAssignment(driverId, req.user);
+      if (!assignment) return res.status(403).json({ success: false, error: 'Driver is not registered under the authenticated provider' });
+    }
 
     const numericLat = Number(lat);
     const numericLng = Number(lng);
@@ -443,19 +454,18 @@ router.post('/update-location', authenticateToken, async (req, res) => {
       return res.status(400).json({ success: false, error: 'Valid coordinates required' });
     }
 
-    const assignment = await resolveDriverAssignment(driverId, req.user);
-    if (!assignment) return res.status(403).json({ success: false, error: 'Driver is not registered under the authenticated provider' });
-
-    const vehicleType = assignment.vehicle?.type || assignment.driver.vehicleType || req.body.vehicleType || 'basic';
+    const vehicleType = assignment?.vehicle?.type || req.body.vehicleType || 'basic';
+    const providerId = assignment?.providerId || req.user.id || '';
+    
     await locationCache.ambulance.updateDriverLocation(driverId, numericLat, numericLng, {
       speed: Number(speed || 0), heading: Number(heading || 0),
       isAvailable: isAvailable !== false, isOnTrip: isOnTrip === true,
-      tripId: tripId || '', vehicleType, providerId: assignment.providerId
+      tripId: tripId || '', vehicleType, providerId
     });
 
     return res.json({
       success: true, message: 'Location updated',
-      data: { driverId, providerId: assignment.providerId, vehicleId: assignment.vehicle?._id || null, vehicleNumber: assignment.vehicle?.vehicleNumber || '', vehicleType, lat: numericLat, lng: numericLng }
+      data: { driverId, providerId, vehicleId: assignment?.vehicle?._id || null, vehicleNumber: assignment?.vehicle?.vehicleNumber || '', vehicleType, lat: numericLat, lng: numericLng }
     });
   } catch (error) {
     console.error('AMBULANCE LOCATION UPDATE ERROR:', error);
@@ -1311,10 +1321,18 @@ router.get('/trip-sheet/:bookingId', async (req, res) => {
 // ─────────────────────────────────────────────
 router.get('/driver/dashboard', authenticateToken, async (req, res) => {
   try {
-    const driverId = String(req.query.driverId || req.user.driverId || '').trim();
-    if (!driverId) return res.status(400).json({ success: false, error: 'Driver ID required' });
-    const assignment = await resolveDriverAssignment(driverId, req.user);
-    if (!assignment) return res.status(403).json({ success: false, error: 'Driver is not registered under the authenticated provider' });
+    let driverId;
+    let assignment = null;
+    
+    if (req.user.role === 'ambulance_driver') {
+      driverId = String(req.user.driverId || '');
+      if (!driverId) return res.status(400).json({ success: false, error: 'Driver ID missing in token' });
+    } else {
+      driverId = String(req.query.driverId || req.user.driverId || '').trim();
+      if (!driverId) return res.status(400).json({ success: false, error: 'Driver ID required' });
+      assignment = await resolveDriverAssignment(driverId, req.user);
+      if (!assignment) return res.status(403).json({ success: false, error: 'Driver is not registered under the authenticated provider' });
+    }
 
     const today = new Date();
     today.setHours(0, 0, 0, 0);
@@ -1341,14 +1359,14 @@ router.get('/driver/dashboard', authenticateToken, async (req, res) => {
         totalTrips,
         recentTrips,
         currentLocation: driverLocation,
-        rating: assignment.driver.rating || req.user.driverRating || 0,
+        rating: assignment?.driver?.rating || req.user.driverRating || 0,
         driverId,
-        providerId: assignment.providerId,
-        driverName: assignment.driver.name || '',
-        vehicleId: assignment.vehicle?._id || null,
-        vehicleNumber: assignment.vehicle?.vehicleNumber || '',
-        vehicleType: assignment.vehicle?.type || 'basic',
-        vehicle: assignment.vehicle ? {
+        providerId: assignment?.providerId || req.user.id || '',
+        driverName: assignment?.driver?.name || req.user.name || '',
+        vehicleId: assignment?.vehicle?._id || null,
+        vehicleNumber: assignment?.vehicle?.vehicleNumber || '',
+        vehicleType: assignment?.vehicle?.type || 'basic',
+        vehicle: assignment?.vehicle ? {
           _id: assignment.vehicle._id, vehicleNumber: assignment.vehicle.vehicleNumber || '',
           type: assignment.vehicle.type || 'basic', status: assignment.vehicle.status || 'available',
           baseFare: Number(assignment.vehicle.baseFare) || 0, perKmRate: Number(assignment.vehicle.perKmRate) || 0,
@@ -1367,13 +1385,20 @@ router.get('/driver/dashboard', authenticateToken, async (req, res) => {
 // ─────────────────────────────────────────────
 router.post('/driver/toggle-availability', authenticateToken, async (req, res) => {
   try {
-    const driverId = String(req.body.driverId || req.user.driverId || '').trim();
     const { isAvailable } = req.body;
-    if (!driverId || typeof isAvailable !== 'boolean') return res.status(400).json({ success: false, error: 'Driver ID and availability are required' });
+    
+    if (req.user.role === 'ambulance_driver') {
+      const driverId = String(req.user.driverId || '');
+      if (!driverId) return res.status(400).json({ success: false, error: 'Driver ID missing in token' });
+      await locationCache.ambulance.updateDriverStatus(driverId, { isAvailable });
+      return res.json({ success: true, isAvailable });
+    }
+    
+    const driverId = String(req.body.driverId || '').trim();
+    if (!driverId) return res.status(400).json({ success: false, error: 'Driver ID required' });
     const assignment = await resolveDriverAssignment(driverId, req.user);
-    if (!assignment) return res.status(403).json({ success: false, error: 'Driver is not registered under the authenticated provider' });
+    if (!assignment) return res.status(403).json({ success: false, error: 'Driver not assigned to this provider' });
     await locationCache.ambulance.updateDriverStatus(driverId, { isAvailable });
-
     return res.json({ success: true, isAvailable });
   } catch (error) {
     return res.status(500).json({ success: false, error: error.message });
@@ -1386,21 +1411,26 @@ router.post('/driver/toggle-availability', authenticateToken, async (req, res) =
 // ─────────────────────────────────────────────
 router.get('/driver/trip-history', authenticateToken, async (req, res) => {
   try {
-    const driverId = req.query.driverId || req.user.driverId;
+    let driverId;
+    
+    if (req.user.role === 'ambulance_driver') {
+      driverId = String(req.user.driverId || '');
+      if (!driverId) return res.status(400).json({ success: false, error: 'Driver ID missing in token' });
+    } else {
+      driverId = String(req.query.driverId || req.user.driverId || '').trim();
+      if (!driverId) return res.status(400).json({ success: false, error: 'Driver ID required' });
+      const assignment = await resolveDriverAssignment(driverId, req.user);
+      if (!assignment) return res.status(403).json({ success: false, error: 'Driver is not registered under the authenticated provider' });
+    }
+    
     const { limit = 20, page = 1 } = req.query;
-
     const trips = await Booking.find({ driverId, status: 'completed' })
       .sort({ completedAt: -1 })
       .skip((page - 1) * limit)
       .limit(parseInt(limit));
-
+    
     const total = await Booking.countDocuments({ driverId, status: 'completed' });
-
-    return res.json({
-      success: true,
-      data: trips,
-      pagination: { total, page: parseInt(page), pages: Math.ceil(total / limit) }
-    });
+    return res.json({ success: true, data: trips, pagination: { total, page: parseInt(page), pages: Math.ceil(total / limit) } });
   } catch (error) {
     return res.status(500).json({ success: false, error: error.message });
   }
