@@ -1325,8 +1325,11 @@ router.get('/driver/dashboard', authenticateToken, async (req, res) => {
     let assignment = null;
     
     if (req.user.role === 'ambulance_driver') {
-      driverId = String(req.user.driverId || '');
+      driverId = String(req.query.driverId || req.user.driverId || '');
       if (!driverId) return res.status(400).json({ success: false, error: 'Driver ID missing in token' });
+    } else if (req.query.driverId) {
+      driverId = String(req.query.driverId).trim();
+      if (!driverId) return res.status(400).json({ success: false, error: 'Driver ID required' });
     } else {
       driverId = String(req.query.driverId || req.user.driverId || '').trim();
       if (!driverId) return res.status(400).json({ success: false, error: 'Driver ID required' });
@@ -1388,11 +1391,11 @@ router.post('/driver/toggle-availability', authenticateToken, async (req, res) =
     const { isAvailable } = req.body;
     
     if (req.user.role === 'ambulance_driver') {
-      const driverId = String(req.user.driverId || '');
-      if (!driverId) return res.status(400).json({ success: false, error: 'Driver ID missing in token' });
-      await locationCache.ambulance.updateDriverStatus(driverId, { isAvailable });
-      return res.json({ success: true, isAvailable });
-    }
+  const driverId = String(req.user.driverId || req.body.driverId || '');
+  if (!driverId) return res.status(400).json({ success: false, error: 'Driver ID missing in token' });
+  await locationCache.ambulance.updateDriverStatus(driverId, { isAvailable });
+  return res.json({ success: true, isAvailable });
+}
     
     const driverId = String(req.body.driverId || '').trim();
     if (!driverId) return res.status(400).json({ success: false, error: 'Driver ID required' });
@@ -1414,7 +1417,7 @@ router.get('/driver/trip-history', authenticateToken, async (req, res) => {
     let driverId;
     
     if (req.user.role === 'ambulance_driver') {
-      driverId = String(req.user.driverId || '');
+      driverId = String(req.query.driverId || req.user.driverId || '');
       if (!driverId) return res.status(400).json({ success: false, error: 'Driver ID missing in token' });
     } else {
       driverId = String(req.query.driverId || req.user.driverId || '').trim();
