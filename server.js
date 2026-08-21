@@ -137,6 +137,7 @@ if (typeof initializeSocket === 'function') {
 }
 
 global.io = io;
+app.set('io', io);
 
 // ============================================
 // REQUEST LOGGING
