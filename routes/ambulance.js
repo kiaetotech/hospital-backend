@@ -1440,6 +1440,72 @@ router.get('/driver/trip-history', authenticateToken, async (req, res) => {
 // 💰 FARE & COMMISSION ENDPOINTS
 // ============================================
 
+// GET /ambulance/fare-estimate
+router.get('/fare-estimate', async (req, res) => {
+  try {
+    const { distance, ambulanceType = 'basic', isEmergency = 'false', isNightTime = 'false', providerId } = req.query;
+    
+    // Get dynamic commission config
+    const CommissionConfig = require('../models/CommissionConfig');
+    const commissionConfig = await CommissionConfig.getActiveConfig(
+      isEmergency === 'true' ? 'ambulance_emergency' : 'ambulance_scheduled',
+      providerId
+    );
+    
+    // Provider-set pricing from AmbulanceFleet
+    let baseFare = 0;
+    let perKmRate = 0;
+    
+    if (providerId) {
+      const fleet = await AmbulanceFleet.findOne({ ownerId: providerId });
+      if (fleet) {
+        const vehicle = fleet.vehicles.find(v => 
+          v.type === ambulanceType && v.status === 'available'
+        ) || fleet.vehicles[0];
+        if (vehicle) {
+          baseFare = Number(vehicle.baseFare) || 0;
+          perKmRate = Number(vehicle.perKmRate) || 0;
+        }
+      }
+    }
+    
+    const distanceKm = parseFloat(distance) || 0;
+    const baseTotal = baseFare + (distanceKm * perKmRate);
+    
+    // Apply commission
+    const commission = commissionConfig 
+      ? commissionConfig.calculateCommission(baseTotal, { 
+          isEmergency: isEmergency === 'true',
+          isNightShift: isNightTime === 'true' 
+        })
+      : { commission: Math.round(baseTotal * 0.15), rate: 15 };
+    
+    // Platform fee
+    const platformFee = commissionConfig 
+      ? commissionConfig.calculatePlatformFee(baseTotal, isEmergency === 'true')
+      : 0;
+    
+    const total = baseTotal + commission.commission + platformFee;
+    
+    res.json({
+      success: true,
+      data: {
+        ambulanceType,
+        distanceKm,
+        baseFare,
+        perKmRate,
+        providerAmount: baseTotal,
+        commissionRate: commission.rate,
+        commissionAmount: commission.commission,
+        platformFee,
+        estimatedTotal: Math.round(total)
+      }
+    });
+  } catch (error) {
+    res.status(500).json({ success: false, error: error.message });
+  }
+});
+
 // ─────────────────────────────────────────────
 // GET /ambulance/fare-estimate
 // 💰 Get fare estimate before booking
