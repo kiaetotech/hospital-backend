@@ -413,6 +413,32 @@ const hospitalLocation = {
 // ============================================
 
 const ambulanceLocation = {
+  getDriverLocation: async (driverId) => {
+    try {
+      const redis = getRedisClient();
+      const data = await redis.get(KEY_PREFIXES.ambulance.driverLocation + driverId);
+      return data ? JSON.parse(data) : null;
+    } catch (error) {
+      return null;
+    }
+  },
+
+  updateDriverStatus: async (driverId, status = {}) => {
+    try {
+      const redis = getRedisClient();
+      const key = KEY_PREFIXES.ambulance.driverLocation + driverId;
+      const data = await redis.get(key);
+      if (!data) return null;
+      const parsed = JSON.parse(data);
+      parsed.isAvailable = status.isAvailable !== undefined ? status.isAvailable : parsed.isAvailable;
+      parsed.lastUpdate = new Date().toISOString();
+      await redis.setex(key, TTL_CONFIG.ambulance.driver, JSON.stringify(parsed));
+      return parsed;
+    } catch (error) {
+      return null;
+    }
+  },
+
   updateDriverLocation: async (driverId, lat, lng, metadata = {}) => {
     const redis = getRedisClient();
     const key = KEY_PREFIXES.ambulance.driverLocation + driverId;
