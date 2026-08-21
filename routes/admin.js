@@ -567,4 +567,60 @@ router.get('/users', async (req, res) => {
   }
 });
 
+// ============================================
+// COMMISSION CONFIG MANAGEMENT (ADMIN)
+// ============================================
+
+// Get all commission configs
+router.get('/commission-configs', async (req, res) => {
+  try {
+    const CommissionConfig = require('../models/CommissionConfig');
+    const configs = await CommissionConfig.find({}).sort({ serviceType: 1, version: -1 });
+    res.json({ success: true, data: configs });
+  } catch (error) {
+    res.status(500).json({ success: false, message: error.message });
+  }
+});
+
+// Get active config for service type
+router.get('/commission-config/:serviceType', async (req, res) => {
+  try {
+    const CommissionConfig = require('../models/CommissionConfig');
+    const config = await CommissionConfig.getActiveConfig(req.params.serviceType);
+    res.json({ success: true, data: config });
+  } catch (error) {
+    res.status(500).json({ success: false, message: error.message });
+  }
+});
+
+// Create commission config
+router.post('/commission-config', async (req, res) => {
+  try {
+    const CommissionConfig = require('../models/CommissionConfig');
+    const config = new CommissionConfig({
+      ...req.body,
+      effectiveFrom: req.body.effectiveFrom || new Date()
+    });
+    await config.save();
+    res.status(201).json({ success: true, data: config });
+  } catch (error) {
+    res.status(500).json({ success: false, message: error.message });
+  }
+});
+
+// Update commission config
+router.put('/commission-config/:configId', async (req, res) => {
+  try {
+    const CommissionConfig = require('../models/CommissionConfig');
+    const config = await CommissionConfig.findOneAndUpdate(
+      { configId: req.params.configId },
+      { ...req.body, updatedAt: new Date() },
+      { new: true }
+    );
+    res.json({ success: true, data: config });
+  } catch (error) {
+    res.status(500).json({ success: false, message: error.message });
+  }
+});
+
 module.exports = router;
