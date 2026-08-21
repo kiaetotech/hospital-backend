@@ -551,12 +551,25 @@ const contactDrivers = async (booking, drivers, fareEstimate) => {
       surgeMultiplier: fareEstimate.surgeMultiplier || 1.0
     });
     
-    // In production: Wait for driver to accept via WebSocket
-    // For now: Auto-accept the first available driver
-    // TODO: Implement real-time accept/reject via WebSocket
+        // Emit socket event to driver
+    const io = global.io;
+    if (io) {
+      const emergencyData = {
+        bookingId: booking.bookingId,
+        patientName: booking.patientName,
+        patientCondition: booking.patientCondition?.chiefComplaint || 'Emergency',
+        pickupAddress: booking.pickupAddress,
+        distance: driver.distance,
+        estimatedFare: fareEstimate.total,
+        tripOtp: booking.tripOtp
+      };
+      
+      io.to(`driver:${driver.driverId}`).emit('emergency:new_request', emergencyData);
+      console.log(`📡 Emergency alert emitted to driver ${driver.driverId} via socket`);
+    }
     
-    // Simulate: Driver accepts (in real system, this comes from WebSocket)
-    const driverAccepted = true; // Placeholder
+    // For now, return driver (socket will handle accept/reject in production)
+    return driver;
     
     if (driverAccepted) {
       // Update contacted list
