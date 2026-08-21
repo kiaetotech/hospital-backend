@@ -68,7 +68,7 @@ router.post('/emergency-dispatch', async (req, res) => {
       });
     }
 
-    // Fallback: Find nearest available ambulance from AmbulanceFleet
+        // Fallback: Find nearest available ambulance from AmbulanceFleet
     const fleets = await AmbulanceFleet.find({ 'vehicles.status': 'available' });
     
     let nearestVehicle = null;
@@ -79,7 +79,7 @@ router.post('/emergency-dispatch', async (req, res) => {
       const provider = await User.findById(fleet.ownerId);
       if (!provider?.ambulanceSettings?.isAvailable) continue;
 
-	const availableVehicles = fleet.vehicles.filter(v => 
+      const availableVehicles = fleet.vehicles.filter(v => 
         v.status === 'available' && 
         Number(v.baseFare) > 0 && 
         Number(v.perKmRate) > 0
@@ -103,63 +103,85 @@ router.post('/emergency-dispatch', async (req, res) => {
       }
     }
 
-          const bookingId = 'EMG' + Date.now();
-      const tripOtp = Math.floor(1000 + Math.random() * 9000);
-
-      try {
-        const emergencyBooking = new Booking({
-          bookingId,
-          userId: userId || 'guest',
-          bookingType: 'ambulance_emergency',
-          appointmentDate: new Date(),
-          emergencyType: 'blitz',
-          patientName: patientName || 'Emergency Patient',
-          patientPhone,
-          pickupAddress: pickupAddress || 'GPS Location',
-          pickupCoordinates: { lat: parseFloat(pickupLat), lng: parseFloat(pickupLng) },
-          vehicleNumber: nearestVehicle.vehicleNumber,
-          driverName: nearestVehicle.driverName || nearestProvider.name,
-          driverPhone: nearestVehicle.driverPhone || nearestProvider.phone,
-          providerId: nearestProvider._id,
-          providerName: nearestProvider.name,
-          vehicleId: nearestVehicle._id,
-          status: 'confirmed',
-          tripOtp,
-          location: { type: 'Point', coordinates: [parseFloat(pickupLng), parseFloat(pickupLat)] },
-          originalAmount: Number(nearestVehicle.baseFare) || 0,
-          finalAmount: Number(nearestVehicle.baseFare) || 0,
-          emergencyRequestedAt: new Date(),
-          createdAt: new Date()
-        });
-        await emergencyBooking.save();
-      } catch (saveError) {
-        console.error('Emergency booking save failed:', saveError);
-      }
-
+    if (!nearestVehicle || !nearestProvider) {
       return res.status(200).json({
-        success: true,
-        message: 'Ambulance dispatched from fleet',
-        data: {
-          bookingId,
-          driver: {
-            name: nearestVehicle.driverName || nearestProvider.name || 'Driver',
-            phone: nearestVehicle.driverPhone || nearestProvider.phone || 'N/A',
-            vehicleNumber: nearestVehicle.vehicleNumber,
-            rating: 4.5
-          },
-          tripOtp,
-          fareEstimate: {
-            baseFare: Number(nearestVehicle.baseFare) || 0,
-            perKmRate: Number(nearestVehicle.perKmRate) || 0
-          }
-        }
+        success: false,
+        reason: 'no_vehicle_available',
+        message: 'No ambulance available. Please call 108.'
       });
+    }
+
+    const bookingId = 'EMG' + Date.now();
+    const tripOtp = Math.floor(1000 + Math.random() * 9000);
+
+    try {
+      const emergencyBooking = new Booking({
+        bookingId,
+        userId: userId || 'guest',
+        bookingType: 'ambulance_emergency',
+        appointmentDate: new Date(),
+        emergencyType: 'blitz',
+        patientName: patientName || 'Emergency Patient',
+        patientPhone,
+        pickupAddress: pickupAddress || 'GPS Location',
+        pickupCoordinates: { lat: parseFloat(pickupLat), lng: parseFloat(pickupLng) },
+        vehicleNumber: nearestVehicle.vehicleNumber,
+        driverName: nearestVehicle.driverName || nearestProvider.name,
+        driverPhone: nearestVehicle.driverPhone || nearestProvider.phone,
+        providerId: nearestProvider._id,
+        providerName: nearestProvider.name,
+        vehicleId: nearestVehicle._id,
+        status: 'confirmed',
+        tripOtp,
+        location: { type: 'Point', coordinates: [parseFloat(pickupLng), parseFloat(pickupLat)] },
+        originalAmount: Number(nearestVehicle.baseFare) || 0,
+        finalAmount: Number(nearestVehicle.baseFare) || 0,
+        emergencyRequestedAt: new Date(),
+        createdAt: new Date()
+      });
+      await emergencyBooking.save();
+      
+      // Emit socket event to driver
+      try {
+        const io = req.app.get('io');
+        if (io) {
+          const driverRoom = 'driver:' + nearestVehicle._id;
+          io.to(driverRoom).emit('emergency:new_request', {
+            bookingId,
+            patientName: patientName || 'Emergency Patient',
+            patientCondition: patientCondition || 'Emergency',
+            pickupAddress: pickupAddress || 'GPS Location',
+            distance: Math.round(minDistance * 10) / 10,
+            estimatedFare: Number(nearestVehicle.baseFare) || 0,
+            tripOtp
+          });
+          console.log(`📡 Socket emergency alert emitted to driver room: ${driverRoom}`);
+        }
+      } catch (socketError) {
+        console.error('Socket emit failed:', socketError.message);
+      }
+      
+    } catch (saveError) {
+      console.error('Emergency booking save failed:', saveError);
+    }
 
     return res.status(200).json({
-      success: false,
-      reason: result.reason,
-      message: 'No ambulance available. Please call 108.',
-      bookingId: result.booking?.bookingId
+      success: true,
+      message: 'Ambulance dispatched from fleet',
+      data: {
+        bookingId,
+        driver: {
+          name: nearestVehicle.driverName || nearestProvider.name || 'Driver',
+          phone: nearestVehicle.driverPhone || nearestProvider.phone || 'N/A',
+          vehicleNumber: nearestVehicle.vehicleNumber,
+          rating: 4.5
+        },
+        tripOtp,
+        fareEstimate: {
+          baseFare: Number(nearestVehicle.baseFare) || 0,
+          perKmRate: Number(nearestVehicle.perKmRate) || 0
+        }
+      }
     });
 
   } catch (error) {
