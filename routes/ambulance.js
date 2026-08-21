@@ -1475,6 +1475,24 @@ router.get('/driver/trip-history', authenticateToken, async (req, res) => {
   }
 });
 
+// Debug: Check driver location in Redis
+router.get('/driver/debug-location/:driverId', async (req, res) => {
+  try {
+    const { driverId } = req.params;
+    const location = await locationCache.ambulance.getDriverLocation(driverId);
+    const nearbyDrivers = await locationCache.ambulance.findNearbyDrivers(21.2153, 79.0797, 50, { limit: 10, requireAvailable: false });
+    
+    res.json({
+      success: true,
+      driverId,
+      location,
+      nearbyDrivers
+    });
+  } catch (error) {
+    res.json({ success: false, error: error.message });
+  }
+});
+
 // ============================================
 // 💰 FARE & COMMISSION ENDPOINTS
 // ============================================
