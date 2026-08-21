@@ -91,7 +91,7 @@ const dispatchEmergencyAmbulance = async (emergencyData) => {
     // ============================================
     // STEP 4: Calculate fare estimate
     // ============================================
-    const fareEstimate = calculateEmergencyFare(booking, hospitalData);
+    const fareEstimate = calculateEmergencyFare(booking, hospitalData, null);
     
     // ============================================
     // STEP 5: Find & dispatch nearest drivers
@@ -383,34 +383,49 @@ const createEmergencyBooking = async (patientData, hospitalData) => {
  * Calculate fare estimate before dispatch
  * Interfaces with: commissionService
  */
-const calculateEmergencyFare = (booking, hospitalData) => {
+const calculateEmergencyFare = (booking, hospitalData, vehicle = null) => {
   const distance = hospitalData.distance || 5;
   const isNightTime = isNightTimeNow();
-  const surgeMultiplier = 1.0; // Will be updated if surge detected
+  const surgeMultiplier = 1.0;
   
-  const fareEstimate = commissionService.calculateAmbulanceFare({
-    baseFare: 500,
-    distance: distance,
-    isNightTime: isNightTime,
-    ambulanceType: 'basic',
-    surgeMultiplier: surgeMultiplier,
-    isEmergency: true
-  });
+  // Use provider pricing if available, otherwise defaults
+  const baseFare = vehicle?.baseFare || 500;
+  const perKmRate = vehicle?.perKmRate || 30;
+  const nightCharge = vehicle?.nightCharge || 0;
   
-  // Calculate commission
-  const commission = commissionService.calculateEmergencyCommission({
-    bookingType: 'ambulance_emergency',
+  const distanceCharge = distance * perKmRate;
+  const appliedNightCharge = isNightTime ? nightCharge : 0;
+  const surgeCharge = (baseFare + distanceCharge) * (surgeMultiplier - 1);
+  const total = baseFare + distanceCharge + appliedNightCharge + surgeCharge;
+  
+  const fareEstimate = {
+    breakdown: {
+      baseFare,
+      distance: Math.round(distance * 10) / 10,
+      perKmRate,
+      distanceCharge: Math.round(distanceCharge),
+      nightCharge: Math.round(appliedNightCharge),
+      surgeMultiplier,
+      surgeCharge: Math.round(surgeCharge),
+      total: Math.round(total)
+    },
+    total: Math.round(total)
+  };
+  
+  // Use correct production commission function
+  const commission = commissionService.calculateAmbulanceCommission({
+    amount: total,
+    providerId: booking.providerId || null,
     emergencyType: 'blitz',
-    amount: fareEstimate.breakdown.total,
-    isNightTime: isNightTime,
+    isNightTime,
     isLongDistance: distance > 50
   });
   
   return {
     ...fareEstimate,
     commission,
-    platformFee: 0, // Waived for emergency
-    total: fareEstimate.breakdown.total
+    platformFee: 0,
+    total: Math.round(total)
   };
 };
 
