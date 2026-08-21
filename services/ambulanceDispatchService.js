@@ -451,7 +451,7 @@ const findAndDispatchDrivers = async (booking, fareEstimate) => {
       booking.pickupCoordinates.lng,
       radius,
       {
-        vehicleType: booking.ambulanceType || 'any',
+        vehicleType: null, // Don't filter by vehicle type for emergency
         limit: DISPATCH_CONFIG.driversToContact,
         requireAvailable: true
       }
