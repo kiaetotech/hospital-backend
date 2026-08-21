@@ -2568,15 +2568,36 @@ router.get('/cities', async (req, res) => {
 router.post('/driver-login', async (req, res) => {
   try {
     const { phone } = req.body;
-    const provider = await User.findOne({ 'ambulanceDrivers.phone': phone });
+    const cleanPhone = phone.replace('+91', '');
+    
+    const provider = await User.findOne({ 
+      $or: [
+        { 'ambulanceDrivers.phone': phone },
+        { 'ambulanceDrivers.phone': `+91${cleanPhone}` },
+        { 'ambulanceDrivers.phone': cleanPhone }
+      ]
+    });
+    
     if (!provider) return res.status(404).json({ success: false, message: 'Driver not found' });
-    const driver = provider.ambulanceDrivers.find(d => d.phone === phone);
+    
+    const driver = provider.ambulanceDrivers.find(d => 
+      d.phone === phone || d.phone === `+91${cleanPhone}` || d.phone === cleanPhone
+    );
+    
+    if (!driver) return res.status(404).json({ success: false, message: 'Driver not found' });
+    
     const jwt = require('jsonwebtoken');
     const token = jwt.sign(
-  { id: provider._id, driverId: driver._id, name: driver.name, role: 'ambulance_driver' },
-  process.env.JWT_SECRET || 'hospital_platform_secret_key_2024',
-  { expiresIn: '7d' }
-);
+      { id: provider._id, driverId: driver._id, name: driver.name, role: 'ambulance_driver' },
+      process.env.JWT_SECRET || 'hospital_platform_secret_key_2024',
+      { expiresIn: '7d' }
+    );
+    
+    res.json({ success: true, token, driver: { id: driver._id, name: driver.name, phone: driver.phone } });
+  } catch (error) {
+    res.status(500).json({ success: false, message: error.message });
+  }
+});
     res.json({ success: true, token, driver: { id: driver._id, name: driver.name, phone: driver.phone } });
   } catch (error) {
     res.status(500).json({ success: false, message: error.message });
