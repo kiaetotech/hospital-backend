@@ -1378,8 +1378,9 @@ router.get('/driver/dashboard', authenticateToken, async (req, res) => {
       }
     });
   } catch (error) {
+    console.error('DRIVER DASHBOARD ERROR:', error);
     return res.status(500).json({ success: false, error: error.message });
-  }
+}
 });
 
 // ─────────────────────────────────────────────
