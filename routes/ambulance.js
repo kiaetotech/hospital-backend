@@ -1344,14 +1344,16 @@ router.post('/rate-trip/:bookingId', authenticateToken, async (req, res) => {
     
     await booking.save();
     
-    // Update driver's average rating
+    //     // Update driver's average rating
     const allRatedTrips = await Booking.find({
       driverId: booking.driverId,
       status: 'completed',
       'review.submittedAt': { $exists: true }
     });
     
-    const avgRating = allRatedTrips.reduce((sum, t) => sum + (t.review?.rating || 0), 0) / allRatedTrips.length;
+    const avgRating = allRatedTrips.length > 0 
+      ? allRatedTrips.reduce((sum, t) => sum + (t.review?.rating || 0), 0) / allRatedTrips.length
+      : rating;
     
     res.json({
       success: true,
@@ -1521,17 +1523,7 @@ router.get('/driver/dashboard', authenticateToken, async (req, res) => {
         vehicle: vehicleDetails,
         vehicleNumber: vehicleDetails?.vehicleNumber || '',
         vehicleType: vehicleDetails?.type || 'basic',
-
-	const ratedTrips = await Booking.find({
-      driverId,
-      status: 'completed',
-      'review.submittedAt': { $exists: true }
-    }).select('review.rating');
-    
-    const avgRating = ratedTrips.length > 0 
-      ? Math.round((ratedTrips.reduce((sum, t) => sum + (t.review?.rating || 0), 0) / ratedTrips.length) * 10) / 10
-      : 0;
-        
+      
         stats: {
           todayTrips,
           totalTrips,
