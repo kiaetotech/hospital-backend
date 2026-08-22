@@ -892,7 +892,8 @@ const arrivedAtHospital = async (bookingId, vitalsData = null) => {
 
 /**
  * Complete emergency trip
- const completeEmergencyTrip = async (bookingId, tripData = {}) => {
+ */
+const completeEmergencyTrip = async (bookingId, tripData = {}) => {
   const booking = await Booking.findOne({ bookingId });
   if (!booking) return { success: false, reason: 'Booking not found' };
 
