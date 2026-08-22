@@ -33,7 +33,7 @@ const bookingSchema = new mongoose.Schema({
   appointmentDate: { type: Date, required: true },
   originalAmount: { type: Number, required: true },
   discount: { type: Number, default: 0 },
-  finalAmount: { type: Number, required: true },
+  finalAmount: { type: Number, required: true, default: 0 },
   paymentStatus: { 
     type: String, 
     enum: ['pending', 'paid', 'failed', 'refunded', 'partially_refunded'], 
