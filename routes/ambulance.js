@@ -1482,12 +1482,12 @@ router.get('/driver/dashboard', authenticateToken, async (req, res) => {
     const monthStart = new Date(today);
     monthStart.setDate(monthStart.getDate() - 30);
 
-    const [todayTrips, totalTrips, weekTrips, monthTrips, recentTrips, driverLocation] = await Promise.all([
-      Booking.countDocuments({ driverId, status: 'completed', completedAt: { $gte: today, $lt: tomorrow } }),
-      Booking.countDocuments({ driverId, status: 'completed' }),
-      Booking.countDocuments({ driverId, status: 'completed', completedAt: { $gte: weekStart } }),
-      Booking.countDocuments({ driverId, status: 'completed', completedAt: { $gte: monthStart } }),
-      Booking.find({ driverId, status: 'completed' }).sort({ completedAt: -1 }).limit(10),
+        const [todayTrips, totalTrips, weekTrips, monthTrips, recentTrips, driverLocation] = await Promise.all([
+      Booking.countDocuments({ driverId, bookingType: { $in: ['ambulance', 'ambulance_emergency'] }, status: 'completed', completedAt: { $gte: today, $lt: tomorrow } }),
+      Booking.countDocuments({ driverId, bookingType: { $in: ['ambulance', 'ambulance_emergency'] }, status: 'completed' }),
+      Booking.countDocuments({ driverId, bookingType: { $in: ['ambulance', 'ambulance_emergency'] }, status: 'completed', completedAt: { $gte: weekStart } }),
+      Booking.countDocuments({ driverId, bookingType: { $in: ['ambulance', 'ambulance_emergency'] }, status: 'completed', completedAt: { $gte: monthStart } }),
+      Booking.find({ driverId, bookingType: { $in: ['ambulance', 'ambulance_emergency'] }, status: 'completed' }).sort({ completedAt: -1 }).limit(10),
       locationCache.ambulance.getDriverLocation(driverId)
     ]);
 
@@ -1605,7 +1605,7 @@ router.get('/driver/trip-history', authenticateToken, async (req, res) => {
     }
     
     const { limit = 20, page = 1 } = req.query;
-    const trips = await Booking.find({ driverId, status: 'completed' })
+    const trips = await Booking.find({ driverId, bookingType: { $in: ['ambulance', 'ambulance_emergency'] }, status: 'completed' })
       .sort({ completedAt: -1 })
       .skip((page - 1) * limit)
       .limit(parseInt(limit));
