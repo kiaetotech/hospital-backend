@@ -55,10 +55,10 @@ router.post('/emergency-dispatch', async (req, res) => {
         message: 'Ambulance dispatched successfully',
         data: {
           bookingId: result.booking.bookingId,
-          driver: {
-            name: result.driver?.name || 'Assigned',
-            phone: result.driver?.phone || result.driver?.driverPhone || 'N/A',
-            vehicleNumber: result.driver?.vehicleNumber || 'N/A',
+                    driver: {
+            name: result.driver?.name || result.driver?.driverName || result.booking?.driverName || 'Assigned',
+            phone: result.driver?.phone || result.driver?.driverPhone || result.booking?.driverPhone || 'N/A',
+            vehicleNumber: result.driver?.vehicleNumber || result.booking?.vehicleNumber || 'N/A',
             rating: result.driver?.rating || result.driver?.driverRating || 4.5
           },
           trackingUrl: result.trackingUrl,
