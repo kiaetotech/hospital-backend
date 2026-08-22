@@ -1510,6 +1510,16 @@ router.get('/driver/dashboard', authenticateToken, async (req, res) => {
       ])
     ]);
 
+    const ratedTrips = await Booking.find({
+      driverId,
+      status: 'completed',
+      'review.submittedAt': { $exists: true }
+    }).select('review.rating');
+    
+    const avgRating = ratedTrips.length > 0 
+      ? Math.round((ratedTrips.reduce((sum, t) => sum + (t.review?.rating || 0), 0) / ratedTrips.length) * 10) / 10
+      : 0;
+
     return res.json({
       success: true,
       data: {
@@ -1533,7 +1543,8 @@ router.get('/driver/dashboard', authenticateToken, async (req, res) => {
           weekEarnings: weekEarnings[0]?.total || 0,
           monthEarnings: monthEarnings[0]?.total || 0,
           totalEarnings: totalEarnings[0]?.total || 0,
-          rating: 0,
+          rating: avgRating,
+          totalRatings: ratedTrips.length,
           acceptanceRate: 100,
           avgResponseTime: 0
         },
