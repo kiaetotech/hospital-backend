@@ -1594,6 +1594,8 @@ router.get('/driver/trip-history', authenticateToken, async (req, res) => {
   try {
     let driverId;
     
+    console.log('TRIP HISTORY REQUEST - Role:', req.user.role, 'DriverId:', req.user.driverId, 'Query:', JSON.stringify(req.query));
+    
     if (req.user.role === 'ambulance_driver') {
       driverId = String(req.query.driverId || req.user.driverId || '');
       if (!driverId) return res.status(400).json({ success: false, error: 'Driver ID missing in token' });
@@ -1613,6 +1615,7 @@ router.get('/driver/trip-history', authenticateToken, async (req, res) => {
     const total = await Booking.countDocuments({ driverId, status: 'completed' });
     return res.json({ success: true, data: trips, pagination: { total, page: parseInt(page), pages: Math.ceil(total / limit) } });
   } catch (error) {
+    console.error('TRIP HISTORY ERROR:', error);
     return res.status(500).json({ success: false, error: error.message });
   }
 });
