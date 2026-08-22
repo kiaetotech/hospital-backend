@@ -892,18 +892,56 @@ const arrivedAtHospital = async (bookingId, vitalsData = null) => {
 
 /**
  * Complete emergency trip
- */
-const completeEmergencyTrip = async (bookingId, tripData = {}) => {
+ const completeEmergencyTrip = async (bookingId, tripData = {}) => {
   const booking = await Booking.findOne({ bookingId });
   if (!booking) return { success: false, reason: 'Booking not found' };
+
+  // Calculate fare based on distance and vehicle pricing
+  const distance = Number(tripData.distance || booking.distance || 5);
+  const duration = Number(tripData.duration || 15);
   
-  // Calculate final fare
-  const fareBreakdown = booking.calculateFare();
+  // Get vehicle pricing from AmbulanceFleet
+  const AmbulanceFleet = require('../models/AmbulanceFleet');
+  const fleet = await AmbulanceFleet.findOne({ 'vehicles._id': booking.driverId });
+  const vehicle = fleet?.vehicles?.id(booking.driverId);
   
+  const baseFare = Number(vehicle?.baseFare) || 500;
+  const perKmRate = Number(vehicle?.perKmRate) || 30;
+  const nightCharge = Number(vehicle?.nightCharge) || 0;
+  
+  const isNightTime = new Date().getHours() >= 22 || new Date().getHours() < 6;
+  const distanceCharge = distance * perKmRate;
+  const appliedNightCharge = isNightTime ? nightCharge : 0;
+  const totalFare = Math.round(baseFare + distanceCharge + appliedNightCharge);
+  
+  const fareBreakdown = {
+    baseFare,
+    distance: Math.round(distance * 10) / 10,
+    perKmRate,
+    distanceCharge: Math.round(distanceCharge),
+    nightCharge: Math.round(appliedNightCharge),
+    total: totalFare
+  };
+
+  // Calculate commission and driver earnings
+  const commissionResult = commissionService.calculateAmbulanceCommission({
+    amount: totalFare,
+    providerId: booking.providerId || null,
+    emergencyType: 'blitz',
+    isNightTime,
+    isLongDistance: distance > 50
+  });
+  
+  const platformCommission = commissionResult?.commission || Math.round(totalFare * 0.15);
+  const driverEarnings = totalFare - platformCommission;
+
   // Update booking
   booking.status = 'completed';
   booking.completedAt = new Date();
-  
+  booking.fareBreakdown = fareBreakdown;
+  booking.finalAmount = totalFare;
+  booking.driverEarnings = driverEarnings;
+
   if (tripData) {
     if (!booking.digitalTripSheet) booking.digitalTripSheet = {};
     Object.assign(booking.digitalTripSheet, {
@@ -913,35 +951,40 @@ const completeEmergencyTrip = async (bookingId, tripData = {}) => {
       generatedAt: new Date(),
       pickupTime: booking.driverAcceptedAt,
       dropTime: new Date(),
-      distance: tripData.distance || 0,
-      duration: tripData.duration || 0
+      distance: distance,
+      duration: duration
     });
   }
-  
-  booking.fareBreakdown = fareBreakdown;
-  booking.finalAmount = fareBreakdown.total;
-  
+
   await booking.save();
-  
+
   // Clear driver trip
   await locationCache.ambulance.clearDriverTrip(booking.driverId);
-  
-  // Update transaction
+
+  // Update transaction with earnings
   await Transaction.findOneAndUpdate(
     { applicationId: bookingId },
     {
       status: 'completed',
       completedAt: new Date(),
+      amount: totalFare,
+      originalAmount: totalFare,
+      netAmount: driverEarnings,
       ambulanceFareBreakdown: fareBreakdown,
-      netAmount: fareBreakdown.total
-    }
+      ambulanceCommission: {
+        platformCommission,
+        driverEarnings,
+        commissionRate: commissionResult?.rate || 15
+      }
+    },
+    { upsert: true }
   );
-  
+
   // Notify patient with trip sheet
   await notificationService.sendTripCompletedAlert(booking);
   await notificationService.sendTripSheetReadyAlert(booking);
-  
-  return { success: true, booking, fareBreakdown };
+
+  return { success: true, booking, fareBreakdown, driverEarnings };
 };
 
 /**
