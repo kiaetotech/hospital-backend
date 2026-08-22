@@ -1358,7 +1358,7 @@ router.get('/driver/dashboard', authenticateToken, async (req, res) => {
   try {
     let driverId;
     let assignment = null;
-    
+
     if (req.user.role === 'ambulance_driver') {
       driverId = String(req.query.driverId || req.user.driverId || '');
       if (!driverId) return res.status(400).json({ success: false, error: 'Driver ID missing in token' });
@@ -1372,50 +1372,118 @@ router.get('/driver/dashboard', authenticateToken, async (req, res) => {
       if (!assignment) return res.status(403).json({ success: false, error: 'Driver is not registered under the authenticated provider' });
     }
 
+    // Fetch vehicle details from AmbulanceFleet
+    const AmbulanceFleet = require('../models/AmbulanceFleet');
+    let vehicleDetails = null;
+    let driverDetails = null;
+    let providerName = '';
+
+    const fleet = await AmbulanceFleet.findOne({
+      'vehicles._id': driverId
+    });
+
+    if (fleet) {
+      const vehicle = fleet.vehicles.id(driverId);
+      if (vehicle) {
+        vehicleDetails = {
+          _id: vehicle._id,
+          vehicleNumber: vehicle.vehicleNumber || '',
+          type: vehicle.type || 'basic',
+          model: vehicle.model || '',
+          year: vehicle.year || '',
+          equipment: vehicle.equipment || [],
+          baseFare: Number(vehicle.baseFare) || 0,
+          perKmRate: Number(vehicle.perKmRate) || 0,
+          nightCharge: Number(vehicle.nightCharge) || 0,
+          waitingCharge: Number(vehicle.waitingCharge) || 0,
+          status: vehicle.status || 'available'
+        };
+        driverDetails = {
+          name: vehicle.driverName || '',
+          phone: vehicle.driverPhone || '',
+          licenseNumber: vehicle.driverLicense || '',
+          experience: vehicle.driverExperience || ''
+        };
+      }
+      providerName = fleet.providerName || '';
+    }
+
     const today = new Date();
     today.setHours(0, 0, 0, 0);
     const tomorrow = new Date(today);
     tomorrow.setDate(tomorrow.getDate() + 1);
 
-    const [todayTrips, totalTrips, recentTrips, driverLocation] = await Promise.all([
-      Booking.countDocuments({ driverId, bookingType: 'ambulance_emergency', createdAt: { $gte: today, $lt: tomorrow }, status: 'completed' }),
+    const weekStart = new Date(today);
+    weekStart.setDate(weekStart.getDate() - 7);
+
+    const monthStart = new Date(today);
+    monthStart.setDate(monthStart.getDate() - 30);
+
+    const [todayTrips, totalTrips, weekTrips, monthTrips, recentTrips, driverLocation] = await Promise.all([
+      Booking.countDocuments({ driverId, status: 'completed', completedAt: { $gte: today, $lt: tomorrow } }),
       Booking.countDocuments({ driverId, status: 'completed' }),
-      Booking.find({ driverId, status: 'completed' }).sort({ completedAt: -1 }).limit(5),
+      Booking.countDocuments({ driverId, status: 'completed', completedAt: { $gte: weekStart } }),
+      Booking.countDocuments({ driverId, status: 'completed', completedAt: { $gte: monthStart } }),
+      Booking.find({ driverId, status: 'completed' }).sort({ completedAt: -1 }).limit(10),
       locationCache.ambulance.getDriverLocation(driverId)
     ]);
 
-    const todayEarnings = await Transaction.aggregate([
-      { $match: { ambulanceDriverId: driverId, createdAt: { $gte: today, $lt: tomorrow }, status: 'completed' } },
-      { $group: { _id: null, total: { $sum: '$ambulanceCommission.driverEarnings' } } }
+    const [todayEarnings, weekEarnings, monthEarnings, totalEarnings] = await Promise.all([
+      Transaction.aggregate([
+        { $match: { ambulanceDriverId: driverId, status: 'completed', completedAt: { $gte: today, $lt: tomorrow } } },
+        { $group: { _id: null, total: { $sum: '$ambulanceCommission.driverEarnings' } } }
+      ]),
+      Transaction.aggregate([
+        { $match: { ambulanceDriverId: driverId, status: 'completed', completedAt: { $gte: weekStart } } },
+        { $group: { _id: null, total: { $sum: '$ambulanceCommission.driverEarnings' } } }
+      ]),
+      Transaction.aggregate([
+        { $match: { ambulanceDriverId: driverId, status: 'completed', completedAt: { $gte: monthStart } } },
+        { $group: { _id: null, total: { $sum: '$ambulanceCommission.driverEarnings' } } }
+      ]),
+      Transaction.aggregate([
+        { $match: { ambulanceDriverId: driverId, status: 'completed' } },
+        { $group: { _id: null, total: { $sum: '$ambulanceCommission.driverEarnings' } } }
+      ])
     ]);
 
     return res.json({
       success: true,
       data: {
-        todayTrips,
-        todayEarnings: todayEarnings[0]?.total || 0,
-        totalTrips,
+        driverId,
+        driverName: driverDetails?.name || req.user.name || 'Driver',
+        driverPhone: driverDetails?.phone || '',
+        driverLicense: driverDetails?.licenseNumber || '',
+        driverExperience: driverDetails?.experience || '',
+        providerName,
+        
+        vehicle: vehicleDetails,
+        vehicleNumber: vehicleDetails?.vehicleNumber || '',
+        vehicleType: vehicleDetails?.type || 'basic',
+        
+        stats: {
+          todayTrips,
+          totalTrips,
+          weekTrips,
+          monthTrips,
+          todayEarnings: todayEarnings[0]?.total || 0,
+          weekEarnings: weekEarnings[0]?.total || 0,
+          monthEarnings: monthEarnings[0]?.total || 0,
+          totalEarnings: totalEarnings[0]?.total || 0,
+          rating: 0,
+          acceptanceRate: 100,
+          avgResponseTime: 0
+        },
+        
         recentTrips,
         currentLocation: driverLocation,
-        rating: assignment?.driver?.rating || req.user.driverRating || 0,
-        driverId,
-        providerId: assignment?.providerId || req.user.id || '',
-        driverName: assignment?.driver?.name || req.user.name || '',
-        vehicleId: assignment?.vehicle?._id || null,
-        vehicleNumber: assignment?.vehicle?.vehicleNumber || '',
-        vehicleType: assignment?.vehicle?.type || 'basic',
-        vehicle: assignment?.vehicle ? {
-          _id: assignment.vehicle._id, vehicleNumber: assignment.vehicle.vehicleNumber || '',
-          type: assignment.vehicle.type || 'basic', status: assignment.vehicle.status || 'available',
-          baseFare: Number(assignment.vehicle.baseFare) || 0, perKmRate: Number(assignment.vehicle.perKmRate) || 0,
-          nightCharge: Number(assignment.vehicle.nightCharge) || 0, waitingCharge: Number(assignment.vehicle.waitingCharge) || 0
-        } : null
+        isOnline: driverLocation?.isAvailable || false
       }
     });
   } catch (error) {
     console.error('DRIVER DASHBOARD ERROR:', error);
     return res.status(500).json({ success: false, error: error.message });
-}
+  }
 });
 
 // ─────────────────────────────────────────────
