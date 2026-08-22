@@ -1521,6 +1521,16 @@ router.get('/driver/dashboard', authenticateToken, async (req, res) => {
         vehicle: vehicleDetails,
         vehicleNumber: vehicleDetails?.vehicleNumber || '',
         vehicleType: vehicleDetails?.type || 'basic',
+
+	const ratedTrips = await Booking.find({
+      driverId,
+      status: 'completed',
+      'review.submittedAt': { $exists: true }
+    }).select('review.rating');
+    
+    const avgRating = ratedTrips.length > 0 
+      ? Math.round((ratedTrips.reduce((sum, t) => sum + (t.review?.rating || 0), 0) / ratedTrips.length) * 10) / 10
+      : 0;
         
         stats: {
           todayTrips,
