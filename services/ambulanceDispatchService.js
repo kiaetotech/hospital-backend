@@ -479,13 +479,22 @@ const findAndDispatchDrivers = async (booking, fareEstimate) => {
     return { success: false, reason: 'No driver accepted' };
   }
   
+    // Fetch driver details from AmbulanceFleet
+  const AmbulanceFleet = require('../models/AmbulanceFleet');
+  const fleet = await AmbulanceFleet.findOne({ 'vehicles._id': driverFound.driverId });
+  const vehicle = fleet?.vehicles?.id(driverFound.driverId);
+  
+  const driverName = vehicle?.driverName || 'Driver';
+  const driverPhone = vehicle?.driverPhone || 'N/A';
+  const driverVehicleNumber = vehicle?.vehicleNumber || 'N/A';
+
   // Update booking with driver info
   booking.driverId = driverFound.driverId;
-  booking.driverName = driverFound.name || driverFound.driverName;
-  booking.driverPhone = driverFound.phone || driverFound.driverPhone;
+  booking.driverName = driverName;
+  booking.driverPhone = driverPhone;
   booking.driverRating = driverFound.rating || 0;
-  booking.vehicleNumber = driverFound.vehicleNumber;
-  booking.vehicleType = driverFound.vehicleType;
+  booking.vehicleNumber = driverVehicleNumber;
+  booking.vehicleType = driverFound.vehicleType || 'basic';
   booking.status = 'driver_assigned';
   booking.driverAcceptedAt = new Date();
   booking.dispatchAttempts = retryCount + 1;
@@ -508,7 +517,17 @@ const findAndDispatchDrivers = async (booking, fareEstimate) => {
     bookingId: booking.bookingId
   });
   
-  return { success: true, driver: driverFound };
+  return { 
+  success: true, 
+  driver: {
+    driverId: driverFound.driverId,
+    name: driverName,
+    phone: driverPhone,
+    vehicleNumber: driverVehicleNumber,
+    vehicleType: driverFound.vehicleType || 'basic',
+    rating: 4.5,
+    distance: driverFound.distance || 0
+  } 
 };
 
 /**
