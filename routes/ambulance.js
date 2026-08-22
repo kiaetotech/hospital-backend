@@ -59,7 +59,7 @@ router.post('/emergency-dispatch', async (req, res) => {
             name: result.driver?.name || result.driver?.driverName || result.booking?.driverName || 'Assigned',
             phone: result.driver?.phone || result.driver?.driverPhone || result.booking?.driverPhone || 'N/A',
             vehicleNumber: result.driver?.vehicleNumber || result.booking?.vehicleNumber || 'N/A',
-            rating: result.driver?.rating || result.driver?.driverRating || 4.5
+            rating: result.driver?.rating || result.driver?.driverRating || 0
           },
           trackingUrl: result.trackingUrl,
           tripOtp: result.booking.tripOtp,

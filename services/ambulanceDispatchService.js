@@ -525,7 +525,7 @@ const findAndDispatchDrivers = async (booking, fareEstimate) => {
       phone: driverPhone,
       vehicleNumber: driverVehicleNumber,
       vehicleType: driverFound.vehicleType || 'basic',
-      rating: 4.5,
+      rating: 0, // Will be calculated from completed trip reviews
       distance: driverFound.distance || 0
     }
   };
