@@ -49,21 +49,26 @@ router.post('/emergency-dispatch', async (req, res) => {
       patientCondition, emergencyType
     });
 
-    if (result.success) {
+        if (result.success) {
       return res.status(200).json({
         success: true,
         message: 'Ambulance dispatched successfully',
         data: {
           bookingId: result.booking.bookingId,
           driver: {
-            name: result.driver.driverName,
-            phone: result.driver.driverPhone,
-            vehicleNumber: result.driver.vehicleNumber,
-            rating: result.driver.driverRating
+            name: result.driver?.name || 'Assigned',
+            phone: result.driver?.phone || result.driver?.driverPhone || 'N/A',
+            vehicleNumber: result.driver?.vehicleNumber || 'N/A',
+            rating: result.driver?.rating || result.driver?.driverRating || 4.5
           },
           trackingUrl: result.trackingUrl,
           tripOtp: result.booking.tripOtp,
-          fareEstimate: result.fareEstimate
+          fareEstimate: {
+            baseFare: result.fareEstimate?.breakdown?.baseFare || 0,
+            perKmRate: result.fareEstimate?.breakdown?.perKmRate || 0,
+            total: result.fareEstimate?.total || 0,
+            breakdown: result.fareEstimate?.breakdown || {}
+          }
         }
       });
     }
