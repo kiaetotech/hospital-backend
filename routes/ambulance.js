@@ -1569,11 +1569,11 @@ router.post('/driver/toggle-availability', authenticateToken, async (req, res) =
     const { isAvailable } = req.body;
     
     if (req.user.role === 'ambulance_driver') {
-        const driverId = String(req.body.driverId || req.user.driverId || '');
-  if (!driverId) return res.status(400).json({ success: false, error: 'Driver ID missing in token' });
-  await locationCache.ambulance.updateDriverStatus(driverId, { isAvailable });
-  return res.json({ success: true, isAvailable });
-}
+      const driverId = String(req.body.driverId || req.user.driverId || '');
+      if (!driverId) return res.status(400).json({ success: false, error: 'Driver ID missing in token' });
+      await locationCache.ambulance.updateDriverStatus(driverId, { isAvailable });
+      return res.json({ success: true, isAvailable });
+    }
     
     const driverId = String(req.body.driverId || '').trim();
     if (!driverId) return res.status(400).json({ success: false, error: 'Driver ID required' });
