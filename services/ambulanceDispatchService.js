@@ -517,17 +517,18 @@ const findAndDispatchDrivers = async (booking, fareEstimate) => {
     bookingId: booking.bookingId
   });
   
-  return { 
-  success: true, 
-  driver: {
-    driverId: driverFound.driverId,
-    name: driverName,
-    phone: driverPhone,
-    vehicleNumber: driverVehicleNumber,
-    vehicleType: driverFound.vehicleType || 'basic',
-    rating: 4.5,
-    distance: driverFound.distance || 0
-  } 
+    return {
+    success: true,
+    driver: {
+      driverId: driverFound.driverId,
+      name: driverName,
+      phone: driverPhone,
+      vehicleNumber: driverVehicleNumber,
+      vehicleType: driverFound.vehicleType || 'basic',
+      rating: 4.5,
+      distance: driverFound.distance || 0
+    }
+  };
 };
 
 /**
