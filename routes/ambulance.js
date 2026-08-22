@@ -1311,6 +1311,62 @@ router.get('/booking/:bookingId', async (req, res) => {
   }
 });
 
+// Submit rating for completed ambulance trip
+router.post('/rate-trip/:bookingId', authenticateToken, async (req, res) => {
+  try {
+    const { bookingId } = req.params;
+    const { rating, review, waitTimeRating, valueForMoneyRating } = req.body;
+    
+    if (!rating || rating < 1 || rating > 5) {
+      return res.status(400).json({ success: false, message: 'Rating must be between 1 and 5' });
+    }
+    
+    const booking = await Booking.findOne({ bookingId });
+    if (!booking) return res.status(404).json({ success: false, message: 'Booking not found' });
+    
+    if (booking.status !== 'completed') {
+      return res.status(400).json({ success: false, message: 'Can only rate completed trips' });
+    }
+    
+    if (booking.review?.submittedAt) {
+      return res.status(400).json({ success: false, message: 'Rating already submitted' });
+    }
+    
+    booking.review = {
+      rating: rating,
+      review: review || '',
+      staffRating: rating,
+      waitTimeRating: waitTimeRating || rating,
+      valueForMoneyRating: valueForMoneyRating || rating,
+      submittedAt: new Date(),
+      isVerified: false
+    };
+    
+    await booking.save();
+    
+    // Update driver's average rating
+    const allRatedTrips = await Booking.find({
+      driverId: booking.driverId,
+      status: 'completed',
+      'review.submittedAt': { $exists: true }
+    });
+    
+    const avgRating = allRatedTrips.reduce((sum, t) => sum + (t.review?.rating || 0), 0) / allRatedTrips.length;
+    
+    res.json({
+      success: true,
+      message: 'Rating submitted successfully',
+      data: {
+        bookingId,
+        rating,
+        driverAvgRating: Math.round(avgRating * 10) / 10
+      }
+    });
+  } catch (error) {
+    res.status(500).json({ success: false, message: error.message });
+  }
+});
+
 // ─────────────────────────────────────────────
 // GET /ambulance/trip-sheet/:bookingId
 // 📊 Get digital trip sheet for insurance
