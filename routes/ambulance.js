@@ -997,6 +997,7 @@ router.post('/schedule-transport', authenticateToken, async (req, res) => {
 
       bookingType: 'ambulance',
       emergencyType: 'scheduled',
+      tripOtp: Math.floor(1000 + Math.random() * 9000).toString(),
 
       patientName,
       patientPhone,
