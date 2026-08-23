@@ -1223,24 +1223,7 @@ router.post('/schedule-transport', authenticateToken, async (req, res) => {
     console.error(
       'SCHEDULE TRANSPORT ERROR:',
       error
-    );
-
-	// Complete scheduled ambulance trip
-router.post('/complete-scheduled/:bookingId', authenticateToken, async (req, res) => {
-  try {
-    const { bookingId } = req.params;
-    const booking = await Booking.findOne({ bookingId });
-    if (!booking) return res.status(404).json({ success: false, message: 'Booking not found' });
-    
-    booking.status = 'completed';
-    booking.completedAt = new Date();
-    await booking.save();
-    
-    res.json({ success: true, message: 'Trip completed', data: booking });
-  } catch (error) {
-    res.status(500).json({ success: false, message: error.message });
-  }
-});
+    );	
 
     console.error(
       '===================================='
@@ -1252,6 +1235,114 @@ router.post('/complete-scheduled/:bookingId', authenticateToken, async (req, res
     });
   }
 });
+
+	// Assign driver and notify for scheduled trip
+router.post('/assign-driver/:bookingId', authenticateToken, async (req, res) => {
+  try {
+    const { bookingId } = req.params;
+    const booking = await Booking.findOne({ bookingId });
+    if (!booking) return res.status(404).json({ success: false, message: 'Booking not found' });
+    
+    const drivers = await locationCache.ambulance.findNearbyDrivers(
+      booking.pickupCoordinates?.lat || 21.2153,
+      booking.pickupCoordinates?.lng || 79.0797,
+      50,
+      { limit: 5, requireAvailable: true }
+    );
+    
+    if (!drivers || drivers.length === 0) {
+      return res.json({ success: false, message: 'No available drivers nearby' });
+    }
+    
+    const driver = drivers[0];
+    booking.driverId = driver.driverId;
+    booking.status = 'driver_assigned';
+    booking.driverAcceptedAt = new Date();
+    await booking.save();
+    
+    const io = req.app.get('io') || global.io;
+    if (io) {
+      io.to(`driver:${driver.driverId}`).emit('scheduled:new_request', {
+        bookingId: booking.bookingId,
+        patientName: booking.patientName,
+        pickupAddress: booking.pickupAddress,
+        dropAddress: booking.dropAddress || booking.hospitalDestination?.address,
+        scheduledDate: booking.appointmentDate,
+        amount: booking.finalAmount,
+        vehicleType: booking.ambulanceType
+      });
+      console.log(`📡 Scheduled trip alert sent to driver ${driver.driverId}`);
+    }
+    
+    res.json({ success: true, message: 'Driver assigned and notified', data: booking });
+  } catch (error) {
+    res.status(500).json({ success: false, message: error.message });
+  }
+});
+
+// Driver accepts scheduled trip
+router.post('/accept-scheduled/:bookingId', authenticateToken, async (req, res) => {
+  try {
+    const { bookingId } = req.params;
+    const booking = await Booking.findOne({ bookingId });
+    if (!booking) return res.status(404).json({ success: false, message: 'Booking not found' });
+    
+    booking.status = 'confirmed';
+    booking.driverAcceptedAt = new Date();
+    await booking.save();
+    
+    res.json({ success: true, message: 'Trip accepted', data: booking });
+  } catch (error) {
+    res.status(500).json({ success: false, message: error.message });
+  }
+});
+
+// Driver declines scheduled trip
+router.post('/decline-scheduled/:bookingId', authenticateToken, async (req, res) => {
+  try {
+    const { bookingId } = req.params;
+    const booking = await Booking.findOne({ bookingId });
+    if (!booking) return res.status(404).json({ success: false, message: 'Booking not found' });
+    
+    booking.status = 'pending';
+    booking.driverId = null;
+    booking.driverAcceptedAt = null;
+    await booking.save();
+    
+    const drivers = await locationCache.ambulance.findNearbyDrivers(
+      booking.pickupCoordinates?.lat || 21.2153,
+      booking.pickupCoordinates?.lng || 79.0797,
+      50,
+      { limit: 5, requireAvailable: true }
+    );
+    
+    const nextDriver = drivers.length > 1 ? drivers[1] : null;
+    
+    if (nextDriver) {
+      booking.driverId = nextDriver.driverId;
+      booking.status = 'driver_assigned';
+      await booking.save();
+      
+      const io = req.app.get('io') || global.io;
+      if (io) {
+        io.to(`driver:${nextDriver.driverId}`).emit('scheduled:new_request', {
+          bookingId: booking.bookingId,
+          patientName: booking.patientName,
+          pickupAddress: booking.pickupAddress,
+          dropAddress: booking.dropAddress || booking.hospitalDestination?.address,
+          scheduledDate: booking.appointmentDate,
+          amount: booking.finalAmount,
+          vehicleType: booking.ambulanceType
+        });
+      }
+    }
+    
+    res.json({ success: true, message: 'Trip declined, reassigned to next driver', data: booking });
+  } catch (error) {
+    res.status(500).json({ success: false, message: error.message });
+  }
+});
+
 
 // ─────────────────────────────────────────────
 // GET /ambulance/scheduled-bookings
@@ -1329,6 +1420,24 @@ router.get('/booking/:bookingId', async (req, res) => {
     return res.status(500).json({ success: false, error: error.message });
   }
 });
+
+   // Complete scheduled ambulance trip
+router.post('/complete-scheduled/:bookingId', authenticateToken, async (req, res) => {
+  try {
+    const { bookingId } = req.params;
+    const booking = await Booking.findOne({ bookingId });
+    if (!booking) return res.status(404).json({ success: false, message: 'Booking not found' });
+
+    booking.status = 'completed';
+    booking.completedAt = new Date();
+    await booking.save();
+
+    res.json({ success: true, message: 'Trip completed', data: booking });
+  } catch (error) {
+    res.status(500).json({ success: false, message: error.message });
+  }
+});
+
 
 // Submit rating for completed ambulance trip
 router.post('/rate-trip/:bookingId', authenticateToken, async (req, res) => {
