@@ -1237,50 +1237,6 @@ router.post('/schedule-transport', authenticateToken, async (req, res) => {
   }
 });
 
-	// Assign driver and notify for scheduled trip
-router.post('/assign-driver/:bookingId', authenticateToken, async (req, res) => {
-  try {
-    const { bookingId } = req.params;
-    const booking = await Booking.findOne({ bookingId });
-    if (!booking) return res.status(404).json({ success: false, message: 'Booking not found' });
-    
-    const drivers = await locationCache.ambulance.findNearbyDrivers(
-      booking.pickupCoordinates?.lat || 21.2153,
-      booking.pickupCoordinates?.lng || 79.0797,
-      50,
-      { limit: 5, requireAvailable: true }
-    );
-    
-    if (!drivers || drivers.length === 0) {
-      return res.json({ success: false, message: 'No available drivers nearby' });
-    }
-    
-    const driver = drivers[0];
-    booking.driverId = driver.driverId;
-    booking.status = 'driver_assigned';
-    booking.driverAcceptedAt = new Date();
-    await booking.save();
-    
-    const io = req.app.get('io') || global.io;
-    if (io) {
-      io.to(`driver:${driver.driverId}`).emit('scheduled:new_request', {
-        bookingId: booking.bookingId,
-        patientName: booking.patientName,
-        pickupAddress: booking.pickupAddress,
-        dropAddress: booking.dropAddress || booking.hospitalDestination?.address,
-        scheduledDate: booking.appointmentDate,
-        amount: booking.finalAmount,
-        vehicleType: booking.ambulanceType
-      });
-      console.log(`📡 Scheduled trip alert sent to driver ${driver.driverId}`);
-    }
-    
-    res.json({ success: true, message: 'Driver assigned and notified', data: booking });
-  } catch (error) {
-    res.status(500).json({ success: false, message: error.message });
-  }
-});
-
 // Driver accepts scheduled trip
 router.post('/accept-scheduled/:bookingId', authenticateToken, async (req, res) => {
   try {
@@ -1310,9 +1266,9 @@ router.post('/decline-scheduled/:bookingId', authenticateToken, async (req, res)
     booking.driverAcceptedAt = null;
     await booking.save();
     
-    const drivers = await locationCache.ambulance.findNearbyDrivers(
-      booking.pickupCoordinates?.lat || 21.2153,
-      booking.pickupCoordinates?.lng || 79.0797,
+     const drivers = await locationCache.ambulance.findNearbyDrivers(
+      booking.pickupCoordinates?.lat,
+      booking.pickupCoordinates?.lng,
       50,
       { limit: 5, requireAvailable: true }
     );
