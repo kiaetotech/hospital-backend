@@ -1164,6 +1164,42 @@ router.post('/schedule-transport', authenticateToken, async (req, res) => {
       );
     }
 
+        // --------------------------------------------
+    // Auto-assign driver after booking creation
+    // --------------------------------------------
+    try {
+      const drivers = await locationCache.ambulance.findNearbyDrivers(
+        patientLat,
+        patientLng,
+        50,
+        { limit: 5, requireAvailable: true }
+      );
+      
+      if (drivers && drivers.length > 0) {
+        const driver = drivers[0];
+        booking.driverId = driver.driverId;
+        booking.status = 'driver_assigned';
+        booking.driverAcceptedAt = new Date();
+        await booking.save();
+        
+        const io = req.app.get('io') || global.io;
+        if (io) {
+          io.to(`driver:${driver.driverId}`).emit('scheduled:new_request', {
+            bookingId: booking.bookingId,
+            patientName: booking.patientName,
+            pickupAddress: booking.pickupAddress,
+            dropAddress: booking.dropAddress || booking.hospitalDestination?.address,
+            scheduledDate: booking.appointmentDate,
+            amount: booking.finalAmount,
+            vehicleType: booking.ambulanceType
+          });
+          console.log(`📡 Scheduled trip alert auto-sent to driver ${driver.driverId}`);
+        }
+      }
+    } catch (assignError) {
+      console.error('Auto-assign driver failed:', assignError.message);
+    }
+
     // --------------------------------------------
     // RESPONSE
     // --------------------------------------------
