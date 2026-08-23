@@ -1164,45 +1164,7 @@ router.post('/schedule-transport', authenticateToken, async (req, res) => {
       );
     }
 
-        // --------------------------------------------
-    // Auto-assign driver after booking creation
-    // --------------------------------------------
-    try {
-            const drivers = await locationCache.ambulance.findNearbyDrivers(
-        patientLat,
-        patientLng,
-        50,
-        { limit: 5, requireAvailable: true }
-      );
-      
-      // Prefer driver matching the selected vehicle
-      const matchedDriver = drivers.find(d => d.driverId === vehicle._id.toString()) || drivers[0];
-      
-      if (matchedDriver) {
-        const driver = matchedDriver;
-        booking.driverId = driver.driverId;
-        booking.status = 'driver_assigned';
-        booking.driverAcceptedAt = new Date();
-        await booking.save();
-        
-        const io = req.app.get('io') || global.io;
-        if (io) {
-          io.to(`driver:${driver.driverId}`).emit('scheduled:new_request', {
-            bookingId: booking.bookingId,
-            patientName: booking.patientName,
-            pickupAddress: booking.pickupAddress,
-            dropAddress: booking.dropAddress || booking.hospitalDestination?.address,
-            scheduledDate: booking.appointmentDate,
-            amount: booking.finalAmount,
-            vehicleType: booking.ambulanceType
-          });
-          console.log(`📡 Scheduled trip alert auto-sent to driver ${driver.driverId}`);
-        }
-      }
-    } catch (assignError) {
-      console.error('Auto-assign driver failed:', assignError.message);
-    }
-
+       
     // --------------------------------------------
     // RESPONSE
     // --------------------------------------------
@@ -1377,6 +1339,87 @@ router.post('/decline-scheduled/:bookingId', authenticateToken, async (req, res)
     }
     
     res.json({ success: true, message: 'Trip declined, reassigned to next driver', data: booking });
+  } catch (error) {
+    res.status(500).json({ success: false, message: error.message });
+  }
+});
+
+	// Driver arrived at pickup for scheduled trip
+router.post('/start-scheduled/:bookingId', authenticateToken, async (req, res) => {
+  try {
+    const { bookingId } = req.params;
+    const booking = await Booking.findOne({ bookingId });
+    if (!booking) return res.status(404).json({ success: false, message: 'Booking not found' });
+    
+    booking.status = 'driver_arrived';
+    booking.driverReachedAt = new Date();
+    await booking.save();
+    
+    res.json({ success: true, message: 'Driver arrived', data: booking });
+  } catch (error) {
+    res.status(500).json({ success: false, message: error.message });
+  }
+});
+
+// Patient onboard with OTP for scheduled trip
+router.post('/patient-onboard-scheduled/:bookingId', authenticateToken, async (req, res) => {
+  try {
+    const { bookingId } = req.params;
+    const { otp } = req.body;
+    const booking = await Booking.findOne({ bookingId });
+    if (!booking) return res.status(404).json({ success: false, message: 'Booking not found' });
+    
+    if (!otp || otp !== booking.tripOtp) {
+      return res.status(400).json({ success: false, message: 'Invalid OTP' });
+    }
+    
+    booking.status = 'patient_onboard';
+    booking.patientOnboardAt = new Date();
+    booking.otpVerified = true;
+    await booking.save();
+    
+    res.json({ success: true, message: 'Patient onboard', data: booking });
+  } catch (error) {
+    res.status(500).json({ success: false, message: error.message });
+  }
+});
+
+// Complete scheduled trip with earnings
+router.post('/complete-scheduled/:bookingId', authenticateToken, async (req, res) => {
+  try {
+    const { bookingId } = req.params;
+    const { distance, duration } = req.body;
+    const booking = await Booking.findOne({ bookingId });
+    if (!booking) return res.status(404).json({ success: false, message: 'Booking not found' });
+    
+    booking.status = 'completed';
+    booking.completedAt = new Date();
+    
+    // Calculate earnings
+    const totalFare = booking.finalAmount || 0;
+    const platformCommission = Math.round(totalFare * 0.15);
+    const driverEarnings = totalFare - platformCommission;
+    
+    booking.driverEarnings = driverEarnings;
+    await booking.save();
+    
+    // Update transaction
+    await Transaction.findOneAndUpdate(
+      { applicationId: bookingId },
+      {
+        status: 'completed',
+        completedAt: new Date(),
+        ambulanceDriverId: booking.driverId,
+        netAmount: driverEarnings,
+        ambulanceCommission: {
+          platformCommission,
+          driverEarnings
+        }
+      },
+      { upsert: true }
+    );
+    
+    res.json({ success: true, message: 'Trip completed', data: booking, driverEarnings });
   } catch (error) {
     res.status(500).json({ success: false, message: error.message });
   }
