@@ -1017,13 +1017,15 @@ router.post('/schedule-transport', authenticateToken, async (req, res) => {
       vehicleNumber:
         vehicle.vehicleNumber || '',
 
-      driverName:
+            driverName:
         vehicle.driverName || '',
 
       driverPhone:
         vehicle.driverPhone || '',
 
-            pickupAddress,
+      driverId: vehicle._id,
+
+      pickupAddress,
 
       pickupCoordinates: {
         lat: patientLat,
@@ -1222,6 +1224,23 @@ router.post('/schedule-transport', authenticateToken, async (req, res) => {
       'SCHEDULE TRANSPORT ERROR:',
       error
     );
+
+	// Complete scheduled ambulance trip
+router.post('/complete-scheduled/:bookingId', authenticateToken, async (req, res) => {
+  try {
+    const { bookingId } = req.params;
+    const booking = await Booking.findOne({ bookingId });
+    if (!booking) return res.status(404).json({ success: false, message: 'Booking not found' });
+    
+    booking.status = 'completed';
+    booking.completedAt = new Date();
+    await booking.save();
+    
+    res.json({ success: true, message: 'Trip completed', data: booking });
+  } catch (error) {
+    res.status(500).json({ success: false, message: error.message });
+  }
+});
 
     console.error(
       '===================================='
