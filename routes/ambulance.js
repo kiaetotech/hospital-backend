@@ -1168,15 +1168,18 @@ router.post('/schedule-transport', authenticateToken, async (req, res) => {
     // Auto-assign driver after booking creation
     // --------------------------------------------
     try {
-      const drivers = await locationCache.ambulance.findNearbyDrivers(
+            const drivers = await locationCache.ambulance.findNearbyDrivers(
         patientLat,
         patientLng,
         50,
         { limit: 5, requireAvailable: true }
       );
       
-      if (drivers && drivers.length > 0) {
-        const driver = drivers[0];
+      // Prefer driver matching the selected vehicle
+      const matchedDriver = drivers.find(d => d.driverId === vehicle._id.toString()) || drivers[0];
+      
+      if (matchedDriver) {
+        const driver = matchedDriver;
         booking.driverId = driver.driverId;
         booking.status = 'driver_assigned';
         booking.driverAcceptedAt = new Date();
