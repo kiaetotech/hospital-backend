@@ -1169,7 +1169,7 @@ router.post('/schedule-transport', authenticateToken, async (req, res) => {
     // --------------------------------------------
     // RESPONSE
     // --------------------------------------------
-    return res.json({
+            return res.json({
       success: true,
       message:
         'Ambulance scheduled successfully',
@@ -1177,6 +1177,16 @@ router.post('/schedule-transport', authenticateToken, async (req, res) => {
       data: {
         bookingId:
           booking.bookingId,
+
+        tripOtp:
+          booking.tripOtp,
+
+        driver: {
+          name: vehicle.driverName || 'Assigned',
+          phone: vehicle.driverPhone || 'N/A',
+          vehicleNumber: vehicle.vehicleNumber || 'N/A',
+          rating: 0
+        },
 
         providerId:
           String(fleet.ownerId),
