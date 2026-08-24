@@ -1109,7 +1109,7 @@ router.post('/schedule-transport', authenticateToken, async (req, res) => {
       status: 'pending'
     });
 
-    await booking.save();
+        await booking.save();
 
     console.log(
       'SCHEDULED AMBULANCE BOOKING CREATED:',
@@ -1122,6 +1122,42 @@ router.post('/schedule-transport', authenticateToken, async (req, res) => {
         totalFare: roundedTotalFare
       }
     );
+
+    // Auto-assign driver and send alert immediately after booking
+    try {
+      const drivers = await locationCache.ambulance.findNearbyDrivers(
+        patientLat,
+        patientLng,
+        50,
+        { limit: 5, requireAvailable: true }
+      );
+      
+      const matchedDriver = drivers.find(d => d.driverId === vehicle._id?.toString()) || drivers[0];
+      
+      if (matchedDriver) {
+        booking.driverId = matchedDriver.driverId;
+        booking.status = 'driver_assigned';
+        booking.driverAcceptedAt = new Date();
+        await booking.save();
+        
+        const io = req.app.get('io') || global.io;
+        if (io) {
+          io.to(`driver:${matchedDriver.driverId}`).emit('scheduled:new_request', {
+            bookingId: booking.bookingId,
+            patientName: booking.patientName,
+            pickupAddress: booking.pickupAddress,
+            dropAddress: booking.dropAddress || booking.hospitalDestination?.address,
+            scheduledDate: booking.appointmentDate,
+            amount: booking.finalAmount,
+            vehicleType: booking.ambulanceType,
+            paymentStatus: 'pending'
+          });
+          console.log(`📡 Scheduled trip alert sent at booking creation to driver ${matchedDriver.driverId}`);
+        }
+      }
+    } catch (assignError) {
+      console.error('Driver assignment at booking failed:', assignError.message);
+    }
 
     // --------------------------------------------
     // SMS
