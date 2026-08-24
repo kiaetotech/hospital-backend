@@ -304,6 +304,8 @@ router.post('/verify', async (req, res) => {
         });
         await booking.save();
       }
+    }
+
              
     // ============================================
     // CASE 5: Caregiver (PRESERVED)
