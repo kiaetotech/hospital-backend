@@ -11,6 +11,8 @@ const transactionSchema = new mongoose.Schema({
   
   transactionId: { type: String, unique: true, required: true },
   applicationId: { type: String },
+  ambulanceDriverId: { type: String },
+  ambulanceCommission: { type: Object },
   lenderId: { type: String },
   
   type: { 
