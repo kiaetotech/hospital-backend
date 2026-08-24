@@ -1470,24 +1470,6 @@ router.get('/booking/:bookingId', async (req, res) => {
   }
 });
 
-   // Complete scheduled ambulance trip
-router.post('/complete-scheduled/:bookingId', authenticateToken, async (req, res) => {
-  try {
-    const { bookingId } = req.params;
-    const booking = await Booking.findOne({ bookingId });
-    if (!booking) return res.status(404).json({ success: false, message: 'Booking not found' });
-
-    booking.status = 'completed';
-    booking.completedAt = new Date();
-    await booking.save();
-
-    res.json({ success: true, message: 'Trip completed', data: booking });
-  } catch (error) {
-    res.status(500).json({ success: false, message: error.message });
-  }
-});
-
-
 // Submit rating for completed ambulance trip
 router.post('/rate-trip/:bookingId', authenticateToken, async (req, res) => {
   try {
