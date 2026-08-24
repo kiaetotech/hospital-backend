@@ -304,53 +304,7 @@ router.post('/verify', async (req, res) => {
         });
         await booking.save();
       }
-      
-      // Auto-assign driver after payment confirmed
-      console.log('AUTO-ASSIGN CHECK - BookingType:', booking.bookingType, 'BookingId:', booking.bookingId);
-      if (booking.bookingType === 'ambulance') {
-        console.log('AUTO-ASSIGN START - PickupLat:', booking.pickupCoordinates?.lat);
-        try {
-          const locationCache = require('../services/locationCacheService');
-          const pickupLat = booking.pickupCoordinates?.lat;
-          const pickupLng = booking.pickupCoordinates?.lng;
-          
-          if (pickupLat && pickupLng) {
-            const drivers = await locationCache.ambulance.findNearbyDrivers(
-              pickupLat,
-              pickupLng,
-              50,
-              { limit: 5, requireAvailable: true }
-            );
-            
-            const matchedDriver = drivers.find(d => d.driverId === booking.vehicleId?.toString()) || drivers[0];
-            
-            if (matchedDriver) {
-              booking.driverId = matchedDriver.driverId;
-              booking.status = 'driver_assigned';
-              booking.driverAcceptedAt = new Date();
-              await booking.save();
-              
-              const io = req.app.get('io') || global.io;
-              if (io) {
-                io.to(`driver:${matchedDriver.driverId}`).emit('scheduled:new_request', {
-                  bookingId: booking.bookingId,
-                  patientName: booking.patientName,
-                  pickupAddress: booking.pickupAddress,
-                  dropAddress: booking.dropAddress || booking.hospitalDestination?.address,
-                  scheduledDate: booking.appointmentDate,
-                  amount: booking.finalAmount,
-                  vehicleType: booking.ambulanceType
-                });
-                console.log(`📡 Scheduled trip alert sent after payment to driver ${matchedDriver.driverId}`);
-              }
-            }
-          }
-        } catch (assignError) {
-          console.error('Post-payment driver assignment failed:', assignError.message);
-        }
-      }
-    }
-    
+             
     // ============================================
     // CASE 5: Caregiver (PRESERVED)
     // ============================================
