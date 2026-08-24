@@ -306,7 +306,7 @@ router.post('/verify', async (req, res) => {
       }
       
       // Auto-assign driver after payment confirmed
-      if (booking.emergencyType === 'scheduled') {
+      if (booking.bookingType === 'ambulance') {
         try {
           const locationCache = require('../services/locationCacheService');
           const pickupLat = booking.pickupCoordinates?.lat;
