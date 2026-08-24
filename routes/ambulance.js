@@ -1406,20 +1406,35 @@ router.post('/complete-scheduled/:bookingId', authenticateToken, async (req, res
     booking.driverEarnings = driverEarnings;
     await booking.save();
     
-    // Update transaction
-        await Transaction.findOneAndUpdate(
-      { applicationId: bookingId },
-      {
+        // Update transaction (create if not exists with proper transactionId)
+    const existingTransaction = await Transaction.findOne({ applicationId: bookingId });
+    
+    if (existingTransaction) {
+      existingTransaction.status = 'completed';
+      existingTransaction.completedAt = new Date();
+      existingTransaction.ambulanceDriverId = booking.driverId;
+      existingTransaction.netAmount = driverEarnings;
+      existingTransaction.ambulanceCommission = {
+        platformCommission,
+        driverEarnings
+      };
+      await existingTransaction.save();
+    } else {
+      await Transaction.create({
+        transactionId: Transaction.generateTransactionId(),
+        applicationId: bookingId,
         status: 'completed',
         completedAt: new Date(),
         ambulanceDriverId: booking.driverId,
+        amount: totalFare,
+        originalAmount: totalFare,
         netAmount: driverEarnings,
         ambulanceCommission: {
           platformCommission,
           driverEarnings
         }
-      }
-    );
+      });
+    }
     
     res.json({ success: true, message: 'Trip completed', data: booking, driverEarnings });
   } catch (error) {
