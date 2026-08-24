@@ -1371,7 +1371,7 @@ router.post('/complete-scheduled/:bookingId', authenticateToken, async (req, res
     await booking.save();
     
     // Update transaction
-    await Transaction.findOneAndUpdate(
+        await Transaction.findOneAndUpdate(
       { applicationId: bookingId },
       {
         status: 'completed',
@@ -1382,8 +1382,7 @@ router.post('/complete-scheduled/:bookingId', authenticateToken, async (req, res
           platformCommission,
           driverEarnings
         }
-      },
-      { upsert: true }
+      }
     );
     
     res.json({ success: true, message: 'Trip completed', data: booking, driverEarnings });
