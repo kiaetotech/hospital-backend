@@ -2827,22 +2827,41 @@ router.get('/bookings', authenticateToken, async (req, res) => {
 router.get('/financial-summary', authenticateToken, async (req, res) => {
   try {
     const providerId = req.user.id || req.user._id;
+    const { period = 'total' } = req.query;
+    
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    const tomorrow = new Date(today);
+    tomorrow.setDate(tomorrow.getDate() + 1);
+    const weekStart = new Date(today);
+    weekStart.setDate(weekStart.getDate() - 7);
+    const monthStart = new Date(today);
+    monthStart.setDate(monthStart.getDate() - 30);
+    
+    let dateFilter = {};
+    if (period === 'today') {
+      dateFilter = { completedAt: { $gte: today, $lt: tomorrow } };
+    } else if (period === 'week') {
+      dateFilter = { completedAt: { $gte: weekStart } };
+    } else if (period === 'month') {
+      dateFilter = { completedAt: { $gte: monthStart } };
+    }
     
     const fleet = await AmbulanceFleet.findOne({ ownerId: providerId });
     const vehicles = fleet?.vehicles || [];
     
-    const allBookings = await Booking.find({ providerId });
-    const completedBookings = allBookings.filter(b => b.status === 'completed');
-    const cancelledBookings = allBookings.filter(b => b.status === 'cancelled');
+    const completedBookings = await Booking.find({ providerId, status: 'completed', ...dateFilter });
+    const cancelledBookings = await Booking.find({ providerId, status: 'cancelled', ...dateFilter });
+    const allBookings = await Booking.find({ providerId, ...dateFilter });
     
-        const vehicleBreakdown = await Promise.all(vehicles.map(async (vehicle) => {
+    const vehicleBreakdown = await Promise.all(vehicles.map(async (vehicle) => {
       const vehicleBookings = completedBookings.filter(b =>
         b.vehicleId?.toString() === vehicle._id?.toString() ||
         b.vehicleNumber === vehicle.vehicleNumber
       );
 
       const revenue = Math.round(vehicleBookings.reduce((sum, b) => sum + (b.finalAmount || 0), 0) * 100) / 100;
-      const commission = Math.round(revenue * 0.15);
+      const commission = Math.round(revenue * 0.15 * 100) / 100;
       const net = Math.round((revenue - commission) * 100) / 100;
 
       return {
@@ -2857,18 +2876,19 @@ router.get('/financial-summary', authenticateToken, async (req, res) => {
       };
     }));
     
-    const totalRevenue = Math.round(completedBookings.reduce((sum, b) => sum + (b.finalAmount || 0), 0) * 100) / 100;
-    const totalCommission = Math.round(totalRevenue * 0.15);
-    const totalRefunds = allBookings.reduce((sum, b) => sum + (b.refundAmount || 0), 0);
-    const totalCancellationFees = cancelledBookings.reduce((sum, b) => sum + (b.cancellation?.cancellationFee || 0), 0);
-    const netEarnings = Math.round((totalRevenue - totalCommission - totalRefunds + totalCancellationFees) * 100) / 100;
+    const grossRevenue = Math.round(completedBookings.reduce((sum, b) => sum + (b.finalAmount || 0), 0) * 100) / 100;
+    const totalCommission = Math.round(grossRevenue * 0.15 * 100) / 100;
+    const totalRefunds = Math.round(allBookings.reduce((sum, b) => sum + (b.refundAmount || 0), 0) * 100) / 100;
+    const totalCancellationFees = Math.round(cancelledBookings.reduce((sum, b) => sum + (b.cancellation?.cancellationFee || 0), 0) * 100) / 100;
+    const netEarnings = Math.round((grossRevenue - totalCommission - totalRefunds + totalCancellationFees) * 100) / 100;
     
     res.json({
       success: true,
       data: {
+        period,
         overall: {
           totalTrips: completedBookings.length,
-          totalRevenue,
+          grossRevenue,
           totalCommission,
           totalRefunds,
           totalCancellationFees,
@@ -2881,6 +2901,7 @@ router.get('/financial-summary', authenticateToken, async (req, res) => {
       }
     });
   } catch (error) {
+    console.error('FINANCIAL SUMMARY ERROR:', error);
     res.status(500).json({ success: false, message: error.message });
   }
 });
