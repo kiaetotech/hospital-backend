@@ -312,35 +312,9 @@ router.post('/cancellation-quote/:bookingId', authenticateToken, async (req, res
       return res.status(400).json({ success: false, message: 'Already cancelled' });
     }
     
-    const totalFare = booking.finalAmount || booking.originalAmount || 0;
-    const now = new Date();
-    const createdTime = new Date(booking.createdAt);
-    const elapsedMinutes = Math.floor((now - createdTime) / (1000 * 60));
-    
-        let feePercentage = 0;
-    let reason = 'Free cancellation window';
-    
-    const CancellationPolicy = require('../models/CancellationPolicy');
-    const policy = await CancellationPolicy.findOne({ isActive: true }) || {
-      freeWindowMinutes: 2,
-      afterFreeWindowPercent: 25,
-      driverArrivedPercent: 75,
-      patientOnboardPercent: 100
-    };
-    
-    if (booking.status === 'patient_onboard') {
-      feePercentage = policy.patientOnboardPercent;
-      reason = 'Patient already onboard';
-    } else if (booking.status === 'driver_arrived') {
-      feePercentage = policy.driverArrivedPercent;
-      reason = 'Driver has arrived at pickup';
-    } else if (elapsedMinutes > policy.freeWindowMinutes) {
-      feePercentage = policy.afterFreeWindowPercent;
-      reason = 'Free cancellation window passed';
-    }
-    
-    const cancellationFee = Math.round(totalFare * feePercentage / 100);
-    const refundAmount = totalFare - cancellationFee;
+        const { calculateCancellation } = require('../services/cancellationPolicyService');
+    const result = await calculateCancellation(booking);
+    const { cancellationFee, refundAmount, feePercentage, reason } = result;
     
     res.json({
       success: true,
@@ -375,35 +349,9 @@ router.put('/cancel-booking/:bookingId', authenticateToken, async (req, res) => 
     }
     
     // Calculate cancellation fee based on milestone
-    const totalFare = booking.finalAmount || booking.originalAmount || 0;
-    const now = new Date();
-    const createdTime = new Date(booking.createdAt);
-    const elapsedMinutes = Math.floor((now - createdTime) / (1000 * 60));
-    
-        let feePercentage = 0;
-    let reason = 'Free cancellation window';
-    
-    const CancellationPolicy = require('../models/CancellationPolicy');
-    const policy = await CancellationPolicy.findOne({ isActive: true }) || {
-      freeWindowMinutes: 2,
-      afterFreeWindowPercent: 25,
-      driverArrivedPercent: 75,
-      patientOnboardPercent: 100
-    };
-    
-    if (booking.status === 'patient_onboard') {
-      feePercentage = policy.patientOnboardPercent;
-      reason = 'Patient already onboard';
-    } else if (booking.status === 'driver_arrived') {
-      feePercentage = policy.driverArrivedPercent;
-      reason = 'Driver has arrived at pickup';
-    } else if (elapsedMinutes > policy.freeWindowMinutes) {
-      feePercentage = policy.afterFreeWindowPercent;
-      reason = 'Free cancellation window passed';
-    }
-    
-    const cancellationFee = Math.round(totalFare * feePercentage / 100);
-    const refundAmount = totalFare - cancellationFee;
+        const { calculateCancellation } = require('../services/cancellationPolicyService');
+    const result = await calculateCancellation(booking);
+    const { cancellationFee, refundAmount, feePercentage, reason } = result;
     
     booking.status = 'cancelled';
     booking.cancellation = {
