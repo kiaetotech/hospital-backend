@@ -7,7 +7,7 @@ const Booking = require('../models/Booking');
 const User = require('../models/User');
 const Transaction = require('../models/Transaction');
 const EmergencyContact = require('../models/EmergencyContact');
-const { authenticateToken } = require('../middleware/auth');
+const { authenticateToken, authenticateAdmin } = require('../middleware/auth');
 
 // AmbulanceFleet.vehicleSchema allowed values
 const ALLOWED_VEHICLE_TYPES = ['basic', 'bls', 'als', 'cardiac', 'ventilator', 'neonatal', 'air', 'bike', 'mortuary', 'ptv', 'wheelchair'];
