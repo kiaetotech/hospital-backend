@@ -1707,7 +1707,7 @@ router.get('/driver/dashboard', authenticateToken, async (req, res) => {
     let assignment = null;
 
     if (req.user.role === 'ambulance_driver') {
-      driverId = String(req.query.driverId || req.user.driverId || '');
+      driverId = String(req.user.driverId || '');
       if (!driverId) return res.status(400).json({ success: false, error: 'Driver ID missing in token' });
     } else if (req.query.driverId) {
       driverId = String(req.query.driverId).trim();
@@ -1853,7 +1853,7 @@ router.post('/driver/toggle-availability', authenticateToken, async (req, res) =
     const { isAvailable } = req.body;
     
     if (req.user.role === 'ambulance_driver') {
-      const driverId = String(req.body.driverId || req.user.driverId || '');
+      const driverId = String(req.user.driverId || '').trim();
       if (!driverId) return res.status(400).json({ success: false, error: 'Driver ID missing in token' });
       await locationCache.ambulance.updateDriverStatus(driverId, { isAvailable });
       return res.json({ success: true, isAvailable });
@@ -1881,7 +1881,7 @@ router.get('/driver/trip-history', authenticateToken, async (req, res) => {
     console.log('TRIP HISTORY REQUEST - Role:', req.user.role, 'DriverId:', req.user.driverId, 'Query:', JSON.stringify(req.query));
     
     if (req.user.role === 'ambulance_driver') {
-      driverId = String(req.query.driverId || req.user.driverId || '');
+       driverId = String(req.user.driverId || '').trim();
       if (!driverId) return res.status(400).json({ success: false, error: 'Driver ID missing in token' });
     } else {
       driverId = String(req.query.driverId || req.user.driverId || '').trim();
