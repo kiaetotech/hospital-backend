@@ -2841,7 +2841,7 @@ router.get('/financial-summary', authenticateToken, async (req, res) => {
         b.vehicleNumber === vehicle.vehicleNumber
       );
       
-      const revenue = vehicleBookings.reduce((sum, b) => sum + (b.finalAmount || 0), 0);
+      const totalRevenue = Math.round(completedBookings.reduce((sum, b) => sum + (b.finalAmount || 0), 0) * 100) / 100;
       const commission = Math.round(revenue * 0.15);
       const net = Math.round((revenue - commission) * 100) / 100;
       
