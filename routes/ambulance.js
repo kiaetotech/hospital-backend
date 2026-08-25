@@ -1837,9 +1837,7 @@ router.post('/driver/toggle-availability', authenticateToken, async (req, res) =
 router.get('/driver/trip-history', authenticateToken, async (req, res) => {
   try {
     let driverId;
-    
-    console.log('TRIP HISTORY REQUEST - Role:', req.user.role, 'DriverId:', req.user.driverId, 'Query:', JSON.stringify(req.query));
-    
+       
     if (req.user.role === 'ambulance_driver') {
        driverId = String(req.user.driverId || '').trim();
       if (!driverId) return res.status(400).json({ success: false, error: 'Driver ID missing in token' });
@@ -1861,24 +1859,6 @@ router.get('/driver/trip-history', authenticateToken, async (req, res) => {
   } catch (error) {
     console.error('TRIP HISTORY ERROR:', error);
     return res.status(500).json({ success: false, error: error.message });
-  }
-});
-
-// Debug: Check driver location in Redis
-router.get('/driver/debug-location/:driverId', async (req, res) => {
-  try {
-    const { driverId } = req.params;
-    const location = await locationCache.ambulance.getDriverLocation(driverId);
-    const nearbyDrivers = await locationCache.ambulance.findNearbyDrivers(21.2153, 79.0797, 50, { limit: 10, requireAvailable: false });
-    
-    res.json({
-      success: true,
-      driverId,
-      location,
-      nearbyDrivers
-    });
-  } catch (error) {
-    res.json({ success: false, error: error.message });
   }
 });
 
