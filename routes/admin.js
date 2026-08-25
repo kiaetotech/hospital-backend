@@ -623,4 +623,35 @@ router.put('/commission-config/:configId', async (req, res) => {
   }
 });
 
+const Settlement = require('../models/Settlement');
+
+// Get all settlements (admin)
+router.get('/settlements', authenticateAdmin, async (req, res) => {
+  try {
+    const settlements = await Settlement.find().sort({ createdAt: -1 }).populate('providerId', 'name phone');
+    res.json({ success: true, data: settlements });
+  } catch (error) {
+    res.status(500).json({ success: false, message: error.message });
+  }
+});
+
+// Approve/settle a settlement
+router.put('/settlements/:id/settle', authenticateAdmin, async (req, res) => {
+  try {
+    const { transactionId, notes } = req.body;
+    const settlement = await Settlement.findById(req.params.id);
+    if (!settlement) return res.status(404).json({ success: false, message: 'Settlement not found' });
+    
+    settlement.status = 'settled';
+    settlement.settledAt = new Date();
+    settlement.transactionId = transactionId || '';
+    settlement.notes = notes || '';
+    await settlement.save();
+    
+    res.json({ success: true, message: 'Settlement marked as settled', data: settlement });
+  } catch (error) {
+    res.status(500).json({ success: false, message: error.message });
+  }
+});
+
 module.exports = router;
