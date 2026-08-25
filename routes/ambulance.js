@@ -298,6 +298,50 @@ router.post('/trip-complete/:bookingId', authenticateToken, async (req, res) => 
   }
 });
 
+// Patient live tracking
+router.get('/tracking/:bookingId', async (req, res) => {
+  try {
+    const booking = await Booking.findOne({ bookingId: req.params.bookingId });
+    if (!booking) return res.status(404).json({ success: false, error: 'Booking not found' });
+    
+    const driverLocation = booking.driverId ? await locationCache.ambulance.getDriverLocation(booking.driverId) : null;
+    
+    let etaMinutes = null;
+    if (driverLocation && booking.pickupCoordinates) {
+      const distance = calculateDistance(
+        driverLocation.lat, driverLocation.lng,
+        booking.pickupCoordinates.lat, booking.pickupCoordinates.lng
+      );
+      etaMinutes = Math.round(distance * 2);
+    }
+    
+    res.json({
+      success: true,
+      data: {
+        bookingId: booking.bookingId,
+        status: booking.status,
+        driver: {
+          name: booking.driverName,
+          phone: booking.driverPhone,
+          vehicleNumber: booking.vehicleNumber,
+          location: driverLocation ? { lat: driverLocation.lat, lng: driverLocation.lng } : null,
+          lastUpdate: driverLocation?.lastUpdate || null
+        },
+        etaMinutes,
+        milestones: {
+          requested: booking.emergencyRequestedAt,
+          assigned: booking.driverAcceptedAt,
+          arrived: booking.driverReachedAt,
+          onboard: booking.patientOnboardAt,
+          completed: booking.completedAt
+        }
+      }
+    });
+  } catch (error) {
+    res.status(500).json({ success: false, error: error.message });
+  }
+});
+
 // Get cancellation quote before cancelling
 router.post('/cancellation-quote/:bookingId', authenticateToken, async (req, res) => {
   try {
@@ -2836,6 +2880,34 @@ router.post('/settlements/request', authenticateToken, async (req, res) => {
     
     await settlement.save();
     res.json({ success: true, message: 'Settlement requested', data: settlement });
+  } catch (error) {
+    res.status(500).json({ success: false, message: error.message });
+  }
+});
+
+// Provider live tracking for active bookings
+router.get('/active-trips', authenticateToken, async (req, res) => {
+  try {
+    const providerId = req.user.id || req.user._id;
+    const activeBookings = await Booking.find({ 
+      providerId, 
+      status: { $in: ['driver_assigned', 'driver_arrived', 'patient_onboard'] } 
+    });
+    
+    const trips = await Promise.all(activeBookings.map(async (booking) => {
+      const location = booking.driverId ? await locationCache.ambulance.getDriverLocation(booking.driverId) : null;
+      return {
+        bookingId: booking.bookingId,
+        patientName: booking.patientName,
+        vehicleNumber: booking.vehicleNumber,
+        driverName: booking.driverName,
+        status: booking.status,
+        location: location ? { lat: location.lat, lng: location.lng } : null,
+        lastUpdate: location?.lastUpdate || null
+      };
+    }));
+    
+    res.json({ success: true, data: trips });
   } catch (error) {
     res.status(500).json({ success: false, message: error.message });
   }
