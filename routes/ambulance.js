@@ -2889,23 +2889,27 @@ router.post('/settlements/request', authenticateToken, async (req, res) => {
 router.get('/active-trips', authenticateToken, async (req, res) => {
   try {
     const providerId = req.user.id || req.user._id;
+    
     const activeBookings = await Booking.find({ 
       providerId, 
       status: { $in: ['driver_assigned', 'driver_arrived', 'patient_onboard'] } 
     });
     
-    const trips = await Promise.all(activeBookings.map(async (booking) => {
+    const trips = [];
+    for (const booking of activeBookings) {
       const location = booking.driverId ? await locationCache.ambulance.getDriverLocation(booking.driverId) : null;
-      return {
-        bookingId: booking.bookingId,
-        patientName: booking.patientName,
-        vehicleNumber: booking.vehicleNumber,
-        driverName: booking.driverName,
-        status: booking.status,
-        location: location ? { lat: location.lat, lng: location.lng } : null,
-        lastUpdate: location?.lastUpdate || null
-      };
-    }));
+      if (location) {
+        trips.push({
+          bookingId: booking.bookingId,
+          patientName: booking.patientName,
+          vehicleNumber: booking.vehicleNumber,
+          driverName: booking.driverName,
+          status: booking.status,
+          location: { lat: location.lat, lng: location.lng },
+          lastUpdate: location.lastUpdate
+        });
+      }
+    }
     
     res.json({ success: true, data: trips });
   } catch (error) {
