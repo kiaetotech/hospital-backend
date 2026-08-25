@@ -317,20 +317,25 @@ router.post('/cancellation-quote/:bookingId', authenticateToken, async (req, res
     const createdTime = new Date(booking.createdAt);
     const elapsedMinutes = Math.floor((now - createdTime) / (1000 * 60));
     
-    let feePercentage = 0;
+        let feePercentage = 0;
     let reason = 'Free cancellation window';
     
+    const CancellationPolicy = require('../models/CancellationPolicy');
+    const policy = await CancellationPolicy.findOne({ isActive: true }) || {
+      freeWindowMinutes: 2,
+      afterFreeWindowPercent: 25,
+      driverArrivedPercent: 75,
+      patientOnboardPercent: 100
+    };
+    
     if (booking.status === 'patient_onboard') {
-      feePercentage = 100;
+      feePercentage = policy.patientOnboardPercent;
       reason = 'Patient already onboard';
     } else if (booking.status === 'driver_arrived') {
-      feePercentage = 75;
+      feePercentage = policy.driverArrivedPercent;
       reason = 'Driver has arrived at pickup';
-    } else if (booking.status === 'driver_assigned') {
-      feePercentage = 50;
-      reason = 'Driver has been assigned';
-    } else if (elapsedMinutes > 5) {
-      feePercentage = 25;
+    } else if (elapsedMinutes > policy.freeWindowMinutes) {
+      feePercentage = policy.afterFreeWindowPercent;
       reason = 'Free cancellation window passed';
     }
     
@@ -375,21 +380,26 @@ router.put('/cancel-booking/:bookingId', authenticateToken, async (req, res) => 
     const createdTime = new Date(booking.createdAt);
     const elapsedMinutes = Math.floor((now - createdTime) / (1000 * 60));
     
-    let feePercentage = 0;
-    let feeReason = 'Free cancellation window';
+        let feePercentage = 0;
+    let reason = 'Free cancellation window';
+    
+    const CancellationPolicy = require('../models/CancellationPolicy');
+    const policy = await CancellationPolicy.findOne({ isActive: true }) || {
+      freeWindowMinutes: 2,
+      afterFreeWindowPercent: 25,
+      driverArrivedPercent: 75,
+      patientOnboardPercent: 100
+    };
     
     if (booking.status === 'patient_onboard') {
-      feePercentage = 100;
-      feeReason = 'Patient already onboard';
+      feePercentage = policy.patientOnboardPercent;
+      reason = 'Patient already onboard';
     } else if (booking.status === 'driver_arrived') {
-      feePercentage = 75;
-      feeReason = 'Driver has arrived at pickup';
-    } else if (booking.status === 'driver_assigned') {
-      feePercentage = 50;
-      feeReason = 'Driver has been assigned';
-    } else if (elapsedMinutes > 5) {
-      feePercentage = 25;
-      feeReason = 'Free cancellation window passed';
+      feePercentage = policy.driverArrivedPercent;
+      reason = 'Driver has arrived at pickup';
+    } else if (elapsedMinutes > policy.freeWindowMinutes) {
+      feePercentage = policy.afterFreeWindowPercent;
+      reason = 'Free cancellation window passed';
     }
     
     const cancellationFee = Math.round(totalFare * feePercentage / 100);
@@ -3189,6 +3199,43 @@ router.post('/driver-login', async (req, res) => {
     );
     
     res.json({ success: true, token, driver: { id: vehicle._id, name: vehicle.driverName, phone: vehicle.driverPhone } });
+  } catch (error) {
+    res.status(500).json({ success: false, message: error.message });
+  }
+});
+
+const CancellationPolicy = require('../models/CancellationPolicy');
+
+// Get cancellation policy
+router.get('/cancellation-policy', async (req, res) => {
+  try {
+    const policy = await CancellationPolicy.findOne({ isActive: true });
+    res.json({ success: true, data: policy });
+  } catch (error) {
+    res.status(500).json({ success: false, message: error.message });
+  }
+});
+
+// Update cancellation policy
+router.put('/cancellation-policy', authenticateAdmin, async (req, res) => {
+  try {
+    const { freeWindowMinutes, afterFreeWindowPercent, driverArrivedPercent, patientOnboardPercent } = req.body;
+    
+    let policy = await CancellationPolicy.findOne({ isActive: true });
+    if (!policy) {
+      policy = new CancellationPolicy({});
+    }
+    
+    if (freeWindowMinutes !== undefined) policy.freeWindowMinutes = freeWindowMinutes;
+    if (afterFreeWindowPercent !== undefined) policy.afterFreeWindowPercent = afterFreeWindowPercent;
+    if (driverArrivedPercent !== undefined) policy.driverArrivedPercent = driverArrivedPercent;
+    if (patientOnboardPercent !== undefined) policy.patientOnboardPercent = patientOnboardPercent;
+    
+    policy.updatedBy = req.user.id || 'admin';
+    policy.updatedAt = new Date();
+    await policy.save();
+    
+    res.json({ success: true, data: policy });
   } catch (error) {
     res.status(500).json({ success: false, message: error.message });
   }
