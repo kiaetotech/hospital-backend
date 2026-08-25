@@ -3285,5 +3285,47 @@ router.put('/cancellation-policy', async (req, res) => {
     res.status(500).json({ success: false, message: error.message });
   }
 });
+
+// Submit complaint
+router.post('/complaints', authenticateToken, async (req, res) => {
+  try {
+    const Complaint = require('../models/Complaint');
+    const { bookingId, category, description, priority } = req.body;
+    
+    const booking = await Booking.findOne({ bookingId });
+    if (!booking) return res.status(404).json({ success: false, message: 'Booking not found' });
+    
+    if (booking.status !== 'completed') {
+      return res.status(400).json({ success: false, message: 'Can only complain about completed trips' });
+    }
+    
+    const complaint = new Complaint({
+      complaintId: 'CMP' + Date.now(),
+      bookingId: booking._id,
+      patientId: req.user.id || req.user._id,
+      providerId: booking.providerId,
+      category,
+      description,
+      priority: priority || 'medium'
+    });
+    
+    await complaint.save();
+    res.json({ success: true, message: 'Complaint submitted', data: complaint });
+  } catch (error) {
+    res.status(500).json({ success: false, message: error.message });
+  }
+});
+
+// Get provider complaints
+router.get('/complaints', authenticateToken, async (req, res) => {
+  try {
+    const Complaint = require('../models/Complaint');
+    const providerId = req.user.id || req.user._id;
+    const complaints = await Complaint.find({ providerId }).sort({ createdAt: -1 });
+    res.json({ success: true, data: complaints });
+  } catch (error) {
+    res.status(500).json({ success: false, message: error.message });
+  }
+});
     
 module.exports = router;
