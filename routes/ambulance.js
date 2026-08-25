@@ -3153,10 +3153,11 @@ router.post('/driver-login', async (req, res) => {
     const cleanPhone = phone.replace('+91', '');
     
     const fleet = await AmbulanceFleet.findOne({
-      'vehicles.driverPhone': { $in: [phone, cleanPhone, `+91${cleanPhone}`] }
+      'vehicles.driverPhone': { $in: [phone, cleanPhone, `+91${cleanPhone}`] },
+      isActive: true
     });
     
-    if (!fleet) return res.status(404).json({ success: false, message: 'Driver not found' });
+    if (!fleet) return res.status(404).json({ success: false, message: 'Driver not found or provider inactive' });
     
     const vehicle = fleet.vehicles.find(v => 
       v.driverPhone === phone || v.driverPhone === cleanPhone || v.driverPhone === `+91${cleanPhone}`
@@ -3164,9 +3165,20 @@ router.post('/driver-login', async (req, res) => {
     
     if (!vehicle) return res.status(404).json({ success: false, message: 'Driver not found' });
     
+    if (vehicle.status !== 'available') {
+      return res.status(403).json({ success: false, message: 'Vehicle not available' });
+    }
+    
     const jwt = require('jsonwebtoken');
     const token = jwt.sign(
-      { id: fleet.ownerId, driverId: vehicle._id, name: vehicle.driverName, role: 'ambulance_driver' },
+      { 
+        id: fleet.ownerId, 
+        driverId: vehicle._id, 
+        vehicleId: vehicle._id,
+        providerId: fleet.ownerId,
+        name: vehicle.driverName, 
+        role: 'ambulance_driver' 
+      },
       process.env.JWT_SECRET || 'hospital_platform_secret_key_2024',
       { expiresIn: '7d' }
     );
