@@ -312,19 +312,18 @@ router.post('/cancellation-quote/:bookingId', authenticateToken, async (req, res
       return res.status(400).json({ success: false, message: 'Already cancelled' });
     }
     
-        const { calculateCancellation } = require('../services/cancellationPolicyService');
+    const { calculateCancellation } = require('../services/cancellationPolicyService');
     const result = await calculateCancellation(booking);
-    const { cancellationFee, refundAmount, feePercentage, reason } = result;
     
     res.json({
       success: true,
       data: {
-        canCancel: true,
-        cancellationFee,
-        refundAmount,
-        feePercentage,
-        reason,
-        totalFare
+        canCancel: result.canCancel,
+        cancellationFee: result.cancellationFee,
+        refundAmount: result.refundAmount,
+        feePercentage: result.feePercentage,
+        reason: result.reason,
+        totalFare: result.totalFare
       }
     });
   } catch (error) {
@@ -348,22 +347,64 @@ router.put('/cancel-booking/:bookingId', authenticateToken, async (req, res) => 
       return res.status(400).json({ success: false, message: 'Already cancelled' });
     }
     
-    // Calculate cancellation fee based on milestone
-        const { calculateCancellation } = require('../services/cancellationPolicyService');
+    const { calculateCancellation } = require('../services/cancellationPolicyService');
     const result = await calculateCancellation(booking);
-    const { cancellationFee, refundAmount, feePercentage, reason } = result;
     
     booking.status = 'cancelled';
     booking.cancellation = {
       reason: reason || 'Cancelled by patient',
       cancelledAt: new Date(),
-      refundAmount: refundAmount,
-      refundPercentage: 100 - feePercentage,
-      cancellationFee: cancellationFee,
-      feePercentage: feePercentage,
-      feeReason: feeReason,
-      refundStatus: refundAmount > 0 ? 'pending' : 'not_applicable'
+      refundAmount: result.refundAmount,
+      refundPercentage: 100 - result.feePercentage,
+      cancellationFee: result.cancellationFee,
+      feePercentage: result.feePercentage,
+      feeReason: result.reason,
+      refundStatus: result.refundAmount > 0 ? 'pending' : 'not_applicable'
     };
+
+    // If payment was made, process refund
+    if (booking.paymentStatus === 'paid' && booking.paymentId && result.refundAmount > 0) {
+      try {
+        const Razorpay = require('razorpay');
+        const razorpay = new Razorpay({
+          key_id: process.env.RAZORPAY_KEY_ID,
+          key_secret: process.env.RAZORPAY_KEY_SECRET
+        });
+        
+        const refund = await razorpay.payments.refund(booking.paymentId, {
+          amount: Math.round(result.refundAmount * 100)
+        });
+        
+        booking.paymentStatus = result.feePercentage === 100 ? 'cancelled' : 'refunded';
+        booking.refundId = refund.id;
+        booking.refundAmount = result.refundAmount;
+        booking.refundedAt = new Date();
+        booking.refundStatus = 'processed';
+        booking.cancellation.refundStatus = 'processed';
+      } catch (refundError) {
+        console.error('Refund failed:', JSON.stringify(refundError.error || refundError));
+        booking.cancellation.refundStatus = 'failed';
+        booking.cancellation.refundError = refundError.error?.description || refundError.message || 'Unknown error';
+      }
+    }
+    
+    await booking.save();
+    
+    res.json({ 
+      success: true, 
+      message: 'Booking cancelled', 
+      data: { 
+        refundAmount: result.refundAmount,
+        cancellationFee: result.cancellationFee,
+        refundPercentage: 100 - result.feePercentage,
+        feePercentage: result.feePercentage,
+        feeReason: result.reason
+      } 
+    });
+  } catch (error) {
+    res.status(500).json({ success: false, message: error.message });
+  }
+});
 
     // If payment was made, process refund
     if (booking.paymentStatus === 'paid' && booking.paymentId && refundAmount > 0) {
