@@ -3176,7 +3176,7 @@ router.put('/cancellation-policy', async (req, res) => {
     if (driverArrivedPercent !== undefined) policy.driverArrivedPercent = driverArrivedPercent;
     if (patientOnboardPercent !== undefined) policy.patientOnboardPercent = patientOnboardPercent;
     
-    policy.updatedBy = req.user.id || 'admin';
+    policy.updatedBy = 'admin';
     policy.updatedAt = new Date();
     await policy.save();
     
