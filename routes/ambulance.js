@@ -179,8 +179,13 @@ router.post('/emergency-dispatch', async (req, res) => {
         console.error('Socket emit failed:', socketError.message);
       }
       
-    } catch (saveError) {
+        } catch (saveError) {
       console.error('Emergency booking save failed:', saveError);
+      return res.status(500).json({
+        success: false,
+        error: 'Failed to save emergency booking',
+        message: 'Please call 108 for immediate assistance'
+      });
     }
 
     return res.status(200).json({
