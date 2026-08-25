@@ -2835,16 +2835,16 @@ router.get('/financial-summary', authenticateToken, async (req, res) => {
     const completedBookings = allBookings.filter(b => b.status === 'completed');
     const cancelledBookings = allBookings.filter(b => b.status === 'cancelled');
     
-    const vehicleBreakdown = await Promise.all(vehicles.map(async (vehicle) => {
-      const vehicleBookings = completedBookings.filter(b => 
+        const vehicleBreakdown = await Promise.all(vehicles.map(async (vehicle) => {
+      const vehicleBookings = completedBookings.filter(b =>
         b.vehicleId?.toString() === vehicle._id?.toString() ||
         b.vehicleNumber === vehicle.vehicleNumber
       );
-      
-      const totalRevenue = Math.round(completedBookings.reduce((sum, b) => sum + (b.finalAmount || 0), 0) * 100) / 100;
+
+      const revenue = Math.round(vehicleBookings.reduce((sum, b) => sum + (b.finalAmount || 0), 0) * 100) / 100;
       const commission = Math.round(revenue * 0.15);
       const net = Math.round((revenue - commission) * 100) / 100;
-      
+
       return {
         vehicleId: vehicle._id,
         vehicleNumber: vehicle.vehicleNumber,
@@ -2857,7 +2857,7 @@ router.get('/financial-summary', authenticateToken, async (req, res) => {
       };
     }));
     
-    const totalRevenue = completedBookings.reduce((sum, b) => sum + (b.finalAmount || 0), 0);
+    const totalRevenue = Math.round(completedBookings.reduce((sum, b) => sum + (b.finalAmount || 0), 0) * 100) / 100;
     const totalCommission = Math.round(totalRevenue * 0.15);
     const totalRefunds = allBookings.reduce((sum, b) => sum + (b.refundAmount || 0), 0);
     const totalCancellationFees = cancelledBookings.reduce((sum, b) => sum + (b.cancellation?.cancellationFee || 0), 0);
