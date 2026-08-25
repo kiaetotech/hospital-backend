@@ -292,17 +292,59 @@ router.post('/trip-complete/:bookingId', authenticateToken, async (req, res) => 
   }
 });
 
-// ─────────────────────────────────────────────
-// POST /ambulance/cancel-emergency/:bookingId
-// 🚑 Cancel emergency
-// ─────────────────────────────────────────────
-router.post('/cancel-emergency/:bookingId', async (req, res) => {
+// Get cancellation quote before cancelling
+router.post('/cancellation-quote/:bookingId', authenticateToken, async (req, res) => {
   try {
-    const { reason, cancelledBy = 'patient' } = req.body;
-    const result = await dispatchService.cancelEmergency(req.params.bookingId, reason, cancelledBy);
-    return res.json(result);
+    const { bookingId } = req.params;
+    const booking = await Booking.findOne({ bookingId });
+    if (!booking) return res.status(404).json({ success: false, message: 'Booking not found' });
+    
+    if (booking.status === 'completed') {
+      return res.status(400).json({ success: false, message: 'Completed trip cannot be cancelled' });
+    }
+    
+    if (booking.status === 'cancelled') {
+      return res.status(400).json({ success: false, message: 'Already cancelled' });
+    }
+    
+    const totalFare = booking.finalAmount || booking.originalAmount || 0;
+    const now = new Date();
+    const createdTime = new Date(booking.createdAt);
+    const elapsedMinutes = Math.floor((now - createdTime) / (1000 * 60));
+    
+    let feePercentage = 0;
+    let reason = 'Free cancellation window';
+    
+    if (booking.status === 'patient_onboard') {
+      feePercentage = 100;
+      reason = 'Patient already onboard';
+    } else if (booking.status === 'driver_arrived') {
+      feePercentage = 75;
+      reason = 'Driver has arrived at pickup';
+    } else if (booking.status === 'driver_assigned') {
+      feePercentage = 50;
+      reason = 'Driver has been assigned';
+    } else if (elapsedMinutes > 5) {
+      feePercentage = 25;
+      reason = 'Free cancellation window passed';
+    }
+    
+    const cancellationFee = Math.round(totalFare * feePercentage / 100);
+    const refundAmount = totalFare - cancellationFee;
+    
+    res.json({
+      success: true,
+      data: {
+        canCancel: true,
+        cancellationFee,
+        refundAmount,
+        feePercentage,
+        reason,
+        totalFare
+      }
+    });
   } catch (error) {
-    return res.status(500).json({ success: false, error: error.message });
+    res.status(500).json({ success: false, message: error.message });
   }
 });
 
@@ -314,17 +356,54 @@ router.put('/cancel-booking/:bookingId', authenticateToken, async (req, res) => 
     const booking = await Booking.findOne({ bookingId });
     if (!booking) return res.status(404).json({ success: false, message: 'Booking not found' });
     
+    if (booking.status === 'completed') {
+      return res.status(400).json({ success: false, message: 'Completed trip cannot be cancelled' });
+    }
+    
+    if (booking.status === 'cancelled') {
+      return res.status(400).json({ success: false, message: 'Already cancelled' });
+    }
+    
+    // Calculate cancellation fee based on milestone
+    const totalFare = booking.finalAmount || booking.originalAmount || 0;
+    const now = new Date();
+    const createdTime = new Date(booking.createdAt);
+    const elapsedMinutes = Math.floor((now - createdTime) / (1000 * 60));
+    
+    let feePercentage = 0;
+    let feeReason = 'Free cancellation window';
+    
+    if (booking.status === 'patient_onboard') {
+      feePercentage = 100;
+      feeReason = 'Patient already onboard';
+    } else if (booking.status === 'driver_arrived') {
+      feePercentage = 75;
+      feeReason = 'Driver has arrived at pickup';
+    } else if (booking.status === 'driver_assigned') {
+      feePercentage = 50;
+      feeReason = 'Driver has been assigned';
+    } else if (elapsedMinutes > 5) {
+      feePercentage = 25;
+      feeReason = 'Free cancellation window passed';
+    }
+    
+    const cancellationFee = Math.round(totalFare * feePercentage / 100);
+    const refundAmount = totalFare - cancellationFee;
+    
     booking.status = 'cancelled';
     booking.cancellation = {
       reason: reason || 'Cancelled by patient',
       cancelledAt: new Date(),
-      refundAmount: 0,
-      refundPercentage: 0,
-      refundStatus: 'not_applicable'
+      refundAmount: refundAmount,
+      refundPercentage: 100 - feePercentage,
+      cancellationFee: cancellationFee,
+      feePercentage: feePercentage,
+      feeReason: feeReason,
+      refundStatus: refundAmount > 0 ? 'pending' : 'not_applicable'
     };
 
     // If payment was made, process refund
-    if (booking.paymentStatus === 'paid' && booking.paymentId) {
+    if (booking.paymentStatus === 'paid' && booking.paymentId && refundAmount > 0) {
       try {
         const Razorpay = require('razorpay');
         const razorpay = new Razorpay({
@@ -332,24 +411,17 @@ router.put('/cancel-booking/:bookingId', authenticateToken, async (req, res) => 
           key_secret: process.env.RAZORPAY_KEY_SECRET
         });
         
-         // Get actual captured amount from transaction
-        const Transaction = require('../models/Transaction');
-        const transaction = await Transaction.findOne({ paymentId: booking.paymentId });
-        const refundableAmount = transaction?.netAmount || booking.finalAmount || 0;
-        
         const refund = await razorpay.payments.refund(booking.paymentId, {
-          amount: Math.round(refundableAmount * 100)
+          amount: Math.round(refundAmount * 100)
         });
         
-        booking.paymentStatus = 'refunded';
+        booking.paymentStatus = feePercentage === 100 ? 'cancelled' : 'refunded';
         booking.refundId = refund.id;
-        booking.refundAmount = booking.finalAmount;
+        booking.refundAmount = refundAmount;
         booking.refundedAt = new Date();
         booking.refundStatus = 'processed';
-        booking.cancellation.refundAmount = booking.finalAmount;
-        booking.cancellation.refundPercentage = 100;
         booking.cancellation.refundStatus = 'processed';
-       } catch (refundError) {
+      } catch (refundError) {
         console.error('Refund failed:', JSON.stringify(refundError.error || refundError));
         booking.cancellation.refundStatus = 'failed';
         booking.cancellation.refundError = refundError.error?.description || refundError.message || 'Unknown error';
@@ -362,8 +434,11 @@ router.put('/cancel-booking/:bookingId', authenticateToken, async (req, res) => 
       success: true, 
       message: 'Booking cancelled', 
       data: { 
-        refundAmount: booking.cancellation.refundAmount || 0, 
-        refundPercentage: booking.cancellation.refundPercentage || 0 
+        refundAmount: refundAmount,
+        cancellationFee: cancellationFee,
+        refundPercentage: 100 - feePercentage,
+        feePercentage: feePercentage,
+        feeReason: feeReason
       } 
     });
   } catch (error) {
