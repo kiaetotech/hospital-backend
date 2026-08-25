@@ -2823,6 +2823,67 @@ router.get('/bookings', authenticateToken, async (req, res) => {
   } catch (error) { res.status(500).json({ success: false, message: error.message }); }
 });
 
+// Provider financial summary with per-vehicle breakdown
+router.get('/financial-summary', authenticateToken, async (req, res) => {
+  try {
+    const providerId = req.user.id || req.user._id;
+    
+    const fleet = await AmbulanceFleet.findOne({ ownerId: providerId });
+    const vehicles = fleet?.vehicles || [];
+    
+    const allBookings = await Booking.find({ providerId });
+    const completedBookings = allBookings.filter(b => b.status === 'completed');
+    const cancelledBookings = allBookings.filter(b => b.status === 'cancelled');
+    
+    const vehicleBreakdown = await Promise.all(vehicles.map(async (vehicle) => {
+      const vehicleBookings = completedBookings.filter(b => 
+        b.vehicleId?.toString() === vehicle._id?.toString() ||
+        b.vehicleNumber === vehicle.vehicleNumber
+      );
+      
+      const revenue = vehicleBookings.reduce((sum, b) => sum + (b.finalAmount || 0), 0);
+      const commission = Math.round(revenue * 0.15);
+      const net = revenue - commission;
+      
+      return {
+        vehicleId: vehicle._id,
+        vehicleNumber: vehicle.vehicleNumber,
+        vehicleType: vehicle.type,
+        trips: vehicleBookings.length,
+        revenue,
+        commission,
+        net,
+        driverName: vehicle.driverName || 'Unassigned'
+      };
+    }));
+    
+    const totalRevenue = completedBookings.reduce((sum, b) => sum + (b.finalAmount || 0), 0);
+    const totalCommission = Math.round(totalRevenue * 0.15);
+    const totalRefunds = allBookings.reduce((sum, b) => sum + (b.refundAmount || 0), 0);
+    const totalCancellationFees = cancelledBookings.reduce((sum, b) => sum + (b.cancellation?.cancellationFee || 0), 0);
+    const netEarnings = totalRevenue - totalCommission - totalRefunds + totalCancellationFees;
+    
+    res.json({
+      success: true,
+      data: {
+        overall: {
+          totalTrips: completedBookings.length,
+          totalRevenue,
+          totalCommission,
+          totalRefunds,
+          totalCancellationFees,
+          netEarnings,
+          cancelledTrips: cancelledBookings.length
+        },
+        vehicleBreakdown,
+        pendingSettlement: netEarnings,
+        settledAmount: 0
+      }
+    });
+  } catch (error) {
+    res.status(500).json({ success: false, message: error.message });
+  }
+});
 
 router.get('/reports', authenticateToken, async (req, res) => {
   try {
