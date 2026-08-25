@@ -7,7 +7,7 @@ const Booking = require('../models/Booking');
 const User = require('../models/User');
 const Transaction = require('../models/Transaction');
 const EmergencyContact = require('../models/EmergencyContact');
-const { authenticateToken, authenticateAdmin } = require('../middleware/auth');
+const { authenticateToken } = require('../middleware/auth');
 
 // AmbulanceFleet.vehicleSchema allowed values
 const ALLOWED_VEHICLE_TYPES = ['basic', 'bls', 'als', 'cardiac', 'ventilator', 'neonatal', 'air', 'bike', 'mortuary', 'ptv', 'wheelchair'];
@@ -3162,7 +3162,7 @@ router.get('/cancellation-policy', async (req, res) => {
 });
 
 // Update cancellation policy
-router.put('/cancellation-policy', authenticateAdmin, async (req, res) => {
+router.put('/cancellation-policy', async (req, res) => {
   try {
     const { freeWindowMinutes, afterFreeWindowPercent, driverArrivedPercent, patientOnboardPercent } = req.body;
     
