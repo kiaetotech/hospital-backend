@@ -6,6 +6,7 @@ const router = express.Router();
 const Booking = require('../models/Booking');
 const User = require('../models/User');
 const Transaction = require('../models/Transaction');
+const Settlement = require('../models/Settlement');
 const EmergencyContact = require('../models/EmergencyContact');
 const { authenticateToken } = require('../middleware/auth');
 
@@ -2801,6 +2802,43 @@ router.get('/bookings', authenticateToken, async (req, res) => {
     const [bookings, total] = await Promise.all([Booking.find(query).sort({ createdAt: -1 }).skip((page - 1) * limit).limit(parseInt(limit)), Booking.countDocuments(query)]);
     res.json({ success: true, data: bookings, pagination: { total, page: parseInt(page), pages: Math.ceil(total / limit) } });
   } catch (error) { res.status(500).json({ success: false, message: error.message }); }
+});
+
+// Get provider settlements
+router.get('/settlements', authenticateToken, async (req, res) => {
+  try {
+    const providerId = req.user.id || req.user._id;
+    const settlements = await Settlement.find({ providerId }).sort({ createdAt: -1 });
+    res.json({ success: true, data: settlements });
+  } catch (error) {
+    res.status(500).json({ success: false, message: error.message });
+  }
+});
+
+// Create settlement request
+router.post('/settlements/request', authenticateToken, async (req, res) => {
+  try {
+    const providerId = req.user.id || req.user._id;
+    
+    const completedBookings = await Booking.find({ providerId, status: 'completed' });
+    const grossRevenue = completedBookings.reduce((sum, b) => sum + (b.finalAmount || 0), 0);
+    const commission = Math.round(grossRevenue * 0.15);
+    const netAmount = grossRevenue - commission;
+    
+    const settlement = new Settlement({
+      settlementId: 'STL' + Date.now(),
+      providerId,
+      amount: netAmount,
+      status: 'pending',
+      period: new Date().toISOString().slice(0, 7),
+      bookings: completedBookings.map(b => b._id)
+    });
+    
+    await settlement.save();
+    res.json({ success: true, message: 'Settlement requested', data: settlement });
+  } catch (error) {
+    res.status(500).json({ success: false, message: error.message });
+  }
 });
 
 // Provider financial summary with per-vehicle breakdown
