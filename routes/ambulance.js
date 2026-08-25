@@ -2843,7 +2843,7 @@ router.get('/financial-summary', authenticateToken, async (req, res) => {
       
       const revenue = vehicleBookings.reduce((sum, b) => sum + (b.finalAmount || 0), 0);
       const commission = Math.round(revenue * 0.15);
-      const net = revenue - commission;
+      const net = Math.round((revenue - commission) * 100) / 100;
       
       return {
         vehicleId: vehicle._id,
@@ -2861,7 +2861,7 @@ router.get('/financial-summary', authenticateToken, async (req, res) => {
     const totalCommission = Math.round(totalRevenue * 0.15);
     const totalRefunds = allBookings.reduce((sum, b) => sum + (b.refundAmount || 0), 0);
     const totalCancellationFees = cancelledBookings.reduce((sum, b) => sum + (b.cancellation?.cancellationFee || 0), 0);
-    const netEarnings = totalRevenue - totalCommission - totalRefunds + totalCancellationFees;
+    const netEarnings = Math.round((totalRevenue - totalCommission - totalRefunds + totalCancellationFees) * 100) / 100;
     
     res.json({
       success: true,
