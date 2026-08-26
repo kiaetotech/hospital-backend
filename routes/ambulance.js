@@ -3110,8 +3110,9 @@ router.get('/search', async (req, res) => {
 
     // 1. Search AmbulanceFleet for available vehicles
     const fleetQuery = {
-      'vehicles.status': 'available'
-    };
+  'vehicles.status': 'available',
+  isActive: true
+};
     
     if (city) {
       fleetQuery.city = { $regex: city, $options: 'i' };
