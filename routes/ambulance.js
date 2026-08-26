@@ -3130,6 +3130,9 @@ router.get('/search', async (req, res) => {
         const provider = await User.findById(fleet.ownerId).select('ambulanceCompanyAddress ambulanceSettings.serviceAreaCoordinates ambulanceSettings.isAvailable');
         
                 if (!provider || !provider.ambulanceSettings?.isAvailable) continue;
+	// Only show vehicle if driver has live location (online)
+const driverLocation = await locationCache.ambulance.getDriverLocation(vehicle._id);
+if (!driverLocation) continue;
 
         const providerLat = provider.ambulanceSettings?.serviceAreaCoordinates?.center?.lat || provider.ambulanceCompanyAddress?.coordinates?.lat;
         const providerLng = provider.ambulanceSettings?.serviceAreaCoordinates?.center?.lng || provider.ambulanceCompanyAddress?.coordinates?.lng;
