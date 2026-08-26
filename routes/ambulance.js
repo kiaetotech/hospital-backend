@@ -348,7 +348,12 @@ router.post('/cancellation-quote/:bookingId', authenticateToken, async (req, res
     const { bookingId } = req.params;
     const booking = await Booking.findOne({ bookingId });
     if (!booking) return res.status(404).json({ success: false, message: 'Booking not found' });
-    
+
+    const userId = req.user.id || req.user._id;
+    if (booking.userId && booking.userId !== 'guest' && booking.userId !== userId) {
+      return res.status(403).json({ success: false, message: 'You can only cancel your own bookings' });
+    }
+
     if (booking.status === 'completed') {
       return res.status(400).json({ success: false, message: 'Completed trip cannot be cancelled' });
     }
@@ -383,7 +388,12 @@ router.put('/cancel-booking/:bookingId', authenticateToken, async (req, res) => 
     const { reason } = req.body;
     const booking = await Booking.findOne({ bookingId });
     if (!booking) return res.status(404).json({ success: false, message: 'Booking not found' });
-    
+
+    const userId = req.user.id || req.user._id;
+    if (booking.userId && booking.userId !== 'guest' && booking.userId !== userId) {
+      return res.status(403).json({ success: false, message: 'You can only cancel your own bookings' });
+    }
+
     if (booking.status === 'completed') {
       return res.status(400).json({ success: false, message: 'Completed trip cannot be cancelled' });
     }
