@@ -598,10 +598,10 @@ router.post('/update-location', authenticateToken, async (req, res) => {
     isOnTrip: isOnTrip === true,
     tripId: tripId || '',
 
-    // Authoritative provider/vehicle assignment
+        // Authoritative provider/vehicle assignment
     vehicleId: assignment?.vehicle?._id
       ? String(assignment.vehicle._id)
-      : '',
+      : String(driverId || ''),
 
     vehicleNumber:
       assignment?.vehicle?.vehicleNumber || '',
