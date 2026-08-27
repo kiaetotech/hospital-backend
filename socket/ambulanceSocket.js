@@ -215,17 +215,24 @@ const initializeSocket = (io) => {
       }
       
       try {
+        // Get correct vehicle type from AmbulanceFleet
+        const AmbulanceFleet = require('../models/AmbulanceFleet');
+        const fleet = await AmbulanceFleet.findOne({ 'vehicles._id': socket.driverId });
+        const vehicle = fleet?.vehicles?.id(socket.driverId);
+        const actualVehicleType = vehicle?.type || connectedClients.drivers.get(socket.driverId)?.vehicleType || 'basic';
+        const actualVehicleNumber = vehicle?.vehicleNumber || '';
+
         // Update location in Redis
         await locationCache.ambulance.updateDriverLocation(socket.driverId, lat, lng, {
-  speed, heading, accuracy,
-  isAvailable: isAvailable !== false,
-  vehicleType: connectedClients.drivers.get(socket.driverId)?.vehicleType || 'basic',
-  providerId: connectedClients.drivers.get(socket.driverId)?.providerId || '',
-  vehicleId: socket.driverId,
-  vehicleNumber: connectedClients.drivers.get(socket.driverId)?.vehicleNumber || '',
-  isOnTrip: isOnTrip || false,
-  tripId: tripId || ''
-});
+          speed, heading, accuracy,
+          isAvailable: isAvailable !== false,
+          vehicleType: actualVehicleType,
+          providerId: connectedClients.drivers.get(socket.driverId)?.providerId || '',
+          vehicleId: socket.driverId,
+          vehicleNumber: actualVehicleNumber,
+          isOnTrip: isOnTrip || false,
+          tripId: tripId || ''
+        });
         
         // If on trip, broadcast location to patient tracking
         if (isOnTrip && tripId) {
