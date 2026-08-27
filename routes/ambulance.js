@@ -3152,8 +3152,15 @@ router.get('/search', async (req, res) => {
       fleetQuery.city = { $regex: city, $options: 'i' };
     }
 
-    const fleets = await AmbulanceFleet.find(fleetQuery)
-      .limit(parseInt(limit));
+    const fleetQuery = {
+  'vehicles.status': 'available',
+  isActive: true,
+  ownerType: 'ambulance_provider'
+};
+
+const fleets = await AmbulanceFleet.find(fleetQuery)
+  .sort({ updatedAt: -1 })
+  .limit(parseInt(limit));
 
     for (const fleet of fleets) {
       const provider = await User.findById(fleet.ownerId).select('ambulanceCompanyAddress ambulanceSettings.serviceAreaCoordinates ambulanceSettings.isAvailable');
