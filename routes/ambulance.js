@@ -3123,6 +3123,19 @@ router.patch('/fix-type-raw', authenticateToken, async (req, res) => {
 // ============================================
 // SEARCH AVAILABLE AMBULANCES (DATABASE + CACHE)
 // ============================================
+// Debug GEO data
+router.get('/debug-geo', async (req, res) => {
+  try {
+    const redis = locationCache.getRedisClient();
+    const members = await redis.zrange('geo:amb:drivers', 0, -1);
+    const location1 = await locationCache.ambulance.getDriverLocation('6a773777a7f9807c36f502e6');
+    const location2 = await locationCache.ambulance.getDriverLocation('6a86b7738bf6cef439b69f61');
+    res.json({ members, location1, location2 });
+  } catch (error) {
+    res.json({ error: error.message });
+  }
+});
+
 router.get('/search', async (req, res) => {
   try {
     const { lat, lng, city, type, radius = 25, limit = 20 } = req.query;
