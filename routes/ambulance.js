@@ -795,6 +795,7 @@ router.get('/nearby-ambulances', async (req, res) => {
       results.push({
         driverId: driver.driverId,
         providerId: driver.providerId,
+        providerName: fleet.providerName || 'Ambulance Provider',
         vehicleId: vehicle._id,
         vehicleNumber: vehicle.vehicleNumber || '',
         vehicleType: vehicle.type || 'basic',
