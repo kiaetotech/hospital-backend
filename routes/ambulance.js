@@ -3426,5 +3426,26 @@ router.get('/complaints', authenticateToken, async (req, res) => {
     res.status(500).json({ success: false, message: error.message });
   }
 });
+
+// Cleanup old duplicate fleet records
+router.post('/cleanup-old-fleets', authenticateToken, async (req, res) => {
+  try {
+    const providerId = req.user.id || req.user._id;
+    const fleets = await AmbulanceFleet.find({ ownerId: providerId }).sort({ updatedAt: -1 });
+    
+    if (fleets.length > 1) {
+      const latestFleet = fleets[0];
+      await AmbulanceFleet.deleteMany({ 
+        ownerId: providerId, 
+        _id: { $ne: latestFleet._id } 
+      });
+      res.json({ success: true, message: `Cleaned up ${fleets.length - 1} old fleets`, keptFleet: latestFleet._id });
+    } else {
+      res.json({ success: true, message: 'Only one fleet found' });
+    }
+  } catch (error) {
+    res.status(500).json({ success: false, message: error.message });
+  }
+});
     
 module.exports = router;
