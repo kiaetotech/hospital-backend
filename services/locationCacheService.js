@@ -489,17 +489,28 @@ const ambulanceLocation = {
     const geoKey = KEY_PREFIXES.ambulance.driverGeo;
 
     const locationData = {
-      driverId, lat, lng,
-      timestamp: Date.now(),
-      speed: metadata.speed || 0,
-      heading: metadata.heading || 0,
-      isAvailable: metadata.isAvailable !== false,
-      vehicleType: metadata.vehicleType || 'basic',
-      providerId: metadata.providerId || '',
-      isOnTrip: metadata.isOnTrip || false,
-      tripId: metadata.tripId || '',
-      lastUpdate: new Date().toISOString()
-    };
+  driverId,
+  lat,
+  lng,
+  timestamp: Date.now(),
+
+  speed: metadata.speed || 0,
+  heading: metadata.heading || 0,
+
+  isAvailable: metadata.isAvailable !== false,
+
+  // Exact driver → vehicle relationship
+  vehicleId: metadata.vehicleId || '',
+  vehicleNumber: metadata.vehicleNumber || '',
+
+  vehicleType: metadata.vehicleType || 'basic',
+  providerId: metadata.providerId || '',
+
+  isOnTrip: metadata.isOnTrip || false,
+  tripId: metadata.tripId || '',
+
+  lastUpdate: new Date().toISOString()
+};
 
     const pipeline = redis.pipeline();
     pipeline.setex(key, TTL_CONFIG.ambulance.driver, JSON.stringify(locationData));

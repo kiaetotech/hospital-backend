@@ -587,11 +587,29 @@ router.post('/update-location', authenticateToken, async (req, res) => {
     const vehicleType = assignment?.vehicle?.type || req.body.vehicleType || 'basic';
     const providerId = assignment?.providerId || req.user.id || '';
     
-    await locationCache.ambulance.updateDriverLocation(driverId, numericLat, numericLng, {
-      speed: Number(speed || 0), heading: Number(heading || 0),
-      isAvailable: isAvailable !== false, isOnTrip: isOnTrip === true,
-      tripId: tripId || '', vehicleType, providerId
-    });
+    await locationCache.ambulance.updateDriverLocation(
+  driverId,
+  numericLat,
+  numericLng,
+  {
+    speed: Number(speed || 0),
+    heading: Number(heading || 0),
+    isAvailable: isAvailable !== false,
+    isOnTrip: isOnTrip === true,
+    tripId: tripId || '',
+
+    // Authoritative provider/vehicle assignment
+    vehicleId: assignment?.vehicle?._id
+      ? String(assignment.vehicle._id)
+      : '',
+
+    vehicleNumber:
+      assignment?.vehicle?.vehicleNumber || '',
+
+    vehicleType,
+    providerId
+  }
+);
 
     return res.json({
       success: true, message: 'Location updated',
