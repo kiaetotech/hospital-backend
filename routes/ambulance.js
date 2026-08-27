@@ -568,54 +568,14 @@ router.post('/update-location', authenticateToken, async (req, res) => {
     let driverId;
     let assignment = null;
     
-        if (req.user.role === 'ambulance_driver') {
-      driverId = String(req.user.driverId || '').trim();
-
-      if (!driverId) {
-        return res.status(400).json({
-          success: false,
-          error: 'Driver ID missing in token'
-        });
-      }
-
-      // Resolve the driver's actual provider + assigned vehicle.
-      assignment = await resolveDriverAssignment(
-        driverId,
-        req.user
-      );
-
-      if (!assignment) {
-        return res.status(403).json({
-          success: false,
-          error: 'Driver is not registered under a provider or has no valid fleet assignment'
-        });
-      }
-
+    if (req.user.role === 'ambulance_driver') {
+      driverId = String(req.user.driverId || '');
+      if (!driverId) return res.status(400).json({ success: false, error: 'Driver ID missing in token' });
     } else {
-      driverId = String(
-        req.body.driverId ||
-        req.user.driverId ||
-        ''
-      ).trim();
-
-      if (!driverId) {
-        return res.status(400).json({
-          success: false,
-          error: 'Driver ID required'
-        });
-      }
-
-      assignment = await resolveDriverAssignment(
-        driverId,
-        req.user
-      );
-
-      if (!assignment) {
-        return res.status(403).json({
-          success: false,
-          error: 'Driver is not registered under the authenticated provider'
-        });
-      }
+      driverId = String(req.body.driverId || req.user.driverId || '').trim();
+      if (!driverId) return res.status(400).json({ success: false, error: 'Driver ID required' });
+      assignment = await resolveDriverAssignment(driverId, req.user);
+      if (!assignment) return res.status(403).json({ success: false, error: 'Driver is not registered under the authenticated provider' });
     }
 
     const numericLat = Number(lat);
