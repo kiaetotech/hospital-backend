@@ -1193,16 +1193,13 @@ router.post('/schedule-transport', authenticateToken, async (req, res) => {
       }
     );
 
-    // Auto-assign driver and send alert immediately after booking
+        // Auto-assign driver for selected vehicle if online
     try {
-      const drivers = await locationCache.ambulance.findNearbyDrivers(
-        patientLat,
-        patientLng,
-        50,
-        { limit: 5, requireAvailable: true }
-      );
+      const driverLocation = await locationCache.ambulance.getDriverLocation(vehicle._id);
       
-      const matchedDriver = drivers.find(d => d.driverId === vehicle._id?.toString()) || drivers[0];
+      const matchedDriver = driverLocation && driverLocation.isAvailable && !driverLocation.isOnTrip
+        ? { driverId: vehicle._id, ...driverLocation }
+        : null;
       
       if (matchedDriver) {
         booking.driverId = matchedDriver.driverId;
