@@ -748,23 +748,26 @@ router.get('/nearby-ambulances', async (req, res) => {
 
       let vehicle = null;
 
-      // First try vehicleId if the driver location
-      // already contains it.
+            // Match the driver's exact assigned vehicle.
       if (driver.vehicleId) {
-        vehicle =
-          fleet.vehicles.id(
-            driver.vehicleId
-          );
+        vehicle = fleet.vehicles.id(
+          String(driver.vehicleId)
+        );
+
+        // Only show vehicles that are currently available.
+        if (vehicle && vehicle.status !== 'available') {
+          vehicle = null;
+        }
       }
 
-      // Otherwise find by driver ID / vehicle number.
+      // Legacy fallback: match the exact vehicle number.
       if (!vehicle && driver.vehicleNumber) {
-        vehicle =
-          fleet.vehicles.find(
-            v =>
-              v.vehicleNumber ===
-              driver.vehicleNumber
-          );
+        vehicle = fleet.vehicles.find(
+          v =>
+            String(v.vehicleNumber || '').trim().toLowerCase() ===
+              String(driver.vehicleNumber || '').trim().toLowerCase() &&
+            v.status === 'available'
+        );
       }
 
       // Existing provider data stores driverId on User and driverName on the vehicle.
