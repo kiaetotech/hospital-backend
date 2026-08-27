@@ -3171,6 +3171,7 @@ router.get('/search', async (req, res) => {
         const providerLng = provider.ambulanceSettings?.serviceAreaCoordinates?.center?.lng || provider.ambulanceCompanyAddress?.coordinates?.lng;
 
         // Use driver's live location if available
+	const driverLocation = await locationCache.ambulance.getDriverLocation(vehicle._id);
         const vehicleLat = driverLocation?.lat || providerLat;
         const vehicleLng = driverLocation?.lng || providerLng;
 
