@@ -694,35 +694,49 @@ router.get('/nearby-ambulances', async (req, res) => {
     const {
       lat,
       lng,
+      city,
       radius = 25,
       vehicleType,
       limit = 20
     } = req.query;
 
-    if (
-      lat === undefined ||
-      lng === undefined ||
-      lat === '' ||
-      lng === ''
-    ) {
+    let searchLat = parseFloat(lat);
+    let searchLng = parseFloat(lng);
+
+    // If city provided and no coordinates, geocode city to coordinates
+    if (city && !searchLat && !searchLng) {
+      const provider = await User.findOne({
+        role: 'ambulance_provider',
+        'ambulanceSettings.isAvailable': true,
+        $or: [
+          { 'ambulanceCompanyAddress.city': { $regex: city, $options: 'i' } },
+          { 'ambulanceSettings.serviceArea': { $regex: city, $options: 'i' } }
+        ]
+      }).select('ambulanceSettings.serviceAreaCoordinates ambulanceCompanyAddress');
+
+      if (provider) {
+        searchLat = provider.ambulanceSettings?.serviceAreaCoordinates?.center?.lat || 
+                    provider.ambulanceCompanyAddress?.coordinates?.lat;
+        searchLng = provider.ambulanceSettings?.serviceAreaCoordinates?.center?.lng || 
+                    provider.ambulanceCompanyAddress?.coordinates?.lng;
+      }
+    }
+
+    if (!searchLat || !searchLng) {
       return res.status(400).json({
         success: false,
-        error: 'Coordinates required'
+        error: 'Valid coordinates or city required'
       });
     }
 
     const drivers =
       await locationCache.ambulance.findNearbyDrivers(
-        parseFloat(lat),
-        parseFloat(lng),
+        searchLat,
+        searchLng,
         parseFloat(radius),
         {
-          vehicleType:
-            vehicleType || null,
-
-          limit:
-            parseInt(limit, 10),
-
+          vehicleType: vehicleType || null,
+          limit: parseInt(limit, 10),
           requireAvailable: true
         }
       );
@@ -748,13 +762,9 @@ router.get('/nearby-ambulances', async (req, res) => {
 
       let vehicle = null;
 
-            // Match the driver's exact assigned vehicle.
+      // Match the driver's exact assigned vehicle.
       if (driver.vehicleId) {
-        vehicle = fleet.vehicles.id(
-          String(driver.vehicleId)
-        );
-
-        // Only show vehicles that are currently available.
+        vehicle = fleet.vehicles.id(String(driver.vehicleId));
         if (vehicle && vehicle.status !== 'available') {
           vehicle = null;
         }
@@ -770,7 +780,6 @@ router.get('/nearby-ambulances', async (req, res) => {
         );
       }
 
-      // Existing provider data stores driverId on User and driverName on the vehicle.
       if (!vehicle && driver.driverId) {
         const owner = await User.findOne({ _id: driver.providerId, 'ambulanceDrivers.driverId': driver.driverId }).select('ambulanceDrivers').lean();
         const driverRecord = owner?.ambulanceDrivers?.find(d => String(d.driverId || '') === String(driver.driverId));
@@ -779,72 +788,26 @@ router.get('/nearby-ambulances', async (req, res) => {
         }
       }
 
-      // Final fallback: match vehicle type.
-      if (!vehicle) {
-        vehicle =
-          fleet.vehicles.find(
-            v =>
-              String(v.type || '')
-                .toLowerCase() ===
-                String(driver.vehicleType || '')
-                .toLowerCase() &&
-              v.status === 'available'
-          );
-      }
-
       if (!vehicle) {
         continue;
       }
 
       results.push({
-        driverId:
-          driver.driverId,
-
-        providerId:
-          driver.providerId,
-
-        vehicleId:
-          vehicle._id,
-
-        vehicleNumber:
-          vehicle.vehicleNumber || '',
-
-        vehicleType:
-          vehicle.type || 'basic',
-
-        driverName:
-          vehicle.driverName || '',
-
-        driverPhone:
-          vehicle.driverPhone || '',
-
-        distance:
-          driver.distance,
-
-        rating:
-          driver.rating || 0,
-
-        estimatedETA:
-          Math.max(
-            5,
-            Math.round(
-              driver.distance * 2
-            )
-          ),
-
-        // PROVIDER-ENTERED PRICING
+        driverId: driver.driverId,
+        providerId: driver.providerId,
+        vehicleId: vehicle._id,
+        vehicleNumber: vehicle.vehicleNumber || '',
+        vehicleType: vehicle.type || 'basic',
+        driverName: vehicle.driverName || '',
+        driverPhone: vehicle.driverPhone || '',
+        distance: driver.distance,
+        rating: driver.rating || 0,
+        estimatedETA: Math.max(5, Math.round(driver.distance * 2)),
         pricing: {
-          baseFare:
-            Number(vehicle.baseFare) || 0,
-
-          perKmRate:
-            Number(vehicle.perKmRate) || 0,
-
-          nightCharge:
-            Number(vehicle.nightCharge) || 0,
-
-          waitingCharge:
-            Number(vehicle.waitingCharge) || 0
+          baseFare: Number(vehicle.baseFare) || 0,
+          perKmRate: Number(vehicle.perKmRate) || 0,
+          nightCharge: Number(vehicle.nightCharge) || 0,
+          waitingCharge: Number(vehicle.waitingCharge) || 0
         }
       });
     }
@@ -856,12 +819,7 @@ router.get('/nearby-ambulances', async (req, res) => {
     });
 
   } catch (error) {
-
-    console.error(
-      'NEARBY AMBULANCE ERROR:',
-      error
-    );
-
+    console.error('NEARBY AMBULANCE ERROR:', error);
     return res.status(500).json({
       success: false,
       error: error.message
