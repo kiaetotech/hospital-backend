@@ -3131,8 +3131,7 @@ router.get('/search', async (req, res) => {
       for (const vehicle of availableVehicles) {
         // Only show vehicle if driver has live location (online)
         const driverLocation = await locationCache.ambulance.getDriverLocation(vehicle._id);
-console.log('SEARCH - vehicle:', vehicle._id, 'driverLocation:', driverLocation ? 'FOUND' : 'NOT FOUND');
-if (!driverLocation) continue;
+        if (!driverLocation) continue;
 
         const providerLat = provider.ambulanceSettings?.serviceAreaCoordinates?.center?.lat || provider.ambulanceCompanyAddress?.coordinates?.lat;
         const providerLng = provider.ambulanceSettings?.serviceAreaCoordinates?.center?.lng || provider.ambulanceCompanyAddress?.coordinates?.lng;
