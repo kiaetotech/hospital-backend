@@ -525,37 +525,191 @@ router.post('/notify-hospital', async (req, res) => {
 // 📍 LOCATION & TRACKING ENDPOINTS
 // ============================================
 
-// ─────────────────────────────────────────────
 // Resolve a driver to the authenticated provider's fleet.
 async function resolveDriverAssignment(driverId, reqUser = {}) {
-  const id = String(driverId || reqUser.driverId || '').trim();
-  if (!id) return null;
-  const authUserId = reqUser.id || reqUser._id || reqUser.userId;
-  let providerUser = null;
-  if (authUserId) {
-    providerUser = await User.findOne({ _id: authUserId, 'ambulanceDrivers.driverId': id }).lean();
-  }
-  if (!providerUser) {
-    providerUser = await User.findOne({ 'ambulanceDrivers.driverId': id }).lean();
-  }
-  if (!providerUser) return null;
-  const driver = (providerUser.ambulanceDrivers || []).find(d => String(d.driverId || '') === id);
-  if (!driver) return null;
-  const fleet = await AmbulanceFleet.findOne({
-    ownerType: 'ambulance_provider', ownerId: providerUser._id, isActive: true
+  const id = String(
+    driverId || reqUser.driverId || ''
+  ).trim();
+
+  const authUserId =
+    reqUser.id ||
+    reqUser._id ||
+    reqUser.userId;
+
+  console.log('🚑 ASSIGNMENT START:', {
+    driverId: id,
+    authUserId,
+    role: reqUser.role
   });
+
+  if (!id) {
+    console.log('❌ ASSIGNMENT FAILED: driver ID missing');
+    return null;
+  }
+
+  let providerUser = null;
+
+  // ============================================
+  // 1. AUTHENTICATED USER + DRIVER ID
+  // ============================================
+  if (authUserId) {
+    providerUser = await User.findOne({
+      _id: authUserId,
+      'ambulanceDrivers.driverId': id
+    }).lean();
+
+    console.log('🚑 AUTH USER DRIVER MATCH:', {
+      authUserId,
+      driverId: id,
+      matched: !!providerUser
+    });
+  }
+
+  // ============================================
+  // 2. FIND PROVIDER BY DRIVER ID
+  // ============================================
+  if (!providerUser) {
+    providerUser = await User.findOne({
+      'ambulanceDrivers.driverId': id
+    }).lean();
+
+    console.log('🚑 GLOBAL DRIVER MATCH:', {
+      driverId: id,
+      matched: !!providerUser,
+      providerId: providerUser?._id
+        ? String(providerUser._id)
+        : null
+    });
+  }
+
+  if (!providerUser) {
+    console.log(
+      '❌ ASSIGNMENT FAILED: driverId not found in any ambulanceDrivers record',
+      {
+        driverId: id
+      }
+    );
+
+    return null;
+  }
+
+  const driver =
+    (providerUser.ambulanceDrivers || []).find(
+      d =>
+        String(d.driverId || '').trim() === id
+    );
+
+  console.log('🚑 DRIVER RECORD MATCH:', {
+    driverId: id,
+    found: !!driver,
+    driverName: driver?.name,
+    assignedVehicle: driver?.assignedVehicle
+  });
+
+  if (!driver) {
+    console.log(
+      '❌ ASSIGNMENT FAILED: driver record missing'
+    );
+    return null;
+  }
+
+  // ============================================
+  // 3. PROVIDER FLEET
+  // ============================================
+  const fleet = await AmbulanceFleet.findOne({
+    ownerType: 'ambulance_provider',
+    ownerId: providerUser._id,
+    isActive: true
+  });
+
+  console.log('🚑 PROVIDER FLEET MATCH:', {
+    providerId: String(providerUser._id),
+    fleetFound: !!fleet,
+    vehicleCount: fleet?.vehicles?.length || 0
+  });
+
   let vehicle = null;
+
   if (fleet) {
-    const assigned = String(driver.assignedVehicle || '').trim();
+
+    const assigned =
+      String(driver.assignedVehicle || '').trim();
+
+    // ============================================
+    // 4. ASSIGNED VEHICLE
+    // ============================================
     if (assigned) {
+
       vehicle = fleet.vehicles.id(assigned);
-      if (!vehicle) vehicle = fleet.vehicles.find(v => String(v.vehicleNumber || '').trim().toLowerCase() === assigned.toLowerCase());
+
+      if (!vehicle) {
+        vehicle = fleet.vehicles.find(
+          v =>
+            String(v.vehicleNumber || '')
+              .trim()
+              .toLowerCase() ===
+            assigned.toLowerCase()
+        );
+      }
+
+      console.log('🚑 ASSIGNED VEHICLE MATCH:', {
+        driverId: id,
+        assignedVehicle: assigned,
+        matched: !!vehicle,
+        vehicleId: vehicle?._id
+          ? String(vehicle._id)
+          : null,
+        vehicleNumber: vehicle?.vehicleNumber,
+        status: vehicle?.status
+      });
     }
+
+    // ============================================
+    // 5. DRIVER NAME → VEHICLE
+    // ============================================
     if (!vehicle && driver.name) {
-      vehicle = fleet.vehicles.find(v => String(v.driverName || '').trim().toLowerCase() === String(driver.name || '').trim().toLowerCase());
+
+      vehicle = fleet.vehicles.find(
+        v =>
+          String(v.driverName || '')
+            .trim()
+            .toLowerCase() ===
+          String(driver.name || '')
+            .trim()
+            .toLowerCase()
+      );
+
+      console.log('🚑 DRIVER NAME VEHICLE MATCH:', {
+        driverId: id,
+        driverName: driver.name,
+        matched: !!vehicle,
+        vehicleId: vehicle?._id
+          ? String(vehicle._id)
+          : null,
+        vehicleNumber: vehicle?.vehicleNumber,
+        status: vehicle?.status
+      });
     }
   }
-  return { providerUser, driver, providerId: String(providerUser._id), fleet, vehicle };
+
+  console.log('✅ ASSIGNMENT RESULT:', {
+    driverId: id,
+    providerId: String(providerUser._id),
+    vehicleId: vehicle?._id
+      ? String(vehicle._id)
+      : null,
+    vehicleNumber: vehicle?.vehicleNumber || '',
+    vehicleType: vehicle?.type || '',
+    vehicleStatus: vehicle?.status || ''
+  });
+
+  return {
+    providerUser,
+    driver,
+    providerId: String(providerUser._id),
+    fleet,
+    vehicle
+  };
 }
 
 // POST /ambulance/update-location
