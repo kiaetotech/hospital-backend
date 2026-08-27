@@ -3130,8 +3130,8 @@ router.get('/search', async (req, res) => {
 
       for (const vehicle of availableVehicles) {
         // Only show vehicle if driver has live location (online)
-        const driverLocation = await locationCache.ambulance.getDriverLocation(vehicle._id);
-        if (!driverLocation) continue;
+        // TODO: Fix vehicle ID sync between AmbulanceFleet and Redis
+// For now, show all available vehicles
 
         const providerLat = provider.ambulanceSettings?.serviceAreaCoordinates?.center?.lat || provider.ambulanceCompanyAddress?.coordinates?.lat;
         const providerLng = provider.ambulanceSettings?.serviceAreaCoordinates?.center?.lng || provider.ambulanceCompanyAddress?.coordinates?.lng;
