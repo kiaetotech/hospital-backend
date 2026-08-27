@@ -727,202 +727,74 @@ router.get('/nearby-ambulances', async (req, res) => {
         }
       );
 
-        const results = [];
+    const results = [];
 
     for (const driver of drivers) {
 
-      console.log('🚑 NEARBY DRIVER CHECK:', {
-        driverId: driver.driverId,
-        providerId: driver.providerId,
-        vehicleId: driver.vehicleId,
-        vehicleNumber: driver.vehicleNumber,
-        vehicleType: driver.vehicleType,
-        isAvailable: driver.isAvailable,
-        isOnTrip: driver.isOnTrip
-      });
-
       if (!driver.providerId) {
-        console.log(
-          '❌ DRIVER REJECTED: providerId missing',
-          driver.driverId
-        );
         continue;
       }
 
-      const fleet = await AmbulanceFleet.findOne({
-        ownerType: 'ambulance_provider',
-        ownerId: driver.providerId,
-        isActive: true
-      });
-
-      console.log('🚑 FLEET CHECK:', {
-        driverId: driver.driverId,
-        providerId: driver.providerId,
-        fleetFound: !!fleet,
-        vehicleCount: fleet?.vehicles?.length || 0
-      });
+      const fleet =
+        await AmbulanceFleet.findOne({
+          ownerType: 'ambulance_provider',
+          ownerId: driver.providerId,
+          isActive: true
+        });
 
       if (!fleet) {
-        console.log(
-          '❌ DRIVER REJECTED: active fleet not found',
-          driver.driverId
-        );
         continue;
       }
 
       let vehicle = null;
 
-      // ============================================
-      // 1. EXACT VEHICLE ID MATCH
-      // ============================================
+            // Match the driver's exact assigned vehicle.
       if (driver.vehicleId) {
         vehicle = fleet.vehicles.id(
           String(driver.vehicleId)
         );
 
-        console.log('🚑 VEHICLE ID MATCH:', {
-          driverId: driver.driverId,
-          requestedVehicleId: String(driver.vehicleId),
-          matched: !!vehicle,
-          vehicleNumber: vehicle?.vehicleNumber,
-          status: vehicle?.status
-        });
-
+        // Only show vehicles that are currently available.
         if (vehicle && vehicle.status !== 'available') {
-          console.log(
-            '❌ VEHICLE REJECTED: vehicle is not available',
-            {
-              driverId: driver.driverId,
-              vehicleNumber: vehicle.vehicleNumber,
-              status: vehicle.status
-            }
-          );
-
           vehicle = null;
         }
       }
 
-      // ============================================
-      // 2. EXACT VEHICLE NUMBER MATCH
-      // ============================================
+      // Legacy fallback: match the exact vehicle number.
       if (!vehicle && driver.vehicleNumber) {
         vehicle = fleet.vehicles.find(
           v =>
-            String(v.vehicleNumber || '')
-              .trim()
-              .toLowerCase() ===
-              String(driver.vehicleNumber || '')
-                .trim()
-                .toLowerCase() &&
+            String(v.vehicleNumber || '').trim().toLowerCase() ===
+              String(driver.vehicleNumber || '').trim().toLowerCase() &&
             v.status === 'available'
         );
-
-        console.log('🚑 VEHICLE NUMBER MATCH:', {
-          driverId: driver.driverId,
-          driverVehicleNumber: driver.vehicleNumber,
-          matched: !!vehicle,
-          vehicleNumber: vehicle?.vehicleNumber,
-          status: vehicle?.status
-        });
       }
 
-      // ============================================
-      // 3. DRIVER ID → DRIVER NAME → VEHICLE
-      // ============================================
+      // Existing provider data stores driverId on User and driverName on the vehicle.
       if (!vehicle && driver.driverId) {
-
-        const owner = await User.findOne({
-          _id: driver.providerId,
-          'ambulanceDrivers.driverId': driver.driverId
-        })
-          .select('ambulanceDrivers')
-          .lean();
-
-        const driverRecord =
-          owner?.ambulanceDrivers?.find(
-            d =>
-              String(d.driverId || '') ===
-              String(driver.driverId)
-          );
-
-        console.log('🚑 DRIVER RECORD:', {
-          driverId: driver.driverId,
-          found: !!driverRecord,
-          name: driverRecord?.name
-        });
-
+        const owner = await User.findOne({ _id: driver.providerId, 'ambulanceDrivers.driverId': driver.driverId }).select('ambulanceDrivers').lean();
+        const driverRecord = owner?.ambulanceDrivers?.find(d => String(d.driverId || '') === String(driver.driverId));
         if (driverRecord?.name) {
-
-          vehicle = fleet.vehicles.find(
-            v =>
-              String(v.driverName || '')
-                .trim()
-                .toLowerCase() ===
-              String(driverRecord.name || '')
-                .trim()
-                .toLowerCase() &&
-              v.status === 'available'
-          );
-
-          console.log('🚑 DRIVER NAME MATCH:', {
-            driverId: driver.driverId,
-            driverName: driverRecord.name,
-            matched: !!vehicle,
-            vehicleNumber: vehicle?.vehicleNumber,
-            status: vehicle?.status
-          });
+          vehicle = fleet.vehicles.find(v => String(v.driverName || '').trim().toLowerCase() === String(driverRecord.name).trim().toLowerCase() && v.status === 'available');
         }
       }
 
-      // ============================================
-      // 4. VEHICLE TYPE FALLBACK
-      // ============================================
+      // Final fallback: match vehicle type.
       if (!vehicle) {
-
-        vehicle = fleet.vehicles.find(
-          v =>
-            String(v.type || '')
-              .toLowerCase() ===
-            String(driver.vehicleType || '')
-              .toLowerCase() &&
-            v.status === 'available'
-        );
-
-        console.log('🚑 VEHICLE TYPE FALLBACK:', {
-          driverId: driver.driverId,
-          vehicleType: driver.vehicleType,
-          matched: !!vehicle,
-          vehicleNumber: vehicle?.vehicleNumber,
-          status: vehicle?.status
-        });
+        vehicle =
+          fleet.vehicles.find(
+            v =>
+              String(v.type || '')
+                .toLowerCase() ===
+                String(driver.vehicleType || '')
+                .toLowerCase() &&
+              v.status === 'available'
+          );
       }
 
-      // ============================================
-      // NO VEHICLE = DRIVER NOT RETURNED
-      // ============================================
       if (!vehicle) {
-        console.log(
-          '❌ DRIVER REJECTED: NO AVAILABLE VEHICLE MATCH',
-          {
-            driverId: driver.driverId,
-            providerId: driver.providerId,
-            vehicleId: driver.vehicleId,
-            vehicleNumber: driver.vehicleNumber,
-            vehicleType: driver.vehicleType
-          }
-        );
-
         continue;
       }
-
-      console.log('✅ DRIVER ACCEPTED:', {
-        driverId: driver.driverId,
-        providerId: driver.providerId,
-        vehicleId: String(vehicle._id),
-        vehicleNumber: vehicle.vehicleNumber,
-        vehicleType: vehicle.type,
-        status: vehicle.status
-      });
 
       results.push({
         driverId:
