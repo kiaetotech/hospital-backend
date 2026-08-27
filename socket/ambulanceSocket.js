@@ -81,6 +81,7 @@ const initializeSocket = (io) => {
       socket.userId = decoded.userId || decoded.id;
       socket.userType = userType;
       socket.userRole = decoded.role;
+      socket.providerId = decoded.providerId || decoded.id || '';
       
       next();
     } catch (error) {
@@ -102,7 +103,8 @@ const initializeSocket = (io) => {
     
     // 🚑 Driver registration
     socket.on('driver:register', (data) => {
-      const { driverId, providerId, vehicleType } = data;
+      const { driverId, vehicleType } = data;
+      const providerId = data.providerId || socket.providerId || socket.userId || '';
       connectedClients.drivers.set(driverId, {
         socket,
         userId: socket.userId,
