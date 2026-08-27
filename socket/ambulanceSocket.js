@@ -215,13 +215,15 @@ const initializeSocket = (io) => {
       try {
         // Update location in Redis
         await locationCache.ambulance.updateDriverLocation(socket.driverId, lat, lng, {
-          speed, heading, accuracy,
-          isAvailable: isAvailable !== false,
-          vehicleType: connectedClients.drivers.get(socket.driverId)?.vehicleType || 'basic',
-          providerId: connectedClients.drivers.get(socket.driverId)?.providerId || '',
-          isOnTrip: isOnTrip || false,
-          tripId: tripId || ''
-        });
+  speed, heading, accuracy,
+  isAvailable: isAvailable !== false,
+  vehicleType: connectedClients.drivers.get(socket.driverId)?.vehicleType || 'basic',
+  providerId: connectedClients.drivers.get(socket.driverId)?.providerId || '',
+  vehicleId: socket.driverId,
+  vehicleNumber: connectedClients.drivers.get(socket.driverId)?.vehicleNumber || '',
+  isOnTrip: isOnTrip || false,
+  tripId: tripId || ''
+});
         
         // If on trip, broadcast location to patient tracking
         if (isOnTrip && tripId) {
