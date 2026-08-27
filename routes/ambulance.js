@@ -3108,102 +3108,75 @@ router.get('/search', async (req, res) => {
 
     let results = [];
 
-    // 1. Search AmbulanceFleet for available vehicles
+    // Search AmbulanceFleet for available vehicles with online drivers
     const fleetQuery = {
-  'vehicles.status': 'available',
-  isActive: true
-};
-    
+      'vehicles.status': 'available',
+      isActive: true
+    };
+
     if (city) {
       fleetQuery.city = { $regex: city, $options: 'i' };
     }
 
     const fleets = await AmbulanceFleet.find(fleetQuery)
-      .populate('ownerId', 'name phone email ambulanceCompanyAddress ambulanceSettings')
       .limit(parseInt(limit));
 
     for (const fleet of fleets) {
+      const provider = await User.findById(fleet.ownerId).select('ambulanceCompanyAddress ambulanceSettings.serviceAreaCoordinates ambulanceSettings.isAvailable');
+
+      if (!provider || !provider.ambulanceSettings?.isAvailable) continue;
+
       const availableVehicles = fleet.vehicles.filter(v => v.status === 'available');
-      
+
       for (const vehicle of availableVehicles) {
-    const provider = await User.findById(fleet.ownerId).select('ambulanceCompanyAddress ambulanceSettings.serviceAreaCoordinates ambulanceSettings.isAvailable');
-    
-    if (!provider || !provider.ambulanceSettings?.isAvailable) continue;
-    
-    // Only show vehicle if driver has live location (online)
-    const driverLocation = await locationCache.ambulance.getDriverLocation(vehicle._id);
-    if (!driverLocation) continue;
+        // Only show vehicle if driver has live location (online)
+        const driverLocation = await locationCache.ambulance.getDriverLocation(vehicle._id);
+        if (!driverLocation) continue;
 
-    const providerLat = provider.ambulanceSettings?.serviceAreaCoordinates?.center?.lat || provider.ambulanceCompanyAddress?.coordinates?.lat;
-    const providerLng = provider.ambulanceSettings?.serviceAreaCoordinates?.center?.lng || provider.ambulanceCompanyAddress?.coordinates?.lng;
+        const providerLat = provider.ambulanceSettings?.serviceAreaCoordinates?.center?.lat || provider.ambulanceCompanyAddress?.coordinates?.lat;
+        const providerLng = provider.ambulanceSettings?.serviceAreaCoordinates?.center?.lng || provider.ambulanceCompanyAddress?.coordinates?.lng;
 
-        // Calculate distance if coordinates available
+        // Use driver's live location if available
+        const vehicleLat = driverLocation?.lat || providerLat;
+        const vehicleLng = driverLocation?.lng || providerLng;
+
+        // Calculate distance
         let distance = null;
-        if (lat && lng && providerLat && providerLng) {
+        if (lat && lng && vehicleLat && vehicleLng) {
           const R = 6371;
-          const dLat = (providerLat - parseFloat(lat)) * Math.PI / 180;
-          const dLng = (providerLng - parseFloat(lng)) * Math.PI / 180;
-          const a = Math.sin(dLat/2) ** 2 + Math.cos(parseFloat(lat) * Math.PI/180) * Math.cos(providerLat * Math.PI/180) * Math.sin(dLng/2) ** 2;
+          const dLat = (vehicleLat - parseFloat(lat)) * Math.PI / 180;
+          const dLng = (vehicleLng - parseFloat(lng)) * Math.PI / 180;
+          const a = Math.sin(dLat/2) ** 2 + Math.cos(parseFloat(lat) * Math.PI/180) * Math.cos(vehicleLat * Math.PI/180) * Math.sin(dLng/2) ** 2;
           distance = Math.round(R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a)) * 100) / 100;
         }
 
-        // Filter by type if specified
+        // Filter by type
         if (type && type !== 'all' && vehicle.type !== type) continue;
 
-        // Filter by radius if coordinates available
+        // Filter by radius
         if (distance !== null && distance > parseFloat(radius)) continue;
 
         results.push({
           providerId: fleet.ownerId,
-          providerName: fleet.providerName,
-          providerPhone: fleet.contactPhone,
+          providerName: fleet.providerName || provider.name || 'Ambulance Provider',
+          providerPhone: fleet.contactPhone || provider.phone || '',
           vehicleId: vehicle._id,
           vehicleNumber: vehicle.vehicleNumber,
-          vehicleType: vehicle.type,
+          vehicleType: vehicle.type || 'basic',
           driverName: vehicle.driverName || 'Not assigned',
           driverPhone: vehicle.driverPhone || '',
           equipment: vehicle.equipment || [],
-          baseFare: vehicle.baseFare || 0,
-          perKmRate: vehicle.perKmRate || 0,
-          nightCharge: vehicle.nightCharge || 0,
-          waitingCharge: vehicle.waitingCharge || 0,
+          baseFare: Number(vehicle.baseFare) || 0,
+          perKmRate: Number(vehicle.perKmRate) || 0,
+          nightCharge: Number(vehicle.nightCharge) || 0,
+          waitingCharge: Number(vehicle.waitingCharge) || 0,
           distance: distance,
           estimatedETA: distance ? Math.round(distance * 2) : null,
-          providerLat,
-          providerLng,
+          providerLat: vehicleLat,
+          providerLng: vehicleLng,
+          rating: 0,
           status: 'available'
         });
-      }
-    }
-
-    // 2. Also check locationCache for live drivers
-    if (lat && lng) {
-      try {
-        const liveDrivers = await locationCache.ambulance.findNearbyDrivers(
-          parseFloat(lat), parseFloat(lng), parseFloat(radius), {
-            limit: parseInt(limit),
-            requireAvailable: true
-          }
-        );
-
-        for (const driver of liveDrivers) {
-          // Check if already in results
-          const exists = results.find(r => 
-            r.vehicleId?.toString() === driver.vehicleId?.toString()
-          );
-          if (!exists) {
-            results.push({
-              driverId: driver.driverId,
-              vehicleType: driver.vehicleType || 'basic',
-              distance: driver.distance,
-              estimatedETA: Math.round(driver.distance * 2),
-              rating: driver.rating || 0,
-              status: 'live'
-            });
-          }
-        }
-      } catch (cacheErr) {
-        console.log('Location cache search skipped:', cacheErr.message);
       }
     }
 
