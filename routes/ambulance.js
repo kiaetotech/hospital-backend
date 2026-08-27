@@ -3144,9 +3144,10 @@ router.get('/search', async (req, res) => {
 
     // Search AmbulanceFleet for available vehicles with online drivers
     const fleetQuery = {
-      'vehicles.status': 'available',
-      isActive: true
-    };
+  'vehicles.status': 'available',
+  isActive: true,
+  ownerType: 'ambulance_provider'
+};
 
     if (city) {
       fleetQuery.city = { $regex: city, $options: 'i' };
