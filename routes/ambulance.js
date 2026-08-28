@@ -1599,6 +1599,10 @@ router.post('/rate-trip/:bookingId', authenticateToken, async (req, res) => {
     
     const booking = await Booking.findOne({ bookingId });
     if (!booking) return res.status(404).json({ success: false, message: 'Booking not found' });
+	    const userId = req.user.id || req.user._id;
+    if (booking.userId && booking.userId !== 'guest' && booking.userId !== userId) {
+      return res.status(403).json({ success: false, message: 'You can only rate your own bookings' });
+    }
     
     if (booking.status !== 'completed') {
       return res.status(400).json({ success: false, message: 'Can only rate completed trips' });
@@ -3079,19 +3083,6 @@ router.patch('/fix-type-raw', authenticateToken, async (req, res) => {
 // ============================================
 // SEARCH AVAILABLE AMBULANCES (DATABASE + CACHE)
 // ============================================
-// Debug GEO data
-router.get('/debug-geo', async (req, res) => {
-  try {
-    const redis = locationCache.getRedisClient();
-    const members = await redis.zrange('geo:amb:drivers', 0, -1);
-    const location1 = await locationCache.ambulance.getDriverLocation('6a773777a7f9807c36f502e6');
-    const location2 = await locationCache.ambulance.getDriverLocation('6a86b7738bf6cef439b69f61');
-    res.json({ members, location1, location2 });
-  } catch (error) {
-    res.json({ error: error.message });
-  }
-});
-
 router.get('/search', async (req, res) => {
   try {
     const { lat, lng, city, type, radius = 25, limit = 20 } = req.query;
