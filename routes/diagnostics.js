@@ -741,4 +741,30 @@ router.get('/corporate/reports', authenticateHR, async (req, res) => {
   }
 });
 
+// ============================================
+// 🆕 PROVIDER STATS (ADMIN)
+// ============================================
+
+// GET /api/diagnostics/provider/stats
+router.get('/provider/stats', async (req, res) => {
+  try {
+    const totalProviders = await DiagnosticsProvider.countDocuments();
+    const totalTests = await TestMaster.countDocuments();
+    const totalPricings = await TestPricing.countDocuments();
+    const activeProviders = await DiagnosticsProvider.countDocuments({ is_active: true });
+
+    res.json({
+      success: true,
+      data: {
+        totalProviders,
+        totalTests,
+        totalPricings,
+        activeProviders
+      }
+    });
+  } catch (error) {
+    res.status(500).json({ success: false, message: error.message });
+  }
+});
+
 module.exports = router;
