@@ -159,17 +159,17 @@ const KEY_PREFIXES = {
 
 const TTL_CONFIG = {
   hospital: { details: 86400, geo: 86400, filters: 86400 },    // 24 hours (static)
-  ambulance: { driver: 30, status: 60, emergency: 7200 },      // 30 sec (real-time)
+  ambulance: { driver: 1800, status: 1800, emergency: 7200 },  // 30 min grace
   insurance: { network: 86400, details: 86400 },                // 24 hours
   homeopathy: { doctor: 86400, pharmacy: 86400, delivery: 300 }, // Mixed
   ayurveda: { doctor: 86400, center: 86400, delivery: 300 },   // Mixed
-  caregiver: { location: 120, status: 300 },                    // 2 min
+  caregiver: { location: 300, status: 600 },                    // 5-10 min (grace period)
   healthEMI: { hospitals: 86400, lenders: 86400 },              // 24 hours
   corporate: { empaneled: 86400 },                              // 24 hours
-  diagnostics: { lab: 86400, phlebo: 120 },                    // Mixed
+  diagnostics: { lab: 86400, phlebo: 300 },                    // 5 min for phlebotomist
   mentalHealth: { therapist: 86400, crisis: 86400 },            // 24 hours
   onlineDoctor: { delivery: 300 },                              // 5 min
-  heartbeat: { ambulance: 60, caregiver: 180, diagnostics: 180, homeopathy: 300, ayurveda: 300 }
+  heartbeat: { ambulance: 120, caregiver: 300, diagnostics: 300, homeopathy: 600, ayurveda: 600 }
 };
 
 // ============================================
