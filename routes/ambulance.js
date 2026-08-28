@@ -417,8 +417,8 @@ router.put('/cancel-booking/:bookingId', authenticateToken, async (req, res) => 
       refundStatus: result.refundAmount > 0 ? 'pending' : 'not_applicable'
     };
 
-    // If payment was made, process refund
-    if (booking.paymentStatus === 'paid' && booking.paymentId && result.refundAmount > 0) {
+        // If payment was made and not already refunded, process refund
+    if (booking.paymentStatus === 'paid' && booking.paymentId && result.refundAmount > 0 && booking.refundStatus !== 'processed') {
       try {
         const Razorpay = require('razorpay');
         const razorpay = new Razorpay({
