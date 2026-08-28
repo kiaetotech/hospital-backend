@@ -6,6 +6,7 @@ const Booking = require('../models/Booking');
 const Transaction = require('../models/Transaction');
 const User = require('../models/User');
 const { authenticateAdmin } = require('../middleware/auth');
+
 const router = express.Router();
 
 // ============================================
@@ -650,6 +651,403 @@ router.put('/settlements/:id/settle', authenticateAdmin, async (req, res) => {
     await settlement.save();
     
     res.json({ success: true, message: 'Settlement marked as settled', data: settlement });
+  } catch (error) {
+    res.status(500).json({ success: false, message: error.message });
+  }
+});
+
+// ============================================
+// 🆕 AMBULANCE MANAGEMENT (ADMIN)
+// ============================================
+
+// Get all ambulance fleets (admin view)
+router.get('/ambulance', authenticateAdmin, async (req, res) => {
+  try {
+    const AmbulanceFleet = require('../models/AmbulanceFleet');
+    const ambulances = await AmbulanceFleet.find()
+      .select('providerName city state status vehicles drivers')
+      .sort({ createdAt: -1 })
+      .limit(100);
+    res.json({ success: true, data: ambulances });
+  } catch (error) {
+    res.status(500).json({ success: false, message: error.message });
+  }
+});
+
+// ============================================
+// 🆕 ADMIN OVERVIEW STATS
+// ============================================
+
+// Get comprehensive admin overview stats
+router.get('/overview', authenticateAdmin, async (req, res) => {
+  try {
+    const AmbulanceFleet = require('../models/AmbulanceFleet');
+    
+    const [
+      totalUsers,
+      totalHospitals,
+      totalAmbulances,
+      totalBookings,
+      revenueSummary,
+      pendingHospitals,
+      pendingAmbulances
+    ] = await Promise.all([
+      User.countDocuments(),
+      Hospital.countDocuments(),
+      AmbulanceFleet.countDocuments(),
+      Booking.countDocuments(),
+      Transaction.aggregate([
+        { $match: { status: { $in: ['completed', 'captured'] } } },
+        { $group: { _id: null, total: { $sum: '$netAmount' }, commission: { $sum: '$platformCommission' } } }
+      ]),
+      Hospital.countDocuments({ is_verified: false }),
+      AmbulanceFleet.countDocuments({ status: 'pending' })
+    ]);
+
+    res.json({
+      success: true,
+      data: {
+        totalUsers,
+        totalHospitals,
+        totalAmbulances,
+        totalBookings,
+        totalRevenue: revenueSummary[0]?.total || 0,
+        totalCommission: revenueSummary[0]?.commission || 0,
+        pendingHospitals,
+        pendingAmbulances
+      }
+    });
+  } catch (error) {
+    res.status(500).json({ success: false, message: error.message });
+  }
+});
+
+// ============================================
+// 🆕 AMBULANCE SETTLEMENT MANAGEMENT (ADMIN)
+// ============================================
+
+// Get all ambulance settlements with filters
+router.get('/settlements/ambulance', authenticateAdmin, async (req, res) => {
+  try {
+    const { status, providerId, page = 1, limit = 20 } = req.query;
+    
+    const query = {};
+    if (status) query.status = status;
+    if (providerId) query.providerId = providerId;
+
+    const skip = (parseInt(page) - 1) * parseInt(limit);
+    
+    const [settlements, total] = await Promise.all([
+      Settlement.find(query)
+        .populate('providerId', 'name providerName phone')
+        .sort({ createdAt: -1 })
+        .skip(skip)
+        .limit(parseInt(limit))
+        .lean(),
+      Settlement.countDocuments(query)
+    ]);
+
+    res.json({
+      success: true,
+      data: settlements,
+      pagination: {
+        page: parseInt(page),
+        limit: parseInt(limit),
+        total,
+        pages: Math.ceil(total / parseInt(limit))
+      }
+    });
+  } catch (error) {
+    res.status(500).json({ success: false, message: error.message });
+  }
+});
+
+// Get settlement details
+router.get('/settlements/:id', authenticateAdmin, async (req, res) => {
+  try {
+    const settlement = await Settlement.findById(req.params.id)
+      .populate('providerId', 'name providerName phone email')
+      .lean();
+    
+    if (!settlement) {
+      return res.status(404).json({ success: false, message: 'Settlement not found' });
+    }
+
+    res.json({ success: true, data: settlement });
+  } catch (error) {
+    res.status(500).json({ success: false, message: error.message });
+  }
+});
+
+// Reject settlement request
+router.put('/settlements/:id/reject', authenticateAdmin, async (req, res) => {
+  try {
+    const { reason } = req.body;
+    
+    const settlement = await Settlement.findById(req.params.id);
+    if (!settlement) {
+      return res.status(404).json({ success: false, message: 'Settlement not found' });
+    }
+    
+    if (settlement.status !== 'pending') {
+      return res.status(400).json({ success: false, message: 'Only pending settlements can be rejected' });
+    }
+
+    settlement.status = 'rejected';
+    settlement.rejectionReason = reason || 'Rejected by admin';
+    settlement.rejectedAt = new Date();
+    await settlement.save();
+
+    res.json({ success: true, message: 'Settlement rejected', data: settlement });
+  } catch (error) {
+    res.status(500).json({ success: false, message: error.message });
+  }
+});
+
+// ============================================
+// 🆕 PATIENT COMPLAINTS MANAGEMENT (ADMIN)
+// ============================================
+
+// Get all complaints
+router.get('/complaints', authenticateAdmin, async (req, res) => {
+  try {
+    const Complaint = require('../models/Complaint');
+    const { status, type, page = 1, limit = 20 } = req.query;
+    
+    const query = {};
+    if (status) query.status = status;
+    if (type) query.complaintType = type;
+
+    const skip = (parseInt(page) - 1) * parseInt(limit);
+    
+    const [complaints, total] = await Promise.all([
+      Complaint.find(query)
+        .populate('userId', 'name email phone')
+        .populate('bookingId', 'bookingId bookingType')
+        .sort({ createdAt: -1 })
+        .skip(skip)
+        .limit(parseInt(limit))
+        .lean(),
+      Complaint.countDocuments(query)
+    ]);
+
+    res.json({
+      success: true,
+      data: complaints,
+      pagination: {
+        page: parseInt(page),
+        limit: parseInt(limit),
+        total,
+        pages: Math.ceil(total / parseInt(limit))
+      }
+    });
+  } catch (error) {
+    res.status(500).json({ success: false, message: error.message });
+  }
+});
+
+// Update complaint status
+router.put('/complaints/:id/status', authenticateAdmin, async (req, res) => {
+  try {
+    const Complaint = require('../models/Complaint');
+    const { status, resolutionNote } = req.body;
+    
+    const complaint = await Complaint.findById(req.params.id);
+    if (!complaint) {
+      return res.status(404).json({ success: false, message: 'Complaint not found' });
+    }
+
+    complaint.status = status;
+    if (status === 'resolved') {
+      complaint.resolvedAt = new Date();
+      complaint.resolutionNote = resolutionNote || '';
+    }
+    if (status === 'in_progress') {
+      complaint.inProgressAt = new Date();
+    }
+    await complaint.save();
+
+    res.json({ success: true, message: `Complaint ${status}`, data: complaint });
+  } catch (error) {
+    res.status(500).json({ success: false, message: error.message });
+  }
+});
+
+// ============================================
+// 🆕 CANCELLATION POLICY MANAGEMENT (ADMIN)
+// ============================================
+
+// Get cancellation policy
+router.get('/cancellation-policy', authenticateAdmin, async (req, res) => {
+  try {
+    const CancellationPolicy = require('../models/CancellationPolicy');
+    const policy = await CancellationPolicy.findOne({ isActive: true });
+    res.json({ success: true, data: policy || { policyRules: [], isActive: false } });
+  } catch (error) {
+    res.status(500).json({ success: false, message: error.message });
+  }
+});
+
+// Update cancellation policy
+router.put('/cancellation-policy', authenticateAdmin, async (req, res) => {
+  try {
+    const CancellationPolicy = require('../models/CancellationPolicy');
+    const { policyRules, isActive } = req.body;
+    
+    let policy = await CancellationPolicy.findOne({ isActive: true });
+    
+    if (policy) {
+      policy.policyRules = policyRules || policy.policyRules;
+      policy.isActive = isActive !== undefined ? isActive : policy.isActive;
+      policy.updatedAt = new Date();
+      await policy.save();
+    } else {
+      policy = new CancellationPolicy({
+        policyRules: policyRules || [],
+        isActive: isActive !== undefined ? isActive : true
+      });
+      await policy.save();
+    }
+
+    res.json({ success: true, message: 'Cancellation policy updated', data: policy });
+  } catch (error) {
+    res.status(500).json({ success: false, message: error.message });
+  }
+});
+
+// ============================================
+// 🆕 TRANSACTION MANAGEMENT (ADMIN)
+// ============================================
+
+// Get all transactions with filters
+router.get('/transactions', authenticateAdmin, async (req, res) => {
+  try {
+    const { status, bookingType, paymentMethod, page = 1, limit = 20 } = req.query;
+    
+    const query = {};
+    if (status) query.status = status;
+    if (bookingType) query.bookingType = bookingType;
+    if (paymentMethod) query.paymentMethod = paymentMethod;
+
+    const skip = (parseInt(page) - 1) * parseInt(limit);
+    
+    const [transactions, total] = await Promise.all([
+      Transaction.find(query)
+        .sort({ createdAt: -1 })
+        .skip(skip)
+        .limit(parseInt(limit))
+        .lean(),
+      Transaction.countDocuments(query)
+    ]);
+
+    res.json({
+      success: true,
+      data: transactions,
+      pagination: {
+        page: parseInt(page),
+        limit: parseInt(limit),
+        total,
+        pages: Math.ceil(total / parseInt(limit))
+      }
+    });
+  } catch (error) {
+    res.status(500).json({ success: false, message: error.message });
+  }
+});
+
+// Get transaction details
+router.get('/transactions/:id', authenticateAdmin, async (req, res) => {
+  try {
+    const transaction = await Transaction.findById(req.params.id).lean();
+    if (!transaction) {
+      return res.status(404).json({ success: false, message: 'Transaction not found' });
+    }
+    res.json({ success: true, data: transaction });
+  } catch (error) {
+    res.status(500).json({ success: false, message: error.message });
+  }
+});
+
+// Refund transaction
+router.post('/transactions/:id/refund', authenticateAdmin, async (req, res) => {
+  try {
+    const { reason, refundAmount } = req.body;
+    
+    const transaction = await Transaction.findById(req.params.id);
+    if (!transaction) {
+      return res.status(404).json({ success: false, message: 'Transaction not found' });
+    }
+
+    if (transaction.status === 'refunded') {
+      return res.status(400).json({ success: false, message: 'Transaction already refunded' });
+    }
+
+    // Call Razorpay refund
+    const razorpayService = require('../services/razorpayService');
+    const refundResult = await razorpayService.createRefund({
+      paymentId: transaction.razorpayPaymentId,
+      amount: refundAmount || transaction.amount,
+      notes: { reason: reason || 'Admin refund' }
+    });
+
+    transaction.status = 'refunded';
+    transaction.refundDetails = {
+      refundId: refundResult.id,
+      refundAmount: refundResult.amount,
+      reason: reason || 'Admin refund',
+      refundedAt: new Date()
+    };
+    await transaction.save();
+
+    res.json({ success: true, message: 'Refund processed', data: transaction });
+  } catch (error) {
+    res.status(500).json({ success: false, message: error.message });
+  }
+});
+
+// ============================================
+// 🆕 BOOKING DETAILS (ADMIN)
+// ============================================
+
+// Get single booking details
+router.get('/bookings/:id', authenticateAdmin, async (req, res) => {
+  try {
+    const booking = await Booking.findById(req.params.id).lean();
+    if (!booking) {
+      return res.status(404).json({ success: false, message: 'Booking not found' });
+    }
+    res.json({ success: true, data: booking });
+  } catch (error) {
+    res.status(500).json({ success: false, message: error.message });
+  }
+});
+
+// Cancel booking (admin override)
+router.put('/bookings/:id/cancel', authenticateAdmin, async (req, res) => {
+  try {
+    const { reason } = req.body;
+    
+    const booking = await Booking.findById(req.params.id);
+    if (!booking) {
+      return res.status(404).json({ success: false, message: 'Booking not found' });
+    }
+
+    if (['completed', 'cancelled'].includes(booking.status)) {
+      return res.status(400).json({ success: false, message: 'Booking cannot be cancelled' });
+    }
+
+    booking.status = 'cancelled';
+    booking.cancellation = {
+      cancelledAt: new Date(),
+      reason: reason || 'Cancelled by admin',
+      cancelledBy: 'admin',
+      refundAmount: booking.finalAmount,
+      refundPercentage: 100,
+      refundStatus: 'pending'
+    };
+    await booking.save();
+
+    res.json({ success: true, message: 'Booking cancelled by admin', data: booking });
   } catch (error) {
     res.status(500).json({ success: false, message: error.message });
   }
