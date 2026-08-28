@@ -5,6 +5,7 @@ const Hospital = require('../models/Hospital');
 const Booking = require('../models/Booking');
 const Transaction = require('../models/Transaction');
 const User = require('../models/User');
+const { authenticateAdmin } = require('../middleware/auth');
 const router = express.Router();
 
 // ============================================
