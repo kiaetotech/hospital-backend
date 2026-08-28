@@ -484,7 +484,7 @@ const ambulanceLocation = {
 
   updateDriverLocation: async (driverId, lat, lng, metadata = {}) => {
     const redis = getRedisClient();
-    console.log('📍 updateDriverLocation called:', driverId, lat, lng);
+    console.log('📍 updateDriverLocation:', driverId, 'available:', metadata.isAvailable, 'onTrip:', metadata.isOnTrip);
     const key = KEY_PREFIXES.ambulance.driverLocation + driverId;
     const geoKey = KEY_PREFIXES.ambulance.driverGeo;
 
