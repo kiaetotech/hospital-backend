@@ -3406,5 +3406,51 @@ router.post('/cleanup-old-fleets', authenticateToken, async (req, res) => {
     res.status(500).json({ success: false, message: error.message });
   }
 });
+
+// ============================================
+// 🆕 AMBULANCE ADMIN STATS
+// ============================================
+
+// GET /api/ambulance/admin/stats
+router.get('/admin/stats', async (req, res) => {
+  try {
+    const AmbulanceFleet = require('../models/AmbulanceFleet');
+    const Booking = require('../models/Booking');
+    
+    const [
+      totalFleets,
+      activeFleets,
+      totalVehicles,
+      totalDrivers,
+      totalBookings,
+      completedBookings
+    ] = await Promise.all([
+      AmbulanceFleet.countDocuments(),
+      AmbulanceFleet.countDocuments({ status: 'active' }),
+      AmbulanceFleet.aggregate([
+        { $group: { _id: null, total: { $sum: { $size: '$vehicles' } } } }
+      ]),
+      AmbulanceFleet.aggregate([
+        { $group: { _id: null, total: { $sum: { $size: '$drivers' } } } }
+      ]),
+      Booking.countDocuments({ bookingType: 'ambulance' }),
+      Booking.countDocuments({ bookingType: 'ambulance', status: 'completed' })
+    ]);
+
+    res.json({
+      success: true,
+      data: {
+        totalFleets,
+        activeFleets,
+        totalVehicles: totalVehicles[0]?.total || 0,
+        totalDrivers: totalDrivers[0]?.total || 0,
+        totalBookings,
+        completedBookings
+      }
+    });
+  } catch (error) {
+    res.status(500).json({ success: false, message: error.message });
+  }
+});
     
 module.exports = router;
