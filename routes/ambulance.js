@@ -792,6 +792,17 @@ router.get('/nearby-ambulances', async (req, res) => {
         continue;
       }
 
+      // Get driver's actual rating from completed trips
+      const ratedBookings = await Booking.find({
+        driverId: vehicle._id,
+        status: 'completed',
+        'review.submittedAt': { $exists: true }
+      }).select('review.rating');
+      
+      const actualRating = ratedBookings.length > 0
+        ? Math.round((ratedBookings.reduce((sum, b) => sum + (b.review?.rating || 0), 0) / ratedBookings.length) * 10) / 10
+        : 0;
+
       results.push({
         driverId: driver.driverId,
         providerId: driver.providerId,
@@ -802,7 +813,7 @@ router.get('/nearby-ambulances', async (req, res) => {
         driverName: vehicle.driverName || '',
         driverPhone: vehicle.driverPhone || '',
         distance: driver.distance,
-        rating: driver.rating || 0,
+         rating: actualRating,
         estimatedETA: Math.max(5, Math.round(driver.distance * 2)),
         pricing: {
           baseFare: Number(vehicle.baseFare) || 0,
