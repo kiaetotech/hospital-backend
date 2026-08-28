@@ -608,7 +608,13 @@ router.get('/admin/pending', auth, async (req, res) => {
     }
 
     const plans = await CorporatePlan.find({ status: 'pending', isVerified: false })
-      .populate('companyId', 'name email phone');
+      .populate('companyId', 'name email phone')
+      .lean()
+      .catch(populateErr => {
+        // Fallback without populate if reference is broken
+        console.warn('Populate failed, fetching without company details:', populateErr.message);
+        return CorporatePlan.find({ status: 'pending', isVerified: false }).lean();
+      });
 
     res.json({
       success: true,
