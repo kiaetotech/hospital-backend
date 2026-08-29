@@ -15,7 +15,7 @@ const transactionSchema = new mongoose.Schema({
   ambulanceCommission: { type: Object },
   lenderId: { type: String },
   
-  type: { 
+    type: { 
     type: String, 
     enum: [
       'disbursal', 
@@ -33,7 +33,11 @@ const transactionSchema = new mongoose.Schema({
       'ambulance_emergency',
       'ambulance_scheduled',
       'ambulance_payout',
-      'ambulance_refund'
+      'ambulance_refund',
+      // 🧘 NEW: Ayurveda transaction types
+      'ayurveda_booking',
+      'ayurveda_payout',
+      'ayurveda_refund'
     ] 
   },
   amount: Number,
@@ -81,7 +85,7 @@ const transactionSchema = new mongoose.Schema({
   razorpaySignature: { type: String },
   
   bookingId: { type: mongoose.Schema.Types.ObjectId, ref: 'Booking' },
-  bookingType: { 
+    bookingType: { 
     type: String, 
     enum: [
       'opd', 
@@ -92,7 +96,11 @@ const transactionSchema = new mongoose.Schema({
       'health_package', 
       'caregiver', 
       'loan',
-      'insurance'
+      'insurance',
+      // 🧘 NEW: Ayurveda booking types
+      'ayurveda_consultation',
+      'panchakarma',
+      'ayurveda_product'
     ] 
   },
   userId: { type: String },

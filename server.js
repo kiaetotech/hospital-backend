@@ -722,6 +722,8 @@ app.use('/api/ayurveda-centers', ayurvedaCenterRoutes);
 app.use('/api/ayurveda/prescriptions', ayurvedaPrescriptionRoutes);
 app.use('/api/ayurveda/reports', ayurvedaReportRoutes);
 app.use('/api/ayurveda/payments', razorpayRoutes);
+app.use('/api/ayurveda/bookings', require('./routes/ayurveda-booking'));
+app.use('/api/ayurveda/settlements', require('./routes/ayurveda-settlement'));
 app.use('/api/homeopathy', homeopathyRoutes);
 app.use('/api/insurance', insuranceRoutes);
 app.use('/api/insurance-admin', insuranceAdminRoutes);
