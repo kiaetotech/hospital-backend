@@ -873,4 +873,109 @@ router.get('/seasonal-recommendations', async (req, res) => {
   }
 });
 
+// ============================================
+// DOCTOR AVAILABILITY MANAGEMENT
+// ============================================
+
+// GET /api/ayurveda/doctor/:id/availability
+router.get('/doctor/:id/availability', async (req, res) => {
+  try {
+    const doctor = await AyurvedaDoctor.findById(req.params.id);
+    if (!doctor) return res.status(404).json({ success: false, error: 'Doctor not found' });
+    
+    res.json({
+      success: true,
+      data: {
+        availability: doctor.availability || [],
+        consultationTypes: doctor.consultationTypes || {},
+        isAvailable: doctor.isActive && doctor.verificationStatus === 'approved'
+      }
+    });
+  } catch (error) {
+    res.status(500).json({ success: false, error: error.message });
+  }
+});
+
+// PUT /api/ayurveda/doctor/availability (auth required)
+router.put('/doctor/availability', async (req, res) => {
+  try {
+    const { doctorId, availability } = req.body;
+    
+    if (!doctorId || !availability) {
+      return res.status(400).json({ success: false, error: 'Doctor ID and availability are required' });
+    }
+    
+    const doctor = await AyurvedaDoctor.findById(doctorId);
+    if (!doctor) return res.status(404).json({ success: false, error: 'Doctor not found' });
+    
+    doctor.availability = availability;
+    await doctor.save();
+    
+    res.json({
+      success: true,
+      message: 'Availability updated successfully',
+      data: doctor.availability
+    });
+  } catch (error) {
+    res.status(500).json({ success: false, error: error.message });
+  }
+});
+
+// GET /api/ayurveda/doctor/:id/slots?date=2026-08-30
+router.get('/doctor/:id/slots', async (req, res) => {
+  try {
+    const { date } = req.query;
+    const doctor = await AyurvedaDoctor.findById(req.params.id);
+    
+    if (!doctor) return res.status(404).json({ success: false, error: 'Doctor not found' });
+    
+    if (!date) {
+      return res.status(400).json({ success: false, error: 'Date is required' });
+    }
+    
+    // Get day of week
+    const dayNames = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
+    const dayName = dayNames[new Date(date).getDay()];
+    
+    // Find availability for this day
+    const dayAvailability = doctor.availability?.find(a => a.day === dayName);
+    
+    if (!dayAvailability) {
+      return res.json({ success: true, data: { available: false, slots: [] } });
+    }
+    
+    // Check existing bookings for this date
+    const AyurvedaBooking = require('../models/AyurvedaBooking');
+    const existingBookings = await AyurvedaBooking.find({
+      doctor: doctor._id,
+      bookingDate: {
+        $gte: new Date(date + 'T00:00:00'),
+        $lt: new Date(date + 'T23:59:59')
+      },
+      status: { $in: ['pending', 'confirmed'] }
+    });
+    
+    const bookedSlots = existingBookings.map(b => b.slotTime);
+    
+    const slots = dayAvailability.slots.map(slot => ({
+      startTime: slot.startTime,
+      endTime: slot.endTime,
+      maxBookings: slot.maxBookings,
+      currentBookings: bookedSlots.filter(t => t === slot.startTime).length,
+      available: bookedSlots.filter(t => t === slot.startTime).length < slot.maxBookings
+    }));
+    
+    res.json({
+      success: true,
+      data: {
+        day: dayName,
+        available: slots.some(s => s.available),
+        slots
+      }
+    });
+  } catch (error) {
+    res.status(500).json({ success: false, error: error.message });
+  }
+});
+
 module.exports = router;
