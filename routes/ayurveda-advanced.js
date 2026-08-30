@@ -978,4 +978,105 @@ router.get('/doctor/:id/slots', async (req, res) => {
   }
 });
 
+// ============================================
+// WELLNESS PROGRAMS (Doctor Listings)
+// ============================================
+
+// GET /api/ayurveda/wellness-programs
+router.get('/wellness-programs', async (req, res) => {
+  try {
+    const { category, minPrice, maxPrice, sortBy, page = 1, limit = 10 } = req.query;
+    
+    const query = { isActive: true, verificationStatus: 'approved' };
+    
+    if (category) query['wellnessPrograms.category'] = category;
+    
+    const doctors = await AyurvedaDoctor.find(query)
+      .select('name specialization rating experience address.city wellnessPrograms')
+      .lean();
+    
+    let programs = [];
+    doctors.forEach(doctor => {
+      const activePrograms = (doctor.wellnessPrograms || []).filter(p => p.isActive !== false);
+      activePrograms.forEach(program => {
+        programs.push({
+          ...program,
+          doctorId: doctor._id,
+          doctorName: doctor.name,
+          doctorSpecialization: doctor.specialization,
+          doctorRating: doctor.rating,
+          doctorExperience: doctor.experience,
+          doctorCity: doctor.address?.city
+        });
+      });
+    });
+    
+    // Filters
+    if (minPrice) programs = programs.filter(p => p.price >= parseInt(minPrice));
+    if (maxPrice) programs = programs.filter(p => p.price <= parseInt(maxPrice));
+    
+    // Sorting
+    if (sortBy === 'price_low') programs.sort((a, b) => a.price - b.price);
+    else if (sortBy === 'price_high') programs.sort((a, b) => b.price - a.price);
+    else if (sortBy === 'rating') programs.sort((a, b) => b.doctorRating - a.doctorRating);
+    else programs.sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt));
+    
+    const total = programs.length;
+    const startIndex = (parseInt(page) - 1) * parseInt(limit);
+    const paginatedPrograms = programs.slice(startIndex, startIndex + parseInt(limit));
+    
+    res.json({
+      success: true,
+      data: paginatedPrograms,
+      pagination: { page: parseInt(page), limit: parseInt(limit), total, pages: Math.ceil(total / parseInt(limit)) }
+    });
+  } catch (error) {
+    res.status(500).json({ success: false, error: error.message });
+  }
+});
+
+// POST /api/ayurveda/doctor/wellness-program (Doctor creates program)
+router.post('/doctor/wellness-program', async (req, res) => {
+  try {
+    const { doctorId, program } = req.body;
+    
+    if (!doctorId || !program) {
+      return res.status(400).json({ success: false, error: 'Doctor ID and program details required' });
+    }
+    
+    const doctor = await AyurvedaDoctor.findById(doctorId);
+    if (!doctor) return res.status(404).json({ success: false, error: 'Doctor not found' });
+    
+    if (!doctor.wellnessPrograms) doctor.wellnessPrograms = [];
+    
+    doctor.wellnessPrograms.push({
+      ...program,
+      createdAt: new Date(),
+      isActive: true,
+      totalBookings: 0,
+      totalRevenue: 0
+    });
+    
+    await doctor.save();
+    
+    res.json({ success: true, message: 'Program added successfully', data: doctor.wellnessPrograms });
+  } catch (error) {
+    res.status(500).json({ success: false, error: error.message });
+  }
+});
+
+// GET /api/ayurveda/doctor/:id/wellness-programs
+router.get('/doctor/:id/wellness-programs', async (req, res) => {
+  try {
+    const doctor = await AyurvedaDoctor.findById(req.params.id);
+    if (!doctor) return res.status(404).json({ success: false, error: 'Doctor not found' });
+    
+    const programs = (doctor.wellnessPrograms || []).filter(p => p.isActive !== false);
+    
+    res.json({ success: true, data: programs });
+  } catch (error) {
+    res.status(500).json({ success: false, error: error.message });
+  }
+});
+
 module.exports = router;
