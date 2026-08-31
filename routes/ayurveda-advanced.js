@@ -153,15 +153,9 @@ router.get('/doctors', async (req, res) => {
       .sort({ rating: -1 });
     
     res.json({ success: true, data: doctors, count: doctors.length });
-  } catch (error) {
-    const dummyDoctors = [
-      { _id: 'AYD001', name: 'Dr. Rajesh Sharma', specialization: 'Panchakarma', experience: 15, rating: 4.8, consultationFee: 500, languages: ['Hindi', 'English'], address: { city: 'Mumbai', area: 'Andheri West' }, wellnessCenter: { name: 'Sharma Ayurvedic Clinic' }, isAvailable: true, consultationTypes: { online: true, clinic: true } },
-      { _id: 'AYD002', name: 'Dr. Priya Gupta', specialization: 'General Ayurveda', experience: 12, rating: 4.9, consultationFee: 400, languages: ['Hindi', 'English', 'Marathi'], address: { city: 'Pune', area: 'Kothrud' }, wellnessCenter: { name: 'Gupta Ayurveda Center' }, isAvailable: true, consultationTypes: { online: true, clinic: true } },
-      { _id: 'AYD003', name: 'Dr. Amit Verma', specialization: 'Kerala Ayurveda', experience: 20, rating: 4.7, consultationFee: 600, languages: ['English', 'Malayalam'], address: { city: 'Kochi', area: 'Fort Kochi' }, wellnessCenter: { name: 'Kerala Ayurveda Hospital' }, isAvailable: false, consultationTypes: { online: true, clinic: true } },
-      { _id: 'AYD004', name: 'Dr. Sunita Reddy', specialization: 'Ayurvedic Dermatology', experience: 10, rating: 4.6, consultationFee: 350, languages: ['Telugu', 'English'], address: { city: 'Hyderabad', area: 'Banjara Hills' }, wellnessCenter: { name: 'Reddy Skin Clinic' }, isAvailable: true, consultationTypes: { online: true, clinic: true } },
-      { _id: 'AYD005', name: 'Dr. Karan Patel', specialization: 'Panchakarma', experience: 8, rating: 4.5, consultationFee: 450, languages: ['Gujarati', 'Hindi', 'English'], address: { city: 'Ahmedabad', area: 'SG Highway' }, wellnessCenter: { name: 'Patel Panchakarma Center' }, isAvailable: true, consultationTypes: { online: true, clinic: true } },
-    ];
-    res.json({ success: true, data: dummyDoctors, count: dummyDoctors.length });
+    } catch (error) {
+    console.error('Error fetching doctors:', error);
+    res.status(500).json({ success: false, error: 'Failed to fetch doctors', data: [] });
   }
 });
 
@@ -173,13 +167,9 @@ router.get('/doctors/featured', async (req, res) => {
       .limit(6);
     
     res.json({ success: true, data: doctors });
-  } catch (error) {
-    const dummyDoctors = [
-      { _id: 'AYD001', name: 'Dr. Rajesh Sharma', specialization: 'Panchakarma Specialist', experience: '15 years', rating: 4.8, consultationFee: 500, available: true, address: { city: 'Mumbai' } },
-      { _id: 'AYD002', name: 'Dr. Priya Gupta', specialization: 'Ayurvedic Physician', experience: '12 years', rating: 4.9, consultationFee: 400, available: true, address: { city: 'Pune' } },
-      { _id: 'AYD003', name: 'Dr. Amit Verma', specialization: 'Kerala Ayurveda Expert', experience: '20 years', rating: 4.7, consultationFee: 600, available: false, address: { city: 'Kochi' } },
-    ];
-    res.json({ success: true, data: dummyDoctors });
+    } catch (error) {
+    console.error('Error fetching featured doctors:', error);
+    res.status(500).json({ success: false, error: 'Failed to fetch featured doctors', data: [] });
   }
 });
 
@@ -188,25 +178,9 @@ router.get('/doctors/:id', async (req, res) => {
     const doctor = await AyurvedaDoctor.findById(req.params.id);
     if (!doctor) return res.status(404).json({ success: false, error: 'Doctor not found' });
     res.json({ success: true, data: doctor });
-  } catch (error) {
-    res.json({ 
-      success: true, 
-      data: {
-        _id: req.params.id,
-        name: 'Dr. Rajesh Sharma',
-        specialization: 'Panchakarma Specialist',
-        experience: 15, rating: 4.8, consultationFee: 500,
-        languages: ['Hindi', 'English'],
-        address: { city: 'Mumbai', area: 'Andheri West' },
-        about: 'Experienced Ayurvedic practitioner with 15+ years of experience.',
-        education: 'BAMS, MD (Panchakarma)',
-        ayushRegNo: 'AYUSH-MH-2018-00123',
-        availableSlots: ['10:00 AM', '2:00 PM', '5:00 PM'],
-        isAvailable: true,
-        consultationTypes: { online: true, clinic: true },
-        wellnessCenter: { name: 'Sharma Ayurvedic Clinic' }
-      }
-    });
+    } catch (error) {
+    console.error('Error fetching doctor:', error);
+    res.status(500).json({ success: false, error: 'Failed to fetch doctor details' });
   }
 });
 
@@ -277,12 +251,9 @@ router.get('/centers', async (req, res) => {
   try {
     const centers = await WellnessCenter.find({ isActive: true, verificationStatus: 'approved' }).select('name type address rating packages facilities photos');
     res.json({ success: true, data: centers });
-  } catch (error) {
-    const dummyCenters = [
-      { _id: 'AYC001', name: 'AyurVeda Retreat Rishikesh', address: { city: 'Rishikesh' }, rating: 4.9, facilities: ['AC Rooms', 'Organic Food', 'Yoga Hall'], packages: [{ _id: 'PKG001', name: '7-Day Panchakarma', price: 25000, duration: 7, therapies: ['Abhyanga', 'Shirodhara'] }] },
-      { _id: 'AYC002', name: 'Kerala Ayurveda Kendra', address: { city: 'Kochi' }, rating: 4.8, facilities: ['Beach Access', 'Traditional Therapies'], packages: [{ _id: 'PKG002', name: '5-Day Detox', price: 18000, duration: 5, therapies: ['Abhyanga', 'Kizhi'] }] }
-    ];
-    res.json({ success: true, data: dummyCenters });
+    } catch (error) {
+    console.error('Error fetching centers:', error);
+    res.status(500).json({ success: false, error: 'Failed to fetch centers', data: [] });
   }
 });
 
@@ -291,8 +262,9 @@ router.get('/centers/:id', async (req, res) => {
     const center = await WellnessCenter.findById(req.params.id);
     if (!center) return res.status(404).json({ success: false, error: 'Center not found' });
     res.json({ success: true, data: center });
-  } catch (error) {
-    res.json({ success: true, data: { _id: req.params.id, name: 'AyurVeda Retreat', address: { city: 'Rishikesh' }, rating: 4.9, packages: [] } });
+    } catch (error) {
+    console.error('Error fetching center:', error);
+    res.status(500).json({ success: false, error: 'Failed to fetch center details' });
   }
 });
 
