@@ -1079,4 +1079,94 @@ router.get('/doctor/:id/wellness-programs', async (req, res) => {
   }
 });
 
+// ============================================
+// DOCTOR ONLINE/OFFLINE STATUS
+// ============================================
+
+// POST /api/ayurveda/doctor/toggle-availability-status
+router.post('/doctor/toggle-availability-status', async (req, res) => {
+  try {
+    const { doctorId, status, consultationMode } = req.body;
+    // status: 'online' | 'offline' | 'in_clinic'
+    // consultationMode: 'video' | 'clinic' | 'both'
+    
+    if (!doctorId || !status) {
+      return res.status(400).json({ success: false, error: 'Doctor ID and status required' });
+    }
+    
+    const doctor = await AyurvedaDoctor.findById(doctorId);
+    if (!doctor) return res.status(404).json({ success: false, error: 'Doctor not found' });
+    
+    doctor.isAvailable = status === 'online' || status === 'in_clinic';
+    doctor.currentStatus = status;
+    doctor.lastStatusUpdate = new Date();
+    
+    if (consultationMode) {
+      doctor.currentConsultationMode = consultationMode;
+    }
+    
+    await doctor.save();
+    
+    res.json({
+      success: true,
+      message: `Doctor is now ${status.replace('_', ' ')}`,
+      data: {
+        isAvailable: doctor.isAvailable,
+        currentStatus: doctor.currentStatus,
+        currentConsultationMode: doctor.currentConsultationMode
+      }
+    });
+  } catch (error) {
+    res.status(500).json({ success: false, error: error.message });
+  }
+});
+
+// GET /api/ayurveda/doctor/:id/status
+router.get('/doctor/:id/status', async (req, res) => {
+  try {
+    const doctor = await AyurvedaDoctor.findById(req.params.id);
+    if (!doctor) return res.status(404).json({ success: false, error: 'Doctor not found' });
+    
+    res.json({
+      success: true,
+      data: {
+        isAvailable: doctor.isAvailable || false,
+        currentStatus: doctor.currentStatus || 'offline',
+        currentConsultationMode: doctor.currentConsultationMode || 'video',
+        lastStatusUpdate: doctor.lastStatusUpdate || null
+      }
+    });
+  } catch (error) {
+    res.status(500).json({ success: false, error: error.message });
+  }
+});
+
+// GET /api/ayurveda/doctors/available-now
+router.get('/doctors/available-now', async (req, res) => {
+  try {
+    const { consultationType = 'video' } = req.query;
+    
+    const query = {
+      isActive: true,
+      verificationStatus: 'approved',
+      isAvailable: true
+    };
+    
+    if (consultationType === 'video') {
+      query.currentConsultationMode = { $in: ['video', 'both'] };
+    } else if (consultationType === 'clinic') {
+      query.currentConsultationMode = { $in: ['clinic', 'both'] };
+    }
+    
+    const doctors = await AyurvedaDoctor.find(query)
+      .select('name specialization experience rating consultationFee address.city currentStatus currentConsultationMode')
+      .sort({ rating: -1 })
+      .limit(20);
+    
+    res.json({ success: true, data: doctors, count: doctors.length });
+  } catch (error) {
+    res.status(500).json({ success: false, error: error.message });
+  }
+});
+
 module.exports = router;

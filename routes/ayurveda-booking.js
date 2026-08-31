@@ -217,6 +217,13 @@ router.post('/create', authenticateUser, async (req, res) => {
 
     await booking.save();
 
+	// Send booking confirmation
+    try {
+      await notificationService.sendBookingConfirmation(booking);
+    } catch (notifError) {
+      console.error('Notification failed:', notifError.message);
+    }
+
     // Create transaction record
     const transaction = new Transaction({
       transactionId: `TXN_AYU_${Date.now()}`,
