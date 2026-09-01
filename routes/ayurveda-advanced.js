@@ -308,23 +308,39 @@ router.post('/prakriti', async (req, res) => {
 
 router.post('/doctor/register', async (req, res) => {
   try {
-    const { name, phone, email, password, specialization, experience, education, ayushRegNo, consultationFee, city, state, clinicName, languages } = req.body;
+    const { name, phone, email, password, specialization, experience, education, ayushRegNo, consultationFee, city, state, clinicName, languages, documents, about } = req.body;
     const bcrypt = require('bcryptjs');
     const hashedPassword = await bcrypt.hash(password, 10);
     
     const doctor = new AyurvedaDoctor({
-      name, phone, email, password: hashedPassword,
-      specialization, experience: parseInt(experience), education, ayushRegNo,
+      name,
+      phone,
+      email,
+      password: hashedPassword,
+      specialization,
+      experience: parseInt(experience),
+      education,
+      ayushRegNo,
       consultationFee: parseInt(consultationFee),
       languages: languages || [],
       address: { city, state },
       wellnessCenter: { name: clinicName },
+      about: about || '',
+      documents: {
+        ayushCertificate: documents?.ayushCertificate || '',
+        degreeCertificate: documents?.degreeCertificate || '',
+        idProof: documents?.idProof || '',
+        photo: documents?.photo || '',
+        clinicLicense: documents?.clinicLicense || '',
+        panCard: documents?.panCard || ''
+      },
       verificationStatus: 'pending'
     });
     
     await doctor.save();
     res.status(201).json({ success: true, message: 'Registration submitted', doctorId: doctor._id });
   } catch (error) {
+    console.error('Registration error:', error);
     res.status(500).json({ success: false, error: error.message });
   }
 });
