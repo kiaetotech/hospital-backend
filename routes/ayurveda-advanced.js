@@ -53,9 +53,9 @@ router.get('/search', async (req, res) => {
       limit = 10
     } = req.query;
 
-    const query = { 
+        const query = { 
       isActive: true, 
-      verifiedKyc: true 
+      verificationStatus: 'approved'
     };
 
     if (lat && lng) {
@@ -142,7 +142,7 @@ router.get('/search', async (req, res) => {
 router.get('/doctors', async (req, res) => {
   try {
     const { specialization, minExperience, available } = req.query;
-    const query = { isActive: true, verifiedKyc: true };
+    const query = { isActive: true, verificationStatus: 'approved' };
     
     if (specialization) query.specialization = specialization;
     if (minExperience) query.experience = { $gte: parseInt(minExperience) };
@@ -161,7 +161,7 @@ router.get('/doctors', async (req, res) => {
 
 router.get('/doctors/featured', async (req, res) => {
   try {
-    const doctors = await AyurvedaDoctor.find({ isActive: true, verifiedKyc: true, rating: { $gte: 4.5 } })
+    const doctors = await AyurvedaDoctor.find({ isActive: true, verificationStatus: 'approved', rating: { $gte: 4.5 } })
       .select('name specialization experience rating consultationFee languages address.city address.area wellnessCenter isAvailable consultationTypes')
       .sort({ rating: -1 })
       .limit(6);
@@ -189,8 +189,8 @@ router.get('/nearby', async (req, res) => {
     const { lat, lng, radius = 10 } = req.query;
     if (!lat || !lng) return res.status(400).json({ success: false, error: 'Latitude and longitude required' });
 
-    const doctors = await AyurvedaDoctor.find({
-      isActive: true, verifiedKyc: true,
+        const doctors = await AyurvedaDoctor.find({
+      isActive: true, verificationStatus: 'approved',
       'address.coordinates': {
         $nearSphere: {
           $geometry: { type: 'Point', coordinates: [parseFloat(lng), parseFloat(lat)] },
@@ -231,8 +231,8 @@ router.get('/recommend', async (req, res) => {
       }
     }
 
-    const recommendedDoctors = await AyurvedaDoctor.find({
-      isActive: true, verifiedKyc: true, specialization: recommendedSpec, isAvailable: true,
+        const recommendedDoctors = await AyurvedaDoctor.find({
+      isActive: true, verificationStatus: 'approved', specialization: recommendedSpec, isAvailable: true,
       'address.coordinates': { $nearSphere: { $geometry: { type: 'Point', coordinates: [parseFloat(lng), parseFloat(lat)] }, $maxDistance: 30000 } }
     }).select('name specialization experience rating consultationFee address.city').limit(5);
 
