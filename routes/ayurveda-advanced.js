@@ -387,12 +387,10 @@ router.get('/admin/pending-doctors', async (req, res) => {
   }
 });
 
-router.put('/admin/verify-doctor/:id', async (req, res) => {
-  try {
-    const { status, rejectionReason } = req.body;
-    const doctor = await AyurvedaDoctor.findByIdAndUpdate(req.params.id, {
+const doctor = await AyurvedaDoctor.findByIdAndUpdate(req.params.id, {
       verificationStatus: status,
       isActive: status === 'approved',
+      verifiedKyc: status === 'approved',
       verifiedAt: new Date(),
       rejectionReason: status === 'rejected' ? rejectionReason : null
     }, { new: true });
