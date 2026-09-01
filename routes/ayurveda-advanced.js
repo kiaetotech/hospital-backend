@@ -387,7 +387,10 @@ router.get('/admin/pending-doctors', async (req, res) => {
   }
 });
 
-const doctor = await AyurvedaDoctor.findByIdAndUpdate(req.params.id, {
+router.put('/admin/verify-doctor/:id', async (req, res) => {
+  try {
+    const { status, rejectionReason } = req.body;
+    const doctor = await AyurvedaDoctor.findByIdAndUpdate(req.params.id, {
       verificationStatus: status,
       isActive: status === 'approved',
       verifiedKyc: status === 'approved',
@@ -399,7 +402,6 @@ const doctor = await AyurvedaDoctor.findByIdAndUpdate(req.params.id, {
     res.status(500).json({ success: false, error: error.message });
   }
 });
-
 // ============================================
 // 🆕 CORPORATE WELLNESS ROUTES (ADDED)
 // ============================================
