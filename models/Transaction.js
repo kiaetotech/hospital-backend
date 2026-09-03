@@ -84,8 +84,7 @@ const transactionSchema = new mongoose.Schema({
   refundId: { type: String },
   razorpaySignature: { type: String },
   
-  bookingId: { type: mongoose.Schema.Types.ObjectId, ref: 'Booking' },
-    bookingType: { 
+      bookingType: { 
     type: String, 
     enum: [
       'opd', 
@@ -100,7 +99,10 @@ const transactionSchema = new mongoose.Schema({
       // 🧘 NEW: Ayurveda booking types
       'ayurveda_consultation',
       'panchakarma',
-      'ayurveda_product'
+      'ayurveda_product',
+      'doctor_consultation',
+      'home_therapy',
+      'medicine_order'
     ] 
   },
   userId: { type: String },
