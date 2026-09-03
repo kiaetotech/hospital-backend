@@ -626,4 +626,12 @@ ayurvedaBookingSchema.methods.markNoShow = async function() {
   return this.save();
 };
 
+// Pre-save hook to generate bookingId
+ayurvedaBookingSchema.pre('save', function(next) {
+  if (!this.bookingId) {
+    this.bookingId = 'AYU' + Date.now() + Math.floor(Math.random() * 1000);
+  }
+  next();
+});
+
 module.exports = mongoose.model('AyurvedaBooking', ayurvedaBookingSchema);

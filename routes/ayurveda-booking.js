@@ -215,6 +215,10 @@ router.post('/create', authenticateUser, async (req, res) => {
     });
 
     // Generate OTP
+        // Generate booking ID
+    booking.bookingId = 'AYU' + Date.now() + Math.floor(Math.random() * 1000);
+    
+    // Generate OTP
     booking.generateOtp();
 
     await booking.save();
