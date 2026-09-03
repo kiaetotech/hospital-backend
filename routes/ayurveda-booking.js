@@ -152,16 +152,21 @@ router.post('/create', authenticateUser, async (req, res) => {
       }
     }
 
-    // Calculate commission
+        // Calculate commission
     const commissionResult = commissionService.calculateAyurvedaCommission({
       amount: amount - discountAmount,
       providerId: doctorId || centerId,
       subType: type === 'panchakarma_package' ? 'panchakarma' : 'consultation'
     });
 
-    const finalAmount = amount - discountAmount;
+    // Platform fee and GST (production)
+    const platformFee = 30;
+    const gstPercentage = 18;
+    const baseAmount = amount - discountAmount;
+    const gstAmount = Math.round((baseAmount + platformFee) * gstPercentage / 100);
+    const finalAmount = baseAmount + platformFee + gstAmount;
     const platformCommission = commissionResult.commissionAmount;
-    const providerEarning = finalAmount - platformCommission;
+    const providerEarning = baseAmount - platformCommission;
 
     // Create Razorpay order
     const orderResult = await razorpayService.createOrder(
@@ -208,14 +213,15 @@ router.post('/create', authenticateUser, async (req, res) => {
       amount,
       discount: discountDetails,
       finalAmount,
+      platformFee,
+      gstAmount,
       platformCommission,
       providerEarning,
       razorpayOrderId: orderResult.order.id,
       status: 'pending'
     });
 
-    // Generate OTP
-        // Generate booking ID
+    // Generate booking ID
     booking.bookingId = 'AYU' + Date.now() + Math.floor(Math.random() * 1000);
     
     // Generate OTP
@@ -223,7 +229,7 @@ router.post('/create', authenticateUser, async (req, res) => {
 
     await booking.save();
 
-	// Send booking confirmation
+    // Send booking confirmation
     try {
       await notificationService.sendBookingConfirmation(booking);
     } catch (notifError) {
@@ -240,6 +246,8 @@ router.post('/create', authenticateUser, async (req, res) => {
       amount: finalAmount,
       originalAmount: amount,
       discountAmount,
+      platformFee,
+      gstAmount,
       platformCommission,
       providerAmount: providerEarning,
       status: 'initiated',
@@ -744,7 +752,13 @@ router.put('/:bookingId/status', authenticateUser, async (req, res) => {
     }
 
     switch (action) {
-      case 'accept':
+            case 'accept':
+        if (!booking.otpVerified) {
+          return res.status(400).json({ 
+            success: false, 
+            message: 'Patient has not verified OTP yet. Booking cannot be accepted.' 
+          });
+        }
         await booking.acceptBooking('doctor');
         break;
       case 'start':
