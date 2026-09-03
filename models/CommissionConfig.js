@@ -34,6 +34,12 @@ const commissionConfigSchema = new mongoose.Schema({
       'caregiver',
       'ayurveda_consultation',
       'ayurveda_panchakarma',
+      'ayurveda_online_doctor',
+      'ayurveda_wellness_center',
+      'ayurveda_home_therapy',
+      'ayurveda_medicine',
+      'ayurveda_product',
+      'ayurveda_corporate',
       'homeopathy_consult',
       'homeopathy_medicine',
       'insurance',
@@ -139,6 +145,58 @@ const commissionConfigSchema = new mongoose.Schema({
       adjustment: { type: Number },    // +2 or -2 percentage points
       reason: { type: String }
     }]
+  },
+
+  // ============================================
+  // 🧘 AYURVEDA-SPECIFIC COMMISSION RULES
+  // ============================================
+  
+  ayurvedaSpecific: {
+    // Consultation commission
+    consultationRate: { type: Number, default: 20 },
+    onlineConsultRate: { type: Number, default: 20 },
+    followUpRate: { type: Number, default: 15 },
+    
+    // Panchakarma commission
+    panchakarmaRate: { type: Number, default: 15 },
+    longDurationDiscount: { type: Number, default: 3 }, // 3% off for 14+ days
+    
+    // Wellness Center commission
+    wellnessCenterRate: { type: Number, default: 20 },
+    
+    // Product/Medicine commission
+    productRate: { type: Number, default: 25 },
+    medicineRate: { type: Number, default: 25 },
+    
+    // Corporate wellness
+    corporateRate: { type: Number, default: 12 },
+    
+    // Seasonal discount
+    seasonalDiscount: { type: Number, default: 2 },
+    
+    // Platform fees by service
+    platformFees: {
+      consultation: { type: Number, default: 30 },
+      onlineConsult: { type: Number, default: 30 },
+      panchakarma: { type: Number, default: 100 },
+      wellnessCenter: { type: Number, default: 100 },
+      homeTherapy: { type: Number, default: 50 },
+      medicine: { type: Number, default: 20 },
+      product: { type: Number, default: 20 },
+      corporate: { type: Number, default: 0 }
+    },
+    
+    // GST
+    gstPercentage: { type: Number, default: 18 },
+    
+    // Settlement
+    settlementFrequency: { 
+      type: String, 
+      enum: ['instant', 'daily', 'weekly', 'biweekly', 'monthly'],
+      default: 'weekly'
+    },
+    minimumSettlementAmount: { type: Number, default: 500 },
+    tdsPercentage: { type: Number, default: 10 }
   },
 
   // ============================================
@@ -287,6 +345,24 @@ commissionConfigSchema.virtual('emergencyRate').get(function() {
 commissionConfigSchema.virtual('nightShiftRate').get(function() {
   const nightDiscount = this.ambulanceSpecific?.nightShiftDiscount || 2;
   return Math.max(this.percentageRate - nightDiscount, 5);
+});
+
+commissionConfigSchema.virtual('ayurvedaConsultationRate').get(function() {
+  return this.ayurvedaSpecific?.consultationRate || this.percentageRate || 20;
+});
+
+commissionConfigSchema.virtual('ayurvedaPanchakarmaRate').get(function() {
+  return this.ayurvedaSpecific?.panchakarmaRate || this.percentageRate || 15;
+});
+
+commissionConfigSchema.virtual('ayurvedaProductRate').get(function() {
+  return this.ayurvedaSpecific?.productRate || this.percentageRate || 25;
+});
+
+commissionConfigSchema.virtual('ayurvedaPlatformFee').get(function(serviceType) {
+  const fees = this.ayurvedaSpecific?.platformFees;
+  if (!fees) return 30;
+  return fees[serviceType] || 30;
 });
 
 // ============================================
@@ -556,6 +632,31 @@ commissionConfigSchema.statics.getAmbulanceEmergencyConfig = function() {
 // 🚑 Get ambulance scheduled config
 commissionConfigSchema.statics.getAmbulanceScheduledConfig = function() {
   return this.getActiveConfig('ambulance_scheduled');
+};
+
+// 🧘 Get Ayurveda consultation config
+commissionConfigSchema.statics.getAyurvedaConsultationConfig = function() {
+  return this.getActiveConfig('ayurveda_consultation');
+};
+
+// 🧘 Get Ayurveda Panchakarma config
+commissionConfigSchema.statics.getAyurvedaPanchakarmaConfig = function() {
+  return this.getActiveConfig('ayurveda_panchakarma');
+};
+
+// 🧘 Get Ayurveda online doctor config
+commissionConfigSchema.statics.getAyurvedaOnlineDoctorConfig = function() {
+  return this.getActiveConfig('ayurveda_online_doctor');
+};
+
+// 🧘 Get Ayurveda wellness center config
+commissionConfigSchema.statics.getAyurvedaWellnessCenterConfig = function() {
+  return this.getActiveConfig('ayurveda_wellness_center');
+};
+
+// 🧘 Get Ayurveda product config
+commissionConfigSchema.statics.getAyurvedaProductConfig = function() {
+  return this.getActiveConfig('ayurveda_product');
 };
 
 // ============================================
