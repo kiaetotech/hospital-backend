@@ -79,15 +79,17 @@ router.post('/create', authenticateUser, async (req, res) => {
       }
       amount = doctor.consultationFee;
       
-      // Check if slot is available
-      const slotAvailable = doctor.availability?.some(day => 
-        day.slots?.some(slot => 
-          slot.startTime === slotTime && 
-          slot.currentBookings < slot.maxBookings
-        )
-      );
-      if (slotAvailable === false) {
-        return res.status(400).json({ success: false, message: 'Selected slot is full' });
+            // Check if slot is available (only validate if doctor has availability set)
+      if (doctor.availability && doctor.availability.length > 0) {
+        const slotAvailable = doctor.availability.some(day => 
+          day.slots?.some(slot => 
+            slot.startTime === slotTime && 
+            slot.currentBookings < slot.maxBookings
+          )
+        );
+        if (!slotAvailable) {
+          return res.status(400).json({ success: false, message: 'Selected slot is full' });
+        }
       }
     } 
     else if (type === 'panchakarma_package') {
