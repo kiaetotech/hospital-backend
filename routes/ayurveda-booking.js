@@ -786,4 +786,151 @@ router.put('/:bookingId/status', authenticateUser, async (req, res) => {
   }
 });
 
+// ============================================
+// PANCHAKARMA BOOKING
+// ============================================
+
+// POST /api/ayurveda/bookings/panchakarma
+router.post('/panchakarma', authenticateUser, async (req, res) => {
+  try {
+    const {
+      centerId,
+      packageId,
+      admissionDate,
+      patientName,
+      patientPhone,
+      patientEmail,
+      patientAge,
+      patientGender,
+      symptoms,
+      medicalHistory,
+      prakritiType
+    } = req.body;
+
+    if (!centerId || !packageId || !admissionDate) {
+      return res.status(400).json({ success: false, message: 'Center ID, Package ID, and admission date are required' });
+    }
+
+    const WellnessCenter = require('../models/WellnessCenter');
+    const center = await WellnessCenter.findById(centerId);
+    if (!center) {
+      return res.status(404).json({ success: false, message: 'Center not found' });
+    }
+    if (!center.isActive || center.verificationStatus !== 'approved') {
+      return res.status(400).json({ success: false, message: 'Center is not available' });
+    }
+
+    const pkg = center.packages?.find(p => p._id.toString() === packageId);
+    if (!pkg) {
+      return res.status(404).json({ success: false, message: 'Package not found' });
+    }
+    if (!pkg.isActive) {
+      return res.status(400).json({ success: false, message: 'Package is not active' });
+    }
+    if (pkg.currentBookings >= pkg.maxCapacity) {
+      return res.status(400).json({ success: false, message: 'Package is full' });
+    }
+
+    const amount = pkg.discountPrice || pkg.price;
+    const platformFee = 100;
+    const gstPercentage = 18;
+    const baseAmount = amount;
+    const gstAmount = Math.round((baseAmount + platformFee) * gstPercentage / 100);
+    const finalAmount = baseAmount + platformFee + gstAmount;
+    const platformCommission = Math.round(baseAmount * 15 / 100);
+    const providerEarning = baseAmount - platformCommission;
+
+    // Create Razorpay order
+    const orderResult = await razorpayService.createOrder(finalAmount, 'INR', `AYU_PK_${Date.now()}`, {
+      bookingType: 'panchakarma',
+      userId: req.user.id,
+      centerId
+    });
+
+    if (!orderResult.success) {
+      return res.status(500).json({ success: false, message: 'Failed to create payment order' });
+    }
+
+    const booking = new AyurvedaBooking({
+      userId: req.user.id,
+      type: 'panchakarma_package',
+      center: centerId,
+      centerName: center.name,
+      centerPhone: center.phone,
+      package: {
+        packageId: pkg._id,
+        name: pkg.name,
+        duration: pkg.duration,
+        therapies: pkg.therapies,
+        inclusions: pkg.inclusions
+      },
+      bookingDate: new Date(admissionDate),
+      admissionDate: new Date(admissionDate),
+      symptoms,
+      medicalHistory,
+      prakritiType,
+      patient: {
+        name: patientName || req.user.name || 'Patient',
+        phone: patientPhone || req.user.phone || '',
+        email: patientEmail || req.user.email || '',
+        age: patientAge,
+        gender: patientGender
+      },
+      amount,
+      finalAmount,
+      platformFee,
+      gstAmount,
+      platformCommission,
+      providerEarning,
+      razorpayOrderId: orderResult.order.id,
+      status: 'pending'
+    });
+
+    booking.bookingId = 'AYU' + Date.now() + Math.floor(Math.random() * 1000);
+    booking.generateOtp();
+    await booking.save();
+
+    // Increment package booking count
+    await WellnessCenter.updateOne(
+      { _id: centerId, 'packages._id': pkg._id },
+      { $inc: { 'packages.$.currentBookings': 1 } }
+    );
+
+    const transaction = new Transaction({
+      transactionId: `TXN_AYU_PK_${Date.now()}`,
+      type: 'ayurveda_booking',
+      bookingType: 'panchakarma',
+      bookingId: booking._id,
+      userId: req.user.id,
+      amount: finalAmount,
+      originalAmount: amount,
+      platformFee,
+      gstAmount,
+      platformCommission,
+      providerAmount: providerEarning,
+      status: 'initiated',
+      orderId: orderResult.order.id,
+      razorpayOrderId: orderResult.order.id,
+      ayurvedaCenterId: centerId
+    });
+
+    await transaction.save();
+
+    res.status(201).json({
+      success: true,
+      message: 'Panchakarma booking created',
+      data: {
+        bookingId: booking.bookingId,
+        razorpayOrderId: orderResult.order.id,
+        amount: finalAmount,
+        otp: booking.otp
+      }
+    });
+
+  } catch (error) {
+    console.error('Panchakarma booking error:', error);
+    res.status(500).json({ success: false, message: error.message || 'Failed to create booking' });
+  }
+});
+
 module.exports = router;

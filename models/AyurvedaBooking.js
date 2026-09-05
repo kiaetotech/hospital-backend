@@ -546,6 +546,11 @@ ayurvedaBookingSchema.methods.acceptBooking = async function(acceptedBy) {
     throw new Error('Only pending bookings can be accepted');
   }
   
+  // Check if OTP is verified
+  if (!this.otpVerified) {
+    throw new Error('OTP verification required before accepting booking');
+  }
+  
   this.status = 'confirmed';
   this.confirmedAt = new Date();
   this.doctorAcceptedAt = new Date();
