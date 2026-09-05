@@ -5,14 +5,20 @@ const crypto = require('crypto');
 const Booking = require('../models/Booking');
 const Transaction = require('../models/Transaction');
 const LoanApplication = require('../models/LoanApplication');
+const CaregiverBooking = require('../models/CaregiverBooking');
+const mongoose = require('mongoose');
 
 // ============================================
 // INITIALIZE RAZORPAY
 // ============================================
 
+if (!process.env.RAZORPAY_KEY_ID || !process.env.RAZORPAY_KEY_SECRET) {
+  throw new Error('RAZORPAY_KEY_ID and RAZORPAY_KEY_SECRET must be configured');
+}
+
 const razorpay = new Razorpay({
-  key_id: process.env.RAZORPAY_KEY_ID || 'rzp_test_xxxxxxxxxxxxx',
-  key_secret: process.env.RAZORPAY_KEY_SECRET || 'xxxxxxxxxxxxxxxxxxxxx'
+  key_id: process.env.RAZORPAY_KEY_ID,
+  key_secret: process.env.RAZORPAY_KEY_SECRET
 });
 
 // ============================================
@@ -22,11 +28,19 @@ const razorpay = new Razorpay({
 router.post('/create-order', async (req, res) => {
   try {
     const { amount, currency = 'INR', bookingId, patientName, patientPhone, patientEmail, bookingType } = req.body;
+    const numericAmount = Number(amount);
+    if (!Number.isFinite(numericAmount) || numericAmount <= 0) return res.status(400).json({ success: false, message: 'Invalid payment amount' });
+    if (bookingType === 'caregiver') {
+      if (!mongoose.Types.ObjectId.isValid(bookingId)) return res.status(400).json({ success: false, message: 'Valid caregiver bookingId is required' });
+      const cb = await CaregiverBooking.findById(bookingId);
+      if (!cb || !['pending'].includes(cb.status) || cb.paymentStatus !== 'pending') return res.status(409).json({ success: false, message: 'Caregiver booking is not payable' });
+      if (Math.round(numericAmount * 100) !== Math.round(Number(cb.totalAmount) * 100)) return res.status(400).json({ success: false, message: 'Payment amount does not match booking amount' });
+    }
     
     const receipt = `booking_${bookingId || Date.now()}`;
     
     const options = {
-      amount: Math.round(amount * 100),
+      amount: Math.round(numericAmount * 100),
       currency,
       receipt,
       payment_capture: 1,
@@ -44,10 +58,11 @@ router.post('/create-order', async (req, res) => {
     const transaction = new Transaction({
       transactionId: Transaction.generateTransactionId(),
       orderId: order.id,
-      amount: amount,
-      netAmount: amount,
+      amount: numericAmount,
+      netAmount: numericAmount,
       userId: req.body.userId || 'guest',
       bookingType: bookingType || 'other',
+      ...(bookingType === 'caregiver' && mongoose.Types.ObjectId.isValid(bookingId) ? { caregiverBookingId: bookingId } : {}),
       paymentGateway: 'razorpay',
       status: 'initiated',
       initiatedAt: new Date()
@@ -136,7 +151,7 @@ router.post('/verify', async (req, res) => {
     // Verify signature
     const body = razorpay_order_id + '|' + razorpay_payment_id;
     const expectedSignature = crypto
-      .createHmac('sha256', process.env.RAZORPAY_KEY_SECRET || 'your_key_secret')
+      .createHmac('sha256', process.env.RAZORPAY_KEY_SECRET)
       .update(body.toString())
       .digest('hex');
     
@@ -206,6 +221,37 @@ router.post('/verify', async (req, res) => {
       platformCommission: Math.round(bookingAmount * 0.10),
       discount: discountAmount || 0
     };
+
+    // ============================================
+    // CASE: CAREGIVER BOOKING - update existing CaregiverBooking only
+    // ============================================
+    if (bookingType === 'caregiver') {
+      if (!mongoose.Types.ObjectId.isValid(bookingId)) return res.status(400).json({ success: false, message: 'Valid caregiver bookingId is required' });
+      const caregiverBooking = await CaregiverBooking.findById(bookingId);
+      if (!caregiverBooking) return res.status(404).json({ success: false, message: 'Caregiver booking not found' });
+      if (caregiverBooking.paymentStatus !== 'pending') {
+        if (caregiverBooking.paymentId === razorpay_payment_id) return res.json({ success: true, message: 'Payment already verified', data: caregiverBooking });
+        return res.status(409).json({ success: false, message: 'Caregiver booking payment is already processed' });
+      }
+      if (transaction) {
+        transaction.bookingId = undefined;
+        transaction.caregiverBookingId = caregiverBooking._id;
+        transaction.bookingType = 'caregiver';
+        transaction.amount = caregiverBooking.totalAmount;
+        transaction.netAmount = caregiverBooking.totalAmount;
+        transaction.platformCommission = caregiverBooking.platformFee;
+        transaction.providerAmount = caregiverBooking.caregiverEarnings;
+        transaction.commissionStatus = 'pending';
+        await transaction.save();
+      }
+      caregiverBooking.paymentId = razorpay_payment_id;
+      caregiverBooking.paymentOrderId = razorpay_order_id;
+      caregiverBooking.paymentStatus = 'captured';
+      caregiverBooking.status = 'confirmed';
+      if (transaction) caregiverBooking.transactionId = transaction._id;
+      await caregiverBooking.save();
+      return res.json({ success: true, message: 'Caregiver payment verified', data: caregiverBooking });
+    }
 
     // ============================================
     // CASE 1: Lab Test Booking (PRESERVED)
@@ -678,6 +724,15 @@ router.post('/webhook', async (req, res) => {
         await transaction.save();
       }
       
+      const caregiverBooking = transaction?.caregiverBookingId ? await CaregiverBooking.findById(transaction.caregiverBookingId) : null;
+      if (caregiverBooking && caregiverBooking.paymentStatus !== 'captured') {
+        caregiverBooking.paymentId = paymentId;
+        caregiverBooking.paymentOrderId = orderId;
+        caregiverBooking.paymentStatus = 'captured';
+        caregiverBooking.status = 'confirmed';
+        await caregiverBooking.save();
+      }
+
       const booking = await Booking.findOne({ orderId: orderId });
       if (booking && booking.paymentStatus !== 'paid') {
         booking.paymentStatus = 'paid';
@@ -723,6 +778,18 @@ router.post('/webhook', async (req, res) => {
         await transaction.save();
       }
       
+      const caregiverTransaction = await Transaction.findOne({ paymentId: paymentId, bookingType: 'caregiver' });
+      if (caregiverTransaction?.caregiverBookingId) {
+        const caregiverBooking = await CaregiverBooking.findById(caregiverTransaction.caregiverBookingId);
+        if (caregiverBooking) {
+          caregiverBooking.paymentStatus = refund.amount / 100 >= caregiverBooking.totalAmount ? 'refunded' : 'partially_refunded';
+          caregiverBooking.status = 'cancelled';
+          caregiverBooking.cancellationRefund = refund.amount / 100;
+          caregiverBooking.updatedAt = new Date();
+          await caregiverBooking.save();
+        }
+      }
+
       const booking = await Booking.findOne({ paymentId: paymentId });
       if (booking) {
         booking.paymentStatus = 'refunded';
@@ -829,6 +896,20 @@ router.post('/refund/:paymentId', async (req, res) => {
         gatewayRefundStatus: 'completed'
       };
       await transaction.save();
+
+      if (transaction.bookingType === 'caregiver' && transaction.caregiverBookingId) {
+        const caregiverBooking = await CaregiverBooking.findById(transaction.caregiverBookingId);
+        if (caregiverBooking) {
+          const refunded = Number(refundedAmount || 0);
+          caregiverBooking.status = 'cancelled';
+          caregiverBooking.paymentStatus = refunded >= Number(caregiverBooking.totalAmount || 0) ? 'refunded' : 'partially_refunded';
+          caregiverBooking.refundId = refund.id;
+          caregiverBooking.cancellationRefund = refunded;
+          caregiverBooking.refundedAt = new Date();
+          caregiverBooking.refundStatus = 'processed';
+          await caregiverBooking.save();
+        }
+      }
     }
     
     res.json({ 

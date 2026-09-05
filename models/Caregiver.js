@@ -2,6 +2,7 @@ const mongoose = require('mongoose');
 
 const caregiverSchema = new mongoose.Schema({
   userId: { type: mongoose.Schema.Types.ObjectId, ref: 'User' },
+  passwordHash: { type: String, select: false },
   fullName: { type: String, required: true },
   photo: { type: String, default: 'https://placehold.co/400x400/e2e8f0/1e293b?text=Caregiver' },
   gender: { type: String, enum: ['male', 'female', 'other'], required: true },
@@ -21,12 +22,14 @@ const caregiverSchema = new mongoose.Schema({
       hourly: { type: Number, required: true },
       daily: { type: Number },
       monthly: { type: Number },
+      yearly: { type: Number },
       overnight: { type: Number }
     },
     skilled: {
       hourly: { type: Number },
       daily: { type: Number },
       monthly: { type: Number },
+      yearly: { type: Number },
       overnight: { type: Number }
     }
   },
@@ -65,5 +68,7 @@ const caregiverSchema = new mongoose.Schema({
 });
 
 caregiverSchema.index({ 'location.coordinates': '2dsphere' });
+caregiverSchema.index({ email: 1 }, { unique: true });
+caregiverSchema.index({ phone: 1 }, { unique: true });
 
 module.exports = mongoose.model('Caregiver', caregiverSchema);

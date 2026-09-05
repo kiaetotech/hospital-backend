@@ -1157,4 +1157,53 @@ router.get('/doctors/available-now', async (req, res) => {
   }
 });
 
+// ============================================
+// ADMIN: FEE & COMMISSION MANAGEMENT
+// ============================================
+
+// GET current config
+router.get('/admin/fee-config', async (req, res) => {
+  try {
+    const CommissionConfig = require('../models/CommissionConfig');
+    let config = await CommissionConfig.findOne({ tag: 'ayurveda' });
+    if (!config) {
+      config = new CommissionConfig({ tag: 'ayurveda' });
+      await config.save();
+    }
+    res.json({ success: true, data: config });
+  } catch (error) {
+    res.status(500).json({ success: false, error: error.message });
+  }
+});
+
+// UPDATE config
+router.put('/admin/fee-config', async (req, res) => {
+  try {
+    const { platformFee, gst, commission } = req.body;
+    const CommissionConfig = require('../models/CommissionConfig');
+    
+    let config = await CommissionConfig.findOne({ tag: 'ayurveda' });
+    if (!config) {
+      config = new CommissionConfig({ tag: 'ayurveda' });
+    }
+    
+    if (platformFee) {
+      config.platformFee = { ...config.platformFee, ...platformFee };
+    }
+    if (gst) {
+      config.gst = { ...config.gst, ...gst };
+    }
+    if (commission) {
+      config.commission = { ...config.commission, ...commission };
+    }
+    
+    config.updatedAt = new Date();
+    await config.save();
+    
+    res.json({ success: true, message: 'Fee config updated', data: config });
+  } catch (error) {
+    res.status(500).json({ success: false, error: error.message });
+  }
+});
+
 module.exports = router;
