@@ -249,12 +249,31 @@ const ayurvedaDoctorSchema = new mongoose.Schema({
     corporateVisitAvailable: { type: Boolean, default: false }
   },
 
-  // Corporate analytics
+    // Corporate analytics
   corporateAnalytics: {
     totalCorporateBookings: { type: Number, default: 0 },
     totalCorporateRevenue: { type: Number, default: 0 },
     corporateClients: [{ type: String }] // Company names
   },
+
+  // ============================================
+  // 🧘 WELLNESS PROGRAMS (Individual Patients - Ayurveda Tag)
+  // ============================================
+  wellnessPrograms: [{
+    name: { type: String },
+    description: { type: String },
+    category: { 
+      type: String,
+      enum: ['digestive_wellness', 'stress_sleep', 'joint_mobility', 'skin_hair', 'womens_wellness', 'weight_management', 'general_wellness']
+    },
+    price: { type: Number },
+    duration: { type: String },
+    includes: [{ type: String }],
+    isActive: { type: Boolean, default: true },
+    totalBookings: { type: Number, default: 0 },
+    totalRevenue: { type: Number, default: 0 },
+    createdAt: { type: Date, default: Date.now }
+  }],
 
   createdAt: { type: Date, default: Date.now },
   updatedAt: { type: Date, default: Date.now }
