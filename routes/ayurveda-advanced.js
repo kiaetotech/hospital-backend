@@ -1059,7 +1059,8 @@ router.get('/doctor/:id/wellness-programs', async (req, res) => {
     const doctor = await AyurvedaDoctor.findById(req.params.id);
     if (!doctor) return res.status(404).json({ success: false, error: 'Doctor not found' });
     
-    const programs = (doctor.wellnessPrograms || []).filter(p => p.isActive !== false);
+    // Check both fields (corporateWellnessPackages is where POST saves)
+    const programs = (doctor.corporateWellnessPackages || doctor.wellnessPrograms || []).filter(p => p.isActive !== false);
     
     res.json({ success: true, data: programs });
   } catch (error) {
