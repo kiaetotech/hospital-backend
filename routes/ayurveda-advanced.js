@@ -1035,9 +1035,9 @@ router.post('/doctor/wellness-program', async (req, res) => {
     const doctor = await AyurvedaDoctor.findById(doctorId);
     if (!doctor) return res.status(404).json({ success: false, error: 'Doctor not found' });
     
-    if (!doctor.wellnessPrograms) doctor.wellnessPrograms = [];
+        if (!doctor.corporateWellnessPackages) doctor.corporateWellnessPackages = [];
     
-    doctor.wellnessPrograms.push({
+    doctor.corporateWellnessPackages.push({
       ...program,
       createdAt: new Date(),
       isActive: true,
@@ -1047,7 +1047,7 @@ router.post('/doctor/wellness-program', async (req, res) => {
     
     await doctor.save();
     
-    res.json({ success: true, message: 'Program added successfully', data: doctor.wellnessPrograms });
+    res.json({ success: true, message: 'Program added successfully', data: doctor.corporateWellnessPackages });
   } catch (error) {
     res.status(500).json({ success: false, error: error.message });
   }
