@@ -149,8 +149,8 @@ const payoutService = {
     
     const totalEarnings = bookings.reduce((sum, b) => sum + (b.providerEarning || 0), 0);
     const totalCommission = bookings.reduce((sum, b) => sum + (b.platformCommission || 0), 0);
-    const pendingPayout = bookings
-      .filter(b => b.commissionPayoutStatus === 'pending')
+        const pendingPayout = bookings
+      .filter(b => b.commissionPayoutStatus !== 'paid' && b.paymentStatus === 'paid')
       .reduce((sum, b) => sum + (b.providerEarning || 0), 0);
     
     return {
