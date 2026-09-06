@@ -143,14 +143,14 @@ const payoutService = {
       throw new Error('Invalid provider type');
     }
     
-    const bookings = await AyurvedaBooking.find(query)
-      .select('bookingId finalAmount platformCommission providerEarning paidAt type')
+        const bookings = await AyurvedaBooking.find(query)
+      .select('bookingId finalAmount platformCommission providerEarning paidAt type paymentStatus commissionPayoutStatus')
       .sort({ paidAt: -1 });
     
     const totalEarnings = bookings.reduce((sum, b) => sum + (b.providerEarning || 0), 0);
     const totalCommission = bookings.reduce((sum, b) => sum + (b.platformCommission || 0), 0);
-        const pendingPayout = bookings
-      .filter(b => b.commissionPayoutStatus !== 'paid' && b.paymentStatus === 'paid')
+    const pendingPayout = bookings
+      .filter(b => b.paymentStatus === 'paid' && b.commissionPayoutStatus !== 'paid')
       .reduce((sum, b) => sum + (b.providerEarning || 0), 0);
     
     return {
