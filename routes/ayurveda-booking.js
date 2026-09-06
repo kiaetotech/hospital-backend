@@ -77,7 +77,7 @@ router.post('/create', authenticateUser, async (req, res) => {
       if (!doctor.isActive || doctor.verificationStatus !== 'approved') {
         return res.status(400).json({ success: false, message: 'Doctor is not available' });
       }
-      amount = doctor.consultationFee;
+      amount = req.body.amount || doctor.consultationFee;
     }   // ← CLOSING BRACE ADDED HERE
     
     else if (type === 'panchakarma_package') {
