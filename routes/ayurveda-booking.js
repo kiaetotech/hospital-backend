@@ -455,9 +455,7 @@ router.get('/my-bookings', authenticateUser, async (req, res) => {
     const bookings = await AyurvedaBooking.find(query)
       .sort({ createdAt: -1 })
       .skip(skip)
-      .limit(parseInt(limit))
-      .populate('doctor', 'name specialization consultationFee rating')
-      .populate('center', 'name address rating');
+      .limit(parseInt(limit));
 
     const total = await AyurvedaBooking.countDocuments(query);
 
