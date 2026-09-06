@@ -78,6 +78,39 @@ router.post('/create', authenticateUser, async (req, res) => {
         return res.status(400).json({ success: false, message: 'Doctor is not available' });
       }
       amount = doctor.consultationFee;
+    else if (type === 'panchakarma_package') {
+      if (!centerId || !req.body.packageId) {
+        return res.status(400).json({ success: false, message: 'Center ID and Package ID are required' });
+      }
+      const WellnessCenter = require('../models/WellnessCenter');
+      center = await WellnessCenter.findById(centerId);
+      if (!center) {
+        return res.status(404).json({ success: false, message: 'Center not found' });
+      }
+      if (!center.isActive || center.verificationStatus !== 'approved') {
+        return res.status(400).json({ success: false, message: 'Center is not available' });
+      }
+      
+      const pkg = center.packages?.find(p => p._id.toString() === req.body.packageId);
+      if (!pkg) {
+        return res.status(404).json({ success: false, message: 'Package not found' });
+      }
+      if (!pkg.isActive) {
+        return res.status(400).json({ success: false, message: 'Package is not active' });
+      }
+      if (pkg.currentBookings >= pkg.maxCapacity) {
+        return res.status(400).json({ success: false, message: 'Package is full' });
+      }
+      
+      amount = pkg.discountPrice || pkg.price;
+      packageDetails = {
+        packageId: pkg._id,
+        name: pkg.name,
+        duration: pkg.duration,
+        therapies: pkg.therapies,
+        inclusions: pkg.inclusions
+      };
+    }
       
             // Check if slot is available (only validate if doctor has availability set)
       if (doctor.availability && doctor.availability.length > 0) {
@@ -160,7 +193,7 @@ router.post('/create', authenticateUser, async (req, res) => {
     });
 
     // Platform fee and GST (production)
-    const platformFee = 30;
+    const platformFee = type === 'panchakarma_package' ? 100 : 30;
     const gstPercentage = 18;
     const baseAmount = amount - discountAmount;
     const gstAmount = Math.round((baseAmount + platformFee) * gstPercentage / 100);
@@ -228,6 +261,15 @@ router.post('/create', authenticateUser, async (req, res) => {
     booking.generateOtp();
 
     await booking.save();
+
+    // Increment package booking count
+    if (type === 'panchakarma_package' && centerId && req.body.packageId) {
+      const WellnessCenter = require('../models/WellnessCenter');
+      await WellnessCenter.updateOne(
+        { _id: centerId, 'packages._id': req.body.packageId },
+        { $inc: { 'packages.$.currentBookings': 1 } }
+      );
+    }
 
     // Send booking confirmation
     try {
