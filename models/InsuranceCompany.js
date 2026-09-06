@@ -1,6 +1,7 @@
 const mongoose = require('mongoose');
 
 const InsuranceCompanySchema = new mongoose.Schema({
+  userId: { type: mongoose.Schema.Types.ObjectId, ref: 'User', unique: true, sparse: true, index: true },
   // Basic Information
   companyName: { type: String, required: true },
   legalName: { type: String, required: true },

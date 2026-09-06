@@ -1,5 +1,7 @@
 const express = require('express');
 const router = express.Router();
+const bcrypt = require('bcryptjs');
+const jwt = require('jsonwebtoken');
 const mongoose = require('mongoose');
 const InsuranceCompany = require('../models/InsuranceCompany');
 const InsurancePlan = require('../models/InsurancePlan');
@@ -14,10 +16,14 @@ const { authenticate: auth } = require('../middleware/auth');
 
 const checkInsurer = async (req, res, next) => {
   try {
-    const company = await InsuranceCompany.findOne({ 
-      userId: req.user.id,
-      isActive: true 
-    });
+    let company = await InsuranceCompany.findOne({ userId: req.user.id, isActive: true });
+    if (!company && req.user.email) {
+      company = await InsuranceCompany.findOne({ email: req.user.email, isActive: true });
+      if (company && !company.userId) {
+        company.userId = req.user.id;
+        await company.save();
+      }
+    }
     
     if (!company) {
       return res.status(403).json({
@@ -38,6 +44,49 @@ const checkInsurer = async (req, res, next) => {
 };
 
 // ============================================
+// INSURANCE COMPANY AUTHENTICATION
+// ============================================
+
+router.post('/login', async (req, res) => {
+  try {
+    const email = String(req.body.email || '').trim().toLowerCase();
+    const password = String(req.body.password || '');
+    if (!email || !password) return res.status(400).json({ success: false, message: 'Email and password are required' });
+
+    const User = require('../models/User');
+    const user = await User.findOne({ email }).select('+password');
+    if (!user || user.role !== 'insurance_company') return res.status(401).json({ success: false, message: 'Invalid credentials' });
+    if (!(await bcrypt.compare(password, user.password))) return res.status(401).json({ success: false, message: 'Invalid credentials' });
+
+    const company = await InsuranceCompany.findOne({ userId: user._id });
+    if (!company) return res.status(403).json({ success: false, message: 'Insurance company profile not found' });
+    if (!company.isActive || company.status === 'suspended' || company.status === 'inactive') return res.status(403).json({ success: false, message: 'Insurance company account is not active' });
+
+    const secret = process.env.JWT_SECRET;
+    if (!secret) return res.status(500).json({ success: false, message: 'JWT_SECRET is not configured' });
+    const token = jwt.sign({ id: user._id, role: user.role }, secret, { expiresIn: '7d' });
+    res.json({ success: true, token, user: { id: user._id, name: user.name, email: user.email, phone: user.phone, role: user.role }, company: { id: company._id, name: company.companyName, status: company.status, isVerified: company.isVerified } });
+  } catch (error) {
+    console.error('Insurance company login error:', error);
+    res.status(500).json({ success: false, message: 'Unable to login' });
+  }
+});
+
+router.get('/auth/verify', auth, checkInsurer, async (req, res) => {
+  res.json({
+    success: true,
+    authenticated: true,
+    user: { id: req.user.id, role: req.user.role },
+    company: { id: req.insuranceCompany._id, name: req.insuranceCompany.companyName, status: req.insuranceCompany.status, isVerified: req.insuranceCompany.isVerified }
+  });
+});
+
+router.post('/logout', auth, async (req, res) => {
+  // JWTs are stateless; the client removes its token. Keep this endpoint for portal consistency.
+  res.json({ success: true, message: 'Logged out successfully' });
+});
+
+// ============================================
 // DASHBOARD
 // ============================================
 
@@ -45,7 +94,7 @@ const checkInsurer = async (req, res, next) => {
 router.get('/dashboard', auth, checkInsurer, async (req, res) => {
   try {
     const company = req.insuranceCompany;
-    const companyId = company._id;
+    const companyId = req.user.id;
 
     // Get all plans
     const plans = await InsurancePlan.find({ companyId });
@@ -114,8 +163,8 @@ router.get('/dashboard', auth, checkInsurer, async (req, res) => {
           totalPayout
         },
         monthlyData,
-        recentPolicies: policies.slice(0, 5),
-        recentClaims: claims.slice(0, 5),
+        recentPolicies: policies.slice(0, 5).map(p => ({ ...p.toObject(), customerName: p.primaryInsured?.name || '', planName: p.policyName, premium: p.premiumAmount })),
+        recentClaims: claims.slice(0, 5).map(c => ({ ...c.toObject(), claimId: c.claimNumber || c.claimId, policyNumber: c.policyNumber, date: c.createdAt })),
         company: {
           id: company._id,
           name: company.companyName,
@@ -141,7 +190,7 @@ router.get('/dashboard', auth, checkInsurer, async (req, res) => {
 // Get all plans
 router.get('/plans', auth, checkInsurer, async (req, res) => {
   try {
-    const companyId = req.insuranceCompany._id;
+    const companyId = req.user.id;
     const { status, page = 1, limit = 20 } = req.query;
 
     const query = { companyId };
@@ -179,7 +228,7 @@ router.get('/plans', auth, checkInsurer, async (req, res) => {
 // Create new plan
 router.post('/plans', auth, checkInsurer, async (req, res) => {
   try {
-    const companyId = req.insuranceCompany._id;
+    const companyId = req.user.id;
     const planData = req.body;
 
     // Validate company is verified
@@ -224,7 +273,7 @@ router.post('/plans', auth, checkInsurer, async (req, res) => {
 // Update plan
 router.put('/plans/:id', auth, checkInsurer, async (req, res) => {
   try {
-    const companyId = req.insuranceCompany._id;
+    const companyId = req.user.id;
     const planId = req.params.id;
 
     const plan = await InsurancePlan.findOne({ _id: planId, companyId });
@@ -263,7 +312,7 @@ router.put('/plans/:id', auth, checkInsurer, async (req, res) => {
 // Delete plan (soft delete)
 router.delete('/plans/:id', auth, checkInsurer, async (req, res) => {
   try {
-    const companyId = req.insuranceCompany._id;
+    const companyId = req.user.id;
     const planId = req.params.id;
 
     const plan = await InsurancePlan.findOne({ _id: planId, companyId });
@@ -313,7 +362,7 @@ router.delete('/plans/:id', auth, checkInsurer, async (req, res) => {
 // Get all policies
 router.get('/policies', auth, checkInsurer, async (req, res) => {
   try {
-    const companyId = req.insuranceCompany._id;
+    const companyId = req.user.id;
     const { status, startDate, endDate, page = 1, limit = 20 } = req.query;
 
     const query = { companyId };
@@ -357,7 +406,7 @@ router.get('/policies', auth, checkInsurer, async (req, res) => {
 // Get policy details
 router.get('/policies/:id', auth, checkInsurer, async (req, res) => {
   try {
-    const companyId = req.insuranceCompany._id;
+    const companyId = req.user.id;
     const policyId = req.params.id;
 
     const policy = await InsurancePolicy.findOne({ _id: policyId, companyId })
@@ -392,7 +441,7 @@ router.get('/policies/:id', auth, checkInsurer, async (req, res) => {
 // Get all claims
 router.get('/claims', auth, checkInsurer, async (req, res) => {
   try {
-    const companyId = req.insuranceCompany._id;
+    const companyId = req.user.id;
     const { status, page = 1, limit = 20 } = req.query;
 
     const query = { companyId };
@@ -431,7 +480,7 @@ router.get('/claims', auth, checkInsurer, async (req, res) => {
 // Get claim details
 router.get('/claims/:id', auth, checkInsurer, async (req, res) => {
   try {
-    const companyId = req.insuranceCompany._id;
+    const companyId = req.user.id;
     const claimId = req.params.id;
 
     const claim = await InsuranceClaim.findOne({ _id: claimId, companyId })
@@ -462,9 +511,11 @@ router.get('/claims/:id', auth, checkInsurer, async (req, res) => {
 // Update claim status
 router.put('/claims/:id/status', auth, checkInsurer, async (req, res) => {
   try {
-    const companyId = req.insuranceCompany._id;
+    const companyId = req.user.id;
     const claimId = req.params.id;
     const { status, note, amount } = req.body;
+    const allowedStatuses = ['submitted', 'document_uploaded', 'under_review', 'pending_verification', 'approved', 'rejected', 'settled', 'partially_settled', 'cancelled'];
+    if (!allowedStatuses.includes(status)) return res.status(400).json({ success: false, message: 'Invalid claim status' });
 
     const claim = await InsuranceClaim.findOne({ _id: claimId, companyId });
     if (!claim) {
@@ -474,12 +525,16 @@ router.put('/claims/:id/status', auth, checkInsurer, async (req, res) => {
       });
     }
 
+    const policy = await InsurancePolicy.findById(claim.policyId);
+    const numericAmount = amount == null ? null : Number(amount);
+    if (numericAmount != null && (!Number.isFinite(numericAmount) || numericAmount < 0)) return res.status(400).json({ success: false, message: 'Invalid amount' });
+    if (numericAmount != null && policy && numericAmount > policy.sumInsured) return res.status(400).json({ success: false, message: 'Amount exceeds policy sum insured' });
     // Update status
     claim.status = status;
     claim.updatedAt = new Date();
 
     if (status === 'approved') {
-      claim.approvedAmount = amount || claim.amount;
+      claim.approvedAmount = numericAmount ?? claim.amount;
       claim.approvedBy = req.user.id;
       claim.approvedAt = new Date();
     }
@@ -489,8 +544,9 @@ router.put('/claims/:id/status', auth, checkInsurer, async (req, res) => {
       claim.rejectedAt = new Date();
     }
 
-    if (status === 'settled') {
-      claim.settlementAmount = amount || claim.approvedAmount || claim.amount;
+    if (status === 'settled' || status === 'partially_settled') {
+      claim.settlementAmount = numericAmount ?? claim.approvedAmount ?? claim.amount;
+      if (status === 'partially_settled' && claim.settlementAmount >= claim.amount) return res.status(400).json({ success: false, message: 'Partial settlement must be less than claim amount' });
       claim.settlementDate = new Date();
       claim.settlementReference = `SETTLE_${Date.now()}`;
     }
@@ -522,12 +578,13 @@ router.put('/claims/:id/status', auth, checkInsurer, async (req, res) => {
 // Get settlements
 router.get('/settlements', auth, checkInsurer, async (req, res) => {
   try {
-    const companyId = req.insuranceCompany._id;
+    const companyId = req.user.id;
     const { status, page = 1, limit = 20 } = req.query;
 
     const query = { 
-      companyId,
-      'commissionStatus': status === 'paid' ? 'paid' : { $ne: 'paid' }
+      providerId: companyId,
+      bookingType: 'insurance',
+      insuranceSettlementStatus: status === 'paid' ? 'completed' : { $ne: 'completed' }
     };
 
     const transactions = await Transaction.find(query)
@@ -585,7 +642,7 @@ router.get('/profile', auth, checkInsurer, async (req, res) => {
 // Update company profile
 router.put('/profile', auth, checkInsurer, async (req, res) => {
   try {
-    const companyId = req.insuranceCompany._id;
+    const companyId = req.user.id;
     const updateData = req.body;
 
     // Remove sensitive fields
@@ -623,11 +680,12 @@ router.put('/profile', auth, checkInsurer, async (req, res) => {
 // Get sales report
 router.get('/reports/sales', auth, checkInsurer, async (req, res) => {
   try {
-    const companyId = req.insuranceCompany._id;
+    const companyId = req.user.id;
     const { startDate, endDate } = req.query;
 
     const match = {
-      companyId,
+      providerId: companyId,
+      bookingType: 'insurance',
       status: 'completed'
     };
 

@@ -1,4 +1,5 @@
 const mongoose = require('mongoose');
+const crypto = require('crypto');
 
 const InsurancePlanSchema = new mongoose.Schema({
   // ============================================
@@ -428,7 +429,7 @@ InsurancePlanSchema.pre('save', function(next) {
   if (!this.planCode) {
     const prefix = this.planType.substring(0, 3).toUpperCase();
     const timestamp = Date.now().toString().slice(-6);
-    const random = Math.floor(Math.random() * 1000).toString().padStart(3, '0');
+    const random = crypto.randomInt(0, 1000).toString().padStart(3, '0');
     this.planCode = `${prefix}${timestamp}${random}`;
   }
   

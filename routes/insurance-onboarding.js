@@ -32,10 +32,10 @@ router.post('/register', async (req, res) => {
     } = req.body;
 
     // Validate required fields
-    if (!companyName || !email || !phone || !password || !irdaRegistration) {
+    if (!companyName || !legalName || !registrationNumber || !irdaRegistration || !gstNumber || !panNumber || !email || !phone || !password || !address?.line1 || !address?.city || !address?.state || !address?.pincode || !bankDetails?.accountNumber || !bankDetails?.ifscCode || !bankDetails?.accountHolderName || !bankDetails?.bankName) {
       return res.status(400).json({
         success: false,
-        message: 'Missing required fields'
+        message: 'Company, regulatory, contact, address and bank details are required'
       });
     }
 
@@ -64,8 +64,8 @@ router.post('/register', async (req, res) => {
       phone,
       password,
       role: 'insurance_company',
-      phoneVerified: true,
-      emailVerified: true
+      phoneVerified: false,
+      emailVerified: false
     });
     await user.save();
 

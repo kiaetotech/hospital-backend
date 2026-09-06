@@ -1,4 +1,5 @@
 const mongoose = require('mongoose');
+const crypto = require('crypto');
 
 const InsurancePolicySchema = new mongoose.Schema({
   // ============================================
@@ -375,7 +376,7 @@ InsurancePolicySchema.pre('save', function(next) {
   if (!this.policyNumber) {
     const prefix = 'POL';
     const timestamp = Date.now().toString().slice(-8);
-    const random = Math.floor(Math.random() * 10000).toString().padStart(4, '0');
+    const random = crypto.randomInt(0, 10000).toString().padStart(4, '0');
     this.policyNumber = `${prefix}${timestamp}${random}`;
   }
   
@@ -547,7 +548,7 @@ InsurancePolicySchema.methods.cancel = function(reason, refundAmount) {
 };
 
 InsurancePolicySchema.methods.addClaim = function(claimData) {
-  const claimId = `CLM${Date.now().toString().slice(-8)}${Math.floor(Math.random() * 1000).toString().padStart(3, '0')}`;
+  const claimId = `CLM${Date.now().toString().slice(-8)}${crypto.randomInt(0, 1000).toString().padStart(3, '0')}`;
   
   this.claims.push({
     claimId: claimId,

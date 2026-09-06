@@ -1,4 +1,5 @@
 const mongoose = require('mongoose');
+const crypto = require('crypto');
 
 const InsuranceClaimSchema = new mongoose.Schema({
   // References
@@ -130,7 +131,7 @@ InsuranceClaimSchema.pre('save', function(next) {
   if (!this.claimNumber) {
     const prefix = 'CLM';
     const timestamp = Date.now().toString().slice(-8);
-    const random = Math.floor(Math.random() * 1000).toString().padStart(3, '0');
+    const random = crypto.randomInt(0, 1000).toString().padStart(3, '0');
     this.claimNumber = `${prefix}${timestamp}${random}`;
   }
   next();

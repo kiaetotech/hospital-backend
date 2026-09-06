@@ -1,7 +1,10 @@
 const express = require('express');
 const router = express.Router();
 const mongoose = require('mongoose');
+const jwt = require('jsonwebtoken');
 const InsurancePlan = require('../models/InsurancePlan');
+const InsuranceCompany = require('../models/InsuranceCompany');
+const InsuranceClaim = require('../models/InsuranceClaim');
 const InsurancePolicy = require('../models/InsurancePolicy');
 const Booking = require('../models/Booking');
 const Transaction = require('../models/Transaction');
@@ -16,6 +19,7 @@ const { authenticate: auth } = require('../middleware/auth');
 const razorpayService = require('../services/razorpayService');
 const commissionService = require('../services/commissionService');
 const notificationService = require('../services/notificationService');
+const pdfService = require('../services/pdfService');
 
 // ============================================
 // AUTHENTICATE HR MIDDLEWARE
@@ -150,31 +154,14 @@ router.get('/plans', async (req, res) => {
 
     const skip = (page - 1) * limit;
     const plans = await InsurancePlan.find(query)
-      .populate('companyId', 'name companyLogo companyDescription companyPhone companyEmail isVerified')
+      .populate('companyId', 'name companyLogo companyDescription companyPhone companyEmail isVerified isActive role')
       .sort(sortCriteria)
       .skip(skip)
       .limit(parseInt(limit));
 
     const total = await InsurancePlan.countDocuments(query);
 
-    let personalizedPlans = plans;
-    if (age) {
-      const userAge = parseInt(age);
-      personalizedPlans = plans.map(plan => {
-        const planObj = plan.toObject();
-        let personalizedPremium = plan.basePremium;
-        if (userAge > 60) {
-          personalizedPremium = personalizedPremium * 1.5;
-        } else if (userAge > 50) {
-          personalizedPremium = personalizedPremium * 1.2;
-        } else if (userAge < 25) {
-          personalizedPremium = personalizedPremium * 0.9;
-        }
-        planObj.personalizedPremium = Math.round(personalizedPremium);
-        planObj.monthlyPrice = Math.round(personalizedPremium / 12);
-        return planObj;
-      });
-    }
+    const personalizedPlans = plans.map(plan => plan.toObject());
 
     res.json({
       success: true,
@@ -854,16 +841,39 @@ router.post('/apply', auth, checkPhoneVerified, async (req, res) => {
     if (!plan) {
       return res.status(404).json({ success: false, message: 'Plan not found' });
     }
-    if (!plan.isActive) {
-      return res.status(400).json({ success: false, message: 'Plan is not currently active' });
+    if (!plan.isActive || plan.isVerified !== true) {
+      return res.status(400).json({ success: false, message: 'Plan is not currently available' });
+    }
+    if (!plan.companyId || !plan.companyId._id) {
+      return res.status(400).json({ success: false, message: 'Insurance company is not configured for this plan' });
+    }
+    if (plan.companyId.isVerified !== true || plan.companyId.isActive === false || plan.companyId.role !== 'insurance_company') {
+      return res.status(400).json({ success: false, message: 'Insurance company is not currently available' });
     }
 
     const user = await User.findById(userId);
     if (!user) {
       return res.status(404).json({ success: false, message: 'User not found' });
     }
+    const company = await InsuranceCompany.findOne({ userId: plan.companyId._id, isActive: true });
+    if (!company || company.isVerified !== true || !['verified', 'active'].includes(company.status)) {
+      return res.status(400).json({ success: false, message: 'Insurance company is not currently available' });
+    }
 
-    const age = primaryInsured.age || 30;
+    const age = Number(primaryInsured.age);
+    if (!Number.isInteger(age) || age < plan.minEntryAge || age > plan.maxEntryAge) {
+      return res.status(400).json({ success: false, message: `Primary insured age must be between ${plan.minEntryAge} and ${plan.maxEntryAge}` });
+    }
+    const requestedSumInsured = Number(sumInsured);
+    if (!Number.isFinite(requestedSumInsured) || requestedSumInsured < plan.sumInsured.min || requestedSumInsured > plan.sumInsured.max) {
+      return res.status(400).json({ success: false, message: `Sum insured must be between ₹${plan.sumInsured.min} and ₹${plan.sumInsured.max}` });
+    }
+    if (termsAccepted !== true) {
+      return res.status(400).json({ success: false, message: 'Terms and conditions must be accepted' });
+    }
+    if (Number.isNaN(new Date(startDate).getTime())) {
+      return res.status(400).json({ success: false, message: 'Invalid policy start date' });
+    }
     const membersCount = members ? members.length + 1 : 1;
     const isSmoker = primaryInsured.isSmoker || false;
     
@@ -887,7 +897,7 @@ router.post('/apply', auth, checkPhoneVerified, async (req, res) => {
     const end = new Date(start);
     end.setFullYear(end.getFullYear() + 1);
 
-    const bookingId = 'INS' + Date.now().toString() + Math.floor(Math.random() * 1000).toString().padStart(3, '0');
+    const bookingId = 'INS' + Date.now().toString() + require('crypto').randomInt(0, 1000).toString().padStart(3, '0');
 
     const booking = new Booking({
       userId: userId,
@@ -905,12 +915,12 @@ router.post('/apply', auth, checkPhoneVerified, async (req, res) => {
       paymentStatus: 'pending',
       status: 'pending',
       providerId: plan.companyId._id,
-      providerName: plan.companyId.name || 'Insurance Company',
+      providerName: company.companyName || plan.companyId.name || 'Insurance Company',
       platformCommission: premiumCalculation.platformCommission,
       providerCommission: premiumCalculation.payoutToCompany,
       commissionStatus: 'pending',
       insurancePlanId: plan._id,
-      insuranceCompanyName: plan.companyId.name,
+      insuranceCompanyName: company.companyName || plan.companyId.name,
       insurancePlanName: plan.planName,
       sumInsured: sumInsured,
       premiumAmount: finalPremium,
@@ -962,17 +972,23 @@ router.post('/apply', auth, checkPhoneVerified, async (req, res) => {
     booking.insurancePolicyId = policy._id;
     await booking.save();
 
-    const order = await razorpayService.createOrder({
-      amount: Math.round(finalPremium * 100),
-      currency: 'INR',
-      receipt: booking._id.toString(),
-      notes: {
+    const orderResult = await razorpayService.createOrder(
+      Math.round(finalPremium * 100) / 100,
+      'INR',
+      booking._id.toString(),
+      {
         bookingId: booking._id.toString(),
         policyId: policy._id.toString(),
         planId: plan._id.toString(),
         userId: userId.toString()
       }
-    });
+    );
+    if (!orderResult?.success || !orderResult.order?.id) {
+      await Booking.findByIdAndDelete(booking._id);
+      await InsurancePolicy.findByIdAndDelete(policy._id);
+      return res.status(502).json({ success: false, message: 'Unable to create payment order' });
+    }
+    const order = orderResult.order;
 
     booking.razorpayOrderId = order.id;
     booking.orderId = order.id;
@@ -1081,11 +1097,27 @@ router.post('/verify-payment', auth, async (req, res) => {
     if (!booking) {
       return res.status(404).json({ success: false, message: 'Booking not found' });
     }
-
+    if (booking.userId.toString() !== req.user.id.toString()) {
+      return res.status(403).json({ success: false, message: 'Unauthorized' });
+    }
+    if (booking.bookingType !== 'insurance' || booking.orderId !== orderId) {
+      return res.status(400).json({ success: false, message: 'Payment order does not match this insurance booking' });
+    }
     if (booking.paymentStatus === 'paid') {
       return res.status(400).json({ success: false, message: 'Payment already verified' });
     }
 
+    const transaction = await Transaction.findOne({ bookingId: booking._id, userId: booking.userId });
+    if (!transaction) {
+      return res.status(409).json({ success: false, message: 'Insurance payment transaction not found' });
+    }
+    if (transaction.status === 'completed') {
+      return res.status(409).json({ success: false, message: 'Payment transaction already completed' });
+    }
+    const gatewayPayment = await razorpayService.fetchPayment(paymentId);
+    if (!gatewayPayment.success || gatewayPayment.payment.status !== 'captured' || Math.abs(gatewayPayment.payment.amount - transaction.amount) > 0.01) {
+      return res.status(400).json({ success: false, message: 'Payment amount or status could not be verified' });
+    }
     booking.paymentStatus = 'paid';
     booking.status = 'policy_issued';
     booking.paymentId = paymentId;
@@ -1093,7 +1125,6 @@ router.post('/verify-payment', auth, async (req, res) => {
     booking.razorpaySignature = signature;
     await booking.save();
 
-    const transaction = await Transaction.findOne({ bookingId: booking._id });
     if (transaction) {
       transaction.status = 'completed';
       transaction.paymentId = paymentId;
@@ -1204,7 +1235,7 @@ router.get('/my-policies/:id', auth, async (req, res) => {
       return res.status(404).json({ success: false, message: 'Policy not found' });
     }
 
-    if (policy.userId !== req.user.id && req.user.role !== 'admin') {
+    if (policy.userId.toString() !== req.user.id.toString() && req.user.role !== 'admin') {
       return res.status(403).json({ success: false, message: 'Unauthorized' });
     }
 
@@ -1238,7 +1269,7 @@ router.post('/cancel-policy/:id', auth, async (req, res) => {
       return res.status(404).json({ success: false, message: 'Policy not found' });
     }
 
-    if (policy.userId !== req.user.id) {
+    if (policy.userId.toString() !== req.user.id.toString()) {
       return res.status(403).json({ success: false, message: 'Unauthorized' });
     }
 
@@ -1264,10 +1295,24 @@ router.post('/cancel-policy/:id', auth, async (req, res) => {
     }
 
     const transaction = await Transaction.findOne({ bookingId: policy.bookingId });
-    if (transaction) {
-      transaction.status = 'refunded';
-      transaction.refundAmount = policy.totalAmount;
-      transaction.refundedAt = new Date();
+    if (transaction && transaction.status !== 'refunded') {
+      if (!transaction.paymentId) {
+        return res.status(409).json({ success: false, message: 'Payment reference is missing; refund cannot be processed automatically' });
+      }
+      if (transaction.refundId) {
+        transaction.status = 'refunded';
+        transaction.refundAmount = policy.totalAmount;
+        transaction.refundedAt = transaction.refundedAt || new Date();
+      } else {
+        const refundResult = await razorpayService.createRefund(transaction.paymentId, policy.totalAmount, { bookingId: policy.bookingId.toString(), policyId: policy._id.toString() });
+        if (!refundResult?.success || !refundResult.refund?.id) {
+          return res.status(502).json({ success: false, message: 'Policy was cancelled but the payment refund could not be completed. Please retry the refund.' });
+        }
+        transaction.status = 'refunded';
+        transaction.refundId = refundResult.refund.id;
+        transaction.refundAmount = refundResult.refund.amount;
+        transaction.refundedAt = new Date();
+      }
       await transaction.save();
     }
 
@@ -1289,31 +1334,17 @@ router.post('/cancel-policy/:id', auth, async (req, res) => {
 // Download policy document
 router.get('/download-policy/:id', auth, async (req, res) => {
   try {
-    const policy = await InsurancePolicy.findById(req.params.id);
-    
-    if (!policy) {
-      return res.status(404).json({ success: false, message: 'Policy not found' });
-    }
-
-    if (policy.userId !== req.user.id && req.user.role !== 'admin') {
-      return res.status(403).json({ success: false, message: 'Unauthorized' });
-    }
-
-    if (!policy.policyDocumentUrl) {
-      return res.status(404).json({ success: false, message: 'Policy document not available' });
-    }
-
-    res.json({
-      success: true,
-      data: {
-        url: policy.policyDocumentUrl,
-        policyNumber: policy.policyNumber
-      }
-    });
-
+    const policy = await InsurancePolicy.findById(req.params.id).populate('planId').populate('companyId', 'name companyLogo companyEmail companyPhone companyAddress logo');
+    if (!policy) return res.status(404).json({ success: false, message: 'Policy not found' });
+    if (policy.userId.toString() !== req.user.id.toString() && req.user.role !== 'admin') return res.status(403).json({ success: false, message: 'Unauthorized' });
+    if (policy.status !== 'active') return res.status(400).json({ success: false, message: 'Policy document is available only for active policies' });
+    const result = await pdfService.generatePolicyPDF({ ...policy.toObject(), planName: policy.policyName, companyId: policy.companyId });
+    if (!result?.success || !result.pdf) return res.status(503).json({ success: false, message: 'Policy document could not be generated' });
+    res.set({ 'Content-Type': 'application/pdf', 'Content-Disposition': `attachment; filename="${policy.policyNumber}.pdf"`, 'Cache-Control': 'private, no-store' });
+    res.send(result.pdf);
   } catch (error) {
     console.error('Error downloading policy:', error);
-    res.status(500).json({ success: false, message: 'Failed to download policy' });
+    res.status(500).json({ success: false, message: 'Failed to generate policy document' });
   }
 });
 
@@ -1338,22 +1369,31 @@ router.post('/claims', auth, async (req, res) => {
       return res.status(404).json({ success: false, message: 'Policy not found' });
     }
 
-    if (policy.userId !== req.user.id) {
+    if (policy.userId.toString() !== req.user.id.toString()) {
       return res.status(403).json({ success: false, message: 'Unauthorized' });
     }
 
     if (policy.status !== 'active') {
       return res.status(400).json({ success: false, message: 'Only active policies can file claims' });
     }
-
-    await policy.addClaim({
-      amount,
-      description,
-      hospitalName,
-      hospitalAddress,
-      admissionDate,
-      documents: documents || []
+    const claimAmount = Number(amount);
+    if (!Number.isFinite(claimAmount) || claimAmount <= 0 || claimAmount > policy.sumInsured) {
+      return res.status(400).json({ success: false, message: 'Claim amount must be greater than 0 and not exceed the policy sum insured' });
+    }
+    if (!hospitalName || !admissionDate || Number.isNaN(new Date(admissionDate).getTime())) {
+      return res.status(400).json({ success: false, message: 'Hospital name and a valid admission date are required' });
+    }
+    const company = await InsuranceCompany.findOne({ userId: policy.companyId, isActive: true });
+    if (!company) return res.status(409).json({ success: false, message: 'Insurance company profile is unavailable' });
+    const claim = new InsuranceClaim({
+      policyId: policy._id, bookingId: policy.bookingId, companyId: company._id, userId: req.user.id,
+      claimType: 'reimbursement', amount: claimAmount, description, hospitalName, hospitalAddress,
+      admissionDate: new Date(admissionDate), documents: Array.isArray(documents) ? documents : [], submittedBy: req.user.id
     });
+    await claim.save();
+
+    // Preserve the existing embedded policy-claims view for backward compatibility.
+    await policy.addClaim({ amount: claimAmount, description, hospitalName, hospitalAddress, admissionDate, documents: documents || [] });
 
     const user = await User.findById(req.user.id);
     if (user && notificationService && notificationService.sendEmail) {
@@ -1363,7 +1403,7 @@ router.post('/claims', auth, async (req, res) => {
           name: user.name,
           policyNumber: policy.policyNumber,
           claimAmount: amount,
-          claimId: policy.claims[policy.claims.length - 1].claimId
+          claimId: claim.claimNumber
         }
       });
     }
@@ -1372,7 +1412,7 @@ router.post('/claims', auth, async (req, res) => {
       success: true,
       message: 'Claim submitted successfully',
       data: {
-        claim: policy.claims[policy.claims.length - 1]
+        claim: claim
       }
     });
 
@@ -1391,7 +1431,7 @@ router.get('/claims/:policyId', auth, async (req, res) => {
       return res.status(404).json({ success: false, message: 'Policy not found' });
     }
 
-    if (policy.userId !== req.user.id && req.user.role !== 'admin') {
+    if (policy.userId.toString() !== req.user.id.toString() && req.user.role !== 'admin') {
       return res.status(403).json({ success: false, message: 'Unauthorized' });
     }
 
@@ -1415,7 +1455,7 @@ router.get('/claims/:policyId/:claimId', auth, async (req, res) => {
       return res.status(404).json({ success: false, message: 'Policy not found' });
     }
 
-    if (policy.userId !== req.user.id && req.user.role !== 'admin') {
+    if (policy.userId.toString() !== req.user.id.toString() && req.user.role !== 'admin') {
       return res.status(403).json({ success: false, message: 'Unauthorized' });
     }
 
@@ -1443,11 +1483,7 @@ router.get('/claims/:policyId/:claimId', auth, async (req, res) => {
 router.get('/stats', async (req, res) => {
   try {
     const totalPlans = await InsurancePlan.countDocuments({ isActive: true });
-    const totalCompanies = await User.countDocuments({ 
-      role: 'insurance_company', 
-      isActive: true,
-      isVerified: true 
-    });
+    const totalCompanies = await InsuranceCompany.countDocuments({ isActive: true, isVerified: true });
     const totalPolicies = await InsurancePolicy.countDocuments({ status: 'active' });
     
     const plans = await InsurancePlan.find({ isActive: true });
@@ -1464,10 +1500,11 @@ router.get('/stats', async (req, res) => {
     res.json({
       success: true,
       data: {
+        razorpayKey: process.env.RAZORPAY_KEY_ID || null,
         totalPlans,
         totalCompanies,
         policiesIssued: totalPolicies,
-        claimSettlementRate: avgSettlementRatio || 95,
+        claimSettlementRate: avgSettlementRatio,
         corporate: corporateStats
       }
     });

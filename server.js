@@ -9,13 +9,18 @@ const path = require('path');
 try {
   const envPath = path.join(__dirname, '.env');
   const envContent = fs.readFileSync(envPath, 'utf8');
-  const lines = envContent.split('\n');
+  const lines = envContent.split(/\r?\n/);
   for (const line of lines) {
     const trimmed = line.trim();
     if (trimmed && !trimmed.startsWith('#')) {
-      const [key, ...valueParts] = trimmed.split('=');
-      if (key && valueParts.length > 0) {
-        process.env[key.trim()] = valueParts.join('=').trim();
+      const [rawKey, ...valueParts] = trimmed.split('=');
+      const key = rawKey && rawKey.trim();
+      if (key && valueParts.length > 0 && process.env[key] === undefined) {
+        let value = valueParts.join('=').trim();
+        if ((value.startsWith('\"') && value.endsWith('\"')) || (value.startsWith("'") && value.endsWith("'"))) {
+          value = value.slice(1, -1);
+        }
+        process.env[key] = value;
       }
     }
   }
@@ -38,6 +43,14 @@ const Redis = require('ioredis');
 
 const app = express();
 const server = http.createServer(app);
+
+if (process.env.NODE_ENV === 'production') {
+  for (const required of ['JWT_SECRET', 'ADMIN_KEY']) {
+    if (!process.env[required] || process.env[required].length < 32) {
+      throw new Error(`${required} must be configured with a strong value in production`);
+    }
+  }
+}
 
 // ============================================
 // CORS CONFIGURATION
@@ -76,9 +89,9 @@ let redis = null;
 try {
   redis = new Redis({
     host: process.env.REDIS_HOST || 'localhost',
-    port: process.env.REDIS_PORT || 6379,
-    password: process.env.REDIS_PASSWORD || '',
-    db: process.env.REDIS_DB || 0,
+    port: Number.isInteger(Number(process.env.REDIS_PORT)) ? Number(process.env.REDIS_PORT) : 6379,
+    password: process.env.REDIS_PASSWORD && !/^your_redis_password$/i.test(process.env.REDIS_PASSWORD) ? process.env.REDIS_PASSWORD : '',
+    db: Number.isInteger(Number(process.env.REDIS_DB)) ? Number(process.env.REDIS_DB) : 0,
     maxRetriesPerRequest: 3,
     retryStrategy: (times) => {
       if (times > 10) {
@@ -152,11 +165,21 @@ const searchLimiter = rateLimit({
   message: { success: false, message: 'Too many requests, please try again later.' }
 });
 
+const authLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000,
+  max: 30,
+  standardHeaders: true,
+  legacyHeaders: false,
+  message: { success: false, message: 'Too many authentication attempts. Please try again later.' }
+});
+
 // ============================================
 // JWT AUTHENTICATION
 // ============================================
 const jwt = require('jsonwebtoken');
-const JWT_SECRET = process.env.JWT_SECRET || 'hospital_platform_secret_key_2024';
+const { authenticateAdmin } = require('./middleware/auth');
+const JWT_SECRET = process.env.JWT_SECRET;
+if (!JWT_SECRET) { throw new Error('JWT_SECRET is not configured'); }
 
 const authenticateToken = (req, res, next) => {
   const authHeader = req.headers['authorization'];
@@ -244,13 +267,9 @@ setInterval(async () => {
   try {
     if (dispatchService.checkStuckBookings) {
       const result = await dispatchService.checkStuckBookings();
-      if (result.checked > 0) {
-        console.log(`🔍 Stuck booking check: ${result.checked} checked`);
-      }
+      if (result.checked > 0) console.log(`🔍 Stuck booking check: ${result.checked} checked`);
     }
-  } catch (error) {
-    console.error('Stuck booking check error:', error.message);
-  }
+  } catch (error) { console.error('Stuck booking check error:', error.message); }
 }, 2 * 60 * 1000);
 
 // Load hospital status service with fallback
@@ -268,22 +287,14 @@ try {
 
 setInterval(async () => {
   try {
-    if (hospitalStatusService.sendScheduledRequests) {
-      await hospitalStatusService.sendScheduledRequests();
-    }
-  } catch (error) {
-    console.error('Hospital status request error:', error.message);
-  }
+    if (hospitalStatusService.sendScheduledRequests) await hospitalStatusService.sendScheduledRequests();
+  } catch (error) { console.error('Hospital status request error:', error.message); }
 }, 60 * 60 * 1000);
 
 setInterval(async () => {
   try {
-    if (hospitalStatusService.expireStaleStatuses) {
-      await hospitalStatusService.expireStaleStatuses();
-    }
-  } catch (error) {
-    console.error('Status expiry error:', error.message);
-  }
+    if (hospitalStatusService.expireStaleStatuses) await hospitalStatusService.expireStaleStatuses();
+  } catch (error) { console.error('Status expiry error:', error.message); }
 }, 30 * 60 * 1000);
 
 if (redis) {
@@ -315,7 +326,7 @@ try {
 // ROUTES (ALL PRESERVED WITH FALLBACKS)
 // ============================================
 
-let hospitalRoutes, hospitalProviderRoutes, labPricingRoutes, packageRoutes, authRoutes, caregiverRoutes, diagnosticsRoutes, diagnosticsUploadRoutes, ambulanceRoutes, healthPackageRoutes, testRoutes, uploadRoutes, providerAuthRoutes, bookingRoutes, razorpayRoutes, reviewRoutes, adminRoutes, bookingStatusRoutes, customPackageRoutes, lenderAuthRoutes, adminLenderRoutes, lenderRoutes, loanPatientRoutes, loanLenderRoutes, loanAdminRoutes, loanWebhookRoutes, webhookRoutes, ayurvedaRoutes, ayurvedaCenterRoutes, ayurvedaPrescriptionRoutes, ayurvedaReportRoutes, homeopathyRoutes, insuranceRoutes, insuranceAdminRoutes, otpRoutes, corporateRoutes, corporateBillingRoutes, corporateHubRoutes, mentalHealthRoutes, mentalHealthTherapistRoutes, mentalHealthAdminRoutes, mentalHealthPayoutRoutes, mentalHealthEarningsRoutes, onlineDoctorRoutes, hospitalStatusRoutes, globalSearchRoutes, employeePortalRoutes;
+let hospitalRoutes, hospitalProviderRoutes, labPricingRoutes, packageRoutes, authRoutes, caregiverRoutes, diagnosticsRoutes, diagnosticsUploadRoutes, ambulanceRoutes, healthPackageRoutes, testRoutes, uploadRoutes, providerAuthRoutes, bookingRoutes, razorpayRoutes, reviewRoutes, adminRoutes, bookingStatusRoutes, customPackageRoutes, lenderAuthRoutes, adminLenderRoutes, lenderRoutes, loanPatientRoutes, loanLenderRoutes, loanAdminRoutes, loanWebhookRoutes, webhookRoutes, ayurvedaRoutes, ayurvedaCenterRoutes, ayurvedaPrescriptionRoutes, ayurvedaReportRoutes, homeopathyRoutes, insuranceRoutes, insuranceClaimsRoutes, insuranceOnboardingRoutes, insuranceAdminRoutes, insuranceCompanyRoutes, otpRoutes, corporateRoutes, corporateBillingRoutes, corporateHubRoutes, mentalHealthRoutes, mentalHealthTherapistRoutes, mentalHealthAdminRoutes, mentalHealthPayoutRoutes, mentalHealthEarningsRoutes, onlineDoctorRoutes, hospitalStatusRoutes, globalSearchRoutes, employeePortalRoutes, discountRoutes;
 
 try { hospitalRoutes = require('./routes/hospitals'); } catch(e) { console.warn('⚠️ hospitals route missing'); hospitalRoutes = (req,res) => res.status(404).json({error:'Route not available'}); }
 try { hospitalProviderRoutes = require('./routes/hospitalProvider'); } catch(e) { console.warn('⚠️ hospitalProvider route missing'); hospitalProviderRoutes = (req,res) => res.status(404).json({error:'Route not available'}); }
@@ -350,6 +361,10 @@ try { ayurvedaPrescriptionRoutes = require('./routes/ayurveda-prescriptions'); }
 try { ayurvedaReportRoutes = require('./routes/ayurveda-reports'); } catch(e) { console.warn('⚠️ ayurveda-reports route missing'); ayurvedaReportRoutes = (req,res) => res.status(404).json({error:'Route not available'}); }
 try { homeopathyRoutes = require('./routes/homeopathy'); } catch(e) { console.warn('⚠️ homeopathy route missing'); homeopathyRoutes = (req,res) => res.status(404).json({error:'Route not available'}); }
 try { insuranceRoutes = require('./routes/insurance'); } catch(e) { console.warn('⚠️ insurance route missing'); insuranceRoutes = (req,res) => res.status(404).json({error:'Route not available'}); }
+try { insuranceClaimsRoutes = require('./routes/insurance-claims'); } catch(e) { console.warn('⚠️ insurance-claims route missing'); insuranceClaimsRoutes = (req,res) => res.status(404).json({error:'Route not available'}); }
+try { insuranceOnboardingRoutes = require('./routes/insurance-onboarding'); } catch(e) { console.warn('⚠️ insurance-onboarding route missing'); insuranceOnboardingRoutes = (req,res) => res.status(404).json({error:'Route not available'}); }
+try { insuranceOnboardingRoutes = require('./routes/insurance-onboarding'); } catch(e) { console.warn('⚠️ insurance-onboarding route missing'); insuranceOnboardingRoutes = (req,res) => res.status(404).json({error:'Route not available'}); }
+try { insuranceCompanyRoutes = require('./routes/insurance-company'); } catch(e) { console.warn('⚠️ insurance-company route missing'); insuranceCompanyRoutes = (req,res) => res.status(404).json({error:'Route not available'}); }
 try { insuranceAdminRoutes = require('./routes/insurance-admin'); } catch(e) { console.warn('⚠️ insurance-admin route missing'); insuranceAdminRoutes = (req,res) => res.status(404).json({error:'Route not available'}); }
 try { otpRoutes = require('./routes/otp'); } catch(e) { console.warn('⚠️ otp route missing'); otpRoutes = (req,res) => res.status(404).json({error:'Route not available'}); }
 try { corporateRoutes = require('./routes/corporate'); } catch(e) { console.warn('⚠️ corporate route missing'); corporateRoutes = (req,res) => res.status(404).json({error:'Route not available'}); }
@@ -364,6 +379,7 @@ try { onlineDoctorRoutes = require('./routes/onlineDoctor'); } catch(e) { consol
 try { hospitalStatusRoutes = require('./routes/hospitalStatus'); } catch(e) { console.warn('⚠️ hospitalStatus route missing'); hospitalStatusRoutes = (req,res) => res.status(404).json({error:'Route not available'}); }
 try { globalSearchRoutes = require('./routes/globalSearch'); } catch(e) { console.warn('⚠️ globalSearch route missing'); globalSearchRoutes = (req,res) => res.status(404).json({error:'Route not available'}); }
 try { employeePortalRoutes = require('./routes/employeePortal'); } catch(e) { console.warn('⚠️ employeePortal route missing'); employeePortalRoutes = (req,res) => res.status(404).json({error:'Route not available'}); }
+try { discountRoutes = require('./routes/discounts'); } catch(e) { console.warn('⚠️ discounts route missing: ' + e.message); discountRoutes = (req,res) => res.status(404).json({error:'Route not available'}); }
 
 // ============================================
 // AI ROUTER (18 Agents)
@@ -502,7 +518,7 @@ console.log('🤖 AI Router initialized with 27 agents (18 Business + 5 Engineer
 // ============================================
 
 // Route all AI requests through the router
-app.post('/api/ai/route', async (req, res) => {
+app.post('/api/ai/route', authenticateToken, async (req, res) => {
   try {
     const { task, payload, critical = false } = req.body;
     
@@ -543,7 +559,7 @@ app.post('/api/ai/route', async (req, res) => {
 });
 
 // Get all registered agents
-app.get('/api/ai/agents', (req, res) => {
+app.get('/api/ai/agents', authenticateAdmin, (req, res) => {
   const agents = capabilityRegistry.getAllAgents().map(agent => ({
     id: agent.id,
     name: agent.name,
@@ -562,7 +578,7 @@ app.get('/api/ai/agents', (req, res) => {
 });
 
 // Direct test route
-app.post('/api/ai/test', async (req, res) => {
+app.post('/api/ai/test', authenticateAdmin, async (req, res) => {
   try {
     const result = await testingAgent.execute(req.body);
     res.json(result);
@@ -571,23 +587,23 @@ app.post('/api/ai/test', async (req, res) => {
   }
 });
 
-app.post('/api/ai/apitest', async (req, res) => {
+app.post('/api/ai/apitest', authenticateAdmin, async (req, res) => {
   try { const result = await apiTestAgent.execute(req.body); res.json(result); } catch (e) { res.status(500).json({ success: false, error: e.message }); }
 });
 
-app.post('/api/ai/flowtest', async (req, res) => {
+app.post('/api/ai/flowtest', authenticateAdmin, async (req, res) => {
   try { const result = await flowTestAgent.execute(req.body); res.json(result); } catch (e) { res.status(500).json({ success: false, error: e.message }); }
 });
 
-app.post('/api/ai/authtest', async (req, res) => {
+app.post('/api/ai/authtest', authenticateAdmin, async (req, res) => {
   try { const result = await authTestAgent.execute(req.body); res.json(result); } catch (e) { res.status(500).json({ success: false, error: e.message }); }
 });
 
-app.post('/api/ai/synctest', async (req, res) => {
+app.post('/api/ai/synctest', authenticateAdmin, async (req, res) => {
   try { const result = await frontendSyncAgent.execute(req.body); res.json(result); } catch (e) { res.status(500).json({ success: false, error: e.message }); }
 });
 
-app.post('/api/ai/supervisor', async (req, res) => {
+app.post('/api/ai/supervisor', authenticateAdmin, async (req, res) => {
   try { const result = await supervisorAgent.execute(req.body); res.json(result); } catch (e) { res.status(500).json({ success: false, error: e.message }); }
 });
 
@@ -610,7 +626,7 @@ app.get('/api/ai/agents/:agentId', (req, res) => {
 });
 
 // Get AI system health
-app.get('/api/ai/health', (req, res) => {
+app.get('/api/ai/health', authenticateAdmin, (req, res) => {
   const health = healthManager.getHealthReport();
   const budget = budgetManager.getCurrentSpend();
   const agents = capabilityRegistry.getAllAgents().map(a => ({
@@ -634,7 +650,7 @@ app.get('/api/ai/health', (req, res) => {
 });
 
 // Get AI system cost
-app.get('/api/ai/cost', (req, res) => {
+app.get('/api/ai/cost', authenticateAdmin, (req, res) => {
   const budget = budgetManager.getCurrentSpend();
   const usagePercent = budgetManager.getUsagePercentage();
   
@@ -647,7 +663,7 @@ app.get('/api/ai/cost', (req, res) => {
 });
 
 // Debug route - test all route loading
-app.get('/api/debug/routes', (req, res) => {
+app.get('/api/debug/routes', authenticateAdmin, (req, res) => {
   const results = {};
   const routeFiles = ['ambulance', 'bookings', 'reviews'];
   routeFiles.forEach(file => {
@@ -693,7 +709,7 @@ app.use('/api/lab-pricing', labPricingRoutes);
 app.use('/api/packages', packageRoutes);
 app.use('/api/hospitals', searchLimiter, hospitalRoutes);
 app.use('/api/hospital-status', hospitalStatusRoutes);
-app.use('/api/auth', authRoutes);
+app.use('/api/auth', authLimiter, authRoutes);
 app.use('/api/provider-auth', providerAuthRoutes);
 app.use('/api/caregivers', caregiverRoutes);
 app.use('/api/diagnostics', diagnosticsRoutes);
@@ -726,8 +742,11 @@ app.use('/api/ayurveda/bookings', require('./routes/ayurveda-booking'));
 app.use('/api/ayurveda/settlements', require('./routes/ayurveda-settlement'));
 app.use('/api/homeopathy', homeopathyRoutes);
 app.use('/api/insurance', insuranceRoutes);
+app.use('/api/insurance-claims', insuranceClaimsRoutes);
+app.use('/api/insurance/company', insuranceOnboardingRoutes);
+app.use('/api/insurance/company', insuranceCompanyRoutes);
 app.use('/api/insurance-admin', insuranceAdminRoutes);
-app.use('/api/otp', otpRoutes);
+app.use('/api/otp', authLimiter, otpRoutes);
 app.use('/api/corporate', corporateRoutes);
 app.use('/api/corporate/billing', corporateBillingRoutes);
 app.use('/api/corporate-hub', corporateHubRoutes);
@@ -739,6 +758,7 @@ app.use('/api/mentalhealth/earnings', mentalHealthEarningsRoutes);
 app.use('/api/online-doctor', searchLimiter, onlineDoctorRoutes);
 app.use('/api/search', searchLimiter, globalSearchRoutes);
 app.use('/api/employee', employeePortalRoutes);
+app.use('/api/discounts', discountRoutes);
 
 // ============================================
 // TEST ROUTES
@@ -754,14 +774,16 @@ app.get('/test', (req, res) => {
 });
 
 app.get('/api/health', (req, res) => {
-  res.json({
-    success: true,
+  const mongoConnected = mongoose.connection.readyState === 1;
+  const redisConnected = !!redis && redis.status === 'ready';
+  res.status(mongoConnected ? 200 : 503).json({
+    success: mongoConnected,
     status: 'ok',
     timestamp: new Date().toISOString(),
     uptime: process.uptime(),
     services: {
-      mongodb: 'connected',
-      redis: 'connected'
+      mongodb: mongoConnected ? 'connected' : 'disconnected',
+      redis: redisConnected ? 'connected' : 'unavailable'
     }
   });
 });
@@ -981,7 +1003,7 @@ app.get('/api/online-doctor/health', (req, res) => {
   });
 });
 
-app.get('/api/system/health', async (req, res) => {
+app.get('/api/system/health', authenticateAdmin, async (req, res) => {
   const healthData = {
     success: true,
     server: {
@@ -1050,7 +1072,7 @@ app.get('/api/search/health', (req, res) => {
   });
 });
 
-app.get('/api/seed-tests', async (req, res) => {
+app.get('/api/seed-tests', authenticateAdmin, async (req, res) => {
   try {
     const xlsx = require('xlsx');
     const path = require('path');
@@ -1146,16 +1168,19 @@ mongoose.connect(DB_URI)
 // AUTO-MAINTENANCE: Runs every 30 minutes
 // ============================================
 const axios = require('axios');
-setInterval(async () => {
+const maintenanceIntervalMs = Math.max(30 * 60 * 1000, Number(process.env.AUTO_MAINTENANCE_INTERVAL_MS || 30 * 60 * 1000));
+const maintenanceEnabled = String(process.env.AUTO_MAINTENANCE || 'false').toLowerCase() === 'true';
+const maintenanceUrl = process.env.INTERNAL_AI_SUPERVISOR_URL || `http://127.0.0.1:${process.env.PORT || 5001}/api/ai/supervisor`;
+if (maintenanceEnabled) setInterval(async () => {
   try {
     console.log('🤖 AUTO-MAINTENANCE: Running tests...');
-    await axios.post('http://localhost:8080/api/ai/supervisor', { task: 'run_all_tests' }, { timeout: 60000 });
+    await axios.post(maintenanceUrl, { task: 'run_all_tests' }, { timeout: 60000 });
     console.log('✅ AUTO-MAINTENANCE: Tests complete');
   } catch(e) {
     console.log('⚠️ AUTO-MAINTENANCE: ' + e.message);
   }
-}, 30 * 60 * 1000);
-console.log('🕐 Auto-maintenance scheduled every 30 minutes');
+}, maintenanceIntervalMs);
+console.log(maintenanceEnabled ? `🕐 Auto-maintenance scheduled every ${Math.round(maintenanceIntervalMs / 60000)} minutes` : '🕐 Auto-maintenance disabled by default');
 
 // ============================================
 // SERVER START
