@@ -127,6 +127,11 @@ router.delete('/packages/:centerId/:packageId', async (req, res) => {
 // ADMIN: VERIFY CENTER
 // ============================================
 router.put('/admin/verify/:centerId', async (req, res) => {
+  // Check admin key
+  const adminKey = req.headers['x-admin-key'];
+  if (adminKey !== process.env.ADMIN_KEY) {
+    return res.status(401).json({ success: false, error: 'Admin authentication required' });
+  }
   try {
     const { status, rejectionReason } = req.body;
     const center = await WellnessCenter.findByIdAndUpdate(req.params.centerId, {

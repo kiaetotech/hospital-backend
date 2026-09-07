@@ -388,6 +388,10 @@ router.get('/admin/pending-doctors', async (req, res) => {
 });
 
 router.put('/admin/verify-doctor/:id', async (req, res) => {
+  const adminKey = req.headers['x-admin-key'];
+  if (adminKey !== process.env.ADMIN_KEY) {
+    return res.status(401).json({ success: false, error: 'Admin authentication required' });
+  }
   try {
     const { status, rejectionReason } = req.body;
     const doctor = await AyurvedaDoctor.findByIdAndUpdate(req.params.id, {
