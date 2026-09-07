@@ -162,6 +162,18 @@ router.get('/admin/pending', async (req, res) => {
   }
 });
 
+// ADD THE NEW ENDPOINT HERE 👇
+router.get('/admin/all', async (req, res) => {
+  try {
+    const centers = await WellnessCenter.find()
+      .select('name phone email type address verificationStatus isActive createdAt')
+      .sort({ createdAt: -1 });
+    res.json({ success: true, data: centers });
+  } catch (error) {
+    res.status(500).json({ success: false, error: error.message });
+  }
+});
+
 // ============================================
 // PUBLIC: LIST CENTERS
 // ============================================
