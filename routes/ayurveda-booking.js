@@ -312,12 +312,13 @@ router.post('/verify-payment', authenticateUser, async (req, res) => {
     }
 
     // Update booking
-    booking.paymentStatus = 'paid';
+        booking.paymentStatus = 'paid';
     booking.razorpayPaymentId = razorpayPaymentId;
     booking.razorpaySignature = razorpaySignature;
     booking.paidAt = new Date();
     booking.transactionId = `TXN_${Date.now()}`;
-    booking.status = 'pending'; // Still pending until OTP verification
+    booking.status = 'confirmed';
+    booking.confirmedAt = new Date();
     booking.otpVerified = false;
 
     await booking.save();
@@ -748,24 +749,28 @@ router.put('/:bookingId/status', authenticateUser, async (req, res) => {
     }
 
     switch (action) {
-            case 'accept':
+                  case 'accept':
+        await booking.acceptBooking('doctor');
+        break;
+        
+      case 'start':
         if (!booking.otpVerified) {
           return res.status(400).json({ 
             success: false, 
-            message: 'Patient has not verified OTP yet. Booking cannot be accepted.' 
+            message: 'Patient has not verified OTP. Please ask patient for OTP before starting consultation.' 
           });
         }
-        await booking.acceptBooking('doctor');
-        break;
-      case 'start':
         await booking.startConsultation();
         break;
+        
       case 'complete':
         await booking.completeConsultation(req.body.prescription);
         break;
+        
       case 'no_show':
         await booking.markNoShow();
         break;
+        
       default:
         return res.status(400).json({ success: false, message: 'Invalid action' });
     }
