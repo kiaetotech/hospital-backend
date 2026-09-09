@@ -317,8 +317,6 @@ router.post('/verify-payment', authenticateUser, async (req, res) => {
     booking.razorpaySignature = razorpaySignature;
     booking.paidAt = new Date();
     booking.transactionId = `TXN_${Date.now()}`;
-    booking.status = 'confirmed';
-    booking.confirmedAt = new Date();
     booking.otpVerified = false;
 
     await booking.save();
@@ -500,6 +498,47 @@ router.get('/:bookingId', authenticateUser, async (req, res) => {
 });
 
 // ============================================
+// GET CANCELLATION QUOTE
+// ============================================
+router.get('/:bookingId/cancellation-quote', authenticateUser, async (req, res) => {
+  try {
+    const booking = await AyurvedaBooking.findOne({ 
+      bookingId: req.params.bookingId,
+      userId: req.user.id
+    });
+
+    if (!booking) {
+      return res.status(404).json({ success: false, message: 'Booking not found' });
+    }
+
+    if (booking.status === 'cancelled') {
+      return res.status(400).json({ success: false, message: 'Booking already cancelled' });
+    }
+
+    const info = cancellationService.calculateAyurvedaCancellation(booking);
+
+    res.json({
+      success: true,
+      data: {
+        bookingId: booking.bookingId,
+        canCancel: info.canCancel,
+        cancellationFee: info.cancellationFee,
+        refundAmount: info.refundAmount,
+        refundPercentage: info.refundPercentage,
+        reason: info.reason,
+        totalAmount: booking.finalAmount,
+        bookingDate: booking.bookingDate
+      }
+    });
+
+  } catch (error) {
+    console.error('Cancellation quote error:', error);
+    res.status(500).json({ success: false, message: error.message || 'Failed to get cancellation quote' });
+  }
+});
+
+
+// ============================================
 // CANCEL BOOKING
 // ============================================
 router.put('/:bookingId/cancel', authenticateUser, async (req, res) => {
@@ -513,6 +552,10 @@ router.put('/:bookingId/cancel', authenticateUser, async (req, res) => {
 
     if (!booking) {
       return res.status(404).json({ success: false, message: 'Booking not found' });
+    }
+
+    if (booking.status === 'cancelled') {
+      return res.status(400).json({ success: false, message: 'Booking already cancelled' });
     }
 
     // Check if booking can be cancelled

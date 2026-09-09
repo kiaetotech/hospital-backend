@@ -90,19 +90,22 @@ const transactionSchema = new mongoose.Schema({
       'opd', 
       'admission', 
       'ambulance', 
-      'ambulance_emergency',  // 🚑 NEW: Emergency ambulance booking
+      'ambulance_emergency',
       'labtest', 
       'health_package', 
       'caregiver', 
       'loan',
       'insurance',
-      // 🧘 NEW: Ayurveda booking types
       'ayurveda_consultation',
       'panchakarma',
       'ayurveda_product',
       'doctor_consultation',
       'home_therapy',
-      'medicine_order'
+      'medicine_order',
+      // ADD THESE:
+      'panchakarma_package',
+      'wellness_program',
+      'ayurveda_booking'
     ] 
   },
   userId: { type: String },

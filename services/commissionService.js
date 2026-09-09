@@ -886,9 +886,15 @@ const calculateInsuranceCommission = (bookingData) => {
 
 // 🧘 Ayurveda
 const calculateAyurvedaCommission = (bookingData) => {
-  return calculateCommission('ayurveda_consultation', bookingData.amount, bookingData.providerId, {
+  const subType = bookingData.subType || 'consultation';
+  
+  let bookingType = 'ayurveda_consultation';
+  if (subType === 'panchakarma') bookingType = 'ayurveda_panchakarma';
+  if (subType === 'wellness_package') bookingType = 'ayurveda_wellness_package';
+  
+  return calculateCommission(bookingType, bookingData.amount, bookingData.providerId, {
     ...bookingData,
-    isPanchakarma: bookingData.subType === 'panchakarma',
+    isPanchakarma: subType === 'panchakarma',
     durationDays: bookingData.durationDays || 0
   });
 };
