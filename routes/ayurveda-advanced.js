@@ -1211,4 +1211,406 @@ router.put('/admin/fee-config', async (req, res) => {
   }
 });
 
+// ============================================
+// 🆕 REVIEWS / RATINGS ENDPOINTS
+// ============================================
+
+/**
+ * GET /api/ayurveda/reviews/all
+ * Get all reviews (paginated)
+ */
+router.get('/reviews/all', async (req, res) => {
+  try {
+    const { page = 1, limit = 20, doctorId, sortBy = 'recent' } = req.query;
+    const Review = require('../models/Review');
+    
+    const query = {};
+    if (doctorId) query.providerId = doctorId;
+    
+    const skip = (parseInt(page) - 1) * parseInt(limit);
+    let sortOptions = { createdAt: -1 };
+    
+    if (sortBy === 'rating_high') sortOptions = { rating: -1 };
+    if (sortBy === 'rating_low') sortOptions = { rating: 1 };
+    
+    const reviews = await Review.find(query)
+      .sort(sortOptions)
+      .skip(skip)
+      .limit(parseInt(limit));
+    
+    const total = await Review.countDocuments(query);
+    
+    res.json({
+      success: true,
+      data: reviews,
+      pagination: {
+        page: parseInt(page),
+        limit: parseInt(limit),
+        total,
+        pages: Math.ceil(total / parseInt(limit))
+      }
+    });
+  } catch (error) {
+    console.error('Error fetching reviews:', error);
+    res.status(500).json({ success: false, message: 'Failed to fetch reviews' });
+  }
+});
+
+/**
+ * POST /api/ayurveda/reviews/create
+ * Submit a new review
+ */
+router.post('/reviews/create', async (req, res) => {
+  try {
+    const { doctorId, providerId, rating, comment, bookingId, patientName } = req.body;
+    const Review = require('../models/Review');
+    
+    if (!rating || rating < 1 || rating > 5) {
+      return res.status(400).json({ success: false, message: 'Rating must be between 1-5' });
+    }
+    
+    if (bookingId) {
+      const existing = await Review.findOne({ bookingId });
+      if (existing) {
+        return res.status(400).json({ success: false, message: 'Review already submitted for this booking' });
+      }
+    }
+    
+    const review = new Review({
+      providerId: doctorId || providerId,
+      rating: parseInt(rating),
+      comment: comment || '',
+      bookingId: bookingId || null,
+      patientName: patientName || 'Anonymous',
+      createdAt: new Date()
+    });
+    
+    await review.save();
+    res.status(201).json({ success: true, message: 'Review submitted successfully', data: review });
+  } catch (error) {
+    console.error('Error creating review:', error);
+    res.status(500).json({ success: false, message: 'Failed to submit review' });
+  }
+});
+
+// ============================================
+// 🆕 BOOKINGS ADMIN ENDPOINTS
+// ============================================
+
+/**
+ * GET /api/ayurveda/bookings/admin/all
+ * Get all bookings (admin view)
+ */
+router.get('/bookings/admin/all', async (req, res) => {
+  try {
+    const { status, doctorId, page = 1, limit = 20, startDate, endDate } = req.query;
+    const Booking = require('../models/AyurvedaBooking') || require('../models/Booking');
+    
+    const query = {};
+    if (status) query.status = status;
+    if (doctorId) query.doctorId = doctorId;
+    
+    if (startDate || endDate) {
+      query.createdAt = {};
+      if (startDate) query.createdAt.$gte = new Date(startDate);
+      if (endDate) query.createdAt.$lte = new Date(endDate);
+    }
+    
+    const skip = (parseInt(page) - 1) * parseInt(limit);
+    const bookings = await Booking.find(query)
+      .sort({ createdAt: -1 })
+      .skip(skip)
+      .limit(parseInt(limit));
+    
+    const total = await Booking.countDocuments(query);
+    
+    res.json({
+      success: true,
+      data: bookings,
+      pagination: {
+        page: parseInt(page),
+        limit: parseInt(limit),
+        total,
+        pages: Math.ceil(total / parseInt(limit))
+      }
+    });
+  } catch (error) {
+    console.error('Error fetching bookings:', error);
+    res.status(500).json({ success: false, message: 'Failed to fetch bookings' });
+  }
+});
+
+/**
+ * GET /api/ayurveda/bookings/admin/stats
+ * Get booking statistics
+ */
+router.get('/bookings/admin/stats', async (req, res) => {
+  try {
+    const Booking = require('../models/AyurvedaBooking') || require('../models/Booking');
+    
+    const totalBookings = await Booking.countDocuments();
+    const completedBookings = await Booking.countDocuments({ status: 'completed' });
+    const pendingBookings = await Booking.countDocuments({ status: { $in: ['pending', 'confirmed'] } });
+    const cancelledBookings = await Booking.countDocuments({ status: 'cancelled' });
+    
+    const totalRevenue = await Booking.aggregate([
+      { $match: { status: 'completed' } },
+      { $group: { _id: null, total: { $sum: '$amount' } } }
+    ]);
+    
+    res.json({
+      success: true,
+      data: {
+        totalBookings,
+        completedBookings,
+        pendingBookings,
+        cancelledBookings,
+        totalRevenue: totalRevenue.length > 0 ? totalRevenue[0].total : 0
+      }
+    });
+  } catch (error) {
+    console.error('Error fetching booking stats:', error);
+    res.status(500).json({ success: false, message: 'Failed to fetch stats' });
+  }
+});
+
+// ============================================
+// 🆕 COMPLAINTS / ISSUES ENDPOINTS
+// ============================================
+
+/**
+ * GET /api/ayurveda/complaints/all
+ * Get all complaints/issues
+ */
+router.get('/complaints/all', async (req, res) => {
+  try {
+    const { status, priority, page = 1, limit = 20 } = req.query;
+    const Complaint = require('../models/Complaint') || require('../models/AyurvedaComplaint');
+    
+    const query = {};
+    if (status) query.status = status;
+    if (priority) query.priority = priority;
+    
+    const skip = (parseInt(page) - 1) * parseInt(limit);
+    const complaints = await Complaint.find(query)
+      .sort({ createdAt: -1, priority: -1 })
+      .skip(skip)
+      .limit(parseInt(limit));
+    
+    const total = await Complaint.countDocuments(query);
+    
+    res.json({
+      success: true,
+      data: complaints,
+      pagination: {
+        page: parseInt(page),
+        limit: parseInt(limit),
+        total,
+        pages: Math.ceil(total / parseInt(limit))
+      }
+    });
+  } catch (error) {
+    console.error('Error fetching complaints:', error);
+    res.status(500).json({ success: false, message: 'Failed to fetch complaints' });
+  }
+});
+
+/**
+ * POST /api/ayurveda/complaints/create
+ * Submit a new complaint
+ */
+router.post('/complaints/create', async (req, res) => {
+  try {
+    const { bookingId, doctorId, patientId, subject, description, priority = 'medium' } = req.body;
+    const Complaint = require('../models/Complaint') || require('../models/AyurvedaComplaint');
+    
+    if (!subject || !description) {
+      return res.status(400).json({ success: false, message: 'Subject and description are required' });
+    }
+    
+    const complaint = new Complaint({
+      bookingId: bookingId || null,
+      doctorId,
+      patientId,
+      subject,
+      description,
+      priority: ['low', 'medium', 'high', 'urgent'].includes(priority) ? priority : 'medium',
+      status: 'open',
+      createdAt: new Date()
+    });
+    
+    await complaint.save();
+    res.status(201).json({ success: true, message: 'Complaint submitted', data: complaint });
+  } catch (error) {
+    console.error('Error creating complaint:', error);
+    res.status(500).json({ success: false, message: 'Failed to submit complaint' });
+  }
+});
+
+// ============================================
+// 🆕 DISCOUNTS ENDPOINTS
+// ============================================
+
+/**
+ * GET /api/ayurveda/discounts
+ * Get all available discounts
+ */
+router.get('/discounts', async (req, res) => {
+  try {
+    const { bookingType, page = 1, limit = 20 } = req.query;
+    const Discount = require('../models/Discount');
+    
+    const query = {
+      isActive: true,
+      $or: [
+        { validUntil: { $exists: false } },
+        { validUntil: { $gte: new Date() } }
+      ]
+    };
+    
+    if (bookingType) {
+      query.$or.push({ applicableTags: { $in: [bookingType, 'all'] } });
+    }
+    
+    const skip = (parseInt(page) - 1) * parseInt(limit);
+    const discounts = await Discount.find(query)
+      .sort({ value: -1 })
+      .skip(skip)
+      .limit(parseInt(limit));
+    
+    const total = await Discount.countDocuments(query);
+    
+    res.json({
+      success: true,
+      data: discounts.map(d => ({
+        code: d.code,
+        type: d.type,
+        value: d.value,
+        description: d.description,
+        minAmount: d.minAmount,
+        maxDiscount: d.maxDiscount,
+        validUntil: d.validUntil,
+        applicableTags: d.applicableTags
+      })),
+      pagination: {
+        page: parseInt(page),
+        limit: parseInt(limit),
+        total,
+        pages: Math.ceil(total / parseInt(limit))
+      }
+    });
+  } catch (error) {
+    console.error('Error fetching discounts:', error);
+    res.status(500).json({ success: false, message: 'Failed to fetch discounts' });
+  }
+});
+
+/**
+ * POST /api/ayurveda/discounts/validate
+ * Validate a discount code
+ */
+router.post('/discounts/validate', async (req, res) => {
+  try {
+    const { code, amount } = req.body;
+    const Discount = require('../models/Discount');
+    
+    if (!code || !amount) {
+      return res.status(400).json({ success: false, message: 'Code and amount required' });
+    }
+    
+    const discount = await Discount.findOne({ 
+      code: code.toUpperCase(), 
+      isActive: true,
+      $or: [
+        { validUntil: { $exists: false } },
+        { validUntil: { $gte: new Date() } }
+      ]
+    });
+    
+    if (!discount) {
+      return res.status(404).json({ success: false, message: 'Discount code not found or expired' });
+    }
+    
+    if (discount.minAmount && amount < discount.minAmount) {
+      return res.status(400).json({ 
+        success: false, 
+        message: `Minimum amount ${discount.minAmount} required` 
+      });
+    }
+    
+    let discountAmount = 0;
+    if (discount.type === 'percentage') {
+      discountAmount = Math.round(amount * (discount.value / 100));
+      if (discount.maxDiscount) {
+        discountAmount = Math.min(discountAmount, discount.maxDiscount);
+      }
+    } else {
+      discountAmount = Math.min(discount.value, amount);
+    }
+    
+    const finalAmount = amount - discountAmount;
+    
+    res.json({
+      success: true,
+      discountAmount,
+      finalAmount,
+      discount: {
+        code: discount.code,
+        type: discount.type,
+        value: discount.value
+      }
+    });
+  } catch (error) {
+    console.error('Error validating discount:', error);
+    res.status(500).json({ success: false, message: 'Failed to validate discount' });
+  }
+});
+
+// ============================================
+// 🆕 SETTLEMENTS ADMIN - FIX PERMISSION
+// ============================================
+
+/**
+ * GET /api/ayurveda/settlements/admin/pending
+ * Get pending settlements (Fixed with proper auth)
+ */
+router.get('/settlements/admin/pending', async (req, res) => {
+  try {
+    // Check admin authentication
+    const adminKey = req.headers['x-admin-key'];
+    if (!adminKey || adminKey !== process.env.ADMIN_KEY) {
+      return res.status(403).json({ success: false, message: 'Admin authentication required' });
+    }
+    
+    const Settlement = require('../models/AyurvedaSettlement') || require('../models/Settlement');
+    const { page = 1, limit = 20, doctorId } = req.query;
+    
+    const query = { status: 'pending' };
+    if (doctorId) query.doctorId = doctorId;
+    
+    const skip = (parseInt(page) - 1) * parseInt(limit);
+    const settlements = await Settlement.find(query)
+      .sort({ createdAt: -1 })
+      .skip(skip)
+      .limit(parseInt(limit));
+    
+    const total = await Settlement.countDocuments(query);
+    
+    res.json({
+      success: true,
+      data: settlements,
+      pagination: {
+        page: parseInt(page),
+        limit: parseInt(limit),
+        total,
+        pages: Math.ceil(total / parseInt(limit))
+      }
+    });
+  } catch (error) {
+    console.error('Error fetching pending settlements:', error);
+    res.status(500).json({ success: false, message: 'Failed to fetch settlements' });
+  }
+});
+
+
 module.exports = router;
