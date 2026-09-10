@@ -254,22 +254,28 @@ router.get('/centers', async (req, res) => {
       verificationStatus: 'approved' 
     })
     .select('-password -documents -bankDetails')
-    .populate('doctors', 'name specialization experience rating consultationFee')
     .lean();
 
-    // Filter out centers with no active packages
-    const centersWithPackages = centers.map(c => ({
+    // Filter active packages only (no populate to avoid errors)
+    const centersWithData = centers.map(c => ({
       ...c,
-      packages: (c.packages || []).filter(p => p.isActive !== false)
+      packages: (c.packages || []).filter(p => p.isActive !== false),
+      roomTypes: (c.roomTypes || []).filter(r => r.isActive !== false),
+      reviews: (c.reviews || []).filter(r => r.adminApproved !== false).slice(0, 10),
     }));
 
     res.json({ 
       success: true, 
-      data: centersWithPackages 
+      data: centersWithData 
     });
   } catch (error) {
     console.error('Error fetching centers:', error);
-    res.status(500).json({ success: false, error: 'Failed to fetch centers', data: [] });
+    res.status(500).json({ 
+      success: false, 
+      error: 'Failed to fetch centers', 
+      details: error.message,
+      data: [] 
+    });
   }
 });
 
@@ -277,22 +283,31 @@ router.get('/centers/:id', async (req, res) => {
   try {
     const center = await WellnessCenter.findById(req.params.id)
       .select('-password -documents -bankDetails')
-      .populate('doctors', 'name specialization experience education rating totalReviews consultationFee consultationTypes languages address about wellnessCenter stats')
       .lean();
 
     if (!center) return res.status(404).json({ success: false, error: 'Center not found' });
 
-    // Filter active packages only
+    // Filter active data
     center.packages = (center.packages || []).filter(p => p.isActive !== false);
-
-    // Get active room types
     center.roomTypes = (center.roomTypes || []).filter(r => r.isActive !== false);
+    center.reviews = (center.reviews || []).filter(r => r.adminApproved !== false).slice(0, 20);
 
-    // Reviews - only approved, latest 20
-    center.reviews = (center.reviews || [])
-      .filter(r => r.adminApproved !== false)
-      .sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt))
-      .slice(0, 20);
+    // Populate doctors separately (safely)
+    if (center.doctors && center.doctors.length > 0) {
+      try {
+        const AyurvedaDoctor = require('../models/AyurvedaDoctor');
+        const doctors = await AyurvedaDoctor.find(
+          { _id: { $in: center.doctors } },
+          'name specialization experience education rating totalReviews consultationFee consultationTypes languages about'
+        ).lean();
+        center.doctors = doctors;
+      } catch (docError) {
+        console.error('Doctor populate error:', docError.message);
+        center.doctors = [];
+      }
+    } else {
+      center.doctors = [];
+    }
 
     res.json({ success: true, data: center });
   } catch (error) {
