@@ -275,12 +275,29 @@ router.get('/centers', async (req, res) => {
 
 router.get('/centers/:id', async (req, res) => {
   try {
-    const center = await WellnessCenter.findById(req.params.id);
+    const center = await WellnessCenter.findById(req.params.id)
+      .select('-password -documents -bankDetails')
+      .populate('doctors', 'name specialization experience education rating totalReviews consultationFee consultationTypes languages address about wellnessCenter stats')
+      .lean();
+
     if (!center) return res.status(404).json({ success: false, error: 'Center not found' });
+
+    // Filter active packages only
+    center.packages = (center.packages || []).filter(p => p.isActive !== false);
+
+    // Get active room types
+    center.roomTypes = (center.roomTypes || []).filter(r => r.isActive !== false);
+
+    // Reviews - only approved, latest 20
+    center.reviews = (center.reviews || [])
+      .filter(r => r.adminApproved !== false)
+      .sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt))
+      .slice(0, 20);
+
     res.json({ success: true, data: center });
-    } catch (error) {
-    console.error('Error fetching center:', error);
-    res.status(500).json({ success: false, error: 'Failed to fetch center details' });
+  } catch (error) {
+    console.error('Center detail error:', error);
+    res.status(500).json({ success: false, error: error.message });
   }
 });
 
