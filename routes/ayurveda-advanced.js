@@ -249,9 +249,25 @@ router.get('/recommend', async (req, res) => {
 
 router.get('/centers', async (req, res) => {
   try {
-    const centers = await WellnessCenter.find({ isActive: true, verificationStatus: 'approved' }).select('name type address rating packages facilities photos');
-    res.json({ success: true, data: centers });
-    } catch (error) {
+    const centers = await WellnessCenter.find({ 
+      isActive: true, 
+      verificationStatus: 'approved' 
+    })
+    .select('-password -documents -bankDetails')
+    .populate('doctors', 'name specialization experience rating consultationFee')
+    .lean();
+
+    // Filter out centers with no active packages
+    const centersWithPackages = centers.map(c => ({
+      ...c,
+      packages: (c.packages || []).filter(p => p.isActive !== false)
+    }));
+
+    res.json({ 
+      success: true, 
+      data: centersWithPackages 
+    });
+  } catch (error) {
     console.error('Error fetching centers:', error);
     res.status(500).json({ success: false, error: 'Failed to fetch centers', data: [] });
   }
