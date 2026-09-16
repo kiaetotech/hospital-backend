@@ -1510,4 +1510,41 @@ router.get('/admin/programs/pending-count', async (req, res) => {
   }
 });
 
+// ============================================
+// ONE-TIME MIGRATION: Add approvalStatus to old programs
+// ============================================
+router.post('/admin/migrate/programs-approval', async (req, res) => {
+  const adminKey = req.headers['x-admin-key'];
+  if (adminKey !== process.env.ADMIN_KEY) {
+    return res.status(401).json({ success: false, error: 'Admin authentication required' });
+  }
+  
+  try {
+    const doctors = await AyurvedaDoctor.find({});
+    let updated = 0;
+    
+    for (const doctor of doctors) {
+      let changed = false;
+      (doctor.wellnessPrograms || []).forEach(prog => {
+        if (!prog.approvalStatus) {
+          prog.approvalStatus = 'pending';
+          prog.submittedAt = prog.submittedAt || new Date();
+          changed = true;
+          updated++;
+        }
+      });
+      if (changed) await doctor.save();
+    }
+    
+    res.json({ 
+      success: true, 
+      message: `Migration complete. Updated ${updated} programs.`,
+      totalDoctors: doctors.length
+    });
+  } catch (error) {
+    console.error('Migration error:', error);
+    res.status(500).json({ success: false, error: error.message });
+  }
+});
+
 module.exports = router;

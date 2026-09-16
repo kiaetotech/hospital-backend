@@ -648,4 +648,41 @@ router.get('/', async (req, res) => {
   }
 });
 
+// ============================================
+// ONE-TIME MIGRATION: Add approvalStatus to old packages
+// ============================================
+router.post('/admin/migrate/packages-approval', async (req, res) => {
+  const adminKey = req.headers['x-admin-key'];
+  if (adminKey !== process.env.ADMIN_KEY) {
+    return res.status(401).json({ success: false, error: 'Admin authentication required' });
+  }
+  
+  try {
+    const centers = await WellnessCenter.find({});
+    let updated = 0;
+    
+    for (const center of centers) {
+      let changed = false;
+      center.packages.forEach(pkg => {
+        if (!pkg.approvalStatus) {
+          pkg.approvalStatus = 'pending';
+          pkg.submittedAt = pkg.submittedAt || new Date();
+          changed = true;
+          updated++;
+        }
+      });
+      if (changed) await center.save();
+    }
+    
+    res.json({ 
+      success: true, 
+      message: `Migration complete. Updated ${updated} packages.`,
+      totalCenters: centers.length
+    });
+  } catch (error) {
+    console.error('Migration error:', error);
+    res.status(500).json({ success: false, error: error.message });
+  }
+});
+
 module.exports = router;
