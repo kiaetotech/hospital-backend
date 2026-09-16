@@ -348,15 +348,176 @@ router.post('/:centerId/accreditations', async (req, res) => {
 });
 
 // ============================================
-// PACKAGE MANAGEMENT (With Approval)
+// MIDDLEWARE: Verify center auth
 // ============================================
-router.post('/packages/:centerId', async (req, res) => {
+const authenticateCenter = async (req, res, next) => {
   try {
-    const center = await WellnessCenter.findById(req.params.centerId);
-    if (!center) return res.status(404).json({ success: false, error: 'Center not found' });
-    
+    const token = req.headers.authorization?.split(' ')[1];
+    if (!token) {
+      return res.status(401).json({ success: false, error: 'Authentication required' });
+    }
+
+    const jwt = require('jsonwebtoken');
+    let decoded;
+    try {
+      decoded = jwt.verify(token, JWT_SECRET);
+    } catch (e) {
+      return res.status(401).json({ success: false, error: 'Invalid or expired token' });
+    }
+
+    if (decoded.role !== 'wellness_center') {
+      return res.status(403).json({ success: false, error: 'Center access required' });
+    }
+
+    if (decoded.id !== req.params.centerId) {
+      return res.status(403).json({ success: false, error: 'You can only modify your own packages' });
+    }
+
+    const center = await WellnessCenter.findById(decoded.id);
+    if (!center) {
+      return res.status(404).json({ success: false, error: 'Center not found' });
+    }
+    if (!center.isActive || center.verificationStatus !== 'approved') {
+      return res.status(403).json({ success: false, error: 'Center account is not active' });
+    }
+
+    req.center = center;
+    next();
+  } catch (error) {
+    console.error('Center auth error:', error);
+    res.status(401).json({ success: false, error: 'Authentication failed' });
+  }
+};
+
+// ============================================
+// VALIDATOR: Package input
+// ============================================
+const validatePackageInput = (data) => {
+  const errors = [];
+
+  if (!data.name || typeof data.name !== 'string' || data.name.trim().length < 3) {
+    errors.push('Package name must be at least 3 characters');
+  }
+  if (data.name && data.name.length > 100) {
+    errors.push('Package name cannot exceed 100 characters');
+  }
+
+  const duration = parseInt(data.duration);
+  if (!duration || duration < 1 || duration > 365) {
+    errors.push('Duration must be between 1 and 365 days');
+  }
+
+  const price = parseInt(data.price);
+  if (!price || price < 100 || price > 10000000) {
+    errors.push('Price must be between ₹100 and ₹1,00,00,000');
+  }
+
+  if (data.discountPrice) {
+    const dp = parseInt(data.discountPrice);
+    if (dp < 100) errors.push('Discount price must be at least ₹100');
+    if (dp >= price) errors.push('Discount price must be less than original price');
+  }
+
+  if (data.maxCapacity) {
+    const mc = parseInt(data.maxCapacity);
+    if (mc < 1 || mc > 500) errors.push('Max capacity must be between 1 and 500');
+  }
+
+  if (data.description && data.description.length > 3000) {
+    errors.push('Description cannot exceed 3000 characters');
+  }
+
+  if (data.therapies && !Array.isArray(data.therapies)) errors.push('Therapies must be an array');
+  if (data.inclusions && !Array.isArray(data.inclusions)) errors.push('Inclusions must be an array');
+  if (data.exclusions && !Array.isArray(data.exclusions)) errors.push('Exclusions must be an array');
+
+  if (Array.isArray(data.therapies) && data.therapies.length > 30) errors.push('Too many therapies (max 30)');
+  if (Array.isArray(data.inclusions) && data.inclusions.length > 30) errors.push('Too many inclusions (max 30)');
+
+  return errors;
+};
+
+// ============================================
+// SANITIZER: Clean package input
+// ============================================
+const sanitizePackageInput = (data) => {
+  const safe = {};
+
+  if (data.name) safe.name = String(data.name).trim().slice(0, 100);
+  if (data.duration) safe.duration = parseInt(data.duration);
+  if (data.price) safe.price = parseInt(data.price);
+  if (data.discountPrice) safe.discountPrice = parseInt(data.discountPrice);
+  if (data.description) safe.description = String(data.description).trim().slice(0, 3000);
+  if (data.shortDescription) safe.shortDescription = String(data.shortDescription).trim().slice(0, 200);
+  if (data.maxCapacity) safe.maxCapacity = parseInt(data.maxCapacity);
+  if (typeof data.isActive === 'boolean') safe.isActive = data.isActive;
+
+  if (Array.isArray(data.therapies)) {
+    safe.therapies = data.therapies
+      .filter(t => typeof t === 'string' && t.trim())
+      .map(t => String(t).trim().slice(0, 100))
+      .slice(0, 30);
+  }
+  if (Array.isArray(data.inclusions)) {
+    safe.inclusions = data.inclusions
+      .filter(t => typeof t === 'string' && t.trim())
+      .map(t => String(t).trim().slice(0, 200))
+      .slice(0, 30);
+  }
+  if (Array.isArray(data.exclusions)) {
+    safe.exclusions = data.exclusions
+      .filter(t => typeof t === 'string' && t.trim())
+      .map(t => String(t).trim().slice(0, 200))
+      .slice(0, 30);
+  }
+
+  const flags = ['includesConsultation', 'includesAccommodation', 'includesMeals',
+                 'includesMedicines', 'includesYoga', 'includesAirportTransfer',
+                 'includesFollowUp', 'includesDiagnostics'];
+  flags.forEach(flag => {
+    if (typeof data[flag] === 'boolean') safe[flag] = data[flag];
+  });
+
+  if (Array.isArray(data.programSchedule)) {
+    safe.programSchedule = data.programSchedule
+      .filter(d => d && typeof d.day === 'number')
+      .map(d => ({
+        day: parseInt(d.day),
+        title: String(d.title || '').slice(0, 200),
+        description: String(d.description || '').slice(0, 1000),
+        therapies: Array.isArray(d.therapies)
+          ? d.therapies.filter(t => typeof t === 'string').map(t => String(t).slice(0, 100))
+          : []
+      }))
+      .slice(0, 60);
+  }
+
+  return safe;
+};
+
+// ============================================
+// CREATE PACKAGE (Production)
+// ============================================
+router.post('/packages/:centerId', authenticateCenter, async (req, res) => {
+  try {
+    const center = req.center;
+
+    const errors = validatePackageInput(req.body);
+    if (errors.length > 0) {
+      return res.status(400).json({ success: false, errors });
+    }
+
+    const cleanData = sanitizePackageInput(req.body);
+
+    const exists = center.packages.some(
+      p => p.name.toLowerCase() === cleanData.name.toLowerCase() && !p.deleted
+    );
+    if (exists) {
+      return res.status(400).json({ success: false, error: 'A package with this name already exists' });
+    }
+
     const newPackage = {
-      ...req.body,
+      ...cleanData,
       approvalStatus: 'pending',
       submittedAt: new Date(),
       approvedAt: null,
@@ -364,37 +525,81 @@ router.post('/packages/:centerId', async (req, res) => {
       rejectedAt: null,
       rejectedBy: null,
       rejectionReason: '',
-      approvalNotes: ''
+      approvalNotes: '',
+      versionHistory: [{
+        version: 1,
+        changedAt: new Date(),
+        changedBy: 'center',
+        changeType: 'created',
+        snapshot: { ...cleanData }
+      }],
+      deleted: false,
+      deletedAt: null,
+      deletedBy: null
     };
-    
+
     center.packages.push(newPackage);
     await center.save();
-    
-    const addedPackage = center.packages[center.packages.length - 1];
-    
-    res.json({ 
-      success: true, 
+
+    const added = center.packages[center.packages.length - 1];
+
+    res.status(201).json({
+      success: true,
       message: 'Package submitted for admin approval',
-      data: addedPackage
+      data: added
     });
   } catch (error) {
-    console.error('Package add error:', error);
+    console.error('Package create error:', error);
     res.status(500).json({ success: false, error: error.message });
   }
 });
 
-router.put('/packages/:centerId/:packageId', async (req, res) => {
+// ============================================
+// UPDATE PACKAGE (Production)
+// ============================================
+router.put('/packages/:centerId/:packageId', authenticateCenter, async (req, res) => {
   try {
-    const center = await WellnessCenter.findById(req.params.centerId);
-    if (!center) return res.status(404).json({ success: false, error: 'Center not found' });
-    
+    const center = req.center;
     const pkg = center.packages.id(req.params.packageId);
+
     if (!pkg) return res.status(404).json({ success: false, error: 'Package not found' });
-    
-    // Update fields
-    Object.assign(pkg, req.body);
-    
-    // Reset approval on edit
+    if (pkg.deleted) return res.status(400).json({ success: false, error: 'Cannot edit a deleted package' });
+
+    const errors = validatePackageInput(req.body);
+    if (errors.length > 0) {
+      return res.status(400).json({ success: false, errors });
+    }
+
+    const cleanData = sanitizePackageInput(req.body);
+
+    if (cleanData.name) {
+      const collision = center.packages.some(
+        p => p._id.toString() !== req.params.packageId &&
+             p.name.toLowerCase() === cleanData.name.toLowerCase() &&
+             !p.deleted
+      );
+      if (collision) {
+        return res.status(400).json({ success: false, error: 'A package with this name already exists' });
+      }
+    }
+
+    const beforeSnapshot = {
+      name: pkg.name,
+      duration: pkg.duration,
+      price: pkg.price,
+      discountPrice: pkg.discountPrice,
+      description: pkg.description,
+      therapies: [...(pkg.therapies || [])],
+      inclusions: [...(pkg.inclusions || [])],
+      exclusions: [...(pkg.exclusions || [])],
+      maxCapacity: pkg.maxCapacity,
+      isActive: pkg.isActive
+    };
+
+    Object.keys(cleanData).forEach(key => {
+      pkg[key] = cleanData[key];
+    });
+
     pkg.approvalStatus = 'pending';
     pkg.submittedAt = new Date();
     pkg.approvedAt = null;
@@ -402,11 +607,22 @@ router.put('/packages/:centerId/:packageId', async (req, res) => {
     pkg.rejectedAt = null;
     pkg.rejectedBy = null;
     pkg.rejectionReason = '';
-    
+    pkg.approvalNotes = '';
+
+    if (!pkg.versionHistory) pkg.versionHistory = [];
+    pkg.versionHistory.push({
+      version: pkg.versionHistory.length + 1,
+      changedAt: new Date(),
+      changedBy: 'center',
+      changeType: 'updated',
+      before: beforeSnapshot,
+      after: { ...cleanData }
+    });
+
     await center.save();
-    
-    res.json({ 
-      success: true, 
+
+    res.json({
+      success: true,
       message: 'Package updated and sent for re-approval',
       data: pkg
     });
@@ -416,15 +632,35 @@ router.put('/packages/:centerId/:packageId', async (req, res) => {
   }
 });
 
-router.delete('/packages/:centerId/:packageId', async (req, res) => {
+// ============================================
+// DELETE PACKAGE (Soft Delete)
+// ============================================
+router.delete('/packages/:centerId/:packageId', authenticateCenter, async (req, res) => {
   try {
-    const center = await WellnessCenter.findById(req.params.centerId);
-    if (!center) return res.status(404).json({ success: false, error: 'Center not found' });
-    
-    center.packages.pull(req.params.packageId);
+    const center = req.center;
+    const pkg = center.packages.id(req.params.packageId);
+
+    if (!pkg) return res.status(404).json({ success: false, error: 'Package not found' });
+    if (pkg.deleted) return res.status(400).json({ success: false, error: 'Package already deleted' });
+
+    pkg.deleted = true;
+    pkg.deletedAt = new Date();
+    pkg.deletedBy = 'center';
+    pkg.isActive = false;
+    pkg.approvalStatus = 'rejected';
+    pkg.rejectionReason = 'Deleted by center';
+
+    if (!pkg.versionHistory) pkg.versionHistory = [];
+    pkg.versionHistory.push({
+      version: pkg.versionHistory.length + 1,
+      changedAt: new Date(),
+      changedBy: 'center',
+      changeType: 'deleted'
+    });
+
     await center.save();
-    
-    res.json({ success: true, message: 'Package removed' });
+
+    res.json({ success: true, message: 'Package deleted' });
   } catch (error) {
     console.error('Package delete error:', error);
     res.status(500).json({ success: false, error: error.message });
@@ -450,7 +686,7 @@ router.get('/admin/packages/pending', async (req, res) => {
     const pendingPackages = [];
     centers.forEach(center => {
       center.packages
-        .filter(pkg => pkg.approvalStatus === 'pending')
+        .filter(pkg => pkg.approvalStatus === 'pending' && !pkg.deleted)
         .forEach(pkg => {
           pendingPackages.push({
             centerId: center._id,
@@ -569,7 +805,7 @@ router.get('/admin/packages/pending-count', async (req, res) => {
     
     let count = 0;
     centers.forEach(center => {
-      count += center.packages.filter(pkg => pkg.approvalStatus === 'pending').length;
+      count += center.packages.filter(pkg => pkg.approvalStatus === 'pending' && !pkg.deleted).length;
     });
     
     res.json({ success: true, count });

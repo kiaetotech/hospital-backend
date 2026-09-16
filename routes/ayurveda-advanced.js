@@ -263,7 +263,7 @@ router.get('/centers', async (req, res) => {
     const centersWithApprovedPackages = centers
       .map(c => {
         const approvedPackages = (c.packages || []).filter(
-          p => p.isActive !== false && p.approvalStatus === 'approved'
+          p => p.isActive !== false && p.approvalStatus === 'approved' && !p.deleted
         );
         return { ...c, packages: approvedPackages };
       })
@@ -297,7 +297,7 @@ router.get('/centers/:id', async (req, res) => {
 
     // Only show approved and active packages
     center.packages = (center.packages || []).filter(
-      p => p.isActive !== false && p.approvalStatus === 'approved'
+      p => p.isActive !== false && p.approvalStatus === 'approved' && !p.deleted
     );
     
     // Only show active rooms
@@ -1055,7 +1055,7 @@ router.get('/wellness-programs', async (req, res) => {
     let programs = [];
     doctors.forEach(doctor => {
       const activePrograms = (doctor.wellnessPrograms || []).filter(
-  p => p.isActive !== false && p.approvalStatus === 'approved'
+  p => p.isActive !== false && p.approvalStatus === 'approved' && !p.deleted
 );
       activePrograms.forEach(program => {
         programs.push({
