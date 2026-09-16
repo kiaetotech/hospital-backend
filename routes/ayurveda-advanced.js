@@ -284,7 +284,54 @@ router.get('/centers', async (req, res) => {
   }
 });
 
+// ============================================
+// PUBLIC: SINGLE CENTER DETAIL (Only approved packages)
+// ============================================
 router.get('/centers/:id', async (req, res) => {
+  try {
+    const center = await WellnessCenter.findById(req.params.id)
+      .select('-password -documents -bankDetails')
+      .lean();
+
+    if (!center) return res.status(404).json({ success: false, error: 'Center not found' });
+
+    // Only show approved and active packages
+    center.packages = (center.packages || []).filter(
+      p => p.isActive !== false && p.approvalStatus === 'approved'
+    );
+    
+    // Only show active rooms
+    center.roomTypes = (center.roomTypes || []).filter(r => r.isActive !== false);
+    
+    // Only show approved reviews
+    center.reviews = (center.reviews || [])
+      .filter(r => r.adminApproved !== false)
+      .sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt))
+      .slice(0, 20);
+
+    // Populate doctors safely
+    if (center.doctors && center.doctors.length > 0) {
+      try {
+        const AyurvedaDoctor = require('../models/AyurvedaDoctor');
+        const doctors = await AyurvedaDoctor.find(
+          { _id: { $in: center.doctors } },
+          'name specialization experience education rating totalReviews consultationFee consultationTypes languages about'
+        ).lean();
+        center.doctors = doctors;
+      } catch (docError) {
+        console.error('Doctor populate error:', docError.message);
+        center.doctors = [];
+      }
+    } else {
+      center.doctors = [];
+    }
+
+    res.json({ success: true, data: center });
+  } catch (error) {
+    console.error('Center detail error:', error);
+    res.status(500).json({ success: false, error: error.message });
+  }
+});
 
 router.post('/bookings', async (req, res) => {
   try {
