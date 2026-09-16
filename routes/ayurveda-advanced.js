@@ -247,6 +247,9 @@ router.get('/recommend', async (req, res) => {
   }
 });
 
+// ============================================
+// PUBLIC: LIST CENTERS (Only with approved packages)
+// ============================================
 router.get('/centers', async (req, res) => {
   try {
     const centers = await WellnessCenter.find({ 
@@ -256,17 +259,19 @@ router.get('/centers', async (req, res) => {
     .select('-password -documents -bankDetails')
     .lean();
 
-    // Filter active packages only (no populate to avoid errors)
-    const centersWithData = centers.map(c => ({
-      ...c,
-      packages: (c.packages || []).filter(p => p.isActive !== false),
-      roomTypes: (c.roomTypes || []).filter(r => r.isActive !== false),
-      reviews: (c.reviews || []).filter(r => r.adminApproved !== false).slice(0, 10),
-    }));
+    // Filter to only centers with at least 1 APPROVED and ACTIVE package
+    const centersWithApprovedPackages = centers
+      .map(c => {
+        const approvedPackages = (c.packages || []).filter(
+          p => p.isActive !== false && p.approvalStatus === 'approved'
+        );
+        return { ...c, packages: approvedPackages };
+      })
+      .filter(c => c.packages.length > 0);
 
     res.json({ 
       success: true, 
-      data: centersWithData 
+      data: centersWithApprovedPackages 
     });
   } catch (error) {
     console.error('Error fetching centers:', error);
@@ -280,41 +285,6 @@ router.get('/centers', async (req, res) => {
 });
 
 router.get('/centers/:id', async (req, res) => {
-  try {
-    const center = await WellnessCenter.findById(req.params.id)
-      .select('-password -documents -bankDetails')
-      .lean();
-
-    if (!center) return res.status(404).json({ success: false, error: 'Center not found' });
-
-    // Filter active data
-    center.packages = (center.packages || []).filter(p => p.isActive !== false);
-    center.roomTypes = (center.roomTypes || []).filter(r => r.isActive !== false);
-    center.reviews = (center.reviews || []).filter(r => r.adminApproved !== false).slice(0, 20);
-
-    // Populate doctors separately (safely)
-    if (center.doctors && center.doctors.length > 0) {
-      try {
-        const AyurvedaDoctor = require('../models/AyurvedaDoctor');
-        const doctors = await AyurvedaDoctor.find(
-          { _id: { $in: center.doctors } },
-          'name specialization experience education rating totalReviews consultationFee consultationTypes languages about'
-        ).lean();
-        center.doctors = doctors;
-      } catch (docError) {
-        console.error('Doctor populate error:', docError.message);
-        center.doctors = [];
-      }
-    } else {
-      center.doctors = [];
-    }
-
-    res.json({ success: true, data: center });
-  } catch (error) {
-    console.error('Center detail error:', error);
-    res.status(500).json({ success: false, error: error.message });
-  }
-});
 
 router.post('/bookings', async (req, res) => {
   try {
@@ -1037,7 +1007,9 @@ router.get('/wellness-programs', async (req, res) => {
     
     let programs = [];
     doctors.forEach(doctor => {
-      const activePrograms = (doctor.wellnessPrograms || []).filter(p => p.isActive !== false);
+      const activePrograms = (doctor.wellnessPrograms || []).filter(
+  p => p.isActive !== false && p.approvalStatus === 'approved'
+);
       activePrograms.forEach(program => {
         programs.push({
           ...program,
@@ -1075,7 +1047,9 @@ router.get('/wellness-programs', async (req, res) => {
   }
 });
 
-// POST /api/ayurveda/doctor/wellness-program (Doctor creates program)
+// ============================================
+// DOCTOR: CREATE WELLNESS PROGRAM (With Approval)
+// ============================================
 router.post('/doctor/wellness-program', async (req, res) => {
   try {
     const { doctorId, program } = req.body;
@@ -1087,24 +1061,40 @@ router.post('/doctor/wellness-program', async (req, res) => {
     const doctor = await AyurvedaDoctor.findById(doctorId);
     if (!doctor) return res.status(404).json({ success: false, error: 'Doctor not found' });
     
-            if (!doctor.wellnessPrograms) doctor.wellnessPrograms = [];
+    if (!doctor.wellnessPrograms) doctor.wellnessPrograms = [];
     
-    doctor.wellnessPrograms.push({
+    const newProgram = {
       ...program,
       createdAt: new Date(),
       isActive: true,
       totalBookings: 0,
-      totalRevenue: 0
-    });
+      totalRevenue: 0,
+      // Approval
+      approvalStatus: 'pending',
+      submittedAt: new Date(),
+      approvedAt: null,
+      approvedBy: null,
+      rejectedAt: null,
+      rejectedBy: null,
+      rejectionReason: '',
+      approvalNotes: ''
+    };
     
+    doctor.wellnessPrograms.push(newProgram);
     await doctor.save();
     
-        res.json({ success: true, message: 'Program added successfully', data: doctor.wellnessPrograms });
+    const addedProgram = doctor.wellnessPrograms[doctor.wellnessPrograms.length - 1];
+    
+    res.json({ 
+      success: true, 
+      message: 'Program submitted for admin approval',
+      data: addedProgram
+    });
   } catch (error) {
+    console.error('Program creation error:', error);
     res.status(500).json({ success: false, error: error.message });
   }
 });
-
 // GET /api/ayurveda/doctor/:id/wellness-programs
 router.get('/doctor/:id/wellness-programs', async (req, res) => {
   try {
@@ -1254,6 +1244,220 @@ router.put('/admin/fee-config', async (req, res) => {
     await config.save();
     
     res.json({ success: true, message: 'Fee config updated', data: config });
+  } catch (error) {
+    res.status(500).json({ success: false, error: error.message });
+  }
+});
+
+// ============================================
+// DOCTOR: UPDATE WELLNESS PROGRAM
+// ============================================
+router.put('/doctor/wellness-program/:doctorId/:programId', async (req, res) => {
+  try {
+    const { doctorId, programId } = req.params;
+    const updates = req.body;
+    
+    const doctor = await AyurvedaDoctor.findById(doctorId);
+    if (!doctor) return res.status(404).json({ success: false, error: 'Doctor not found' });
+    
+    const program = doctor.wellnessPrograms.id(programId);
+    if (!program) return res.status(404).json({ success: false, error: 'Program not found' });
+    
+    // Update fields
+    Object.assign(program, updates);
+    
+    // Reset approval on edit
+    program.approvalStatus = 'pending';
+    program.submittedAt = new Date();
+    program.approvedAt = null;
+    program.approvedBy = null;
+    program.rejectedAt = null;
+    program.rejectedBy = null;
+    program.rejectionReason = '';
+    
+    await doctor.save();
+    
+    res.json({ 
+      success: true, 
+      message: 'Program updated and sent for re-approval',
+      data: program
+    });
+  } catch (error) {
+    console.error('Program update error:', error);
+    res.status(500).json({ success: false, error: error.message });
+  }
+});
+
+// ============================================
+// DOCTOR: DELETE WELLNESS PROGRAM
+// ============================================
+router.delete('/doctor/wellness-program/:doctorId/:programId', async (req, res) => {
+  try {
+    const { doctorId, programId } = req.params;
+    
+    const doctor = await AyurvedaDoctor.findById(doctorId);
+    if (!doctor) return res.status(404).json({ success: false, error: 'Doctor not found' });
+    
+    doctor.wellnessPrograms.pull(programId);
+    await doctor.save();
+    
+    res.json({ success: true, message: 'Program removed' });
+  } catch (error) {
+    console.error('Program delete error:', error);
+    res.status(500).json({ success: false, error: error.message });
+  }
+});
+
+// ============================================
+// ADMIN: WELLNESS PROGRAM APPROVAL
+// ============================================
+
+// Get all pending wellness programs across all doctors
+router.get('/admin/programs/pending', async (req, res) => {
+  const adminKey = req.headers['x-admin-key'];
+  if (adminKey !== process.env.ADMIN_KEY) {
+    return res.status(401).json({ success: false, error: 'Admin authentication required' });
+  }
+  
+  try {
+    const doctors = await AyurvedaDoctor.find({
+      'wellnessPrograms.approvalStatus': 'pending'
+    }).select('name phone email specialization address wellnessPrograms');
+    
+    const pendingPrograms = [];
+    doctors.forEach(doctor => {
+      (doctor.wellnessPrograms || [])
+        .filter(prog => prog.approvalStatus === 'pending')
+        .forEach(prog => {
+          pendingPrograms.push({
+            doctorId: doctor._id,
+            doctorName: doctor.name,
+            doctorSpecialization: doctor.specialization,
+            doctorCity: doctor.address?.city,
+            doctorPhone: doctor.phone,
+            programId: prog._id,
+            name: prog.name,
+            description: prog.description,
+            shortDescription: prog.shortDescription,
+            category: prog.category,
+            price: prog.price,
+            discountPrice: prog.discountPrice,
+            duration: prog.duration,
+            durationDays: prog.durationDays,
+            programType: prog.programType,
+            therapies: prog.therapies,
+            includes: prog.includes,
+            exclusions: prog.exclusions,
+            accommodationNotes: prog.accommodationNotes,
+            submittedAt: prog.submittedAt,
+            approvalStatus: prog.approvalStatus
+          });
+        });
+    });
+    
+    pendingPrograms.sort((a, b) => new Date(b.submittedAt) - new Date(a.submittedAt));
+    
+    res.json({ 
+      success: true, 
+      count: pendingPrograms.length,
+      data: pendingPrograms 
+    });
+  } catch (error) {
+    console.error('Pending programs error:', error);
+    res.status(500).json({ success: false, error: error.message });
+  }
+});
+
+// Approve a wellness program
+router.put('/admin/programs/:doctorId/:programId/approve', async (req, res) => {
+  const adminKey = req.headers['x-admin-key'];
+  if (adminKey !== process.env.ADMIN_KEY) {
+    return res.status(401).json({ success: false, error: 'Admin authentication required' });
+  }
+  
+  try {
+    const { doctorId, programId } = req.params;
+    
+    const doctor = await AyurvedaDoctor.findById(doctorId);
+    if (!doctor) return res.status(404).json({ success: false, error: 'Doctor not found' });
+    
+    const program = doctor.wellnessPrograms.id(programId);
+    if (!program) return res.status(404).json({ success: false, error: 'Program not found' });
+    
+    program.approvalStatus = 'approved';
+    program.approvedAt = new Date();
+    program.rejectionReason = '';
+    program.approvalNotes = req.body.notes || '';
+    
+    await doctor.save();
+    
+    res.json({ 
+      success: true, 
+      message: 'Program approved',
+      data: program 
+    });
+  } catch (error) {
+    console.error('Program approval error:', error);
+    res.status(500).json({ success: false, error: error.message });
+  }
+});
+
+// Reject a wellness program
+router.put('/admin/programs/:doctorId/:programId/reject', async (req, res) => {
+  const adminKey = req.headers['x-admin-key'];
+  if (adminKey !== process.env.ADMIN_KEY) {
+    return res.status(401).json({ success: false, error: 'Admin authentication required' });
+  }
+  
+  try {
+    const { doctorId, programId } = req.params;
+    const { reason } = req.body;
+    
+    if (!reason) {
+      return res.status(400).json({ success: false, error: 'Rejection reason is required' });
+    }
+    
+    const doctor = await AyurvedaDoctor.findById(doctorId);
+    if (!doctor) return res.status(404).json({ success: false, error: 'Doctor not found' });
+    
+    const program = doctor.wellnessPrograms.id(programId);
+    if (!program) return res.status(404).json({ success: false, error: 'Program not found' });
+    
+    program.approvalStatus = 'rejected';
+    program.rejectedAt = new Date();
+    program.rejectionReason = reason;
+    
+    await doctor.save();
+    
+    res.json({ 
+      success: true, 
+      message: 'Program rejected',
+      data: program 
+    });
+  } catch (error) {
+    console.error('Program rejection error:', error);
+    res.status(500).json({ success: false, error: error.message });
+  }
+});
+
+// Pending programs count
+router.get('/admin/programs/pending-count', async (req, res) => {
+  const adminKey = req.headers['x-admin-key'];
+  if (adminKey !== process.env.ADMIN_KEY) {
+    return res.status(401).json({ success: false, error: 'Admin authentication required' });
+  }
+  
+  try {
+    const doctors = await AyurvedaDoctor.find({
+      'wellnessPrograms.approvalStatus': 'pending'
+    }).select('wellnessPrograms');
+    
+    let count = 0;
+    doctors.forEach(doctor => {
+      count += (doctor.wellnessPrograms || []).filter(p => p.approvalStatus === 'pending').length;
+    });
+    
+    res.json({ success: true, count });
   } catch (error) {
     res.status(500).json({ success: false, error: error.message });
   }

@@ -257,27 +257,80 @@ const ayurvedaDoctorSchema = new mongoose.Schema({
   },
 
   // ============================================
-  // 🧘 WELLNESS PROGRAMS (Individual Patients - Ayurveda Tag)
-  // ============================================
-  wellnessPrograms: [{
-    name: { type: String },
-    description: { type: String },
-    category: { 
-      type: String,
-      enum: ['digestive_wellness', 'stress_sleep', 'joint_mobility', 'skin_hair', 'womens_wellness', 'weight_management', 'general_wellness']
-    },
-    price: { type: Number },
-    duration: { type: String },
-    includes: [{ type: String }],
-    isActive: { type: Boolean, default: true },
-    totalBookings: { type: Number, default: 0 },
-    totalRevenue: { type: Number, default: 0 },
-    createdAt: { type: Date, default: Date.now }
+// 🧘 WELLNESS PROGRAMS (Doctor-led, Rich)
+// ============================================
+wellnessPrograms: [{
+  // Basic info
+  name: { type: String, required: true },
+  description: { type: String },
+  shortDescription: { type: String, maxlength: 200 },
+  category: { 
+    type: String,
+    enum: ['digestive_wellness', 'stress_sleep', 'joint_mobility', 'skin_hair', 'womens_wellness', 'weight_management', 'general_wellness'],
+    default: 'general_wellness'
+  },
+  
+  // Pricing
+  price: { type: Number, required: true },
+  discountPrice: { type: Number },
+  
+  // Duration
+  duration: { type: String },
+  durationDays: { type: Number },
+  
+  // Type of program
+  programType: {
+    type: String,
+    enum: ['remote', 'at_clinic', 'at_home', 'stay_included'],
+    default: 'remote'
+  },
+  
+  // Content
+  therapies: [{ type: String }],
+  includes: [{ type: String }],
+  exclusions: [{ type: String }],
+  
+  // Program schedule (optional day-by-day)
+  programSchedule: [{
+    day: Number,
+    title: String,
+    description: String,
+    therapies: [String]
   }],
-
+  
+  // Inclusion flags (for comparison)
+  includesConsultation: { type: Boolean, default: true },
+  includesAccommodation: { type: Boolean, default: false },
+  includesMeals: { type: Boolean, default: false },
+  includesMedicines: { type: Boolean, default: false },
+  includesYoga: { type: Boolean, default: false },
+  includesFollowUp: { type: Boolean, default: true },
+  
+  // Accommodation notes (free text - doctor describes their facility)
+  accommodationNotes: { type: String },
+  
+  // Status
+  isActive: { type: Boolean, default: true },
+  totalBookings: { type: Number, default: 0 },
+  totalRevenue: { type: Number, default: 0 },
   createdAt: { type: Date, default: Date.now },
-  updatedAt: { type: Date, default: Date.now }
-});
+  
+  // ============================================
+  // APPROVAL SYSTEM
+  // ============================================
+  approvalStatus: {
+    type: String,
+    enum: ['pending', 'approved', 'rejected'],
+    default: 'pending'
+  },
+  approvalNotes: { type: String, default: '' },
+  submittedAt: { type: Date, default: Date.now },
+  approvedAt: { type: Date },
+  approvedBy: { type: mongoose.Schema.Types.ObjectId, ref: 'Admin' },
+  rejectedAt: { type: Date },
+  rejectedBy: { type: mongoose.Schema.Types.ObjectId, ref: 'Admin' },
+  rejectionReason: { type: String, default: '' }
+}],
 
 // ============================================
 // INDEXES (EXISTING + NEW)

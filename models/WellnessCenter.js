@@ -126,8 +126,24 @@ const wellnessCenterSchema = new mongoose.Schema({
     // Room options for this package
     availableRoomTypes: [String],
     
-    isActive: { type: Boolean, default: true },
-    isFeatured: { type: Boolean, default: false }
+        isActive: { type: Boolean, default: true },
+    isFeatured: { type: Boolean, default: false },
+    
+    // ============================================
+    // APPROVAL SYSTEM
+    // ============================================
+    approvalStatus: {
+      type: String,
+      enum: ['pending', 'approved', 'rejected'],
+      default: 'pending'
+    },
+    approvalNotes: { type: String, default: '' },
+    submittedAt: { type: Date, default: Date.now },
+    approvedAt: { type: Date },
+    approvedBy: { type: mongoose.Schema.Types.ObjectId, ref: 'Admin' },
+    rejectedAt: { type: Date },
+    rejectedBy: { type: mongoose.Schema.Types.ObjectId, ref: 'Admin' },
+    rejectionReason: { type: String, default: '' }
   }],
   
   // ============================================

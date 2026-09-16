@@ -348,18 +348,37 @@ router.post('/:centerId/accreditations', async (req, res) => {
 });
 
 // ============================================
-// PACKAGE MANAGEMENT
+// PACKAGE MANAGEMENT (With Approval)
 // ============================================
 router.post('/packages/:centerId', async (req, res) => {
   try {
     const center = await WellnessCenter.findById(req.params.centerId);
     if (!center) return res.status(404).json({ success: false, error: 'Center not found' });
     
-    center.packages.push(req.body);
+    const newPackage = {
+      ...req.body,
+      approvalStatus: 'pending',
+      submittedAt: new Date(),
+      approvedAt: null,
+      approvedBy: null,
+      rejectedAt: null,
+      rejectedBy: null,
+      rejectionReason: '',
+      approvalNotes: ''
+    };
+    
+    center.packages.push(newPackage);
     await center.save();
     
-    res.json({ success: true, message: 'Package added', data: center.packages });
+    const addedPackage = center.packages[center.packages.length - 1];
+    
+    res.json({ 
+      success: true, 
+      message: 'Package submitted for admin approval',
+      data: addedPackage
+    });
   } catch (error) {
+    console.error('Package add error:', error);
     res.status(500).json({ success: false, error: error.message });
   }
 });
@@ -372,11 +391,27 @@ router.put('/packages/:centerId/:packageId', async (req, res) => {
     const pkg = center.packages.id(req.params.packageId);
     if (!pkg) return res.status(404).json({ success: false, error: 'Package not found' });
     
+    // Update fields
     Object.assign(pkg, req.body);
+    
+    // Reset approval on edit
+    pkg.approvalStatus = 'pending';
+    pkg.submittedAt = new Date();
+    pkg.approvedAt = null;
+    pkg.approvedBy = null;
+    pkg.rejectedAt = null;
+    pkg.rejectedBy = null;
+    pkg.rejectionReason = '';
+    
     await center.save();
     
-    res.json({ success: true, message: 'Package updated', data: pkg });
+    res.json({ 
+      success: true, 
+      message: 'Package updated and sent for re-approval',
+      data: pkg
+    });
   } catch (error) {
+    console.error('Package update error:', error);
     res.status(500).json({ success: false, error: error.message });
   }
 });
@@ -390,6 +425,154 @@ router.delete('/packages/:centerId/:packageId', async (req, res) => {
     await center.save();
     
     res.json({ success: true, message: 'Package removed' });
+  } catch (error) {
+    console.error('Package delete error:', error);
+    res.status(500).json({ success: false, error: error.message });
+  }
+});
+
+// ============================================
+// ADMIN: PACKAGE APPROVAL ROUTES
+// ============================================
+
+// Get all pending packages across all centers
+router.get('/admin/packages/pending', async (req, res) => {
+  const adminKey = req.headers['x-admin-key'];
+  if (adminKey !== process.env.ADMIN_KEY) {
+    return res.status(401).json({ success: false, error: 'Admin authentication required' });
+  }
+  
+  try {
+    const centers = await WellnessCenter.find({
+      'packages.approvalStatus': 'pending'
+    }).select('name phone email address packages');
+    
+    const pendingPackages = [];
+    centers.forEach(center => {
+      center.packages
+        .filter(pkg => pkg.approvalStatus === 'pending')
+        .forEach(pkg => {
+          pendingPackages.push({
+            centerId: center._id,
+            centerName: center.name,
+            centerCity: center.address?.city,
+            centerPhone: center.phone,
+            packageId: pkg._id,
+            name: pkg.name,
+            duration: pkg.duration,
+            price: pkg.price,
+            discountPrice: pkg.discountPrice,
+            therapies: pkg.therapies,
+            inclusions: pkg.inclusions,
+            shortDescription: pkg.shortDescription,
+            description: pkg.description,
+            maxCapacity: pkg.maxCapacity,
+            submittedAt: pkg.submittedAt,
+            approvalStatus: pkg.approvalStatus
+          });
+        });
+    });
+    
+    // Sort by newest first
+    pendingPackages.sort((a, b) => new Date(b.submittedAt) - new Date(a.submittedAt));
+    
+    res.json({ 
+      success: true, 
+      count: pendingPackages.length,
+      data: pendingPackages 
+    });
+  } catch (error) {
+    console.error('Pending packages error:', error);
+    res.status(500).json({ success: false, error: error.message });
+  }
+});
+
+// Approve a package
+router.put('/admin/packages/:centerId/:packageId/approve', async (req, res) => {
+  const adminKey = req.headers['x-admin-key'];
+  if (adminKey !== process.env.ADMIN_KEY) {
+    return res.status(401).json({ success: false, error: 'Admin authentication required' });
+  }
+  
+  try {
+    const center = await WellnessCenter.findById(req.params.centerId);
+    if (!center) return res.status(404).json({ success: false, error: 'Center not found' });
+    
+    const pkg = center.packages.id(req.params.packageId);
+    if (!pkg) return res.status(404).json({ success: false, error: 'Package not found' });
+    
+    pkg.approvalStatus = 'approved';
+    pkg.approvedAt = new Date();
+    pkg.rejectionReason = '';
+    pkg.approvalNotes = req.body.notes || '';
+    
+    await center.save();
+    
+    res.json({ 
+      success: true, 
+      message: 'Package approved',
+      data: pkg 
+    });
+  } catch (error) {
+    console.error('Package approval error:', error);
+    res.status(500).json({ success: false, error: error.message });
+  }
+});
+
+// Reject a package
+router.put('/admin/packages/:centerId/:packageId/reject', async (req, res) => {
+  const adminKey = req.headers['x-admin-key'];
+  if (adminKey !== process.env.ADMIN_KEY) {
+    return res.status(401).json({ success: false, error: 'Admin authentication required' });
+  }
+  
+  try {
+    const { reason } = req.body;
+    if (!reason) {
+      return res.status(400).json({ success: false, error: 'Rejection reason is required' });
+    }
+    
+    const center = await WellnessCenter.findById(req.params.centerId);
+    if (!center) return res.status(404).json({ success: false, error: 'Center not found' });
+    
+    const pkg = center.packages.id(req.params.packageId);
+    if (!pkg) return res.status(404).json({ success: false, error: 'Package not found' });
+    
+    pkg.approvalStatus = 'rejected';
+    pkg.rejectedAt = new Date();
+    pkg.rejectionReason = reason;
+    
+    await center.save();
+    
+    res.json({ 
+      success: true, 
+      message: 'Package rejected',
+      data: pkg 
+    });
+  } catch (error) {
+    console.error('Package rejection error:', error);
+    res.status(500).json({ success: false, error: error.message });
+  }
+});
+
+// Get count of pending packages (for dashboard badge)
+router.get('/admin/packages/pending-count', async (req, res) => {
+  const adminKey = req.headers['x-admin-key'];
+  if (adminKey !== process.env.ADMIN_KEY) {
+    return res.status(401).json({ success: false, error: 'Admin authentication required' });
+  }
+  
+  try {
+    const centers = await WellnessCenter.find({
+      'packages.approvalStatus': 'pending'
+    }).select('packages');
+    
+    let count = 0;
+    centers.forEach(center => {
+      count += center.packages.filter(pkg => pkg.approvalStatus === 'pending').length;
+    });
+    
+    res.json({ success: true, count });
   } catch (error) {
     res.status(500).json({ success: false, error: error.message });
   }
