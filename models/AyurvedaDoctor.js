@@ -330,7 +330,8 @@ wellnessPrograms: [{
   rejectedAt: { type: Date },
   rejectedBy: { type: mongoose.Schema.Types.ObjectId, ref: 'Admin' },
   rejectionReason: { type: String, default: '' }
-}],
+}]
+});
 
 // ============================================
 // INDEXES (EXISTING + NEW)
