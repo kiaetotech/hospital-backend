@@ -261,9 +261,9 @@ const ayurvedaBookingSchema = new mongoose.Schema({
   // ============================================
   complaints: [{
     category: { 
-      type: String, 
-      enum: ['service_quality', 'staff_behaviour', 'late_arrival', 'overcharging', 'medical_assistance', 'facility_issue', 'cleanliness', 'other'],
-      default: 'other'
+  type: String, 
+  default: 'other'
+},
     },
     description: { type: String, maxlength: 2000 },
     priority: { 
