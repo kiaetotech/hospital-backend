@@ -33,9 +33,37 @@ const authenticateUser = (req, res, next) => {
 };
 
 // ============================================
+// PATIENT-ONLY MIDDLEWARE
+// ============================================
+const authenticatePatient = (req, res, next) => {
+  const token = req.headers.authorization?.split(' ')[1];
+  if (!token) {
+    return res.status(401).json({ success: false, message: 'Please login as a patient to continue' });
+  }
+  
+  try {
+    const jwt = require('jsonwebtoken');
+    const decoded = jwt.verify(token, process.env.JWT_SECRET || 'hospital_platform_secret_key_2024');
+    
+    // Reject non-patient tokens
+    if (decoded.role !== 'patient') {
+      return res.status(403).json({ 
+        success: false, 
+        message: `Patient access required. You are logged in as ${decoded.role}. Please logout and login as a patient.` 
+      });
+    }
+    
+    req.user = decoded;
+    next();
+  } catch (error) {
+    return res.status(401).json({ success: false, message: 'Invalid or expired token' });
+  }
+};
+
+// ============================================
 // CREATE BOOKING
 // ============================================
-router.post('/create', authenticateUser, async (req, res) => {
+router.post('/create', authenticatePatient, async (req, res) => {
   try {
     const {
       type,
@@ -289,7 +317,7 @@ router.post('/create', authenticateUser, async (req, res) => {
 // ============================================
 // VERIFY PAYMENT
 // ============================================
-router.post('/verify-payment', authenticateUser, async (req, res) => {
+router.post('/verify-payment', authenticatePatient, async (req, res) => {
   try {
     const { bookingId, razorpayPaymentId, razorpaySignature } = req.body;
 
@@ -365,7 +393,7 @@ router.post('/verify-payment', authenticateUser, async (req, res) => {
 // ============================================
 // VERIFY OTP
 // ============================================
-router.post('/verify-otp', authenticateUser, async (req, res) => {
+router.post('/verify-otp', authenticatePatient, async (req, res) => {
   try {
     const { bookingId, otp } = req.body;
 
@@ -402,7 +430,7 @@ router.post('/verify-otp', authenticateUser, async (req, res) => {
 // ============================================
 // RESEND OTP
 // ============================================
-router.post('/resend-otp', authenticateUser, async (req, res) => {
+router.post('/resend-otp', authenticatePatient, async (req, res) => {
   try {
     const { bookingId } = req.body;
 
@@ -439,7 +467,7 @@ router.post('/resend-otp', authenticateUser, async (req, res) => {
 // ============================================
 // GET MY BOOKINGS
 // ============================================
-router.get('/my-bookings', authenticateUser, async (req, res) => {
+router.get('/my-bookings', authenticatePatient, async (req, res) => {
   try {
     const { status, type, page = 1, limit = 10 } = req.query;
     
@@ -500,7 +528,7 @@ router.get('/:bookingId', authenticateUser, async (req, res) => {
 // ============================================
 // GET CANCELLATION QUOTE
 // ============================================
-router.get('/:bookingId/cancellation-quote', authenticateUser, async (req, res) => {
+router.get('/:bookingId/cancellation-quote', authenticatePatient, async (req, res) => {
   try {
     const booking = await AyurvedaBooking.findOne({ 
       bookingId: req.params.bookingId,
@@ -541,7 +569,7 @@ router.get('/:bookingId/cancellation-quote', authenticateUser, async (req, res) 
 // ============================================
 // CANCEL BOOKING
 // ============================================
-router.put('/:bookingId/cancel', authenticateUser, async (req, res) => {
+router.put('/:bookingId/cancel', authenticatePatient, async (req, res) => {
   try {
     const { reason } = req.body;
 
@@ -673,7 +701,7 @@ router.put('/:bookingId/reschedule', authenticateUser, async (req, res) => {
 // ============================================
 // SUBMIT REVIEW
 // ============================================
-router.post('/:bookingId/review', authenticateUser, async (req, res) => {
+router.post('/:bookingId/review', authenticatePatient, async (req, res) => {
   try {
     const { rating, comment } = req.body;
 
@@ -835,7 +863,7 @@ router.put('/:bookingId/status', authenticateUser, async (req, res) => {
 // ============================================
 
 // POST /api/ayurveda/bookings/panchakarma
-router.post('/panchakarma', authenticateUser, async (req, res) => {
+router.post('/panchakarma', authenticatePatient, async (req, res) => {
   try {
     const {
       centerId,
