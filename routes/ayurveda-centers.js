@@ -949,4 +949,57 @@ router.get('/debug-raw/:centerId', async (req, res) => {
   }
 });
 
+// ============================================
+// ONE-TIME MIGRATION: Fix missing approvalStatus
+// ============================================
+router.post('/admin/fix-approval-status', async (req, res) => {
+  const adminKey = req.headers['x-admin-key'];
+  if (adminKey !== process.env.ADMIN_KEY) {
+    return res.status(401).json({ success: false, error: 'Admin authentication required' });
+  }
+  
+  try {
+    const centers = await WellnessCenter.find({}).lean();
+    let totalFixed = 0;
+    const log = [];
+    
+    for (const center of centers) {
+      const packages = center.packages || [];
+      let needsFix = false;
+      const fixedPackages = packages.map(p => {
+        if (!p.approvalStatus) {
+          needsFix = true;
+          totalFixed++;
+          return {
+            ...p,
+            approvalStatus: 'pending',
+            submittedAt: p.submittedAt || new Date(),
+            approvalNotes: p.approvalNotes || '',
+            rejectionReason: p.rejectionReason || '',
+            deleted: false
+          };
+        }
+        return p;
+      });
+      
+      if (needsFix) {
+        await WellnessCenter.updateOne(
+          { _id: center._id },
+          { $set: { packages: fixedPackages } }
+        );
+        log.push(`Fixed ${center.name} (${fixedPackages.length} packages)`);
+      }
+    }
+    
+    res.json({
+      success: true,
+      message: `Fixed ${totalFixed} packages across ${centers.length} centers`,
+      log
+    });
+  } catch (error) {
+    console.error('Fix migration error:', error);
+    res.status(500).json({ success: false, error: error.message });
+  }
+});
+
 module.exports = router;
