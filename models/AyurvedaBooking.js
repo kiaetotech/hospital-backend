@@ -245,25 +245,13 @@ const ayurvedaBookingSchema = new mongoose.Schema({
     message: { type: String }
   }],
   
-  // ============================================
-  // TIMESTAMPS
-  // ============================================
-  bookingRequestedAt: { type: Date, default: Date.now },
-  doctorAcceptedAt: { type: Date },
-  consultationStartedAt: { type: Date },
-  consultationEndedAt: { type: Date },
-  createdAt: { type: Date, default: Date.now },
-  updatedAt: { type: Date, default: Date.now }
-});
-
-  // ============================================
+    // ============================================
   // COMPLAINTS
   // ============================================
   complaints: [{
     category: { 
-  type: String, 
-  default: 'other'
-},
+      type: String, 
+      default: 'other'
     },
     description: { type: String, maxlength: 2000 },
     priority: { 
@@ -280,6 +268,17 @@ const ayurvedaBookingSchema = new mongoose.Schema({
     resolvedAt: { type: Date },
     createdAt: { type: Date, default: Date.now }
   }],
+
+  // ============================================
+  // TIMESTAMPS
+  // ============================================
+  bookingRequestedAt: { type: Date, default: Date.now },
+  doctorAcceptedAt: { type: Date },
+  consultationStartedAt: { type: Date },
+  consultationEndedAt: { type: Date },
+  createdAt: { type: Date, default: Date.now },
+  updatedAt: { type: Date, default: Date.now }
+});
 
 // ============================================
 // INDEXES
