@@ -1143,4 +1143,443 @@ router.post('/panchakarma', authenticatePatient, async (req, res) => {
   }
 });
 
+// ============================================
+// CENTER: VIEW COMPLAINTS ON OWN BOOKINGS
+// ============================================
+router.get('/center/complaints', authenticateUser, async (req, res) => {
+  try {
+    const centerId = req.user.id;
+    const { status, page = 1, limit = 20 } = req.query;
+
+    const query = { 
+      center: centerId,
+      'complaints.0': { $exists: true }
+    };
+
+    const bookings = await AyurvedaBooking.find(query)
+      .select('bookingId type patient package centerName complaints review createdAt')
+      .sort({ updatedAt: -1 });
+
+    let complaints = [];
+    bookings.forEach(b => {
+      (b.complaints || []).forEach(c => {
+        if (status && c.status !== status) return;
+        complaints.push({
+          complaintId: c._id,
+          bookingId: b.bookingId,
+          bookingType: b.type,
+          patientName: b.patient?.name || 'Patient',
+          patientPhone: b.patient?.phone || '',
+          packageName: b.package?.name || '',
+          category: c.category,
+          description: c.description,
+          priority: c.priority,
+          status: c.status,
+          adminResponse: c.adminResponse,
+          centerResponse: c.centerResponse || '',
+          resolvedAt: c.resolvedAt,
+          createdAt: c.createdAt
+        });
+      });
+    });
+
+    complaints.sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt));
+
+    const total = complaints.length;
+    const start = (parseInt(page) - 1) * parseInt(limit);
+    const paginated = complaints.slice(start, start + parseInt(limit));
+
+    res.json({
+      success: true,
+      data: paginated,
+      pagination: {
+        page: parseInt(page),
+        limit: parseInt(limit),
+        total,
+        pages: Math.ceil(total / parseInt(limit))
+      }
+    });
+  } catch (error) {
+    console.error('Center complaints error:', error);
+    res.status(500).json({ success: false, message: 'Failed to fetch complaints' });
+  }
+});
+
+// ============================================
+// CENTER: RESPOND TO COMPLAINT
+// ============================================
+router.put('/:bookingId/complaint/:complaintId/respond', authenticateUser, async (req, res) => {
+  try {
+    const { response } = req.body;
+    const centerId = req.user.id;
+
+    if (!response || response.trim().length < 3) {
+      return res.status(400).json({ success: false, message: 'Response must be at least 3 characters' });
+    }
+
+    const booking = await AyurvedaBooking.findOne({ 
+      bookingId: req.params.bookingId,
+      center: centerId
+    });
+
+    if (!booking) {
+      return res.status(404).json({ success: false, message: 'Booking not found' });
+    }
+
+    const complaint = booking.complaints.id(req.params.complaintId);
+    if (!complaint) {
+      return res.status(404).json({ success: false, message: 'Complaint not found' });
+    }
+
+    complaint.centerResponse = response.trim().slice(0, 2000);
+    complaint.centerRespondedAt = new Date();
+    complaint.status = 'in_review';
+
+    await booking.save();
+
+    res.json({
+      success: true,
+      message: 'Response submitted',
+      data: complaint
+    });
+  } catch (error) {
+    console.error('Respond error:', error);
+    res.status(500).json({ success: false, message: 'Failed to respond' });
+  }
+});
+
+// ============================================
+// CENTER: MARK COMPLAINT RESOLVED
+// ============================================
+router.put('/:bookingId/complaint/:complaintId/resolve', authenticateUser, async (req, res) => {
+  try {
+    const centerId = req.user.id;
+
+    const booking = await AyurvedaBooking.findOne({ 
+      bookingId: req.params.bookingId,
+      center: centerId
+    });
+
+    if (!booking) {
+      return res.status(404).json({ success: false, message: 'Booking not found' });
+    }
+
+    const complaint = booking.complaints.id(req.params.complaintId);
+    if (!complaint) {
+      return res.status(404).json({ success: false, message: 'Complaint not found' });
+    }
+
+    complaint.status = 'resolved';
+    complaint.resolvedAt = new Date();
+
+    await booking.save();
+
+    res.json({
+      success: true,
+      message: 'Complaint marked as resolved',
+      data: complaint
+    });
+  } catch (error) {
+    console.error('Resolve error:', error);
+    res.status(500).json({ success: false, message: 'Failed to resolve' });
+  }
+});
+
+// ============================================
+// CENTER: VIEW REVIEWS ON OWN BOOKINGS
+// ============================================
+router.get('/center/reviews', authenticateUser, async (req, res) => {
+  try {
+    const centerId = req.user.id;
+    const { page = 1, limit = 20 } = req.query;
+
+    const bookings = await AyurvedaBooking.find({
+      center: centerId,
+      reviewed: true
+    })
+      .select('bookingId type patient package review centerName createdAt')
+      .sort({ 'review.createdAt': -1 });
+
+    const reviews = bookings.map(b => ({
+      bookingId: b.bookingId,
+      bookingType: b.type,
+      patientName: b.patient?.name || 'Patient',
+      packageName: b.package?.name || '',
+      rating: b.review?.rating,
+      comment: b.review?.comment,
+      centerResponse: b.review?.centerResponse || '',
+      centerRespondedAt: b.review?.centerRespondedAt,
+      createdAt: b.review?.createdAt
+    }));
+
+    const total = reviews.length;
+    const start = (parseInt(page) - 1) * parseInt(limit);
+    const paginated = reviews.slice(start, start + parseInt(limit));
+
+    // Average rating
+    const avgRating = reviews.length > 0
+      ? Math.round((reviews.reduce((sum, r) => sum + (r.rating || 0), 0) / reviews.length) * 10) / 10
+      : 0;
+
+    res.json({
+      success: true,
+      data: paginated,
+      averageRating: avgRating,
+      totalReviews: total,
+      pagination: {
+        page: parseInt(page),
+        limit: parseInt(limit),
+        total,
+        pages: Math.ceil(total / parseInt(limit))
+      }
+    });
+  } catch (error) {
+    console.error('Center reviews error:', error);
+    res.status(500).json({ success: false, message: 'Failed to fetch reviews' });
+  }
+});
+
+// ============================================
+// CENTER: RESPOND TO REVIEW
+// ============================================
+router.put('/:bookingId/review/respond', authenticateUser, async (req, res) => {
+  try {
+    const { response } = req.body;
+    const centerId = req.user.id;
+
+    if (!response || response.trim().length < 3) {
+      return res.status(400).json({ success: false, message: 'Response must be at least 3 characters' });
+    }
+
+    const booking = await AyurvedaBooking.findOne({
+      bookingId: req.params.bookingId,
+      center: centerId,
+      reviewed: true
+    });
+
+    if (!booking) {
+      return res.status(404).json({ success: false, message: 'Review not found' });
+    }
+
+    booking.review.centerResponse = response.trim().slice(0, 1000);
+    booking.review.centerRespondedAt = new Date();
+
+    await booking.save();
+
+    res.json({
+      success: true,
+      message: 'Response submitted',
+      data: booking.review
+    });
+  } catch (error) {
+    console.error('Review respond error:', error);
+    res.status(500).json({ success: false, message: 'Failed to respond' });
+  }
+});
+
+// ============================================
+// ADMIN: VIEW ALL COMPLAINTS
+// ============================================
+router.get('/admin/complaints', async (req, res) => {
+  const adminKey = req.headers['x-admin-key'];
+  if (adminKey !== process.env.ADMIN_KEY) {
+    return res.status(401).json({ success: false, message: 'Admin authentication required' });
+  }
+
+  try {
+    const { status, page = 1, limit = 50 } = req.query;
+
+    const bookings = await AyurvedaBooking.find({
+      'complaints.0': { $exists: true }
+    })
+      .select('bookingId type patient package centerName center doctor doctorName complaints')
+      .sort({ updatedAt: -1 });
+
+    let complaints = [];
+    bookings.forEach(b => {
+      (b.complaints || []).forEach(c => {
+        if (status && c.status !== status) return;
+        complaints.push({
+          complaintId: c._id,
+          bookingId: b.bookingId,
+          bookingType: b.type,
+          centerId: b.center,
+          centerName: b.centerName,
+          doctorName: b.doctorName,
+          patientName: b.patient?.name,
+          patientPhone: b.patient?.phone,
+          category: c.category,
+          description: c.description,
+          priority: c.priority,
+          status: c.status,
+          centerResponse: c.centerResponse || '',
+          adminResponse: c.adminResponse || '',
+          resolvedAt: c.resolvedAt,
+          createdAt: c.createdAt,
+          ageHours: Math.round((Date.now() - new Date(c.createdAt)) / (1000 * 60 * 60))
+        });
+      });
+    });
+
+    complaints.sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt));
+
+    const total = complaints.length;
+    const start = (parseInt(page) - 1) * parseInt(limit);
+    const paginated = complaints.slice(start, start + parseInt(limit));
+
+    res.json({
+      success: true,
+      data: paginated,
+      pagination: {
+        page: parseInt(page),
+        limit: parseInt(limit),
+        total,
+        pages: Math.ceil(total / parseInt(limit))
+      }
+    });
+  } catch (error) {
+    console.error('Admin complaints error:', error);
+    res.status(500).json({ success: false, message: 'Failed to fetch complaints' });
+  }
+});
+
+// ============================================
+// ADMIN: UPDATE COMPLAINT STATUS
+// ============================================
+router.put('/admin/complaint/:bookingId/:complaintId', async (req, res) => {
+  const adminKey = req.headers['x-admin-key'];
+  if (adminKey !== process.env.ADMIN_KEY) {
+    return res.status(401).json({ success: false, message: 'Admin authentication required' });
+  }
+
+  try {
+    const { status, adminResponse } = req.body;
+
+    const booking = await AyurvedaBooking.findOne({ bookingId: req.params.bookingId });
+    if (!booking) {
+      return res.status(404).json({ success: false, message: 'Booking not found' });
+    }
+
+    const complaint = booking.complaints.id(req.params.complaintId);
+    if (!complaint) {
+      return res.status(404).json({ success: false, message: 'Complaint not found' });
+    }
+
+    if (status) complaint.status = status;
+    if (adminResponse) complaint.adminResponse = adminResponse.trim().slice(0, 2000);
+    if (status === 'resolved') complaint.resolvedAt = new Date();
+
+    await booking.save();
+
+    res.json({
+      success: true,
+      message: 'Complaint updated',
+      data: complaint
+    });
+  } catch (error) {
+    console.error('Admin complaint update error:', error);
+    res.status(500).json({ success: false, message: 'Failed to update' });
+  }
+});
+
+// ============================================
+// ADMIN: VIEW ALL REVIEWS
+// ============================================
+router.get('/admin/reviews', async (req, res) => {
+  const adminKey = req.headers['x-admin-key'];
+  if (adminKey !== process.env.ADMIN_KEY) {
+    return res.status(401).json({ success: false, message: 'Admin authentication required' });
+  }
+
+  try {
+    const { page = 1, limit = 50, minRating, maxRating } = req.query;
+
+    const query = { reviewed: true };
+    const bookings = await AyurvedaBooking.find(query)
+      .select('bookingId type patient center centerName doctor doctorName review package createdAt')
+      .sort({ 'review.createdAt': -1 });
+
+    let reviews = bookings.map(b => ({
+      bookingId: b.bookingId,
+      bookingType: b.type,
+      patientName: b.patient?.name,
+      centerName: b.centerName,
+      doctorName: b.doctorName,
+      packageName: b.package?.name,
+      rating: b.review?.rating,
+      comment: b.review?.comment,
+      centerResponse: b.review?.centerResponse || '',
+      createdAt: b.review?.createdAt
+    }));
+
+    if (minRating) reviews = reviews.filter(r => r.rating >= parseInt(minRating));
+    if (maxRating) reviews = reviews.filter(r => r.rating <= parseInt(maxRating));
+
+    const total = reviews.length;
+    const start = (parseInt(page) - 1) * parseInt(limit);
+    const paginated = reviews.slice(start, start + parseInt(limit));
+
+    const avgRating = reviews.length > 0
+      ? Math.round((reviews.reduce((sum, r) => sum + (r.rating || 0), 0) / reviews.length) * 10) / 10
+      : 0;
+
+    res.json({
+      success: true,
+      data: paginated,
+      averageRating: avgRating,
+      totalReviews: total,
+      pagination: {
+        page: parseInt(page),
+        limit: parseInt(limit),
+        total,
+        pages: Math.ceil(total / parseInt(limit))
+      }
+    });
+  } catch (error) {
+    console.error('Admin reviews error:', error);
+    res.status(500).json({ success: false, message: 'Failed to fetch reviews' });
+  }
+});
+
+// ============================================
+// PATIENT: GET OWN COMPLAINTS
+// ============================================
+router.get('/complaints/my', authenticatePatient, async (req, res) => {
+  try {
+    const bookings = await AyurvedaBooking.find({
+      userId: req.user.id,
+      'complaints.0': { $exists: true }
+    }).select('bookingId complaints type centerName doctorName package createdAt');
+
+    const complaints = [];
+    bookings.forEach(b => {
+      (b.complaints || []).forEach(c => {
+        complaints.push({
+          complaintId: c._id,
+          bookingId: b.bookingId,
+          bookingType: b.type,
+          centerName: b.centerName,
+          doctorName: b.doctorName,
+          packageName: b.package?.name,
+          category: c.category,
+          description: c.description,
+          priority: c.priority,
+          status: c.status,
+          centerResponse: c.centerResponse || '',
+          adminResponse: c.adminResponse || '',
+          resolvedAt: c.resolvedAt,
+          createdAt: c.createdAt
+        });
+      });
+    });
+
+    complaints.sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt));
+
+    res.json({ success: true, data: complaints, count: complaints.length });
+  } catch (error) {
+    console.error('Patient complaints error:', error);
+    res.status(500).json({ success: false, message: 'Failed to fetch complaints' });
+  }
+});
+
 module.exports = router;
