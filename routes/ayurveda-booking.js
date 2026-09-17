@@ -779,6 +779,97 @@ router.post('/:bookingId/review', authenticatePatient, async (req, res) => {
 });
 
 // ============================================
+// SUBMIT COMPLAINT
+// ============================================
+router.post('/:bookingId/complaint', authenticatePatient, async (req, res) => {
+  try {
+    const { category, description, priority } = req.body;
+
+    if (!description || description.trim().length < 10) {
+      return res.status(400).json({ success: false, message: 'Description must be at least 10 characters' });
+    }
+
+    const booking = await AyurvedaBooking.findOne({ 
+      bookingId: req.params.bookingId,
+      userId: req.user.id
+    });
+
+    if (!booking) {
+      return res.status(404).json({ success: false, message: 'Booking not found' });
+    }
+
+    // Store complaint inside the booking
+    if (!booking.complaints) booking.complaints = [];
+    
+    booking.complaints.push({
+      category: category || 'other',
+      description: description.trim().slice(0, 2000),
+      priority: priority || 'medium',
+      status: 'pending',
+      createdAt: new Date()
+    });
+
+    await booking.save();
+
+    // Notify admin (optional)
+    try {
+      const notificationService = require('../services/notificationService');
+      if (notificationService.sendComplaintNotification) {
+        await notificationService.sendComplaintNotification(booking, category);
+      }
+    } catch (notifError) {
+      console.error('Complaint notification failed:', notifError.message);
+    }
+
+    res.json({
+      success: true,
+      message: 'Complaint submitted successfully',
+      data: booking.complaints[booking.complaints.length - 1]
+    });
+
+  } catch (error) {
+    console.error('Complaint error:', error);
+    res.status(500).json({ success: false, message: error.message || 'Failed to submit complaint' });
+  }
+});
+
+// ============================================
+// GET MY COMPLAINTS
+// ============================================
+router.get('/complaints/my', authenticatePatient, async (req, res) => {
+  try {
+    const bookings = await AyurvedaBooking.find({
+      userId: req.user.id,
+      'complaints.0': { $exists: true }
+    }).select('bookingId complaints type centerName doctorName');
+
+    const complaints = [];
+    bookings.forEach(b => {
+      (b.complaints || []).forEach(c => {
+        complaints.push({
+          bookingId: b.bookingId,
+          bookingType: b.type,
+          centerName: b.centerName,
+          doctorName: b.doctorName,
+          ...c.toObject()
+        });
+      });
+    });
+
+    complaints.sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt));
+
+    res.json({
+      success: true,
+      data: complaints,
+      count: complaints.length
+    });
+  } catch (error) {
+    console.error('Get complaints error:', error);
+    res.status(500).json({ success: false, message: 'Failed to fetch complaints' });
+  }
+});
+
+// ============================================
 // GET DOCTOR BOOKINGS
 // ============================================
 router.get('/doctor/:doctorId', authenticateUser, async (req, res) => {
