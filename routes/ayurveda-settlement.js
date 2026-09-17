@@ -23,19 +23,35 @@ const authenticateUser = (req, res, next) => {
 };
 
 // ============================================
+// HELPER: Get canonical user ID from JWT
+// ============================================
+const getUserIdFromToken = (user) => {
+  return String(user.id || user._id || user.userId || '');
+};
+
+// ============================================
+// HELPER: Check if provider ID matches authenticated user
+// ============================================
+const isOwner = (req, providerId) => {
+  const userId = getUserIdFromToken(req.user);
+  return userId === String(providerId);
+};
+
+// ============================================
 // GET PROVIDER EARNINGS
 // ============================================
 router.get('/earnings/:providerType/:providerId', authenticateUser, async (req, res) => {
   try {
     const { providerType, providerId } = req.params;
 
-    // Verify ownership
-    if (req.user.id !== providerId) {
-      return res.status(403).json({ success: false, message: 'Unauthorized' });
+    if (!isOwner(req, providerId)) {
+      return res.status(403).json({ 
+        success: false, 
+        message: 'You can only view your own earnings' 
+      });
     }
 
     const earnings = await payoutService.getProviderEarnings(providerType, providerId);
-
     res.json({ success: true, data: earnings });
 
   } catch (error) {
@@ -51,9 +67,11 @@ router.post('/request', authenticateUser, async (req, res) => {
   try {
     const { providerType, providerId } = req.body;
 
-    // Verify ownership
-    if (req.user.id !== providerId) {
-      return res.status(403).json({ success: false, message: 'Unauthorized' });
+    if (!isOwner(req, providerId)) {
+      return res.status(403).json({ 
+        success: false, 
+        message: 'You can only request settlements for yourself' 
+      });
     }
 
     const settlement = await payoutService.requestSettlement(providerType, providerId);
@@ -77,13 +95,14 @@ router.get('/history/:providerType/:providerId', authenticateUser, async (req, r
   try {
     const { providerType, providerId } = req.params;
 
-    // Verify ownership
-    if (req.user.id !== providerId) {
-      return res.status(403).json({ success: false, message: 'Unauthorized' });
+    if (!isOwner(req, providerId)) {
+      return res.status(403).json({ 
+        success: false, 
+        message: 'You can only view your own settlement history' 
+      });
     }
 
     const history = await payoutService.getSettlementHistory(providerType, providerId);
-
     res.json({ success: true, data: history });
 
   } catch (error) {
@@ -97,13 +116,11 @@ router.get('/history/:providerType/:providerId', authenticateUser, async (req, r
 // ============================================
 router.get('/admin/pending', authenticateUser, async (req, res) => {
   try {
-    // Check if admin
     if (req.user.role !== 'admin') {
       return res.status(403).json({ success: false, message: 'Admin access required' });
     }
 
     const pending = await payoutService.getPendingPayouts();
-
     res.json({ success: true, data: pending });
 
   } catch (error) {
@@ -117,13 +134,11 @@ router.get('/admin/pending', authenticateUser, async (req, res) => {
 // ============================================
 router.put('/admin/approve/:payoutId', authenticateUser, async (req, res) => {
   try {
-    // Check if admin
     if (req.user.role !== 'admin') {
       return res.status(403).json({ success: false, message: 'Admin access required' });
     }
 
     const { transactionId, note } = req.body;
-
     const payout = await payoutService.approvePayout(req.params.payoutId, transactionId, note);
 
     res.json({
@@ -143,13 +158,11 @@ router.put('/admin/approve/:payoutId', authenticateUser, async (req, res) => {
 // ============================================
 router.put('/admin/reject/:payoutId', authenticateUser, async (req, res) => {
   try {
-    // Check if admin
     if (req.user.role !== 'admin') {
       return res.status(403).json({ success: false, message: 'Admin access required' });
     }
 
     const { reason } = req.body;
-
     const payout = await payoutService.rejectPayout(req.params.payoutId, reason);
 
     res.json({
