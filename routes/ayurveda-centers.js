@@ -921,4 +921,32 @@ router.post('/admin/migrate/packages-approval', async (req, res) => {
   }
 });
 
+// TEMP DEBUG - Remove after investigation
+router.get('/debug-raw/:centerId', async (req, res) => {
+  try {
+    const center = await WellnessCenter.findById(req.params.centerId).lean();
+    if (!center) return res.status(404).json({ error: 'Center not found' });
+    
+    const packages = center.packages || [];
+    
+    res.json({
+      centerName: center.name,
+      centerId: center._id,
+      updatedAt: center.updatedAt,
+      packagesCount: packages.length,
+      packages: packages.map(p => ({
+        id: p._id,
+        name: p.name,
+        approvalStatus: p.approvalStatus || 'MISSING',
+        deleted: p.deleted === true,
+        isActive: p.isActive,
+        price: p.price,
+        duration: p.duration
+      }))
+    });
+  } catch (e) {
+    res.status(500).json({ error: e.message, stack: e.stack });
+  }
+});
+
 module.exports = router;
