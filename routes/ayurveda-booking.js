@@ -504,27 +504,57 @@ router.get('/my-bookings', authenticatePatient, async (req, res) => {
 // ============================================
 // GET BOOKING DETAILS
 // ============================================
+// ============================================
+// GET BOOKING DETAILS
+// ============================================
 router.get('/:bookingId', authenticateUser, async (req, res) => {
   try {
-    const booking = await AyurvedaBooking.findOne({ 
-      bookingId: req.params.bookingId,
-      $or: [{ userId: req.user.id }, { doctor: req.user.id }, { center: req.user.id }]
-    })
-      .populate('doctor', 'name specialization consultationFee rating address')
-      .populate('center', 'name address rating facilities');
+    const booking = await AyurvedaBooking.findOne({ bookingId: req.params.bookingId });
 
     if (!booking) {
       return res.status(404).json({ success: false, message: 'Booking not found' });
     }
 
-    res.json({ success: true, data: booking });
+    const userId = req.user.id;
+    const isOwner =
+      booking.userId?.toString() === userId ||
+      booking.doctor?.toString() === userId ||
+      booking.center?.toString() === userId;
 
+    if (!isOwner) {
+      return res.status(403).json({ success: false, message: 'Access denied' });
+    }
+
+    const data = booking.toObject();
+
+    if (booking.doctor) {
+      try {
+        const doctor = await AyurvedaDoctor.findById(booking.doctor)
+          .select('name specialization consultationFee rating address')
+          .lean();
+        data.doctor = doctor || null;
+      } catch (e) {
+        console.error('Doctor fetch error:', e.message);
+      }
+    }
+
+    if (booking.center) {
+      try {
+        const center = await WellnessCenter.findById(booking.center)
+          .select('name address rating facilities')
+          .lean();
+        data.center = center || null;
+      } catch (e) {
+        console.error('Center fetch error:', e.message);
+      }
+    }
+
+    res.json({ success: true, data });
   } catch (error) {
-    console.error('Get booking error:', error);
+    console.error('Get booking error:', error.message);
     res.status(500).json({ success: false, message: 'Failed to fetch booking' });
   }
 });
-
 // ============================================
 // GET CANCELLATION QUOTE
 // ============================================

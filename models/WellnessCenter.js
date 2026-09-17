@@ -317,3 +317,4 @@ wellnessCenterSchema.virtual('activePackagesCount').get(function() {
 });
 
 module.exports = mongoose.model('WellnessCenter', wellnessCenterSchema);
+console.log('✅ WellnessCenter model registered');

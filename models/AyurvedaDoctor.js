@@ -524,3 +524,4 @@ ayurvedaDoctorSchema.statics.getCorporateStats = async function() {
 };
 
 module.exports = mongoose.model('AyurvedaDoctor', ayurvedaDoctorSchema);
+console.log('✅ AyurvedaDoctor model registered');
