@@ -629,6 +629,23 @@ router.put('/:bookingId/cancel', authenticatePatient, async (req, res) => {
     // Cancel booking
     await booking.cancelBooking(reason, 'patient');
 
+    // Decrement package counter if this was a panchakarma package
+    if (booking.type === 'panchakarma_package' && booking.center && booking.package?.packageId) {
+      try {
+        await WellnessCenter.updateOne(
+          { 
+            _id: booking.center, 
+            'packages._id': booking.package.packageId 
+          },
+          { 
+            $inc: { 'packages.$.currentBookings': -1 } 
+          }
+        );
+      } catch (counterError) {
+        console.error('Counter decrement error:', counterError.message);
+      }
+    }
+
     // Process refund if applicable
     if (cancellationInfo.refundAmount > 0 && booking.razorpayPaymentId) {
       try {

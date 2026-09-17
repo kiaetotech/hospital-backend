@@ -1002,4 +1002,52 @@ router.post('/admin/fix-approval-status', async (req, res) => {
   }
 });
 
+// ============================================
+// RECALCULATE PACKAGE BOOKING COUNTERS
+// ============================================
+router.post('/admin/recalculate-counters', async (req, res) => {
+  const adminKey = req.headers['x-admin-key'];
+  if (adminKey !== process.env.ADMIN_KEY) {
+    return res.status(401).json({ success: false, error: 'Admin authentication required' });
+  }
+  
+  try {
+    const AyurvedaBooking = require('../models/AyurvedaBooking');
+    const centers = await WellnessCenter.find({});
+    const log = [];
+    let totalFixed = 0;
+
+    for (const center of centers) {
+      let centerChanged = false;
+      
+      for (const pkg of center.packages) {
+        // Count only active bookings (pending, confirmed, in_progress)
+        const activeCount = await AyurvedaBooking.countDocuments({
+          center: center._id,
+          'package.packageId': pkg._id.toString(),
+          status: { $in: ['pending', 'confirmed', 'in_progress'] }
+        });
+
+        if (pkg.currentBookings !== activeCount) {
+          log.push(`${center.name} / ${pkg.name}: ${pkg.currentBookings} → ${activeCount}`);
+          pkg.currentBookings = activeCount;
+          centerChanged = true;
+          totalFixed++;
+        }
+      }
+      
+      if (centerChanged) await center.save();
+    }
+
+    res.json({
+      success: true,
+      message: `Recalculated. Fixed ${totalFixed} packages.`,
+      log
+    });
+  } catch (error) {
+    console.error('Recalculate error:', error);
+    res.status(500).json({ success: false, error: error.message });
+  }
+});
+
 module.exports = router;
