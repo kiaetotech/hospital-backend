@@ -180,14 +180,15 @@ const ayurvedaBookingSchema = new mongoose.Schema({
   // ============================================
   // REVIEWS & RATINGS
   // ============================================
-  reviewed: { type: Boolean, default: false },
-  review: {
+    review: {
     rating: { type: Number, min: 1, max: 5 },
     comment: { type: String },
     createdAt: { type: Date },
     isVerified: { type: Boolean, default: false },
     doctorResponse: { type: String },
-    doctorResponseAt: { type: Date }
+    doctorResponseAt: { type: Date },
+    centerResponse: { type: String, default: '' },
+    centerRespondedAt: { type: Date }
   },
   
   // ============================================
@@ -245,7 +246,7 @@ const ayurvedaBookingSchema = new mongoose.Schema({
     message: { type: String }
   }],
   
-    // ============================================
+      // ============================================
   // COMPLAINTS
   // ============================================
   complaints: [{
@@ -265,6 +266,8 @@ const ayurvedaBookingSchema = new mongoose.Schema({
       default: 'pending'
     },
     adminResponse: { type: String, default: '' },
+    centerResponse: { type: String, default: '' },
+    centerRespondedAt: { type: Date },
     resolvedAt: { type: Date },
     createdAt: { type: Date, default: Date.now }
   }],
