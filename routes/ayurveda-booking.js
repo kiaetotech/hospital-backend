@@ -289,17 +289,21 @@ router.put('/:bookingId/review/doctor-respond', authenticateUser, async (req, re
 
     const booking = await AyurvedaBooking.findOne({
       bookingId: req.params.bookingId,
-      doctor: doctorObjectId,
-      reviewed: true
+      doctor: doctorObjectId
     });
 
     if (!booking) {
-      return res.status(404).json({ success: false, message: 'Review not found' });
+      return res.status(404).json({ success: false, message: 'Booking not found' });
     }
 
-    if (!booking.review) booking.review = {};
+    if (!booking.review || (!booking.review.rating && !booking.review.comment)) {
+      return res.status(404).json({ success: false, message: 'No review exists on this booking' });
+    }
+
+    booking.review = booking.review || {};
     booking.review.doctorResponse = response.trim().slice(0, 1000);
     booking.review.doctorRespondedAt = new Date();
+    booking.markModified('review');
 
     await booking.save();
 
@@ -1675,20 +1679,24 @@ router.put('/:bookingId/review/respond', authenticateUser, async (req, res) => {
     }
 
     const booking = await AyurvedaBooking.findOne({
-      bookingId: req.params.bookingId,
-      center: centerObjectId,
-      reviewed: true
-    });
+  bookingId: req.params.bookingId,
+  center: centerObjectId
+});
 
-    if (!booking) {
-      return res.status(404).json({ success: false, message: 'Review not found' });
-    }
+if (!booking) {
+  return res.status(404).json({ success: false, message: 'Booking not found' });
+}
 
-    if (!booking.review) booking.review = {};
-    booking.review.centerResponse = response.trim().slice(0, 1000);
-    booking.review.centerRespondedAt = new Date();
+if (!booking.review || (!booking.review.rating && !booking.review.comment)) {
+  return res.status(404).json({ success: false, message: 'No review exists on this booking' });
+}
 
-    await booking.save();
+booking.review = booking.review || {};
+booking.review.centerResponse = response.trim().slice(0, 1000);
+booking.review.centerRespondedAt = new Date();
+booking.markModified('review');
+
+await booking.save();
 
     res.json({
       success: true,
