@@ -917,38 +917,6 @@ router.get('/doctor/:doctorId', authenticateUser, async (req, res) => {
 });
 
 // ============================================
-// GET CENTER BOOKINGS
-// ============================================
-router.get('/center/:centerId', authenticateUser, async (req, res) => {
-  try {
-    const { status, page = 1, limit = 10 } = req.query;
-    
-    const query = { center: req.params.centerId };
-    if (status) query.status = status;
-
-    const skip = (parseInt(page) - 1) * parseInt(limit);
-
-    const bookings = await AyurvedaBooking.find(query)
-      .sort({ bookingDate: -1 })
-      .skip(skip)
-      .limit(parseInt(limit))
-      .select('-otp -razorpaySignature');
-
-    const total = await AyurvedaBooking.countDocuments(query);
-
-    res.json({
-      success: true,
-      data: bookings,
-      pagination: { page: parseInt(page), limit: parseInt(limit), total }
-    });
-
-  } catch (error) {
-    console.error('Get center bookings error:', error);
-    res.status(500).json({ success: false, message: 'Failed to fetch bookings' });
-  }
-});
-
-// ============================================
 // UPDATE BOOKING STATUS (DOCTOR/CENTER)
 // ============================================
 router.put('/:bookingId/status', authenticateUser, async (req, res) => {
@@ -1370,6 +1338,38 @@ router.get('/center/reviews', authenticateUser, async (req, res) => {
   } catch (error) {
     console.error('Center reviews error:', error.message);
     res.status(500).json({ success: false, message: 'Failed to fetch reviews' });
+  }
+});
+
+// ============================================
+// GET CENTER BOOKINGS
+// ============================================
+router.get('/center/:centerId', authenticateUser, async (req, res) => {
+  try {
+    const { status, page = 1, limit = 10 } = req.query;
+    
+    const query = { center: req.params.centerId };
+    if (status) query.status = status;
+
+    const skip = (parseInt(page) - 1) * parseInt(limit);
+
+    const bookings = await AyurvedaBooking.find(query)
+      .sort({ bookingDate: -1 })
+      .skip(skip)
+      .limit(parseInt(limit))
+      .select('-otp -razorpaySignature');
+
+    const total = await AyurvedaBooking.countDocuments(query);
+
+    res.json({
+      success: true,
+      data: bookings,
+      pagination: { page: parseInt(page), limit: parseInt(limit), total }
+    });
+
+  } catch (error) {
+    console.error('Get center bookings error:', error);
+    res.status(500).json({ success: false, message: 'Failed to fetch bookings' });
   }
 });
 
