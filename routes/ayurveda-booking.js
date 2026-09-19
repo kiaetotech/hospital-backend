@@ -219,15 +219,20 @@ router.get('/doctor/reviews', authenticateUser, async (req, res) => {
 
     const { page = 1, limit = 20 } = req.query;
 
+    // Fetch all doctor bookings
     const bookings = await AyurvedaBooking.find({
-      doctor: doctorObjectId,
-      reviewed: true
+      doctor: doctorObjectId
     })
-      .select('bookingId type patient package doctorName centerName review createdAt')
-      .sort({ 'review.createdAt': -1 })
+      .select('bookingId type patient package doctorName centerName review reviewed createdAt')
+      .sort({ createdAt: -1 })
       .lean();
 
-    const reviews = bookings.map(b => ({
+    // Filter only those with actual review content
+    const reviewedBookings = bookings.filter(b => 
+      b.review && (b.review.rating || b.review.comment || b.review.createdAt)
+    );
+
+    const reviews = reviewedBookings.map(b => ({
       bookingId: b.bookingId,
       bookingType: b.type,
       patientName: b.patient?.name || 'Patient',
