@@ -1,5 +1,9 @@
 const mongoose = require('mongoose');
 
+// Ensure dependent models are registered before schema methods use them
+require('./AyurvedaDoctor');
+require('./WellnessCenter');
+
 const ayurvedaBookingSchema = new mongoose.Schema({
   bookingId: { type: String, required: true, unique: true },
   
