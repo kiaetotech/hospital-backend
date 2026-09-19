@@ -1193,12 +1193,23 @@ router.put('/:bookingId/status', authenticateUser, async (req, res) => {
       return res.status(404).json({ success: false, message: 'Booking not found' });
     }
 
-    // Check if user is the doctor or center
+        // Check if user is the doctor or center (with flexible ID matching)
+    const userIdStr = String(req.user.id || req.user._id || req.user.userId || '');
+    const doctorIdStr = booking.doctor ? booking.doctor.toString() : '';
+    const centerIdStr = booking.center ? booking.center.toString() : '';
+
     const isAuthorized = 
-      (booking.doctor && booking.doctor.toString() === req.user.id) ||
-      (booking.center && booking.center.toString() === req.user.id);
+      (doctorIdStr && doctorIdStr === userIdStr) ||
+      (centerIdStr && centerIdStr === userIdStr);
 
     if (!isAuthorized) {
+      console.error('Status update unauthorized:', {
+        userId: userIdStr,
+        doctorId: doctorIdStr,
+        centerId: centerIdStr,
+        role: req.user.role,
+        bookingId: req.params.bookingId
+      });
       return res.status(403).json({ success: false, message: 'Unauthorized' });
     }
 
