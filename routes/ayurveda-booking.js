@@ -33,6 +33,21 @@ const authenticateUser = (req, res, next) => {
 };
 
 // ============================================
+// PRODUCTION HELPER: Get user ID as ObjectId
+// ============================================
+const getUserObjectId = (user) => {
+  const mongoose = require('mongoose');
+  const idStr = user?.id || user?._id || user?.userId;
+  if (!idStr) return null;
+  
+  try {
+    return new mongoose.Types.ObjectId(String(idStr));
+  } catch (e) {
+    return null;
+  }
+};
+
+// ============================================
 // PATIENT-ONLY MIDDLEWARE
 // ============================================
 const authenticatePatient = (req, res, next) => {
@@ -1148,17 +1163,23 @@ router.post('/panchakarma', authenticatePatient, async (req, res) => {
 // ============================================
 router.get('/center/complaints', authenticateUser, async (req, res) => {
   try {
-    const centerId = req.user.id;
+    const centerObjectId = getUserObjectId(req.user);
+
+    if (!centerObjectId) {
+      return res.status(400).json({ success: false, message: 'Invalid user session' });
+    }
+
     const { status, page = 1, limit = 20 } = req.query;
 
     const query = { 
-      center: centerId,
+      center: centerObjectId,
       'complaints.0': { $exists: true }
     };
 
     const bookings = await AyurvedaBooking.find(query)
-      .select('bookingId type patient package centerName complaints review createdAt')
-      .sort({ updatedAt: -1 });
+      .select('bookingId type patient package centerName complaints review createdAt updatedAt')
+      .sort({ updatedAt: -1 })
+      .lean();
 
     let complaints = [];
     bookings.forEach(b => {
@@ -1175,7 +1196,7 @@ router.get('/center/complaints', authenticateUser, async (req, res) => {
           description: c.description,
           priority: c.priority,
           status: c.status,
-          adminResponse: c.adminResponse,
+          adminResponse: c.adminResponse || '',
           centerResponse: c.centerResponse || '',
           resolvedAt: c.resolvedAt,
           createdAt: c.createdAt
@@ -1200,7 +1221,7 @@ router.get('/center/complaints', authenticateUser, async (req, res) => {
       }
     });
   } catch (error) {
-    console.error('Center complaints error:', error);
+    console.error('Center complaints error:', error.message);
     res.status(500).json({ success: false, message: 'Failed to fetch complaints' });
   }
 });
@@ -1211,7 +1232,11 @@ router.get('/center/complaints', authenticateUser, async (req, res) => {
 router.put('/:bookingId/complaint/:complaintId/respond', authenticateUser, async (req, res) => {
   try {
     const { response } = req.body;
-    const centerId = req.user.id;
+    const centerObjectId = getUserObjectId(req.user);
+
+    if (!centerObjectId) {
+      return res.status(400).json({ success: false, message: 'Invalid user session' });
+    }
 
     if (!response || response.trim().length < 3) {
       return res.status(400).json({ success: false, message: 'Response must be at least 3 characters' });
@@ -1219,7 +1244,7 @@ router.put('/:bookingId/complaint/:complaintId/respond', authenticateUser, async
 
     const booking = await AyurvedaBooking.findOne({ 
       bookingId: req.params.bookingId,
-      center: centerId
+      center: centerObjectId
     });
 
     if (!booking) {
@@ -1243,7 +1268,7 @@ router.put('/:bookingId/complaint/:complaintId/respond', authenticateUser, async
       data: complaint
     });
   } catch (error) {
-    console.error('Respond error:', error);
+    console.error('Respond error:', error.message);
     res.status(500).json({ success: false, message: 'Failed to respond' });
   }
 });
@@ -1253,11 +1278,15 @@ router.put('/:bookingId/complaint/:complaintId/respond', authenticateUser, async
 // ============================================
 router.put('/:bookingId/complaint/:complaintId/resolve', authenticateUser, async (req, res) => {
   try {
-    const centerId = req.user.id;
+    const centerObjectId = getUserObjectId(req.user);
+
+    if (!centerObjectId) {
+      return res.status(400).json({ success: false, message: 'Invalid user session' });
+    }
 
     const booking = await AyurvedaBooking.findOne({ 
       bookingId: req.params.bookingId,
-      center: centerId
+      center: centerObjectId
     });
 
     if (!booking) {
@@ -1276,11 +1305,11 @@ router.put('/:bookingId/complaint/:complaintId/resolve', authenticateUser, async
 
     res.json({
       success: true,
-      message: 'Complaint marked as resolved',
+      message: 'Complaint resolved',
       data: complaint
     });
   } catch (error) {
-    console.error('Resolve error:', error);
+    console.error('Resolve error:', error.message);
     res.status(500).json({ success: false, message: 'Failed to resolve' });
   }
 });
@@ -1290,15 +1319,21 @@ router.put('/:bookingId/complaint/:complaintId/resolve', authenticateUser, async
 // ============================================
 router.get('/center/reviews', authenticateUser, async (req, res) => {
   try {
-    const centerId = req.user.id;
+    const centerObjectId = getUserObjectId(req.user);
+
+    if (!centerObjectId) {
+      return res.status(400).json({ success: false, message: 'Invalid user session' });
+    }
+
     const { page = 1, limit = 20 } = req.query;
 
     const bookings = await AyurvedaBooking.find({
-      center: centerId,
+      center: centerObjectId,
       reviewed: true
     })
       .select('bookingId type patient package review centerName createdAt')
-      .sort({ 'review.createdAt': -1 });
+      .sort({ 'review.createdAt': -1 })
+      .lean();
 
     const reviews = bookings.map(b => ({
       bookingId: b.bookingId,
@@ -1316,7 +1351,6 @@ router.get('/center/reviews', authenticateUser, async (req, res) => {
     const start = (parseInt(page) - 1) * parseInt(limit);
     const paginated = reviews.slice(start, start + parseInt(limit));
 
-    // Average rating
     const avgRating = reviews.length > 0
       ? Math.round((reviews.reduce((sum, r) => sum + (r.rating || 0), 0) / reviews.length) * 10) / 10
       : 0;
@@ -1334,7 +1368,7 @@ router.get('/center/reviews', authenticateUser, async (req, res) => {
       }
     });
   } catch (error) {
-    console.error('Center reviews error:', error);
+    console.error('Center reviews error:', error.message);
     res.status(500).json({ success: false, message: 'Failed to fetch reviews' });
   }
 });
@@ -1345,7 +1379,11 @@ router.get('/center/reviews', authenticateUser, async (req, res) => {
 router.put('/:bookingId/review/respond', authenticateUser, async (req, res) => {
   try {
     const { response } = req.body;
-    const centerId = req.user.id;
+    const centerObjectId = getUserObjectId(req.user);
+
+    if (!centerObjectId) {
+      return res.status(400).json({ success: false, message: 'Invalid user session' });
+    }
 
     if (!response || response.trim().length < 3) {
       return res.status(400).json({ success: false, message: 'Response must be at least 3 characters' });
@@ -1353,7 +1391,7 @@ router.put('/:bookingId/review/respond', authenticateUser, async (req, res) => {
 
     const booking = await AyurvedaBooking.findOne({
       bookingId: req.params.bookingId,
-      center: centerId,
+      center: centerObjectId,
       reviewed: true
     });
 
@@ -1361,6 +1399,7 @@ router.put('/:bookingId/review/respond', authenticateUser, async (req, res) => {
       return res.status(404).json({ success: false, message: 'Review not found' });
     }
 
+    if (!booking.review) booking.review = {};
     booking.review.centerResponse = response.trim().slice(0, 1000);
     booking.review.centerRespondedAt = new Date();
 
@@ -1372,7 +1411,7 @@ router.put('/:bookingId/review/respond', authenticateUser, async (req, res) => {
       data: booking.review
     });
   } catch (error) {
-    console.error('Review respond error:', error);
+    console.error('Review respond error:', error.message);
     res.status(500).json({ success: false, message: 'Failed to respond' });
   }
 });
