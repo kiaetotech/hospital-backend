@@ -521,57 +521,80 @@ ayurvedaBookingSchema.methods.submitReview = async function(rating, comment) {
     throw new Error('Review already submitted');
   }
   
+  const numericRating = Number(rating);
+  if (!numericRating || numericRating < 1 || numericRating > 5) {
+    throw new Error('Rating must be between 1 and 5');
+  }
+  
   this.reviewed = true;
   this.review = {
-    rating,
-    comment,
+    rating: numericRating,
+    comment: (comment || '').trim().slice(0, 1000),
     createdAt: new Date(),
-    isVerified: false
+    isVerified: true
   };
   
-  // Update doctor rating
+  await this.save();
+
+  // Update doctor rating (non-blocking — errors don't fail the review)
   if (this.doctor) {
-    const AyurvedaDoctor = mongoose.model('AyurvedaDoctor');
-    const doctor = await AyurvedaDoctor.findById(this.doctor);
-    if (doctor) {
-      const newRating = ((doctor.rating * doctor.totalReviews) + rating) / (doctor.totalReviews + 1);
-      doctor.rating = Math.round(newRating * 10) / 10;
-      doctor.totalReviews += 1;
-      doctor.reviews.push({
-        patient: this.userId,
-        patientName: this.patient.name,
-        rating,
-        review: comment,
-        treatment: this.symptoms || '',
-        consultationType: this.consultationType,
-        createdAt: new Date(),
-        verified: false
-      });
-      await doctor.save();
+    try {
+      const AyurvedaDoctor = mongoose.model('AyurvedaDoctor');
+      const doctor = await AyurvedaDoctor.findById(this.doctor);
+      if (doctor) {
+        const totalReviews = (doctor.totalReviews || 0) + 1;
+        const currentRating = doctor.rating || 0;
+        const totalRatingSum = currentRating * (doctor.totalReviews || 0) + numericRating;
+        
+        doctor.rating = Math.round((totalRatingSum / totalReviews) * 10) / 10;
+        doctor.totalReviews = totalReviews;
+        doctor.reviews = doctor.reviews || [];
+        doctor.reviews.push({
+          patient: this.userId,
+          patientName: this.patient?.name || 'Patient',
+          rating: numericRating,
+          review: comment || '',
+          treatment: this.symptoms || '',
+          consultationType: this.consultationType,
+          createdAt: new Date(),
+          verified: true
+        });
+        await doctor.save();
+      }
+    } catch (err) {
+      console.error('Doctor rating update failed:', err.message);
     }
   }
   
-  // Update center rating
+  // Update center rating (non-blocking)
   if (this.center) {
-    const WellnessCenter = mongoose.model('WellnessCenter');
-    const center = await WellnessCenter.findById(this.center);
-    if (center) {
-      const newRating = ((center.rating * center.totalReviews) + rating) / (center.totalReviews + 1);
-      center.rating = Math.round(newRating * 10) / 10;
-      center.totalReviews += 1;
-      center.reviews.push({
-        patient: this.userId.toString(),
-        patientName: this.patient.name,
-        rating,
-        review: comment,
-        packageName: this.package?.name || '',
-        createdAt: new Date()
-      });
-      await center.save();
+    try {
+      const WellnessCenter = mongoose.model('WellnessCenter');
+      const center = await WellnessCenter.findById(this.center);
+      if (center) {
+        const totalReviews = (center.totalReviews || 0) + 1;
+        const currentRating = center.rating || 0;
+        const totalRatingSum = currentRating * (center.totalReviews || 0) + numericRating;
+        
+        center.rating = Math.round((totalRatingSum / totalReviews) * 10) / 10;
+        center.totalReviews = totalReviews;
+        center.reviews = center.reviews || [];
+        center.reviews.push({
+          patient: String(this.userId),
+          patientName: this.patient?.name || 'Patient',
+          rating: numericRating,
+          review: comment || '',
+          packageName: this.package?.name || '',
+          createdAt: new Date()
+        });
+        await center.save();
+      }
+    } catch (err) {
+      console.error('Center rating update failed:', err.message);
     }
   }
   
-  return this.save();
+  return this;
 };
 
 // Accept booking (doctor/center)

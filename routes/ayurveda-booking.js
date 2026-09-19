@@ -1028,30 +1028,37 @@ router.put('/:bookingId/reschedule', authenticateUser, async (req, res) => {
 router.post('/:bookingId/review', authenticatePatient, async (req, res) => {
   try {
     const { rating, comment } = req.body;
+    const userIdStr = String(req.user.id || req.user._id || '');
 
     if (!rating || rating < 1 || rating > 5) {
       return res.status(400).json({ success: false, message: 'Rating must be between 1 and 5' });
     }
 
-    const booking = await AyurvedaBooking.findOne({ 
-      bookingId: req.params.bookingId,
-      userId: req.user.id
-    });
+    const booking = await AyurvedaBooking.findOne({ bookingId: req.params.bookingId });
 
     if (!booking) {
       return res.status(404).json({ success: false, message: 'Booking not found' });
     }
 
+    if (String(booking.userId) !== userIdStr) {
+      return res.status(403).json({ success: false, message: 'You can only review your own bookings' });
+    }
+
+    // Model handles: status check, duplicate check, rating update
     await booking.submitReview(rating, comment);
 
     res.json({
       success: true,
-      message: 'Review submitted successfully'
+      message: 'Review submitted successfully',
+      data: booking.review
     });
 
   } catch (error) {
-    console.error('Review error:', error);
-    res.status(400).json({ success: false, message: error.message || 'Failed to submit review' });
+    console.error('Review error:', error.message);
+    const status = error.message.includes('already') ||
+                   error.message.includes('Can only review') ||
+                   error.message.includes('Rating must') ? 400 : 500;
+    res.status(status).json({ success: false, message: error.message || 'Failed to submit review' });
   }
 });
 
@@ -1891,6 +1898,27 @@ router.get('/complaints/my', authenticatePatient, async (req, res) => {
   } catch (error) {
     console.error('Patient complaints error:', error);
     res.status(500).json({ success: false, message: 'Failed to fetch complaints' });
+  }
+});
+
+// ============================================
+// ADMIN: Reset a review (in case of bad state)
+// ============================================
+router.put('/admin/reset-review/:bookingId', async (req, res) => {
+  const adminKey = req.headers['x-admin-key'];
+  if (adminKey !== process.env.ADMIN_KEY) {
+    return res.status(401).json({ success: false, message: 'Admin authentication required' });
+  }
+  try {
+    const booking = await AyurvedaBooking.findOne({ bookingId: req.params.bookingId });
+    if (!booking) return res.status(404).json({ success: false, message: 'Booking not found' });
+    booking.reviewed = false;
+    booking.review = undefined;
+    booking.markModified('review');
+    await booking.save();
+    res.json({ success: true, message: 'Review reset', data: booking });
+  } catch (error) {
+    res.status(500).json({ success: false, message: error.message });
   }
 });
 
