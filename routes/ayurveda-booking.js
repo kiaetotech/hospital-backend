@@ -48,6 +48,268 @@ const getUserObjectId = (user) => {
 };
 
 // ============================================
+// DOCTOR: VIEW COMPLAINTS ON OWN BOOKINGS
+// ============================================
+router.get('/doctor/complaints', authenticateUser, async (req, res) => {
+  try {
+    const doctorObjectId = getUserObjectId(req.user);
+
+    if (!doctorObjectId) {
+      return res.status(400).json({ success: false, message: 'Invalid user session' });
+    }
+
+    const { status, page = 1, limit = 20 } = req.query;
+
+    const query = { 
+      doctor: doctorObjectId,
+      'complaints.0': { $exists: true }
+    };
+
+    const bookings = await AyurvedaBooking.find(query)
+      .select('bookingId type patient package doctorName centerName complaints review createdAt updatedAt')
+      .sort({ updatedAt: -1 })
+      .lean();
+
+    let complaints = [];
+    bookings.forEach(b => {
+      (b.complaints || []).forEach(c => {
+        if (status && c.status !== status) return;
+        complaints.push({
+          complaintId: c._id,
+          bookingId: b.bookingId,
+          bookingType: b.type,
+          patientName: b.patient?.name || 'Patient',
+          patientPhone: b.patient?.phone || '',
+          packageName: b.package?.name || '',
+          centerName: b.centerName || '',
+          category: c.category,
+          description: c.description,
+          priority: c.priority,
+          status: c.status,
+          adminResponse: c.adminResponse || '',
+          doctorResponse: c.doctorResponse || c.centerResponse || '',
+          resolvedAt: c.resolvedAt,
+          createdAt: c.createdAt
+        });
+      });
+    });
+
+    complaints.sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt));
+
+    const total = complaints.length;
+    const start = (parseInt(page) - 1) * parseInt(limit);
+    const paginated = complaints.slice(start, start + parseInt(limit));
+
+    res.json({
+      success: true,
+      data: paginated,
+      pagination: {
+        page: parseInt(page),
+        limit: parseInt(limit),
+        total,
+        pages: Math.ceil(total / parseInt(limit))
+      }
+    });
+  } catch (error) {
+    console.error('Doctor complaints error:', error.message);
+    res.status(500).json({ success: false, message: 'Failed to fetch complaints' });
+  }
+});
+
+// ============================================
+// DOCTOR: RESPOND TO COMPLAINT
+// ============================================
+router.put('/:bookingId/complaint/:complaintId/doctor-respond', authenticateUser, async (req, res) => {
+  try {
+    const { response } = req.body;
+    const doctorObjectId = getUserObjectId(req.user);
+
+    if (!doctorObjectId) {
+      return res.status(400).json({ success: false, message: 'Invalid user session' });
+    }
+
+    if (!response || response.trim().length < 3) {
+      return res.status(400).json({ success: false, message: 'Response must be at least 3 characters' });
+    }
+
+    const booking = await AyurvedaBooking.findOne({ 
+      bookingId: req.params.bookingId,
+      doctor: doctorObjectId
+    });
+
+    if (!booking) {
+      return res.status(404).json({ success: false, message: 'Booking not found' });
+    }
+
+    const complaint = booking.complaints.id(req.params.complaintId);
+    if (!complaint) {
+      return res.status(404).json({ success: false, message: 'Complaint not found' });
+    }
+
+    complaint.doctorResponse = response.trim().slice(0, 2000);
+    complaint.doctorRespondedAt = new Date();
+    if (complaint.status === 'pending') {
+      complaint.status = 'in_review';
+    }
+
+    await booking.save();
+
+    res.json({
+      success: true,
+      message: 'Response submitted',
+      data: complaint
+    });
+  } catch (error) {
+    console.error('Doctor respond error:', error.message);
+    res.status(500).json({ success: false, message: 'Failed to respond' });
+  }
+});
+
+// ============================================
+// DOCTOR: MARK COMPLAINT RESOLVED
+// ============================================
+router.put('/:bookingId/complaint/:complaintId/doctor-resolve', authenticateUser, async (req, res) => {
+  try {
+    const doctorObjectId = getUserObjectId(req.user);
+
+    if (!doctorObjectId) {
+      return res.status(400).json({ success: false, message: 'Invalid user session' });
+    }
+
+    const booking = await AyurvedaBooking.findOne({ 
+      bookingId: req.params.bookingId,
+      doctor: doctorObjectId
+    });
+
+    if (!booking) {
+      return res.status(404).json({ success: false, message: 'Booking not found' });
+    }
+
+    const complaint = booking.complaints.id(req.params.complaintId);
+    if (!complaint) {
+      return res.status(404).json({ success: false, message: 'Complaint not found' });
+    }
+
+    complaint.status = 'resolved';
+    complaint.resolvedAt = new Date();
+
+    await booking.save();
+
+    res.json({
+      success: true,
+      message: 'Complaint resolved',
+      data: complaint
+    });
+  } catch (error) {
+    console.error('Doctor resolve error:', error.message);
+    res.status(500).json({ success: false, message: 'Failed to resolve' });
+  }
+});
+
+// ============================================
+// DOCTOR: VIEW REVIEWS ON OWN BOOKINGS
+// ============================================
+router.get('/doctor/reviews', authenticateUser, async (req, res) => {
+  try {
+    const doctorObjectId = getUserObjectId(req.user);
+
+    if (!doctorObjectId) {
+      return res.status(400).json({ success: false, message: 'Invalid user session' });
+    }
+
+    const { page = 1, limit = 20 } = req.query;
+
+    const bookings = await AyurvedaBooking.find({
+      doctor: doctorObjectId,
+      reviewed: true
+    })
+      .select('bookingId type patient package doctorName centerName review createdAt')
+      .sort({ 'review.createdAt': -1 })
+      .lean();
+
+    const reviews = bookings.map(b => ({
+      bookingId: b.bookingId,
+      bookingType: b.type,
+      patientName: b.patient?.name || 'Patient',
+      packageName: b.package?.name || '',
+      centerName: b.centerName || '',
+      rating: b.review?.rating,
+      comment: b.review?.comment,
+      doctorResponse: b.review?.doctorResponse || b.review?.centerResponse || '',
+      doctorRespondedAt: b.review?.doctorRespondedAt || b.review?.centerRespondedAt,
+      createdAt: b.review?.createdAt
+    }));
+
+    const total = reviews.length;
+    const start = (parseInt(page) - 1) * parseInt(limit);
+    const paginated = reviews.slice(start, start + parseInt(limit));
+
+    const avgRating = reviews.length > 0
+      ? Math.round((reviews.reduce((sum, r) => sum + (r.rating || 0), 0) / reviews.length) * 10) / 10
+      : 0;
+
+    res.json({
+      success: true,
+      data: paginated,
+      averageRating: avgRating,
+      totalReviews: total,
+      pagination: {
+        page: parseInt(page),
+        limit: parseInt(limit),
+        total,
+        pages: Math.ceil(total / parseInt(limit))
+      }
+    });
+  } catch (error) {
+    console.error('Doctor reviews error:', error.message);
+    res.status(500).json({ success: false, message: 'Failed to fetch reviews' });
+  }
+});
+
+// ============================================
+// DOCTOR: RESPOND TO REVIEW
+// ============================================
+router.put('/:bookingId/review/doctor-respond', authenticateUser, async (req, res) => {
+  try {
+    const { response } = req.body;
+    const doctorObjectId = getUserObjectId(req.user);
+
+    if (!doctorObjectId) {
+      return res.status(400).json({ success: false, message: 'Invalid user session' });
+    }
+
+    if (!response || response.trim().length < 3) {
+      return res.status(400).json({ success: false, message: 'Response must be at least 3 characters' });
+    }
+
+    const booking = await AyurvedaBooking.findOne({
+      bookingId: req.params.bookingId,
+      doctor: doctorObjectId,
+      reviewed: true
+    });
+
+    if (!booking) {
+      return res.status(404).json({ success: false, message: 'Review not found' });
+    }
+
+    if (!booking.review) booking.review = {};
+    booking.review.doctorResponse = response.trim().slice(0, 1000);
+    booking.review.doctorRespondedAt = new Date();
+
+    await booking.save();
+
+    res.json({
+      success: true,
+      message: 'Response submitted',
+      data: booking.review
+    });
+  } catch (error) {
+    console.error('Doctor review respond error:', error.message);
+    res.status(500).json({ success: false, message: 'Failed to respond' });
+  }
+});
+
+// ============================================
 // PATIENT-ONLY MIDDLEWARE
 // ============================================
 const authenticatePatient = (req, res, next) => {
