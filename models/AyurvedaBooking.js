@@ -1,6 +1,6 @@
 const mongoose = require('mongoose');
 
-// Ensure dependent models are registered before schema methods use them
+// ✅ Register dependent models at load time
 require('./AyurvedaDoctor');
 require('./WellnessCenter');
 
