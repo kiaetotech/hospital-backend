@@ -2026,10 +2026,7 @@ router.get('/admin/reviews/all', async (req, res) => {
   try {
     const { page = 1, limit = 50 } = req.query;
 
-    const bookings = await AyurvedaBooking.find({
-      review: { $exists: true, $ne: null },
-      reviewed: true
-    })
+        const bookings = await AyurvedaBooking.find({})
       .sort({ 'review.createdAt': -1 })
       .select('bookingId type patient doctorName centerName review package createdAt')
       .lean();
