@@ -114,17 +114,44 @@ router.get('/history/:providerType/:providerId', authenticateUser, async (req, r
 // ============================================
 // GET PENDING PAYOUTS (ADMIN)
 // ============================================
-router.get('/admin/pending', authenticateUser, async (req, res) => {
-  try {
-    if (req.user.role !== 'admin') {
-      return res.status(403).json({ success: false, message: 'Admin access required' });
-    }
+// ============================================
+// GET PENDING PAYOUTS (ADMIN)
+// ============================================
+router.get('/admin/pending', async (req, res) => {
+  // Accept either admin token OR admin key
+  const adminKey = req.headers['x-admin-key'];
+  const authHeader = req.headers.authorization;
+  
+  let isAuthorized = false;
 
+  // Check admin key
+  if (adminKey && adminKey === process.env.ADMIN_KEY) {
+    isAuthorized = true;
+  }
+
+  // Check admin token
+  if (!isAuthorized && authHeader) {
+    try {
+      const token = authHeader.split(' ')[1];
+      const jwt = require('jsonwebtoken');
+      const decoded = jwt.verify(token, process.env.JWT_SECRET || 'hospital_platform_secret_key_2024');
+      if (decoded.role === 'admin') {
+        isAuthorized = true;
+      }
+    } catch (e) {
+      // Invalid token
+    }
+  }
+
+  if (!isAuthorized) {
+    return res.status(401).json({ success: false, message: 'Admin authentication required' });
+  }
+
+  try {
     const pending = await payoutService.getPendingPayouts();
     res.json({ success: true, data: pending });
-
   } catch (error) {
-    console.error('Get pending error:', error);
+    console.error('Get pending error:', error.message);
     res.status(500).json({ success: false, message: 'Failed to get pending payouts' });
   }
 });
@@ -132,11 +159,28 @@ router.get('/admin/pending', authenticateUser, async (req, res) => {
 // ============================================
 // APPROVE PAYOUT (ADMIN)
 // ============================================
-router.put('/admin/approve/:payoutId', authenticateUser, async (req, res) => {
-  try {
-    if (req.user.role !== 'admin') {
-      return res.status(403).json({ success: false, message: 'Admin access required' });
+router.put('/admin/approve/:payoutId', async (req, res) => {
+  const adminKey = req.headers['x-admin-key'];
+  let isAuthorized = adminKey && adminKey === process.env.ADMIN_KEY;
+
+  if (!isAuthorized) {
+    const authHeader = req.headers.authorization;
+    if (authHeader) {
+      try {
+        const token = authHeader.split(' ')[1];
+        const jwt = require('jsonwebtoken');
+        const decoded = jwt.verify(token, process.env.JWT_SECRET || 'hospital_platform_secret_key_2024');
+        if (decoded.role === 'admin') isAuthorized = true;
+      } catch (e) {}
     }
+  }
+
+  if (!isAuthorized) {
+    return res.status(401).json({ success: false, message: 'Admin authentication required' });
+  }
+
+  try {
+    const { transactionId, note } = req.body;
 
     const { transactionId, note } = req.body;
     const payout = await payoutService.approvePayout(req.params.payoutId, transactionId, note);
@@ -156,25 +200,39 @@ router.put('/admin/approve/:payoutId', authenticateUser, async (req, res) => {
 // ============================================
 // REJECT PAYOUT (ADMIN)
 // ============================================
-router.put('/admin/reject/:payoutId', authenticateUser, async (req, res) => {
-  try {
-    if (req.user.role !== 'admin') {
-      return res.status(403).json({ success: false, message: 'Admin access required' });
+router.put('/admin/reject/:payoutId', async (req, res) => {
+  const adminKey = req.headers['x-admin-key'];
+  let isAuthorized = adminKey && adminKey === process.env.ADMIN_KEY;
+
+  if (!isAuthorized) {
+    const authHeader = req.headers.authorization;
+    if (authHeader) {
+      try {
+        const token = authHeader.split(' ')[1];
+        const jwt = require('jsonwebtoken');
+        const decoded = jwt.verify(token, process.env.JWT_SECRET || 'hospital_platform_secret_key_2024');
+        if (decoded.role === 'admin') isAuthorized = true;
+      } catch (e) {}
     }
+  }
 
+  if (!isAuthorized) {
+    return res.status(401).json({ success: false, message: 'Admin authentication required' });
+  }
+
+  try {
     const { reason } = req.body;
-    const payout = await payoutService.rejectPayout(req.params.payoutId, reason);
 
+    const payout = await payoutService.rejectPayout(req.params.payoutId, reason);
+    
     res.json({
       success: true,
       message: 'Payout rejected successfully',
       data: payout
     });
-
   } catch (error) {
-    console.error('Reject payout error:', error);
+    console.error('Reject payout error:', error.message);
     res.status(400).json({ success: false, message: error.message || 'Failed to reject payout' });
   }
 });
-
 module.exports = router;
