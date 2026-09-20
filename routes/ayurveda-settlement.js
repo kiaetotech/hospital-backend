@@ -181,8 +181,6 @@ router.put('/admin/approve/:payoutId', async (req, res) => {
 
   try {
     const { transactionId, note } = req.body;
-
-    const { transactionId, note } = req.body;
     const payout = await payoutService.approvePayout(req.params.payoutId, transactionId, note);
 
     res.json({
