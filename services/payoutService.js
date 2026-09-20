@@ -2,6 +2,7 @@ const AyurvedaBooking = require('../models/AyurvedaBooking');
 const AyurvedaDoctor = require('../models/AyurvedaDoctor');
 const WellnessCenter = require('../models/WellnessCenter');
 const Payout = require('../models/Payout');
+const { buildPayoutSnapshotFields } = require('./providerSnapshotService');
 
 const payoutService = {
   // ============================================
@@ -33,18 +34,23 @@ const payoutService = {
       doctorGroups[docId].total += (b.providerEarning || 0);
     });
     
-    for (const [docId, data] of Object.entries(doctorGroups)) {
+        for (const [docId, data] of Object.entries(doctorGroups)) {
       const doctor = await AyurvedaDoctor.findById(docId);
       if (!doctor) continue;
       
       const tds = data.total * 0.10; // 10% TDS
       const netAmount = data.total - tds;
       
+      const snapshotFields = await buildPayoutSnapshotFields(
+        'ayurveda_doctor',
+        docId,
+        doctor.name || 'Doctor'
+      );
+      
       const payout = new Payout({
         payoutId: 'PAY' + Date.now() + Math.floor(Math.random() * 1000),
         providerType: 'ayurveda_doctor',
         providerId: docId,
-        providerName: doctor.name || 'Doctor',
         amount: data.total,
         tdsDeducted: tds,
         netAmount,
@@ -53,7 +59,8 @@ const payoutService = {
         periodStart: oneWeekAgo,
         periodEnd: new Date(),
         status: 'pending',
-        bookingIds: data.bookings.map(b => b._id)
+        bookingIds: data.bookings.map(b => b._id),
+        ...snapshotFields
       });
       await payout.save();
       
@@ -86,18 +93,23 @@ const payoutService = {
       centerGroups[centerId].total += (b.providerEarning || 0);
     });
     
-    for (const [centerId, data] of Object.entries(centerGroups)) {
+        for (const [centerId, data] of Object.entries(centerGroups)) {
       const center = await WellnessCenter.findById(centerId);
       if (!center) continue;
       
       const tds = data.total * 0.10; // 10% TDS
       const netAmount = data.total - tds;
       
+      const snapshotFields = await buildPayoutSnapshotFields(
+        'wellness_center',
+        centerId,
+        center.name || 'Center'
+      );
+      
       const payout = new Payout({
         payoutId: 'PAY' + Date.now() + Math.floor(Math.random() * 1000),
         providerType: 'wellness_center',
         providerId: centerId,
-        providerName: center.name || 'Center',
         amount: data.total,
         tdsDeducted: tds,
         netAmount,
@@ -106,7 +118,8 @@ const payoutService = {
         periodStart: oneWeekAgo,
         periodEnd: new Date(),
         status: 'pending',
-        bookingIds: data.bookings.map(b => b._id)
+        bookingIds: data.bookings.map(b => b._id),
+        ...snapshotFields
       });
       await payout.save();
       
@@ -191,20 +204,12 @@ const payoutService = {
     const tds = totalAmount * 0.10;
     const netAmount = totalAmount - tds;
     
-    let providerName = '';
-    if (providerType === 'ayurveda_doctor') {
-      const doctor = await AyurvedaDoctor.findById(providerId);
-      providerName = doctor?.name || 'Doctor';
-    } else {
-      const center = await WellnessCenter.findById(providerId);
-      providerName = center?.name || 'Center';
-    }
+        const snapshotFields = await buildPayoutSnapshotFields(providerType, providerId);
     
     const payout = new Payout({
       payoutId: 'PAY' + Date.now() + Math.floor(Math.random() * 1000),
       providerType,
       providerId,
-      providerName,
       amount: totalAmount,
       tdsDeducted: tds,
       netAmount,
@@ -213,7 +218,8 @@ const payoutService = {
       periodStart: new Date(),
       periodEnd: new Date(),
       status: 'requested',
-      bookingIds: bookings.map(b => b._id)
+      bookingIds: bookings.map(b => b._id),
+      ...snapshotFields
     });
     
     await payout.save();

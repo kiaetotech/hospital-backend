@@ -2,6 +2,15 @@ const express = require('express');
 const router = express.Router();
 const payoutService = require('../services/payoutService');
 const Payout = require('../models/Payout');
+const mongoose = require('mongoose');
+
+// Ayurveda-scoped provider types — other tags won't leak into these endpoints
+const AYURVEDA_PROVIDER_TYPES = [
+  'ayurveda_doctor',
+  'doctor',
+  'wellness_center',
+  'center'
+];
 
 // ============================================
 // AUTH MIDDLEWARE
@@ -469,4 +478,400 @@ router.get('/admin/export', async (req, res) => {
     res.status(500).json({ success: false, message: 'Failed to export' });
   }
 });
+
+// ============================================
+// ADMIN: SETTLEMENTS BY CITY
+// ============================================
+router.get('/admin/by-city', async (req, res) => {
+  const adminKey = req.headers['x-admin-key'];
+  let isAuthorized = adminKey && adminKey === process.env.ADMIN_KEY;
+
+  if (!isAuthorized) {
+    const authHeader = req.headers.authorization;
+    if (authHeader) {
+      try {
+        const token = authHeader.split(' ')[1];
+        const jwt = require('jsonwebtoken');
+        const decoded = jwt.verify(token, process.env.JWT_SECRET || 'hospital_platform_secret_key_2024');
+        if (decoded.role === 'admin') isAuthorized = true;
+      } catch (e) {}
+    }
+  }
+
+  if (!isAuthorized) {
+    return res.status(401).json({ success: false, message: 'Admin authentication required' });
+  }
+
+  try {
+    const cities = await Payout.aggregate([
+      { $match: { status: { $in: ['requested', 'approved', 'paid'] } } },
+      {
+        $group: {
+          _id: { $ifNull: ['$providerCity', 'Unknown'] },
+          city: { $first: { $ifNull: ['$providerCity', 'Unknown'] } },
+          providerCount: { $addToSet: '$providerId' },
+          count: { $sum: 1 },
+          totalAmount: { $sum: '$amount' },
+          totalTds: { $sum: { $ifNull: ['$tdsDeducted', 0] } },
+          totalNetAmount: { $sum: '$netAmount' }
+        }
+      },
+      {
+        $project: {
+          _id: 0,
+          city: '$_id',
+          providerCount: { $size: '$providerCount' },
+          count: 1,
+          totalAmount: 1,
+          totalTds: 1,
+          totalNetAmount: 1
+        }
+      },
+      { $sort: { totalAmount: -1 } }
+    ]);
+
+    res.json({ success: true, data: cities });
+  } catch (error) {
+    console.error('By-city error:', error.message);
+    res.status(500).json({ success: false, message: 'Failed to fetch city breakdown' });
+  }
+});
+
+// ============================================
+// ADMIN: SETTLEMENTS BY DATE
+// ============================================
+router.get('/admin/by-date', async (req, res) => {
+  const adminKey = req.headers['x-admin-key'];
+  let isAuthorized = adminKey && adminKey === process.env.ADMIN_KEY;
+
+  if (!isAuthorized) {
+    const authHeader = req.headers.authorization;
+    if (authHeader) {
+      try {
+        const token = authHeader.split(' ')[1];
+        const jwt = require('jsonwebtoken');
+        const decoded = jwt.verify(token, process.env.JWT_SECRET || 'hospital_platform_secret_key_2024');
+        if (decoded.role === 'admin') isAuthorized = true;
+      } catch (e) {}
+    }
+  }
+
+  if (!isAuthorized) {
+    return res.status(401).json({ success: false, message: 'Admin authentication required' });
+  }
+
+  try {
+    const { groupBy = 'day', from, to } = req.query;
+
+    // Build match filter
+    const match = { status: { $in: ['requested', 'approved', 'paid'] } };
+    if (from || to) {
+      match.createdAt = {};
+      if (from) match.createdAt.$gte = new Date(from);
+      if (to) match.createdAt.$lte = new Date(to);
+    }
+
+    // Date format per grouping
+    const dateFormats = {
+      day: '%Y-%m-%d',
+      week: '%Y-W%V',
+      month: '%Y-%m',
+      year: '%Y'
+    };
+    const dateFormat = dateFormats[groupBy] || dateFormats.day;
+
+    const dates = await Payout.aggregate([
+      { $match: match },
+      {
+        $group: {
+          _id: { $dateToString: { format: dateFormat, date: '$createdAt' } },
+          period: { $first: { $dateToString: { format: dateFormat, date: '$createdAt' } } },
+          providerCount: { $addToSet: '$providerId' },
+          count: { $sum: 1 },
+          totalAmount: { $sum: '$amount' },
+          totalTds: { $sum: { $ifNull: ['$tdsDeducted', 0] } },
+          totalNetAmount: { $sum: '$netAmount' }
+        }
+      },
+      {
+        $project: {
+          _id: 0,
+          period: '$_id',
+          providerCount: { $size: '$providerCount' },
+          count: 1,
+          totalAmount: 1,
+          totalTds: 1,
+          totalNetAmount: 1
+        }
+      },
+      { $sort: { period: -1 } }
+    ]);
+
+    // Totals summary
+    const totals = dates.reduce(
+      (acc, d) => ({
+        count: acc.count + d.count,
+        totalAmount: acc.totalAmount + d.totalAmount,
+        totalTds: acc.totalTds + d.totalTds,
+        totalNetAmount: acc.totalNetAmount + d.totalNetAmount
+      }),
+      { count: 0, totalAmount: 0, totalTds: 0, totalNetAmount: 0 }
+    );
+
+    res.json({ success: true, data: dates, totals });
+  } catch (error) {
+    console.error('By-date error:', error.message);
+    res.status(500).json({ success: false, message: 'Failed to fetch date breakdown' });
+  }
+});
+
+// ============================================
+// SHARED ADMIN AUTH MIDDLEWARE
+// ============================================
+const requireAdmin = (req, res, next) => {
+  const adminKey = req.headers['x-admin-key'];
+  if (adminKey && adminKey === process.env.ADMIN_KEY) {
+    return next();
+  }
+
+  const authHeader = req.headers.authorization;
+  if (authHeader) {
+    try {
+      const token = authHeader.split(' ')[1];
+      const jwt = require('jsonwebtoken');
+      const decoded = jwt.verify(
+        token,
+        process.env.JWT_SECRET || 'hospital_platform_secret_key_2024'
+      );
+      if (decoded.role === 'admin') return next();
+    } catch (e) {}
+  }
+
+  return res.status(401).json({ success: false, message: 'Admin authentication required' });
+};
+
+// ============================================
+// SHARED: Build payout match filter (Ayurveda-scoped)
+// ============================================
+const buildPayoutMatch = (query = {}) => {
+  const { status, providerType, from, to } = query;
+  const match = {};
+
+  if (status) {
+    match.status = status;
+  } else {
+    match.status = { $in: ['requested', 'approved', 'paid', 'pending', 'processing'] };
+  }
+
+  // Scope to Ayurveda provider types unless admin explicitly filters
+  if (providerType) {
+    match.providerType = providerType;
+  } else {
+    match.providerType = { $in: AYURVEDA_PROVIDER_TYPES };
+  }
+
+  if (from || to) {
+    match.createdAt = {};
+    if (from) match.createdAt.$gte = new Date(from);
+    if (to) {
+      const toDate = new Date(to);
+      toDate.setHours(23, 59, 59, 999);
+      match.createdAt.$lte = toDate;
+    }
+  }
+
+  return match;
+};
+
+// ============================================
+// ADMIN: SETTLEMENTS BY CITY
+// ============================================
+router.get('/admin/by-city', requireAdmin, async (req, res) => {
+  try {
+    const match = buildPayoutMatch(req.query);
+
+    const [cities, totals] = await Promise.all([
+      Payout.aggregate([
+        { $match: match },
+        {
+          $group: {
+            _id: '$providerCity',
+            providerCount: { $addToSet: '$providerId' },
+            count: { $sum: 1 },
+            totalAmount: { $sum: '$amount' },
+            totalTds: { $sum: { $ifNull: ['$tdsDeducted', 0] } },
+            totalNetAmount: { $sum: '$netAmount' }
+          }
+        },
+        {
+          $project: {
+            _id: 0,
+            city: { $ifNull: ['$_id', 'Unknown'] },
+            providerCount: { $size: '$providerCount' },
+            count: 1,
+            totalAmount: { $round: ['$totalAmount', 2] },
+            totalTds: { $round: ['$totalTds', 2] },
+            totalNetAmount: { $round: ['$totalNetAmount', 2] }
+          }
+        },
+        { $sort: { totalAmount: -1 } }
+      ]),
+      Payout.aggregate([
+        { $match: match },
+        {
+          $group: {
+            _id: null,
+            totalAmount: { $sum: '$amount' },
+            totalNetAmount: { $sum: '$netAmount' },
+            count: { $sum: 1 }
+          }
+        },
+        { $project: { _id: 0 } }
+      ])
+    ]);
+
+    res.json({
+      success: true,
+      data: cities,
+      totals: totals[0] || { totalAmount: 0, totalNetAmount: 0, count: 0 }
+    });
+  } catch (error) {
+    console.error('[settlements.byCity]', error.message);
+    res.status(500).json({ success: false, message: 'Failed to fetch city breakdown' });
+  }
+});
+
+// ============================================
+// ADMIN: SETTLEMENTS BY DATE
+// ============================================
+router.get('/admin/by-date', requireAdmin, async (req, res) => {
+  try {
+    const { groupBy = 'day' } = req.query;
+
+    const allowedFormats = {
+      day: { format: '%Y-%m-%d', tz: 'Asia/Kolkata' },
+      week: { format: '%G-W%V', tz: 'Asia/Kolkata' },
+      month: { format: '%Y-%m', tz: 'Asia/Kolkata' },
+      year: { format: '%Y', tz: 'Asia/Kolkata' }
+    };
+
+    if (!allowedFormats[groupBy]) {
+      return res.status(400).json({
+        success: false,
+        message: 'Invalid groupBy. Use: day | week | month | year'
+      });
+    }
+
+    const { format, tz } = allowedFormats[groupBy];
+    const match = buildPayoutMatch(req.query);
+
+    const [dates, totals] = await Promise.all([
+      Payout.aggregate([
+        { $match: match },
+        {
+          $group: {
+            _id: {
+              $dateToString: { format, date: '$createdAt', timezone: tz }
+            },
+            providerCount: { $addToSet: '$providerId' },
+            count: { $sum: 1 },
+            totalAmount: { $sum: '$amount' },
+            totalTds: { $sum: { $ifNull: ['$tdsDeducted', 0] } },
+            totalNetAmount: { $sum: '$netAmount' }
+          }
+        },
+        {
+          $project: {
+            _id: 0,
+            period: '$_id',
+            providerCount: { $size: '$providerCount' },
+            count: 1,
+            totalAmount: { $round: ['$totalAmount', 2] },
+            totalTds: { $round: ['$totalTds', 2] },
+            totalNetAmount: { $round: ['$totalNetAmount', 2] }
+          }
+        },
+        { $sort: { period: -1 } }
+      ]),
+      Payout.aggregate([
+        { $match: match },
+        {
+          $group: {
+            _id: null,
+            count: { $sum: 1 },
+            totalAmount: { $sum: '$amount' },
+            totalTds: { $sum: { $ifNull: ['$tdsDeducted', 0] } },
+            totalNetAmount: { $sum: '$netAmount' }
+          }
+        },
+        { $project: { _id: 0 } }
+      ])
+    ]);
+
+    res.json({
+      success: true,
+      data: dates,
+      totals: totals[0] || {
+        count: 0,
+        totalAmount: 0,
+        totalTds: 0,
+        totalNetAmount: 0
+      }
+    });
+  } catch (error) {
+    console.error('[settlements.byDate]', error.message);
+    res.status(500).json({ success: false, message: 'Failed to fetch date breakdown' });
+  }
+});
+
+// ============================================
+// ADMIN: SETTLEMENT SUMMARY STATS
+// ============================================
+router.get('/admin/summary', requireAdmin, async (req, res) => {
+  try {
+    const match = buildPayoutMatch(req.query);
+
+    const stats = await Payout.aggregate([
+      { $match: match },
+      {
+        $group: {
+          _id: null,
+          totalPayouts: { $sum: 1 },
+          totalAmount: { $sum: '$amount' },
+          totalTds: { $sum: { $ifNull: ['$tdsDeducted', 0] } },
+          totalNetAmount: { $sum: '$netAmount' },
+          uniqueProviders: { $addToSet: '$providerId' },
+          uniqueCities: { $addToSet: '$providerCity' }
+        }
+      },
+      {
+        $project: {
+          _id: 0,
+          totalPayouts: 1,
+          totalAmount: { $round: ['$totalAmount', 2] },
+          totalTds: { $round: ['$totalTds', 2] },
+          totalNetAmount: { $round: ['$totalNetAmount', 2] },
+          uniqueProviderCount: { $size: '$uniqueProviders' },
+          uniqueCityCount: { $size: '$uniqueCities' }
+        }
+      }
+    ]);
+
+    res.json({
+      success: true,
+      data: stats[0] || {
+        totalPayouts: 0,
+        totalAmount: 0,
+        totalTds: 0,
+        totalNetAmount: 0,
+        uniqueProviderCount: 0,
+        uniqueCityCount: 0
+      }
+    });
+  } catch (error) {
+    console.error('[settlements.summary]', error.message);
+    res.status(500).json({ success: false, message: 'Failed to fetch summary' });
+  }
+});
+
 module.exports = router;
