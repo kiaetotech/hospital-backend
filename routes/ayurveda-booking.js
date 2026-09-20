@@ -1243,13 +1243,50 @@ router.put('/:bookingId/status', authenticateUser, async (req, res) => {
         }
         await booking.startConsultation();
         break;
+
+	      case 'reject':
+        // Only allow reject on pending bookings
+        if (booking.status !== 'pending') {
+          return res.status(400).json({ success: false, message: 'Only pending bookings can be rejected' });
+        }
+        
+        booking.status = 'cancelled';
+        booking.cancelledAt = new Date();
+        booking.cancellationReason = req.body.reason || 'Rejected by provider';
+        
+        await booking.save();
+        
+        // Decrement package counter
+        if (booking.type === 'panchakarma_package' && booking.center && booking.package?.packageId) {
+          try {
+            await WellnessCenter.updateOne(
+              { _id: booking.center, 'packages._id': booking.package.packageId },
+              { $inc: { 'packages.$.currentBookings': -1 } }
+            );
+          } catch (decrementError) {
+            console.error('Counter decrement error:', decrementError.message);
+          }
+        }
+        break;
         
       case 'complete':
         await booking.completeConsultation(req.body.prescription);
         break;
         
-      case 'no_show':
+            case 'no_show':
         await booking.markNoShow();
+        
+        // Decrement package counter if panchakarma booking
+        if (booking.type === 'panchakarma_package' && booking.center && booking.package?.packageId) {
+          try {
+            await WellnessCenter.updateOne(
+              { _id: booking.center, 'packages._id': booking.package.packageId },
+              { $inc: { 'packages.$.currentBookings': -1 } }
+            );
+          } catch (decrementError) {
+            console.error('Counter decrement error:', decrementError.message);
+          }
+        }
         break;
         
       default:
@@ -1934,5 +1971,232 @@ router.put('/admin/reset-review/:bookingId', async (req, res) => {
     res.status(500).json({ success: false, message: error.message });
   }
 });
+
+// ============================================
+// ADMIN: GET ALL BOOKINGS
+// ============================================
+router.get('/admin/all', async (req, res) => {
+  const adminKey = req.headers['x-admin-key'];
+  if (adminKey !== process.env.ADMIN_KEY) {
+    return res.status(401).json({ success: false, message: 'Admin authentication required' });
+  }
+
+  try {
+    const { status, type, page = 1, limit = 50 } = req.query;
+    const query = {};
+    if (status) query.status = status;
+    if (type) query.type = type;
+
+    const skip = (parseInt(page) - 1) * parseInt(limit);
+
+    const bookings = await AyurvedaBooking.find(query)
+      .sort({ createdAt: -1 })
+      .skip(skip)
+      .limit(parseInt(limit))
+      .select('-otp -razorpaySignature -razorpaySignature')
+      .lean();
+
+    const total = await AyurvedaBooking.countDocuments(query);
+
+    res.json({
+      success: true,
+      data: bookings,
+      pagination: {
+        page: parseInt(page),
+        limit: parseInt(limit),
+        total,
+        pages: Math.ceil(total / parseInt(limit))
+      }
+    });
+  } catch (error) {
+    console.error('Admin bookings error:', error.message);
+    res.status(500).json({ success: false, message: 'Failed to fetch bookings' });
+  }
+});
+
+// ============================================
+// ADMIN: GET ALL REVIEWS
+// ============================================
+router.get('/admin/reviews/all', async (req, res) => {
+  const adminKey = req.headers['x-admin-key'];
+  if (adminKey !== process.env.ADMIN_KEY) {
+    return res.status(401).json({ success: false, message: 'Admin authentication required' });
+  }
+
+  try {
+    const { page = 1, limit = 50 } = req.query;
+
+    const bookings = await AyurvedaBooking.find({
+      review: { $exists: true, $ne: null },
+      reviewed: true
+    })
+      .sort({ 'review.createdAt': -1 })
+      .select('bookingId type patient doctorName centerName review package createdAt')
+      .lean();
+
+    const reviews = bookings
+      .filter(b => b.review && (b.review.rating || b.review.comment))
+      .map(b => ({
+        bookingId: b.bookingId,
+        bookingType: b.type,
+        patientName: b.patient?.name || 'Patient',
+        doctorName: b.doctorName || '',
+        centerName: b.centerName || '',
+        packageName: b.package?.name || '',
+        rating: b.review?.rating,
+        comment: b.review?.comment,
+        doctorResponse: b.review?.doctorResponse || '',
+        centerResponse: b.review?.centerResponse || '',
+        createdAt: b.review?.createdAt
+      }));
+
+    const total = reviews.length;
+    const skip = (parseInt(page) - 1) * parseInt(limit);
+    const paginated = reviews.slice(skip, skip + parseInt(limit));
+
+    const avgRating = reviews.length > 0
+      ? Math.round((reviews.reduce((sum, r) => sum + (r.rating || 0), 0) / reviews.length) * 10) / 10
+      : 0;
+
+    res.json({
+      success: true,
+      data: paginated,
+      averageRating: avgRating,
+      totalReviews: total,
+      pagination: {
+        page: parseInt(page),
+        limit: parseInt(limit),
+        total,
+        pages: Math.ceil(total / parseInt(limit))
+      }
+    });
+  } catch (error) {
+    console.error('Admin reviews error:', error.message);
+    res.status(500).json({ success: false, message: 'Failed to fetch reviews' });
+  }
+});
+
+// ============================================
+// ADMIN: GET ALL COMPLAINTS
+// ============================================
+router.get('/admin/complaints/all', async (req, res) => {
+  const adminKey = req.headers['x-admin-key'];
+  if (adminKey !== process.env.ADMIN_KEY) {
+    return res.status(401).json({ success: false, message: 'Admin authentication required' });
+  }
+
+  try {
+    const { status, page = 1, limit = 50 } = req.query;
+
+    const bookings = await AyurvedaBooking.find({
+      'complaints.0': { $exists: true }
+    })
+      .sort({ updatedAt: -1 })
+      .select('bookingId type patient doctorName centerName complaints package')
+      .lean();
+
+    let complaints = [];
+    bookings.forEach(b => {
+      (b.complaints || []).forEach(c => {
+        if (status && c.status !== status) return;
+        complaints.push({
+          complaintId: c._id,
+          bookingId: b.bookingId,
+          bookingType: b.type,
+          patientName: b.patient?.name || 'Patient',
+          patientPhone: b.patient?.phone || '',
+          doctorName: b.doctorName || '',
+          centerName: b.centerName || '',
+          packageName: b.package?.name || '',
+          category: c.category,
+          description: c.description,
+          priority: c.priority,
+          status: c.status,
+          doctorResponse: c.doctorResponse || '',
+          centerResponse: c.centerResponse || '',
+          adminResponse: c.adminResponse || '',
+          resolvedAt: c.resolvedAt,
+          createdAt: c.createdAt,
+          ageHours: Math.round((Date.now() - new Date(c.createdAt)) / (1000 * 60 * 60))
+        });
+      });
+    });
+
+    complaints.sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt));
+
+    const total = complaints.length;
+    const skip = (parseInt(page) - 1) * parseInt(limit);
+    const paginated = complaints.slice(skip, skip + parseInt(limit));
+
+    res.json({
+      success: true,
+      data: paginated,
+      pagination: {
+        page: parseInt(page),
+        limit: parseInt(limit),
+        total,
+        pages: Math.ceil(total / parseInt(limit))
+      }
+    });
+  } catch (error) {
+    console.error('Admin complaints error:', error.message);
+    res.status(500).json({ success: false, message: 'Failed to fetch complaints' });
+  }
+});
+
+// ============================================
+// ADMIN: UPDATE COMPLAINT
+// ============================================
+router.put('/admin/complaints/:bookingId/:complaintId', async (req, res) => {
+  const adminKey = req.headers['x-admin-key'];
+  if (adminKey !== process.env.ADMIN_KEY) {
+    return res.status(401).json({ success: false, message: 'Admin authentication required' });
+  }
+
+  try {
+    const { status, adminResponse } = req.body;
+
+    const booking = await AyurvedaBooking.findOne({ bookingId: req.params.bookingId });
+    if (!booking) return res.status(404).json({ success: false, message: 'Booking not found' });
+
+    const complaint = booking.complaints.id(req.params.complaintId);
+    if (!complaint) return res.status(404).json({ success: false, message: 'Complaint not found' });
+
+    if (status) complaint.status = status;
+    if (adminResponse) complaint.adminResponse = adminResponse.trim().slice(0, 2000);
+    if (status === 'resolved') complaint.resolvedAt = new Date();
+
+    await booking.save();
+
+    res.json({ success: true, message: 'Complaint updated', data: complaint });
+  } catch (error) {
+    console.error('Admin complaint update error:', error.message);
+    res.status(500).json({ success: false, message: 'Failed to update complaint' });
+  }
+});
+
+// ============================================
+// ADMIN: GET ALL DISCOUNTS (Ayurveda scope)
+// ============================================
+router.get('/admin/discounts', async (req, res) => {
+  const adminKey = req.headers['x-admin-key'];
+  if (adminKey !== process.env.ADMIN_KEY) {
+    return res.status(401).json({ success: false, message: 'Admin authentication required' });
+  }
+
+  try {
+    const Discount = require('../models/Discount');
+    const discounts = await Discount.find({})
+      .sort({ createdAt: -1 })
+      .limit(200)
+      .lean();
+
+    res.json({ success: true, data: discounts, total: discounts.length });
+  } catch (error) {
+    console.error('Admin discounts error:', error.message);
+    res.status(500).json({ success: false, message: 'Failed to fetch discounts' });
+  }
+});
+
 
 module.exports = router;
