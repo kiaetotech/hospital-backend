@@ -1111,6 +1111,75 @@ app.get('/api/seed-tests', authenticateAdmin, async (req, res) => {
 });
 
 // ============================================
+// ONE-TIME: BACKFILL PAYOUT CITIES
+// Temporary admin tool — remove after running
+// ============================================
+app.post('/api/admin/backfill-payout-cities', (req, res, next) => {
+  const key = req.headers['x-admin-key'];
+  if (key && key === process.env.ADMIN_KEY) return next();
+  return authenticateAdmin(req, res, next);
+}, async (req, res) => {
+  try {
+    const Payout = require('./models/Payout');
+    require('./models/AyurvedaDoctor');
+    require('./models/WellnessCenter');
+    const { buildPayoutSnapshotFields } = require('./services/providerSnapshotService');
+
+    const dryRun = req.query.dryRun === 'true';
+
+    const query = {
+      $or: [
+        { providerCity: { $in: [null, '', 'Unknown', 'undefined'] } },
+        { providerCity: { $exists: false } },
+        { providerSnapshot: { $exists: false } },
+        { 'providerSnapshot.name': { $exists: false } },
+        { 'providerSnapshot.name': '' }
+      ]
+    };
+
+    const payouts = await Payout.find(query).lean();
+    const results = { total: payouts.length, updated: 0, skipped: 0, failed: 0, details: [] };
+
+    for (const p of payouts) {
+      try {
+        const snap = await buildPayoutSnapshotFields(p.providerType, p.providerId, p.providerName);
+
+        if (snap.providerCity === 'Unknown' && snap.providerSnapshot.name === 'Unknown Provider') {
+          results.skipped++;
+          results.details.push({ payoutId: p.payoutId, status: 'skipped', reason: 'provider not found' });
+          continue;
+        }
+
+        if (dryRun) {
+          results.updated++;
+          results.details.push({ payoutId: p.payoutId, status: 'would-update', city: snap.providerCity, name: snap.providerName });
+          continue;
+        }
+
+        await Payout.updateOne(
+          { _id: p._id },
+          { $set: {
+            providerName: snap.providerName,
+            providerCity: snap.providerCity,
+            providerSnapshot: snap.providerSnapshot
+          }}
+        );
+        results.updated++;
+        results.details.push({ payoutId: p.payoutId, status: 'updated', city: snap.providerCity, name: snap.providerName });
+      } catch (err) {
+        results.failed++;
+        results.details.push({ payoutId: p.payoutId, status: 'failed', error: err.message });
+      }
+    }
+
+    res.json({ success: true, dryRun, ...results });
+  } catch (error) {
+    console.error('[backfill-payout-cities]', error.message);
+    res.status(500).json({ success: false, error: error.message });
+  }
+});
+
+// ============================================
 // 404 HANDLER
 // ============================================
 app.use((req, res) => {
