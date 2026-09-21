@@ -265,9 +265,9 @@ const ayurvedaBookingSchema = new mongoose.Schema({
       enum: ['low', 'medium', 'high', 'critical'],
       default: 'medium'
     },
-    status: { 
+        status: { 
       type: String, 
-      enum: ['pending', 'in_review', 'resolved', 'rejected'],
+      enum: ['pending', 'in_review', 'escalated', 'resolved', 'rejected'],
       default: 'pending'
     },
     adminResponse: { type: String, default: '' },
