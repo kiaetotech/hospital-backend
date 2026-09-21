@@ -5,6 +5,9 @@
  */
 
 const mongoose = require('mongoose');
+// Ensure models are registered when this service loads
+require('../models/AyurvedaDoctor');
+require('../models/WellnessCenter');
 
 // ============================================
 // PROVIDER REGISTRY
