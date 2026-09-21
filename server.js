@@ -31,6 +31,7 @@ try {
 
 console.log('GROQ_API_KEY:', process.env.GROQ_API_KEY ? '✅ Set' : '❌ Missing');
 console.log('GEMINI_API_KEY:', process.env.GEMINI_API_KEY ? '✅ Set' : '❌ Missing');
+console.log('🚀 CODE VERSION: v-' + new Date().toISOString().slice(0, 16));
 
 const express = require('express');
 const mongoose = require('mongoose');
