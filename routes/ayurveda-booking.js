@@ -2144,6 +2144,9 @@ router.get('/admin/complaints/all', async (req, res) => {
 // ============================================
 // ADMIN: UPDATE COMPLAINT
 // ============================================
+// ============================================
+// ADMIN: UPDATE COMPLAINT
+// ============================================
 router.put('/admin/complaints/:bookingId/:complaintId', async (req, res) => {
   const adminKey = req.headers['x-admin-key'];
   if (adminKey !== process.env.ADMIN_KEY) {
@@ -2159,11 +2162,69 @@ router.put('/admin/complaints/:bookingId/:complaintId', async (req, res) => {
     const complaint = booking.complaints.id(req.params.complaintId);
     if (!complaint) return res.status(404).json({ success: false, message: 'Complaint not found' });
 
+    // Track prior status for notification logic
+    const previousStatus = complaint.status;
+
     if (status) complaint.status = status;
     if (adminResponse) complaint.adminResponse = adminResponse.trim().slice(0, 2000);
     if (status === 'resolved') complaint.resolvedAt = new Date();
 
+    // Auto-upgrade priority on escalation
+    if (status === 'escalated' && previousStatus !== 'escalated') {
+      const priorityRank = { low: 1, medium: 2, high: 3, critical: 4 };
+      const currentRank = priorityRank[complaint.priority] || 2;
+      if (currentRank < 3) {
+        complaint.priority = 'high';
+      }
+    }
+
     await booking.save();
+
+    // ============================================
+    // NOTIFY PROVIDER ON ESCALATION (non-blocking)
+    // ============================================
+    if (status === 'escalated' && previousStatus !== 'escalated') {
+      try {
+        const notificationService = require('../services/notificationService');
+        const smsService = require('../services/smsService');
+
+        const notificationMessage = 
+          `Complaint on your booking ${booking.bookingId} has been ESCALATED for priority review. ` +
+          `Please respond to the complaint within 24 hours to avoid potential penalties.`;
+
+        // Notify doctor
+        if (booking.doctor && booking.doctorPhone) {
+          try {
+            await smsService.sendSms(booking.doctorPhone, notificationMessage);
+          } catch (smsErr) {
+            console.warn('Doctor escalation SMS failed:', smsErr.message);
+          }
+        }
+
+        // Notify center
+        if (booking.center && booking.centerPhone) {
+          try {
+            await smsService.sendSms(booking.centerPhone, notificationMessage);
+          } catch (smsErr) {
+            console.warn('Center escalation SMS failed:', smsErr.message);
+          }
+        }
+
+        // In-app notification via notificationService if available
+        if (notificationService && typeof notificationService.sendComplaintEscalation === 'function') {
+          try {
+            await notificationService.sendComplaintEscalation(booking, complaint);
+          } catch (notifErr) {
+            console.warn('Escalation notification failed:', notifErr.message);
+          }
+        }
+
+        console.log(`[escalation.notify] Booking ${booking.bookingId} — provider notified`);
+      } catch (notifyError) {
+        // Never fail the request due to notification errors
+        console.error('Escalation notify error (non-fatal):', notifyError.message);
+      }
+    }
 
     res.json({ success: true, message: 'Complaint updated', data: complaint });
   } catch (error) {
