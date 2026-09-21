@@ -103,14 +103,8 @@ async function getProviderSnapshot(providerType, providerId) {
       return fallback;
     }
 
-    const projection = [
-      registryEntry.cityPath,
-      registryEntry.statePath,
-      registryEntry.phonePath,
-      registryEntry.namePath
-    ].join(' ');
-
-    const provider = await Model.findById(providerId).select(projection).lean();
+        // Full fetch — no projection, avoids Mongoose path quirks
+    const provider = await Model.findById(providerId).lean();
 
     if (!provider) {
       console.warn(`[providerSnapshot] Provider not found: ${providerType}/${providerId}`);
