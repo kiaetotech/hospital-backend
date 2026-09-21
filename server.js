@@ -1112,8 +1112,8 @@ app.get('/api/seed-tests', authenticateAdmin, async (req, res) => {
 });
 
 // ============================================
-// ONE-TIME: BACKFILL PAYOUT CITIES
-// Temporary admin tool — remove after running
+// ADMIN: Backfill payout cities (one-time migration tool)
+// Safe to run multiple times — idempotent
 // ============================================
 app.post('/api/admin/backfill-payout-cities', (req, res, next) => {
   const key = req.headers['x-admin-key'];
@@ -1122,40 +1122,22 @@ app.post('/api/admin/backfill-payout-cities', (req, res, next) => {
 }, async (req, res) => {
   try {
     const Payout = require('./models/Payout');
-    require('./models/AyurvedaDoctor');
-    require('./models/WellnessCenter');
     const { buildPayoutSnapshotFields } = require('./services/providerSnapshotService');
 
     const dryRun = req.query.dryRun === 'true';
 
-    const query = {
+    const payouts = await Payout.find({
       $or: [
         { providerCity: { $in: [null, '', 'Unknown', 'undefined'] } },
-        { providerCity: { $exists: false } },
-        { providerSnapshot: { $exists: false } },
-        { 'providerSnapshot.name': { $exists: false } },
-        { 'providerSnapshot.name': '' }
+        { providerCity: { $exists: false } }
       ]
-    };
+    }).lean();
 
-    const payouts = await Payout.find(query).lean();
     const results = { total: payouts.length, updated: 0, skipped: 0, failed: 0, details: [] };
 
     for (const p of payouts) {
       try {
-                const snap = await buildPayoutSnapshotFields(p.providerType, p.providerId, p.providerName);
-
-        // DEBUG — remove after diagnosis
-        results.debug = results.debug || [];
-        results.debug.push({
-          payoutId: p.payoutId,
-          inputType: p.providerType,
-          inputId: String(p.providerId),
-          inputIdConstructor: p.providerId?.constructor?.name,
-          snapProviderName: snap.providerName,
-          snapProviderCity: snap.providerCity,
-          snapSnapshot: snap.providerSnapshot
-        });
+        const snap = await buildPayoutSnapshotFields(p.providerType, p.providerId, p.providerName);
 
         if (snap.providerCity === 'Unknown' && snap.providerSnapshot.name === 'Unknown Provider') {
           results.skipped++;
@@ -1177,6 +1159,7 @@ app.post('/api/admin/backfill-payout-cities', (req, res, next) => {
             providerSnapshot: snap.providerSnapshot
           }}
         );
+
         results.updated++;
         results.details.push({ payoutId: p.payoutId, status: 'updated', city: snap.providerCity, name: snap.providerName });
       } catch (err) {

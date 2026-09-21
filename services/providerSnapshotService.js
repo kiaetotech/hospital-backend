@@ -1,53 +1,56 @@
 /**
  * Provider Snapshot Service
- * Resolves provider city/state/phone at payout creation time.
- * Fail-safe: returns "Unknown" defaults, never throws.
+ *
+ * Resolves provider metadata (city, state, phone, name) at payout creation time.
+ * Uses raw MongoDB collection queries to avoid Mongoose model registry issues.
+ *
+ * Production design principles:
+ * - Zero Mongoose model dependency — direct DB access
+ * - Single responsibility: resolve + snapshot
+ * - Fail-safe: returns Unknown defaults, never throws
+ * - Extensible: register new provider types via config
  */
 
 const mongoose = require('mongoose');
-// Ensure models are registered when this service loads
-require('../models/AyurvedaDoctor');
-require('../models/WellnessCenter');
 
 // ============================================
 // PROVIDER REGISTRY
-// Add provider types here as other modules adopt the payout snapshot system.
+// Maps provider type → collection name + field paths
 // ============================================
 const PROVIDER_REGISTRY = {
-  // Ayurveda — ACTIVE
   'ayurveda_doctor': {
-    model: 'AyurvedaDoctor',
+    collection: 'ayurvedadoctors',
     cityPath: 'address.city',
     statePath: 'address.state',
     phonePath: 'phone',
     namePath: 'name'
   },
   'doctor': {
-    model: 'AyurvedaDoctor',
+    collection: 'ayurvedadoctors',
     cityPath: 'address.city',
     statePath: 'address.state',
     phonePath: 'phone',
     namePath: 'name'
   },
   'wellness_center': {
-    model: 'WellnessCenter',
+    collection: 'wellnesscenters',
     cityPath: 'address.city',
     statePath: 'address.state',
     phonePath: 'phone',
     namePath: 'name'
   },
   'center': {
-    model: 'WellnessCenter',
+    collection: 'wellnesscenters',
     cityPath: 'address.city',
     statePath: 'address.state',
     phonePath: 'phone',
     namePath: 'name'
   }
 
-  // Other tags — add when ready:
-  // 'hospital': { model: 'Hospital', cityPath: 'address.city', ... },
-  // 'ambulance_provider': { model: 'AmbulanceFleet', cityPath: 'address.city', ... },
-  // 'diagnostics_lab': { model: 'DiagnosticsProvider', cityPath: 'address.city', ... },
+  // Add more provider types here as modules go live:
+  // 'hospital': { collection: 'hospitals', cityPath: 'address.city', ... },
+  // 'ambulance_provider': { collection: 'ambulancefleets', ... },
+  // 'diagnostics_lab': { collection: 'diagnosticsproviders', ... }
 };
 
 // ============================================
@@ -77,6 +80,16 @@ function normalizeCity(rawCity) {
 // ============================================
 // MAIN API
 // ============================================
+
+/**
+ * Fetch provider snapshot metadata.
+ * Uses direct DB collection lookup — no Mongoose model dependency.
+ *
+ * @param {string} providerType - e.g. 'ayurveda_doctor'
+ * @param {string|ObjectId} providerId
+ * @returns {Promise<{name, city, state, phone, found}>}
+ *   Never throws. Returns Unknown defaults on failure.
+ */
 async function getProviderSnapshot(providerType, providerId) {
   const fallback = {
     name: 'Unknown Provider',
@@ -87,20 +100,10 @@ async function getProviderSnapshot(providerType, providerId) {
   };
 
   try {
-    const registryEntry = PROVIDER_REGISTRY[providerType];
-    if (!registryEntry) {
+    const entry = PROVIDER_REGISTRY[providerType];
+    if (!entry) {
       console.warn(`[providerSnapshot] Unknown provider type: ${providerType}`);
       return fallback;
-    }
-
-    // Ensure model is registered at call time (server.js may clear them on connect)
-    try {
-      if (!mongoose.models[registryEntry.model]) {
-        if (registryEntry.model === 'AyurvedaDoctor') require('../models/AyurvedaDoctor');
-        else if (registryEntry.model === 'WellnessCenter') require('../models/WellnessCenter');
-      }
-    } catch (e) {
-      console.warn(`[providerSnapshot] Failed to load model: ${registryEntry.model}`, e.message);
     }
 
     if (!providerId || !mongoose.Types.ObjectId.isValid(providerId)) {
@@ -108,26 +111,15 @@ async function getProviderSnapshot(providerType, providerId) {
       return fallback;
     }
 
-    let Model;
-    try {
-      Model = mongoose.model(registryEntry.model);
-    } catch (err) {
-      console.warn(`[providerSnapshot] Model not registered: ${registryEntry.model}`);
+    // Direct DB access — bypasses Mongoose model registry entirely
+    const db = mongoose.connection.db;
+    if (!db) {
+      console.warn('[providerSnapshot] MongoDB connection not ready');
       return fallback;
     }
 
-    // DEBUG — remove after diagnosis
-    console.log('[providerSnapshot.DEBUG]', JSON.stringify({
-      providerType,
-      providerId: String(providerId),
-      providerIdType: typeof providerId,
-      providerIdValid: mongoose.Types.ObjectId.isValid(providerId),
-      modelName: registryEntry.model,
-      modelRegistered: !!mongoose.models[registryEntry.model]
-    }));
-
-        // Full fetch — no projection, avoids Mongoose path quirks
-    const provider = await Model.findById(providerId).lean();
+    const objectId = new mongoose.Types.ObjectId(providerId);
+    const provider = await db.collection(entry.collection).findOne({ _id: objectId });
 
     if (!provider) {
       console.warn(`[providerSnapshot] Provider not found: ${providerType}/${providerId}`);
@@ -135,10 +127,10 @@ async function getProviderSnapshot(providerType, providerId) {
     }
 
     return {
-      name: getNested(provider, registryEntry.namePath, 'Unknown Provider'),
-      city: normalizeCity(getNested(provider, registryEntry.cityPath)),
-      state: getNested(provider, registryEntry.statePath, ''),
-      phone: getNested(provider, registryEntry.phonePath, ''),
+      name: getNested(provider, entry.namePath, 'Unknown Provider'),
+      city: normalizeCity(getNested(provider, entry.cityPath)),
+      state: getNested(provider, entry.statePath, ''),
+      phone: getNested(provider, entry.phonePath, ''),
       found: true
     };
   } catch (error) {
@@ -151,6 +143,9 @@ async function getProviderSnapshot(providerType, providerId) {
   }
 }
 
+/**
+ * Build snapshot + denormalized fields ready to spread into a Payout doc.
+ */
 async function buildPayoutSnapshotFields(providerType, providerId, fallbackName = null) {
   const snap = await getProviderSnapshot(providerType, providerId);
 
