@@ -93,6 +93,16 @@ async function getProviderSnapshot(providerType, providerId) {
       return fallback;
     }
 
+    // Ensure model is registered at call time (server.js may clear them on connect)
+    try {
+      if (!mongoose.models[registryEntry.model]) {
+        if (registryEntry.model === 'AyurvedaDoctor') require('../models/AyurvedaDoctor');
+        else if (registryEntry.model === 'WellnessCenter') require('../models/WellnessCenter');
+      }
+    } catch (e) {
+      console.warn(`[providerSnapshot] Failed to load model: ${registryEntry.model}`, e.message);
+    }
+
     if (!providerId || !mongoose.Types.ObjectId.isValid(providerId)) {
       console.warn(`[providerSnapshot] Invalid providerId: ${providerId}`);
       return fallback;
