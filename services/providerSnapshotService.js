@@ -103,6 +103,16 @@ async function getProviderSnapshot(providerType, providerId) {
       return fallback;
     }
 
+    // DEBUG — remove after diagnosis
+    console.log('[providerSnapshot.DEBUG]', JSON.stringify({
+      providerType,
+      providerId: String(providerId),
+      providerIdType: typeof providerId,
+      providerIdValid: mongoose.Types.ObjectId.isValid(providerId),
+      modelName: registryEntry.model,
+      modelRegistered: !!mongoose.models[registryEntry.model]
+    }));
+
         // Full fetch — no projection, avoids Mongoose path quirks
     const provider = await Model.findById(providerId).lean();
 

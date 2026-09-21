@@ -1142,7 +1142,19 @@ app.post('/api/admin/backfill-payout-cities', (req, res, next) => {
 
     for (const p of payouts) {
       try {
-        const snap = await buildPayoutSnapshotFields(p.providerType, p.providerId, p.providerName);
+                const snap = await buildPayoutSnapshotFields(p.providerType, p.providerId, p.providerName);
+
+        // DEBUG — remove after diagnosis
+        results.debug = results.debug || [];
+        results.debug.push({
+          payoutId: p.payoutId,
+          inputType: p.providerType,
+          inputId: String(p.providerId),
+          inputIdConstructor: p.providerId?.constructor?.name,
+          snapProviderName: snap.providerName,
+          snapProviderCity: snap.providerCity,
+          snapSnapshot: snap.providerSnapshot
+        });
 
         if (snap.providerCity === 'Unknown' && snap.providerSnapshot.name === 'Unknown Provider') {
           results.skipped++;
