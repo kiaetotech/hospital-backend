@@ -2074,6 +2074,100 @@ router.get('/admin/reviews/all', async (req, res) => {
 });
 
 // ============================================
+// ADMIN: FORCE CANCEL BOOKING
+// Safe decrement of package counter on admin cancel
+// ============================================
+router.put('/admin/force-cancel/:bookingId', async (req, res) => {
+  const adminKey = req.headers['x-admin-key'];
+  if (adminKey !== process.env.ADMIN_KEY) {
+    return res.status(401).json({ success: false, message: 'Admin authentication required' });
+  }
+
+  try {
+    const { reason } = req.body;
+
+    const booking = await AyurvedaBooking.findOne({ bookingId: req.params.bookingId });
+    if (!booking) {
+      return res.status(404).json({ success: false, message: 'Booking not found' });
+    }
+
+    if (booking.status === 'cancelled') {
+      return res.status(400).json({ success: false, message: 'Booking already cancelled' });
+    }
+
+    if (booking.status === 'completed') {
+      return res.status(400).json({ success: false, message: 'Cannot cancel a completed booking' });
+    }
+
+    // Track if this booking contributed to a package counter
+    const wasActiveBooking = 
+      booking.type === 'panchakarma_package' &&
+      booking.center &&
+      booking.package?.packageId &&
+      ['pending', 'confirmed', 'in_progress'].includes(booking.status);
+
+    // Cancel the booking
+    booking.status = 'cancelled';
+    booking.cancelledAt = new Date();
+    booking.cancellationReason = reason || 'Cancelled by admin';
+    booking.cancellation = {
+      cancelledAt: new Date(),
+      reason: reason || 'Cancelled by admin',
+      cancelledBy: 'admin',
+      refundStatus: 'pending',
+      refundAmount: booking.finalAmount, // Admin cancel = full refund
+      refundPercentage: 100,
+      cancellationFee: 0
+    };
+
+    booking.statusHistory = booking.statusHistory || [];
+    booking.statusHistory.push({
+      status: 'cancelled',
+      timestamp: new Date(),
+      note: `Force-cancelled by admin. Reason: ${reason || 'Not specified'}`,
+      updatedBy: 'admin'
+    });
+
+    await booking.save();
+
+    // Decrement package counter if this was an active package booking
+    if (wasActiveBooking) {
+      try {
+        const WellnessCenter = require('../models/WellnessCenter');
+        const result = await WellnessCenter.updateOne(
+          {
+            _id: booking.center,
+            'packages._id': booking.package.packageId
+          },
+          {
+            $inc: { 'packages.$.currentBookings': -1 }
+          }
+        );
+        console.log(`[admin.cancel] Package counter decremented for booking ${booking.bookingId}`, result);
+      } catch (decrementError) {
+        console.error('[admin.cancel] Counter decrement failed (non-fatal):', decrementError.message);
+      }
+    }
+
+    res.json({
+      success: true,
+      message: 'Booking force-cancelled by admin',
+      data: {
+        bookingId: booking.bookingId,
+        status: booking.status,
+        cancelledAt: booking.cancelledAt,
+        refundAmount: booking.cancellation.refundAmount,
+        packageCounterAdjusted: wasActiveBooking
+      }
+    });
+
+  } catch (error) {
+    console.error('Admin force-cancel error:', error.message);
+    res.status(500).json({ success: false, message: error.message || 'Failed to cancel booking' });
+  }
+});
+
+// ============================================
 // ADMIN: GET ALL COMPLAINTS
 // ============================================
 router.get('/admin/complaints/all', async (req, res) => {
