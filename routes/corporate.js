@@ -607,14 +607,7 @@ router.get('/admin/pending', auth, async (req, res) => {
       return res.status(403).json({ success: false, message: 'Admin access required' });
     }
 
-    const plans = await CorporatePlan.find({ status: 'pending', isVerified: false })
-      .populate('companyId', 'name email phone')
-      .lean()
-      .catch(populateErr => {
-        // Fallback without populate if reference is broken
-        console.warn('Populate failed, fetching without company details:', populateErr.message);
-        return CorporatePlan.find({ status: 'pending', isVerified: false }).lean();
-      });
+        const plans = await CorporatePlan.find({ status: 'pending', isVerified: false }).lean();
 
     res.json({
       success: true,
@@ -679,11 +672,11 @@ router.get('/admin/all', auth, async (req, res) => {
     if (status) query.status = status;
 
     const skip = (page - 1) * limit;
-    const plans = await CorporatePlan.find(query)
-      .populate('companyId', 'name email phone')
+        const plans = await CorporatePlan.find(query)
       .sort({ createdAt: -1 })
       .skip(skip)
-      .limit(parseInt(limit));
+      .limit(parseInt(limit))
+      .lean();
 
     const total = await CorporatePlan.countDocuments(query);
 
