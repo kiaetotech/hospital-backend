@@ -344,6 +344,14 @@ if (bookingExpiryService && typeof bookingExpiryService.processExpiredBookings =
 // ============================================
 // MODELS WITH FALLBACK
 // ============================================
+// Ensure User model is registered early (fixes .populate('User') failures in other routes)
+try {
+  require('./models/User');
+  console.log('✅ User model registered');
+} catch (e) {
+  console.warn('⚠️ User model not available:', e.message);
+}
+
 try {
   require('./models/TestMaster');
 } catch (e) {
