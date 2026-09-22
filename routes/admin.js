@@ -10,28 +10,34 @@ const { authenticateAdmin } = require('../middleware/auth');
 const router = express.Router();
 
 // ============================================
-// ✅ ADMIN LOGIN - Generates JWT Token
+// ✅ ADMIN LOGIN — Key + Password protected
 // ============================================
 router.post('/login', async (req, res) => {
   try {
-    const { adminKey } = req.body;
+    const { adminKey, password } = req.body;
 
-    const validAdminKey = process.env.ADMIN_KEY || 'admin_secret_key_2024';
-    
-    if (adminKey !== validAdminKey) {
-      return res.status(401).json({ 
+    const validAdminKey = process.env.ADMIN_KEY;
+    const validAdminPassword = process.env.ADMIN_PASSWORD;
+
+    if (!validAdminKey || !validAdminPassword) {
+      console.error('Admin login misconfigured: ADMIN_KEY or ADMIN_PASSWORD missing');
+      return res.status(500).json({ 
         success: false, 
-        message: 'Invalid admin key' 
+        message: 'Admin login is not configured' 
       });
     }
 
+    if (!adminKey || adminKey !== validAdminKey) {
+      return res.status(401).json({ success: false, message: 'Invalid credentials' });
+    }
+
+    if (!password || password !== validAdminPassword) {
+      return res.status(401).json({ success: false, message: 'Invalid credentials' });
+    }
+
     const token = jwt.sign(
-      { 
-        role: 'admin', 
-        isAdmin: true,
-        type: 'admin'
-      },
-      process.env.JWT_SECRET || 'hospital_platform_secret_key_2024',
+      { role: 'admin', isAdmin: true, type: 'admin' },
+      process.env.JWT_SECRET,
       { expiresIn: '7d' }
     );
 
@@ -39,18 +45,12 @@ router.post('/login', async (req, res) => {
       success: true,
       token: token,
       message: 'Admin login successful',
-      admin: {
-        role: 'admin',
-        name: 'Admin'
-      }
+      admin: { role: 'admin', name: 'Admin' }
     });
 
   } catch (error) {
     console.error('Admin login error:', error);
-    res.status(500).json({ 
-      success: false, 
-      message: error.message 
-    });
+    res.status(500).json({ success: false, message: 'Login failed' });
   }
 });
 
