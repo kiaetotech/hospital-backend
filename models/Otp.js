@@ -65,10 +65,19 @@ const otpSchema = new mongoose.Schema({
     refPath: 'referenceModel',
     index: true
   },
-  referenceModel: { 
+    referenceModel: { 
     type: String,
-    enum: ['User', 'Booking', 'InsurancePolicy', 'Hospital', 'Ambulance', 'Caregiver']
-  },
+    enum: [
+      // Model names (existing)
+      'User', 'Booking', 'InsurancePolicy', 'Hospital', 'Ambulance', 'Caregiver',
+      // User types (multi-role password reset)
+      'patient', 'doctor', 'center', 'hospital', 'online_doctor',
+      'therapist', 'caregiver', 'diagnostics', 'lender', 'insurance',
+      // Model names for password reset
+      'AyurvedaDoctor', 'WellnessCenter', 'OnlineDoctor',
+      'MentalHealthTherapist', 'DiagnosticsProvider', 'Lender', 'InsuranceCompany'
+    ]
+},
   
   // ============================================
   // USER REFERENCE
