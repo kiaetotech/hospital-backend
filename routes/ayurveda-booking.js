@@ -351,6 +351,35 @@ const authenticatePatient = (req, res, next) => {
 // ============================================
 router.post('/create', authenticatePatient, async (req, res) => {
   try {
+ 
+    // ============================================
+    // SLOT LOCK CHECK (fail-open — never blocks on error)
+    // Prevents double-booking during the payment window
+    // ============================================
+    const { doctorId: _did, centerId: _cid, bookingDate: _bdate, slotTime: _slot } = req.body;
+    if (_bdate && _slot && (_did || _cid)) {
+      try {
+        const redis = global.redisClient;
+        if (redis && redis.status === 'ready') {
+          const dateStr = new Date(_bdate).toISOString().split('T')[0];
+          const providerKey = _did || _cid;
+          const lockKey = `slot-lock:${providerKey}:${dateStr}:${_slot}`;
+
+          const existingLock = await redis.get(lockKey);
+          if (existingLock) {
+            return res.status(409).json({
+              success: false,
+              message: 'This slot is being booked by another patient. Please try again in a few minutes or pick a different slot.',
+              code: 'SLOT_LOCKED'
+            });
+          }
+        }
+      } catch (lockCheckErr) {
+        // Fail-open: if Redis is unavailable, allow booking to proceed
+        console.warn('[slot-lock] Check failed (proceeding):', lockCheckErr.message);
+      }
+    }
+
     const {
       type,
       doctorId,
@@ -531,6 +560,24 @@ router.post('/create', authenticatePatient, async (req, res) => {
     booking.generateOtp();
 
     await booking.save();
+
+    // ============================================
+    // SET SLOT LOCK (best-effort, TTL 15 min)
+    // ============================================
+    if (bookingDate && slotTime && (doctorId || centerId)) {
+      try {
+        const redis = global.redisClient;
+        if (redis && redis.status === 'ready') {
+          const dateStr = new Date(bookingDate).toISOString().split('T')[0];
+          const providerKey = doctorId || centerId;
+          const lockKey = `slot-lock:${providerKey}:${dateStr}:${slotTime}`;
+          await redis.set(lockKey, booking.bookingId, 'EX', 900);
+          console.log(`[slot-lock] Set for ${lockKey} → ${booking.bookingId}`);
+        }
+      } catch (lockSetErr) {
+        console.warn('[slot-lock] Set failed (non-fatal):', lockSetErr.message);
+      }
+    }
 
     // Increment package booking count
     if (type === 'panchakarma_package' && centerId && req.body.packageId) {
