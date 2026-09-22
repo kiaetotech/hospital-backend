@@ -2168,6 +2168,131 @@ router.put('/admin/force-cancel/:bookingId', async (req, res) => {
 });
 
 // ============================================
+// ADMIN: MARK BOOKING AS NO-SHOW
+// Used when patient didn't show up (booking date has passed)
+// No refund to patient — provider keeps earning
+// ============================================
+router.put('/admin/mark-no-show/:bookingId', async (req, res) => {
+  const adminKey = req.headers['x-admin-key'];
+  if (adminKey !== process.env.ADMIN_KEY) {
+    return res.status(401).json({ success: false, message: 'Admin authentication required' });
+  }
+
+  try {
+    const { reason } = req.body;
+
+    const booking = await AyurvedaBooking.findOne({ bookingId: req.params.bookingId });
+    if (!booking) {
+      return res.status(404).json({ success: false, message: 'Booking not found' });
+    }
+
+    // Validate booking state
+    if (booking.status === 'no_show') {
+      return res.status(400).json({ success: false, message: 'Booking is already marked as no-show' });
+    }
+
+    if (booking.status === 'completed') {
+      return res.status(400).json({ success: false, message: 'Cannot mark a completed booking as no-show' });
+    }
+
+    if (booking.status === 'cancelled') {
+      return res.status(400).json({ success: false, message: 'Cannot mark a cancelled booking as no-show' });
+    }
+
+    // Check payment
+    if (booking.paymentStatus !== 'paid' && booking.paymentStatus !== 'partial_refund') {
+      return res.status(400).json({ success: false, message: 'Cannot mark unpaid booking as no-show' });
+    }
+
+    // Business rule: no-show can only be marked AFTER booking date
+    const bookingDate = new Date(booking.bookingDate);
+    const now = new Date();
+    if (bookingDate > now) {
+      return res.status(400).json({
+        success: false,
+        message: 'Cannot mark no-show before the scheduled booking date. Use force-cancel for future bookings.'
+      });
+    }
+
+    // Was this an active booking that contributed to a package counter?
+    const wasActiveBooking = 
+      booking.type === 'panchakarma_package' &&
+      booking.center &&
+      booking.package?.packageId &&
+      ['pending', 'confirmed', 'in_progress'].includes(booking.status);
+
+    // Update booking
+    booking.status = 'no_show';
+    booking.noShowAt = new Date();
+    booking.noShowReason = reason || 'Patient did not attend appointment';
+    booking.cancellationReason = `No-show: ${reason || 'Patient did not attend'}`;
+
+    booking.statusHistory = booking.statusHistory || [];
+    booking.statusHistory.push({
+      status: 'no_show',
+      timestamp: new Date(),
+      note: `Marked as no-show by admin. Reason: ${reason || 'Patient did not attend'}`,
+      updatedBy: 'admin'
+    });
+
+    // Patient earns nothing back — provider keeps full earning
+    // Payment status stays as 'paid' (not refunded)
+    // providerEarning remains as calculated
+
+    await booking.save();
+
+    // Decrement package counter
+    if (wasActiveBooking) {
+      try {
+        const WellnessCenter = require('../models/WellnessCenter');
+        const result = await WellnessCenter.updateOne(
+          {
+            _id: booking.center,
+            'packages._id': booking.package.packageId
+          },
+          { $inc: { 'packages.$.currentBookings': -1 } }
+        );
+        console.log(`[admin.no_show] Counter decremented for ${booking.bookingId}`, result);
+      } catch (err) {
+        console.error('[admin.no_show] Counter decrement failed:', err.message);
+      }
+    }
+
+    // Optional: Send no-show notification to patient (informational)
+    try {
+      if (booking.patient?.phone) {
+        const smsService = require('../services/smsService');
+        await smsService.sendSMS(
+          booking.patient.phone,
+          `Your appointment on ${new Date(booking.bookingDate).toLocaleDateString()} was marked as no-show. Booking ID: ${booking.bookingId}. As per our policy, no refund is applicable for no-shows. - KiaetoCare`
+        );
+      }
+    } catch (smsErr) {
+      console.warn('No-show SMS failed (non-fatal):', smsErr.message);
+    }
+
+    console.log(`[admin.no_show] Booking ${booking.bookingId} marked as no-show by admin`);
+
+    res.json({
+      success: true,
+      message: 'Booking marked as no-show. No refund issued. Provider earning protected.',
+      data: {
+        bookingId: booking.bookingId,
+        status: booking.status,
+        noShowAt: booking.noShowAt,
+        refundAmount: 0,
+        providerEarning: booking.providerEarning,
+        packageCounterAdjusted: wasActiveBooking
+      }
+    });
+
+  } catch (error) {
+    console.error('Admin mark no-show error:', error.message);
+    res.status(500).json({ success: false, message: error.message || 'Failed to mark no-show' });
+  }
+});
+
+// ============================================
 // ADMIN: GET ALL COMPLAINTS
 // ============================================
 router.get('/admin/complaints/all', async (req, res) => {

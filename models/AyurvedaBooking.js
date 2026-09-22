@@ -117,10 +117,14 @@ const ayurvedaBookingSchema = new mongoose.Schema({
     enum: ['pending', 'confirmed', 'in_progress', 'completed', 'cancelled', 'no_show', 'rescheduled'],
     default: 'pending'
   },
-  confirmedAt: { type: Date },
+    confirmedAt: { type: Date },
   completedAt: { type: Date },
   cancelledAt: { type: Date },
   cancellationReason: { type: String },
+  
+  // No-show tracking
+  noShowAt: { type: Date },
+  noShowReason: { type: String },
   
   // ============================================
   // STATUS HISTORY (AUDIT TRAIL)

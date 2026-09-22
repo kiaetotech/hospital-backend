@@ -309,6 +309,39 @@ if (redis) {
 }
 
 // ============================================
+// AUTO-MARK LAPSED BOOKINGS AS NO-SHOW
+// Runs every 15 minutes
+// ============================================
+let bookingExpiryService = null;
+try {
+  bookingExpiryService = require('./services/bookingExpiryService');
+  console.log('✅ Booking expiry service loaded');
+} catch (e) {
+  console.warn('⚠️ Booking expiry service not available:', e.message);
+}
+
+if (bookingExpiryService && typeof bookingExpiryService.processExpiredBookings === 'function') {
+  // Initial run 30 sec after startup
+  setTimeout(() => {
+    bookingExpiryService.processExpiredBookings()
+      .then(result => console.log('📋 Initial booking expiry:', JSON.stringify(result)))
+      .catch(err => console.error('Initial booking expiry failed:', err.message));
+  }, 30000);
+
+  // Then every 15 minutes
+  setInterval(async () => {
+    try {
+      const result = await bookingExpiryService.processExpiredBookings();
+      if (result.processed > 0) {
+        console.log(`📋 Booking expiry processed: ${result.processed} marked no-show`);
+      }
+    } catch (error) {
+      console.error('Booking expiry cron error:', error.message);
+    }
+  }, 15 * 60 * 1000);
+}
+
+// ============================================
 // MODELS WITH FALLBACK
 // ============================================
 try {
