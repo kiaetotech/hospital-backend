@@ -60,17 +60,19 @@ router.post('/lender-status', async (req, res) => {
 
 router.post('/razorpay', async (req, res) => {
   try {
-    const secret = process.env.RAZORPAY_WEBHOOK_SECRET;
+            const secret = process.env.RAZORPAY_WEBHOOK_SECRET;
     const signature = req.headers['x-razorpay-signature'];
-    
-    // Verify webhook signature
+
+    // Verify webhook signature (Razorpay uses RAW body, not JSON.stringify)
     if (secret) {
+      const rawBody = req.rawBody || JSON.stringify(req.body);
       const expectedSignature = crypto
         .createHmac('sha256', secret)
-        .update(JSON.stringify(req.body))
+        .update(rawBody)
         .digest('hex');
-      
+
       if (signature !== expectedSignature) {
+        console.warn('[razorpay.webhook] Invalid signature');
         return res.status(400).json({ error: 'Invalid signature' });
       }
     }
@@ -115,6 +117,23 @@ router.post('/razorpay', async (req, res) => {
         console.log(`✅ Booking updated: ${booking.bookingId}`);
       }
       
+      // 2B. Update AyurvedaBooking (if exists)
+      try {
+        const AyurvedaBooking = require('../models/AyurvedaBooking');
+        const ayurBooking = await AyurvedaBooking.findOne({ razorpayOrderId: orderId });
+        if (ayurBooking && ayurBooking.paymentStatus !== 'paid') {
+          ayurBooking.paymentStatus = 'paid';
+          ayurBooking.razorpayPaymentId = paymentId;
+          ayurBooking.paidAt = new Date();
+          ayurBooking.transactionId = `TXN_${Date.now()}`;
+          await ayurBooking.save();
+          console.log(`✅ AyurvedaBooking updated: ${ayurBooking.bookingId}`);
+        }
+      } catch (ayurErr) {
+        console.warn('[razorpay.webhook] AyurvedaBooking update skipped:', ayurErr.message);
+      }
+
+
       // 3. Update Loan Application (if exists)
       const applicationId = notes.applicationId || notes.loanApplicationId;
       if (applicationId) {
