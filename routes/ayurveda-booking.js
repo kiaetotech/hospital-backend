@@ -2074,6 +2074,102 @@ router.get('/admin/reviews/all', async (req, res) => {
 });
 
 // ============================================
+// ADMIN: FLAG REVIEW
+// ============================================
+router.put('/admin/reviews/:bookingId/flag', async (req, res) => {
+  const adminKey = req.headers['x-admin-key'];
+  if (adminKey !== process.env.ADMIN_KEY) {
+    return res.status(401).json({ success: false, message: 'Admin authentication required' });
+  }
+
+  try {
+    const { reason } = req.body;
+    const booking = await AyurvedaBooking.findOne({ bookingId: req.params.bookingId });
+    if (!booking || !booking.review) {
+      return res.status(404).json({ success: false, message: 'Review not found' });
+    }
+
+    booking.review.isFlagged = true;
+    booking.review.flaggedReason = (reason || 'Flagged by admin').slice(0, 500);
+    booking.review.flaggedAt = new Date();
+    booking.markModified('review');
+    await booking.save();
+
+    res.json({ success: true, message: 'Review flagged', data: booking.review });
+  } catch (error) {
+    console.error('[admin.review.flag]', error.message);
+    res.status(500).json({ success: false, message: 'Failed to flag review' });
+  }
+});
+
+// ============================================
+// ADMIN: UNFLAG REVIEW
+// ============================================
+router.put('/admin/reviews/:bookingId/unflag', async (req, res) => {
+  const adminKey = req.headers['x-admin-key'];
+  if (adminKey !== process.env.ADMIN_KEY) {
+    return res.status(401).json({ success: false, message: 'Admin authentication required' });
+  }
+
+  try {
+    const booking = await AyurvedaBooking.findOne({ bookingId: req.params.bookingId });
+    if (!booking || !booking.review) {
+      return res.status(404).json({ success: false, message: 'Review not found' });
+    }
+
+    booking.review.isFlagged = false;
+    booking.review.flaggedReason = '';
+    booking.review.flaggedAt = null;
+    booking.markModified('review');
+    await booking.save();
+
+    res.json({ success: true, message: 'Review unflagged', data: booking.review });
+  } catch (error) {
+    console.error('[admin.review.unflag]', error.message);
+    res.status(500).json({ success: false, message: 'Failed to unflag review' });
+  }
+});
+
+// ============================================
+// ADMIN: HIDE / RESTORE REVIEW
+// ============================================
+router.put('/admin/reviews/:bookingId/hide', async (req, res) => {
+  const adminKey = req.headers['x-admin-key'];
+  if (adminKey !== process.env.ADMIN_KEY) {
+    return res.status(401).json({ success: false, message: 'Admin authentication required' });
+  }
+
+  try {
+    const { reason, unhide } = req.body;
+    const booking = await AyurvedaBooking.findOne({ bookingId: req.params.bookingId });
+    if (!booking || !booking.review) {
+      return res.status(404).json({ success: false, message: 'Review not found' });
+    }
+
+    if (unhide === true) {
+      booking.review.isHidden = false;
+      booking.review.hiddenReason = '';
+      booking.review.hiddenAt = null;
+    } else {
+      booking.review.isHidden = true;
+      booking.review.hiddenReason = (reason || 'Hidden by admin').slice(0, 500);
+      booking.review.hiddenAt = new Date();
+    }
+    booking.markModified('review');
+    await booking.save();
+
+    res.json({
+      success: true,
+      message: unhide ? 'Review restored' : 'Review hidden',
+      data: booking.review
+    });
+  } catch (error) {
+    console.error('[admin.review.hide]', error.message);
+    res.status(500).json({ success: false, message: 'Failed to update review' });
+  }
+});
+
+// ============================================
 // ADMIN: FORCE CANCEL BOOKING
 // Safe decrement of package counter on admin cancel
 // ============================================
