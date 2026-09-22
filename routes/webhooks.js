@@ -55,6 +55,19 @@ router.post('/lender-status', async (req, res) => {
 });
 
 // ============================================
+// Razorpay Webhook — GET health check
+// Razorpay verifies the URL with a GET before POSTing events
+// ============================================
+router.get('/razorpay', (req, res) => {
+  res.status(200).json({ 
+    status: 'ok', 
+    message: 'Razorpay webhook endpoint is active',
+    accepts: 'POST'
+  });
+});
+
+
+// ============================================
 // YOUR EXISTING ROUTE: Razorpay webhook (for payment confirmation)
 // ============================================
 
