@@ -1868,7 +1868,7 @@ router.get('/admin/reviews', async (req, res) => {
       .select('bookingId type patient center centerName doctor doctorName review package createdAt')
       .sort({ 'review.createdAt': -1 });
 
-    let reviews = bookings.map(b => ({
+        let reviews = bookings.map(b => ({
       bookingId: b.bookingId,
       bookingType: b.type,
       patientName: b.patient?.name,
@@ -1878,6 +1878,12 @@ router.get('/admin/reviews', async (req, res) => {
       rating: b.review?.rating,
       comment: b.review?.comment,
       centerResponse: b.review?.centerResponse || '',
+      isFlagged: b.review?.isFlagged === true,
+      isHidden: b.review?.isHidden === true,
+      flaggedReason: b.review?.flaggedReason || '',
+      flaggedAt: b.review?.flaggedAt || null,
+      hiddenReason: b.review?.hiddenReason || '',
+      hiddenAt: b.review?.hiddenAt || null,
       createdAt: b.review?.createdAt
     }));
 
@@ -2033,7 +2039,7 @@ router.get('/admin/reviews/all', async (req, res) => {
 
     const reviews = bookings
       .filter(b => b.review && (b.review.rating || b.review.comment))
-      .map(b => ({
+        .map(b => ({
         bookingId: b.bookingId,
         bookingType: b.type,
         patientName: b.patient?.name || 'Patient',
@@ -2044,6 +2050,12 @@ router.get('/admin/reviews/all', async (req, res) => {
         comment: b.review?.comment,
         doctorResponse: b.review?.doctorResponse || '',
         centerResponse: b.review?.centerResponse || '',
+        isFlagged: b.review?.isFlagged === true,
+        isHidden: b.review?.isHidden === true,
+        flaggedReason: b.review?.flaggedReason || '',
+        flaggedAt: b.review?.flaggedAt || null,
+        hiddenReason: b.review?.hiddenReason || '',
+        hiddenAt: b.review?.hiddenAt || null,
         createdAt: b.review?.createdAt
       }));
 
