@@ -19,7 +19,7 @@ const WellnessCenter = require('../models/WellnessCenter');
 const commissionService = require('../services/commissionService');
 const razorpayService = require('../services/razorpayService');
 
-const JWT_SECRET = process.env.JWT_SECRET || 'hospital_platform_secret_key_2024';
+const JWT_SECRET = process.env.JWT_SECRET;
 
 // Employee Authentication Middleware
 const authenticateEmployee = (req, res, next) => {

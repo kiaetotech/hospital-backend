@@ -130,7 +130,7 @@ router.post('/login', async (req, res) => {
         isVerified: hospital.is_verified,
         subscriptionPlan: hospital.subscription_plan
       },
-      process.env.JWT_SECRET || 'hospital_platform_secret_key_2024',
+      process.env.JWT_SECRET,
       { expiresIn: '7d' }
     );
     

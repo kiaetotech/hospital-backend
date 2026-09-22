@@ -23,7 +23,7 @@ const authenticateUser = (req, res, next) => {
   
   try {
     const jwt = require('jsonwebtoken');
-    const decoded = jwt.verify(token, process.env.JWT_SECRET || 'hospital_platform_secret_key_2024');
+    const decoded = jwt.verify(token, process.env.JWT_SECRET);
     req.user = decoded;
     next();
   } catch (error) {
@@ -143,7 +143,7 @@ router.get('/admin/pending', async (req, res) => {
     try {
       const token = authHeader.split(' ')[1];
       const jwt = require('jsonwebtoken');
-      const decoded = jwt.verify(token, process.env.JWT_SECRET || 'hospital_platform_secret_key_2024');
+      const decoded = jwt.verify(token, process.env.JWT_SECRET);
       if (decoded.role === 'admin') {
         isAuthorized = true;
       }
@@ -178,7 +178,7 @@ router.put('/admin/approve/:payoutId', async (req, res) => {
       try {
         const token = authHeader.split(' ')[1];
         const jwt = require('jsonwebtoken');
-        const decoded = jwt.verify(token, process.env.JWT_SECRET || 'hospital_platform_secret_key_2024');
+        const decoded = jwt.verify(token, process.env.JWT_SECRET);
         if (decoded.role === 'admin') isAuthorized = true;
       } catch (e) {}
     }
@@ -217,7 +217,7 @@ router.put('/admin/reject/:payoutId', async (req, res) => {
       try {
         const token = authHeader.split(' ')[1];
         const jwt = require('jsonwebtoken');
-        const decoded = jwt.verify(token, process.env.JWT_SECRET || 'hospital_platform_secret_key_2024');
+        const decoded = jwt.verify(token, process.env.JWT_SECRET);
         if (decoded.role === 'admin') isAuthorized = true;
       } catch (e) {}
     }
@@ -256,7 +256,7 @@ router.get('/admin/all', async (req, res) => {
       try {
         const token = authHeader.split(' ')[1];
         const jwt = require('jsonwebtoken');
-        const decoded = jwt.verify(token, process.env.JWT_SECRET || 'hospital_platform_secret_key_2024');
+        const decoded = jwt.verify(token, process.env.JWT_SECRET);
         if (decoded.role === 'admin') isAuthorized = true;
       } catch (e) {}
     }
@@ -346,7 +346,7 @@ router.get('/admin/providers', async (req, res) => {
       try {
         const token = authHeader.split(' ')[1];
         const jwt = require('jsonwebtoken');
-        const decoded = jwt.verify(token, process.env.JWT_SECRET || 'hospital_platform_secret_key_2024');
+        const decoded = jwt.verify(token, process.env.JWT_SECRET);
         if (decoded.role === 'admin') isAuthorized = true;
       } catch (e) {}
     }
@@ -399,7 +399,7 @@ router.put('/admin/bulk-approve', async (req, res) => {
       try {
         const token = authHeader.split(' ')[1];
         const jwt = require('jsonwebtoken');
-        const decoded = jwt.verify(token, process.env.JWT_SECRET || 'hospital_platform_secret_key_2024');
+        const decoded = jwt.verify(token, process.env.JWT_SECRET);
         if (decoded.role === 'admin') isAuthorized = true;
       } catch (e) {}
     }
@@ -492,7 +492,7 @@ router.get('/admin/by-city', async (req, res) => {
       try {
         const token = authHeader.split(' ')[1];
         const jwt = require('jsonwebtoken');
-        const decoded = jwt.verify(token, process.env.JWT_SECRET || 'hospital_platform_secret_key_2024');
+        const decoded = jwt.verify(token, process.env.JWT_SECRET);
         if (decoded.role === 'admin') isAuthorized = true;
       } catch (e) {}
     }
@@ -550,7 +550,7 @@ router.get('/admin/by-date', async (req, res) => {
       try {
         const token = authHeader.split(' ')[1];
         const jwt = require('jsonwebtoken');
-        const decoded = jwt.verify(token, process.env.JWT_SECRET || 'hospital_platform_secret_key_2024');
+        const decoded = jwt.verify(token, process.env.JWT_SECRET);
         if (decoded.role === 'admin') isAuthorized = true;
       } catch (e) {}
     }
@@ -641,7 +641,7 @@ const requireAdmin = (req, res, next) => {
       const jwt = require('jsonwebtoken');
       const decoded = jwt.verify(
         token,
-        process.env.JWT_SECRET || 'hospital_platform_secret_key_2024'
+        process.env.JWT_SECRET
       );
       if (decoded.role === 'admin') return next();
     } catch (e) {}

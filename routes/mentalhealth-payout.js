@@ -19,7 +19,7 @@ router.get('/wallet/summary', async (req, res) => {
     }
     
     const jwt = require('jsonwebtoken');
-    const decoded = jwt.verify(token, process.env.JWT_SECRET || 'hospital_platform_secret_key_2024');
+    const decoded = jwt.verify(token, process.env.JWT_SECRET);
     const therapistId = decoded.id || decoded._id;
     
     const summary = await TherapistWallet.getSummary(therapistId);
@@ -43,7 +43,7 @@ router.get('/wallet/transactions', async (req, res) => {
     }
     
     const jwt = require('jsonwebtoken');
-    const decoded = jwt.verify(token, process.env.JWT_SECRET || 'hospital_platform_secret_key_2024');
+    const decoded = jwt.verify(token, process.env.JWT_SECRET);
     const therapistId = decoded.id || decoded._id;
     
     const { limit = 50, skip = 0 } = req.query;
@@ -68,7 +68,7 @@ router.post('/wallet/bank-details', async (req, res) => {
     }
     
     const jwt = require('jsonwebtoken');
-    const decoded = jwt.verify(token, process.env.JWT_SECRET || 'hospital_platform_secret_key_2024');
+    const decoded = jwt.verify(token, process.env.JWT_SECRET);
     const therapistId = decoded.id || decoded._id;
     
     const { accountNumber, accountHolderName, ifscCode, bankName, upiId } = req.body;
@@ -100,7 +100,7 @@ router.post('/payout/request', async (req, res) => {
     }
     
     const jwt = require('jsonwebtoken');
-    const decoded = jwt.verify(token, process.env.JWT_SECRET || 'hospital_platform_secret_key_2024');
+    const decoded = jwt.verify(token, process.env.JWT_SECRET);
     const therapistId = decoded.id || decoded._id;
     
     const { amount, method = 'bank_transfer' } = req.body;
@@ -165,7 +165,7 @@ router.get('/payout/history', async (req, res) => {
     }
     
     const jwt = require('jsonwebtoken');
-    const decoded = jwt.verify(token, process.env.JWT_SECRET || 'hospital_platform_secret_key_2024');
+    const decoded = jwt.verify(token, process.env.JWT_SECRET);
     const therapistId = decoded.id || decoded._id;
     
     const { status, limit = 50, skip = 0 } = req.query;
@@ -197,7 +197,7 @@ router.get('/payout/summary', async (req, res) => {
     }
     
     const jwt = require('jsonwebtoken');
-    const decoded = jwt.verify(token, process.env.JWT_SECRET || 'hospital_platform_secret_key_2024');
+    const decoded = jwt.verify(token, process.env.JWT_SECRET);
     const therapistId = decoded.id || decoded._id;
     
     const summary = await TherapistPayout.getSummary(therapistId);
@@ -225,7 +225,7 @@ router.get('/admin/pending', async (req, res) => {
     }
     
     const jwt = require('jsonwebtoken');
-    const decoded = jwt.verify(token, process.env.JWT_SECRET || 'hospital_platform_secret_key_2024');
+    const decoded = jwt.verify(token, process.env.JWT_SECRET);
     
     if (decoded.role !== 'admin' && decoded.role !== 'super_admin') {
       return res.status(403).json({ error: 'Admin access required' });
@@ -252,7 +252,7 @@ router.post('/admin/process/:payoutId', async (req, res) => {
     }
     
     const jwt = require('jsonwebtoken');
-    const decoded = jwt.verify(token, process.env.JWT_SECRET || 'hospital_platform_secret_key_2024');
+    const decoded = jwt.verify(token, process.env.JWT_SECRET);
     
     if (decoded.role !== 'admin' && decoded.role !== 'super_admin') {
       return res.status(403).json({ error: 'Admin access required' });
@@ -308,7 +308,7 @@ router.post('/admin/complete/:payoutId', async (req, res) => {
     }
     
     const jwt = require('jsonwebtoken');
-    const decoded = jwt.verify(token, process.env.JWT_SECRET || 'hospital_platform_secret_key_2024');
+    const decoded = jwt.verify(token, process.env.JWT_SECRET);
     
     if (decoded.role !== 'admin' && decoded.role !== 'super_admin') {
       return res.status(403).json({ error: 'Admin access required' });
@@ -360,7 +360,7 @@ router.post('/admin/fail/:payoutId', async (req, res) => {
     }
     
     const jwt = require('jsonwebtoken');
-    const decoded = jwt.verify(token, process.env.JWT_SECRET || 'hospital_platform_secret_key_2024');
+    const decoded = jwt.verify(token, process.env.JWT_SECRET);
     
     if (decoded.role !== 'admin' && decoded.role !== 'super_admin') {
       return res.status(403).json({ error: 'Admin access required' });
@@ -413,7 +413,7 @@ router.post('/wallet/auto-payout', async (req, res) => {
     }
     
     const jwt = require('jsonwebtoken');
-    const decoded = jwt.verify(token, process.env.JWT_SECRET || 'hospital_platform_secret_key_2024');
+    const decoded = jwt.verify(token, process.env.JWT_SECRET);
     const therapistId = decoded.id || decoded._id;
     
     const { enabled, threshold, dayOfWeek } = req.body;

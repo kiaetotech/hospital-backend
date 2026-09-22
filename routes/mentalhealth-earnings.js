@@ -18,7 +18,7 @@ const verifyToken = (req) => {
   
   const jwt = require('jsonwebtoken');
   try {
-    const decoded = jwt.verify(token, process.env.JWT_SECRET || 'hospital_platform_secret_key_2024');
+    const decoded = jwt.verify(token, process.env.JWT_SECRET);
     return decoded;
   } catch (error) {
     throw new Error('Invalid or expired token.');

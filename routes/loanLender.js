@@ -5,7 +5,7 @@ const jwt = require('jsonwebtoken');
 const Lender = require('../models/Lender');
 const LoanApplication = require('../models/LoanApplication');
 
-const JWT_SECRET = process.env.JWT_SECRET || 'hospital_platform_secret_key_2024';
+const JWT_SECRET = process.env.JWT_SECRET;
 
 // ============================================
 // HELPER FUNCTIONS

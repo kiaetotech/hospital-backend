@@ -9,7 +9,7 @@ const LoanApplication = require('../models/LoanApplication');
 
 const isAdmin = (req, res, next) => {
   const adminKey = req.header('X-Admin-Key');
-  const validKey = process.env.ADMIN_KEY || 'admin_secret_key_2024';
+  const validKey = process.env.ADMIN_KEY;
   
   if (!adminKey || adminKey !== validKey) {
     return res.status(401).json({ error: 'Admin access denied' });

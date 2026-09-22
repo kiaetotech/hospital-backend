@@ -17,7 +17,7 @@ const { sendOTP, verifyOTP } = require('../services/smsService');
 const { uploadDocuments } = require('../middleware/upload');
 const { uploadMultipleFiles, deleteFile } = require('../services/cloudinaryService');
 
-const JWT_SECRET = process.env.JWT_SECRET || 'hospital_platform_secret_key_2024';
+const JWT_SECRET = process.env.JWT_SECRET;
 
 // ============================================
 // HELPER FUNCTIONS

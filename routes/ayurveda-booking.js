@@ -24,7 +24,7 @@ const authenticateUser = (req, res, next) => {
   
   try {
     const jwt = require('jsonwebtoken');
-    const decoded = jwt.verify(token, process.env.JWT_SECRET || 'hospital_platform_secret_key_2024');
+    const decoded = jwt.verify(token, process.env.JWT_SECRET);
     req.user = decoded;
     next();
   } catch (error) {
@@ -329,7 +329,7 @@ const authenticatePatient = (req, res, next) => {
   
   try {
     const jwt = require('jsonwebtoken');
-    const decoded = jwt.verify(token, process.env.JWT_SECRET || 'hospital_platform_secret_key_2024');
+    const decoded = jwt.verify(token, process.env.JWT_SECRET);
     
     // Reject non-patient tokens
     if (decoded.role !== 'patient') {

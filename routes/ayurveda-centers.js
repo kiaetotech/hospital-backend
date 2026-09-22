@@ -4,7 +4,7 @@ const bcrypt = require('bcryptjs');
 const jwt = require('jsonwebtoken');
 const WellnessCenter = require('../models/WellnessCenter');
 
-const JWT_SECRET = process.env.JWT_SECRET || 'hospital_platform_secret_key_2024';
+const JWT_SECRET = process.env.JWT_SECRET;
 
 // ============================================
 // CENTER REGISTRATION

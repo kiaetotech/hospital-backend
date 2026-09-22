@@ -7,7 +7,7 @@ const Patient = require('../models/Patient');
 // Simple admin authentication (in production, use proper admin auth)
 const isAdmin = (req, res, next) => {
   const adminKey = req.header('X-Admin-Key');
-  const validKey = process.env.ADMIN_KEY || 'admin_secret_key_2024';
+  const validKey = process.env.ADMIN_KEY;
   
   if (!adminKey || adminKey !== validKey) {
     return res.status(401).json({ error: 'Admin access denied' });

@@ -3297,7 +3297,7 @@ router.post('/driver-login', async (req, res) => {
         name: vehicle.driverName, 
         role: 'ambulance_driver' 
       },
-      process.env.JWT_SECRET || 'hospital_platform_secret_key_2024',
+      process.env.JWT_SECRET,
       { expiresIn: '7d' }
     );
     

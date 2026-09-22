@@ -7,7 +7,7 @@ const LoanApplication = require('../models/LoanApplication');
 const { authenticate, authenticateLender } = require('../middleware/auth');
 const generateId = require('../utils/generateId');
 
-const JWT_SECRET = process.env.JWT_SECRET || 'hospital_platform_secret_key_2024';
+const JWT_SECRET = process.env.JWT_SECRET;
 
 // Generate lender token
 const generateLenderToken = (lenderId, email) => {

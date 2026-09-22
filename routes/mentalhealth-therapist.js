@@ -173,7 +173,7 @@ router.post('/register', async (req, res) => {
         role: 'therapist',
         providerType: 'mentalhealth'
       },
-      process.env.JWT_SECRET || 'hospital_platform_secret_key_2024',
+      process.env.JWT_SECRET,
       { expiresIn: '7d' }
     );
 
@@ -237,7 +237,7 @@ router.post('/login', async (req, res) => {
         role: 'therapist',
         providerType: 'mentalhealth'
       },
-      process.env.JWT_SECRET || 'hospital_platform_secret_key_2024',
+      process.env.JWT_SECRET,
       { expiresIn: '7d' }
     );
 

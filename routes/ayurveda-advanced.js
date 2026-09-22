@@ -415,7 +415,7 @@ router.post('/doctor/login', async (req, res) => {
     const { phone, password } = req.body;
     const bcrypt = require('bcryptjs');
     const jwt = require('jsonwebtoken');
-    const JWT_SECRET = process.env.JWT_SECRET || 'your_jwt_secret_key';
+    const JWT_SECRET = process.env.JWT_SECRET;
     
     const doctor = await AyurvedaDoctor.findOne({ phone });
     if (!doctor) return res.status(401).json({ success: false, error: 'Invalid credentials' });

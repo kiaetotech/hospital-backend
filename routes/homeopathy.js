@@ -11,7 +11,7 @@ const Booking = require('../models/Booking');
 const CorporateEmployee = require('../models/CorporateEmployee');
 const CorporateHR = require('../models/CorporateHR');
 
-const JWT_SECRET = process.env.JWT_SECRET || 'hospital_platform_secret_key_2024';
+const JWT_SECRET = process.env.JWT_SECRET;
 
 // ============================================
 // AUTHENTICATE HR MIDDLEWARE (ADDED)
