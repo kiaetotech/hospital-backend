@@ -360,6 +360,12 @@ try {
 }
 
 try {
+  require('./models/Admin');
+} catch (e) {
+  console.warn('⚠️ Admin model not available:', e.message);
+}
+
+try {
   require('./models/TestMaster');
 } catch (e) {
   console.warn('⚠️ TestMaster model not available:', e.message);

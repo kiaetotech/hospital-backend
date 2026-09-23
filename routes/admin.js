@@ -6,6 +6,9 @@ const Booking = require('../models/Booking');
 const Transaction = require('../models/Transaction');
 const User = require('../models/User');
 const { authenticateAdmin } = require('../middleware/auth');
+const Admin = require('../models/Admin');
+const Otp = require('../models/Otp');
+const bcrypt = require('bcryptjs');
 
 const router = express.Router();
 
@@ -15,6 +18,9 @@ const router = express.Router();
 // ============================================
 // ADMIN LOGIN — Email + Password (DB-backed)
 // ============================================
+// ============================================
+// ADMIN LOGIN — Email + Password (dedicated Admin collection)
+// ============================================
 router.post('/login', async (req, res) => {
   try {
     const { email, password } = req.body;
@@ -23,23 +29,37 @@ router.post('/login', async (req, res) => {
       return res.status(400).json({ success: false, message: 'Email and password are required' });
     }
 
-    const admin = await User.findOne({
-      email: email.toLowerCase().trim(),
-      role: 'admin'
-    });
+    const admin = await Admin.findOne({ email: email.toLowerCase().trim() });
 
-    if (!admin) {
-      return res.status(401).json({ success: false, message: 'Invalid credentials' });
-    }
+    const genericError = { success: false, message: 'Invalid credentials' };
 
-    if (admin.isActive === false) {
+    if (!admin) return res.status(401).json(genericError);
+
+    if (!admin.isActive) {
       return res.status(403).json({ success: false, message: 'Admin account is inactive' });
     }
 
-    const valid = await bcrypt.compare(password, admin.password);
-    if (!valid) {
-      return res.status(401).json({ success: false, message: 'Invalid credentials' });
+    if (admin.lockedUntil && admin.lockedUntil > new Date()) {
+      const mins = Math.ceil((admin.lockedUntil - new Date()) / 60000);
+      return res.status(429).json({ success: false, message: `Account locked. Try again in ${mins} minutes.` });
     }
+
+    const valid = await admin.comparePassword(password);
+    if (!valid) {
+      admin.loginAttempts = (admin.loginAttempts || 0) + 1;
+      if (admin.loginAttempts >= 5) {
+        admin.lockedUntil = new Date(Date.now() + 30 * 60 * 1000);
+        admin.loginAttempts = 0;
+      }
+      await admin.save().catch(() => {});
+      return res.status(401).json(genericError);
+    }
+
+    admin.loginAttempts = 0;
+    admin.lockedUntil = null;
+    admin.lastLoginAt = new Date();
+    admin.lastLoginIp = req.ip;
+    await admin.save().catch(() => {});
 
     const token = jwt.sign(
       {
@@ -47,16 +67,13 @@ router.post('/login', async (req, res) => {
         email: admin.email,
         name: admin.name,
         role: 'admin',
+        adminLevel: admin.role,
         isAdmin: true,
         type: 'admin'
       },
       process.env.JWT_SECRET,
       { expiresIn: '7d' }
     );
-
-    admin.lastLoginAt = new Date();
-    admin.lastLoginIp = req.ip;
-    await admin.save().catch(() => {});
 
     res.json({
       success: true,
@@ -66,7 +83,7 @@ router.post('/login', async (req, res) => {
         id: admin._id,
         email: admin.email,
         name: admin.name,
-        role: 'admin'
+        role: admin.role
       }
     });
 
@@ -75,7 +92,6 @@ router.post('/login', async (req, res) => {
     res.status(500).json({ success: false, message: 'Login failed' });
   }
 });
-
 // ============================================
 // EXISTING PROVIDER ROUTES (PRESERVED)
 // ============================================
@@ -1283,5 +1299,202 @@ router.get('/me', authenticateAdmin, async (req, res) => {
   }
 });
 
+// ============================================
+// ADMIN FORGOT PASSWORD — Send OTP
+// ============================================
+router.post('/forgot-password', async (req, res) => {
+  try {
+    const { email } = req.body;
+
+    if (!email) {
+      return res.status(400).json({ success: false, message: 'Email is required' });
+    }
+
+    const admin = await Admin.findOne({ email: email.toLowerCase().trim() });
+
+    if (!admin) {
+      return res.json({
+        success: true,
+        message: 'If an admin account exists with this email, a reset code has been sent.'
+      });
+    }
+
+    const existing = await Otp.findOne({
+      email: admin.email,
+      type: 'password_reset',
+      isUsed: false,
+      expiresAt: { $gt: new Date() }
+    });
+
+    if (existing && existing.sentAt && (Date.now() - new Date(existing.sentAt).getTime()) < 5 * 60 * 1000) {
+      return res.status(429).json({
+        success: false,
+        message: 'A reset code was recently sent. Please wait 5 minutes.'
+      });
+    }
+
+    const otpDoc = await Otp.createOTP({
+      email: admin.email,
+      phone: admin.phone || '',
+      type: 'password_reset',
+      userId: admin._id,
+      ipAddress: req.ip,
+      userAgent: req.headers['user-agent'],
+      sentVia: 'sms',
+      expiresIn: 600
+    });
+
+    if (admin.phone) {
+      try {
+        const smsService = require('../services/smsService');
+        await smsService.sendSMS(
+          admin.phone,
+          `Your admin password reset OTP is ${otpDoc.otp}. Valid 10 minutes. Do not share. - KiaetoCare`
+        );
+      } catch (smsErr) {
+        console.warn('[admin.forgot] SMS failed:', smsErr.message);
+      }
+    }
+
+    console.log(`[admin.forgot] OTP for ${admin.email}: ${otpDoc.otp}`);
+
+    res.json({
+      success: true,
+      message: 'If an admin account exists with this email, a reset code has been sent.'
+    });
+
+  } catch (error) {
+    console.error('[admin.forgot]', error.message);
+    res.status(500).json({ success: false, message: 'Failed to process request' });
+  }
+});
+
+// ============================================
+// ADMIN VERIFY OTP — issue reset token
+// ============================================
+router.post('/verify-reset-otp', async (req, res) => {
+  try {
+    const { email, otp } = req.body;
+
+    if (!email || !otp) {
+      return res.status(400).json({ success: false, message: 'Email and OTP are required' });
+    }
+
+    const admin = await Admin.findOne({ email: email.toLowerCase().trim() });
+    if (!admin) {
+      return res.status(400).json({ success: false, message: 'Invalid or expired OTP' });
+    }
+
+    const otpDoc = await Otp.findOne({
+      email: admin.email,
+      type: 'password_reset',
+      isUsed: false
+    }).sort({ createdAt: -1 });
+
+    if (!otpDoc) {
+      return res.status(400).json({ success: false, message: 'Invalid or expired OTP' });
+    }
+
+    const result = otpDoc.verify(otp.trim());
+    await otpDoc.save();
+
+    if (!result.success) {
+      return res.status(400).json({ success: false, message: result.message });
+    }
+
+    const resetToken = jwt.sign(
+      { id: admin._id, type: 'admin_reset', email: admin.email },
+      process.env.JWT_SECRET,
+      { expiresIn: '15m' }
+    );
+
+    res.json({
+      success: true,
+      message: 'OTP verified. Please set your new password.',
+      resetToken
+    });
+
+  } catch (error) {
+    console.error('[admin.verifyOtp]', error.message);
+    res.status(500).json({ success: false, message: 'Failed to verify OTP' });
+  }
+});
+
+// ============================================
+// ADMIN RESET PASSWORD
+// ============================================
+router.post('/reset-password', async (req, res) => {
+  try {
+    const { resetToken, newPassword } = req.body;
+
+    if (!resetToken || !newPassword) {
+      return res.status(400).json({ success: false, message: 'Reset token and new password required' });
+    }
+    if (newPassword.length < 8) {
+      return res.status(400).json({ success: false, message: 'Password must be at least 8 characters' });
+    }
+
+    let decoded;
+    try {
+      decoded = jwt.verify(resetToken, process.env.JWT_SECRET);
+    } catch (e) {
+      return res.status(400).json({ success: false, message: 'Invalid or expired reset token' });
+    }
+
+    if (decoded.type !== 'admin_reset') {
+      return res.status(400).json({ success: false, message: 'Invalid reset token' });
+    }
+
+    const admin = await Admin.findById(decoded.id);
+    if (!admin) {
+      return res.status(404).json({ success: false, message: 'Admin not found' });
+    }
+
+    await admin.setPassword(newPassword);
+    admin.loginAttempts = 0;
+    admin.lockedUntil = null;
+    await admin.save();
+
+    await Otp.updateMany(
+      { email: admin.email, type: 'password_reset' },
+      { $set: { isUsed: true } }
+    );
+
+    console.log(`[admin.reset] Password reset for ${admin.email}`);
+
+    res.json({
+      success: true,
+      message: 'Password reset successful. Please login with your new password.'
+    });
+
+  } catch (error) {
+    console.error('[admin.reset]', error.message);
+    res.status(500).json({ success: false, message: 'Failed to reset password' });
+  }
+});
+
+// ============================================
+// ADMIN /ME — get current admin
+// ============================================
+router.get('/me', authenticateAdmin, async (req, res) => {
+  try {
+    const admin = await Admin.findById(req.admin.id).select('name email role lastLoginAt');
+    if (!admin) {
+      return res.status(404).json({ success: false, message: 'Admin not found' });
+    }
+    res.json({
+      success: true,
+      data: {
+        id: admin._id,
+        name: admin.name,
+        email: admin.email,
+        role: admin.role,
+        lastLoginAt: admin.lastLoginAt
+      }
+    });
+  } catch (error) {
+    res.status(500).json({ success: false, message: 'Failed to fetch admin' });
+  }
+});
 
 module.exports = router;
