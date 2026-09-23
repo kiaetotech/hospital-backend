@@ -4,6 +4,7 @@ const AyurvedaDoctor = require('../models/AyurvedaDoctor');
 const CorporateEmployee = require('../models/CorporateEmployee');
 const CorporateHR = require('../models/CorporateHR');
 const WellnessCenter = require('../models/WellnessCenter');
+const Discount = require('../models/Discount');
 
 // ============================================
 // AUTHENTICATE HR MIDDLEWARE (ADDED)
@@ -1544,6 +1545,161 @@ router.post('/admin/migrate/programs-approval', async (req, res) => {
   } catch (error) {
     console.error('Migration error:', error);
     res.status(500).json({ success: false, error: error.message });
+  }
+});
+
+// ============================================
+// AYURVEDA DISCOUNTS — Admin Management
+// ============================================
+
+// Create discount
+router.post('/discounts', async (req, res) => {
+  const adminKey = req.headers['x-admin-key'];
+  if (adminKey !== process.env.ADMIN_KEY) {
+    return res.status(401).json({ success: false, message: 'Admin authentication required' });
+  }
+
+  try {
+    const {
+      code,
+      discountType,
+      value,
+      maxDiscount,
+      validFrom,
+      validTill,
+      applicableTags
+    } = req.body;
+
+    if (!code || !discountType || value === undefined) {
+      return res.status(400).json({ success: false, message: 'code, discountType, and value are required' });
+    }
+
+    if (!['percentage', 'fixed'].includes(discountType)) {
+      return res.status(400).json({ success: false, message: 'discountType must be percentage or fixed' });
+    }
+
+    const normalizedCode = String(code).trim().toUpperCase();
+
+    const existing = await Discount.findOne({ code: normalizedCode });
+    if (existing) {
+      return res.status(400).json({ success: false, message: 'Discount code already exists' });
+    }
+
+    // Default to all ayurveda services if nothing specified
+    const tags = Array.isArray(applicableTags) && applicableTags.length > 0
+      ? applicableTags
+      : ['ayurveda_all'];
+
+    const discount = await Discount.create({
+      code: normalizedCode,
+      type: discountType,
+      value: Number(value),
+      maxDiscount: maxDiscount ? Number(maxDiscount) : undefined,
+      validFrom: validFrom ? new Date(validFrom) : new Date(),
+      validUntil: validTill ? new Date(validTill) : undefined,
+      applicableTags: tags,
+      createdBy: { type: 'admin' },
+      isActive: true
+    });
+
+    res.status(201).json({
+      success: true,
+      message: 'Discount created',
+      data: discount
+    });
+
+  } catch (error) {
+    console.error('[ayurveda.discounts.create]', error.message);
+    res.status(500).json({ success: false, message: error.message });
+  }
+});
+
+// Toggle discount active/inactive
+router.put('/discounts/:id', async (req, res) => {
+  const adminKey = req.headers['x-admin-key'];
+  if (adminKey !== process.env.ADMIN_KEY) {
+    return res.status(401).json({ success: false, message: 'Admin authentication required' });
+  }
+
+  try {
+    const discount = await Discount.findByIdAndUpdate(
+      req.params.id,
+      { $set: { isActive: req.body.isActive, updatedAt: new Date() } },
+      { new: true }
+    );
+
+    if (!discount) {
+      return res.status(404).json({ success: false, message: 'Discount not found' });
+    }
+
+    res.json({ success: true, message: 'Discount updated', data: discount });
+  } catch (error) {
+    console.error('[ayurveda.discounts.update]', error.message);
+    res.status(500).json({ success: false, message: error.message });
+  }
+});
+
+// ============================================
+// AYURVEDA DISCOUNTS — UPDATE
+// ============================================
+router.put('/discounts/:id/full', async (req, res) => {
+  const adminKey = req.headers['x-admin-key'];
+  if (adminKey !== process.env.ADMIN_KEY) {
+    return res.status(401).json({ success: false, message: 'Admin authentication required' });
+  }
+
+  try {
+    const {
+      value,
+      maxDiscount,
+      validFrom,
+      validTill,
+      applicableTags,
+      isActive
+    } = req.body;
+
+    const updates = {};
+    if (value !== undefined) updates.value = Number(value);
+    if (maxDiscount !== undefined) updates.maxDiscount = maxDiscount === null ? undefined : Number(maxDiscount);
+    if (validFrom) updates.validFrom = new Date(validFrom);
+    if (validTill) updates.validUntil = new Date(validTill);
+    if (Array.isArray(applicableTags) && applicableTags.length > 0) updates.applicableTags = applicableTags;
+    if (isActive !== undefined) updates.isActive = isActive;
+    updates.updatedAt = new Date();
+
+    const discount = await Discount.findByIdAndUpdate(req.params.id, { $set: updates }, { new: true });
+
+    if (!discount) {
+      return res.status(404).json({ success: false, message: 'Discount not found' });
+    }
+
+    res.json({ success: true, message: 'Discount updated', data: discount });
+  } catch (error) {
+    console.error('[ayurveda.discounts.fullUpdate]', error.message);
+    res.status(500).json({ success: false, message: error.message });
+  }
+});
+
+// ============================================
+// AYURVEDA DISCOUNTS — DELETE
+// ============================================
+router.delete('/discounts/:id', async (req, res) => {
+  const adminKey = req.headers['x-admin-key'];
+  if (adminKey !== process.env.ADMIN_KEY) {
+    return res.status(401).json({ success: false, message: 'Admin authentication required' });
+  }
+
+  try {
+    const discount = await Discount.findByIdAndDelete(req.params.id);
+
+    if (!discount) {
+      return res.status(404).json({ success: false, message: 'Discount not found' });
+    }
+
+    res.json({ success: true, message: 'Discount deleted' });
+  } catch (error) {
+    console.error('[ayurveda.discounts.delete]', error.message);
+    res.status(500).json({ success: false, message: error.message });
   }
 });
 
