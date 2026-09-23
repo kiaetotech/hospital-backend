@@ -34,26 +34,28 @@ const discountSchema = new mongoose.Schema({
   // APPLICABILITY
   // ============================================
   
-  applicableTags: [{ 
-    type: String, 
+    applicableTags: [{
+    type: String,
     enum: [
       // Existing Tags (DO NOT DELETE)
-      'opd', 
-      'admission', 
-      'ambulance', 
-      'labtest', 
-      'health_package', 
-      'caregiver', 
-      'loan', 
-      'hospital', 
-      'diagnostics', 
+      'opd',
+      'admission',
+      'ambulance',
+      'labtest',
+      'health_package',
+      'caregiver',
+      'loan',
+      'hospital',
+      'diagnostics',
       'general',
-      // 🆕 Ayurveda Tags (NEWLY ADDED)
+      // 🆕 Ayurveda Tags
       'ayurveda_consultation',
       'ayurveda_panchakarma',
       'ayurveda_home_therapy',
+      'ayurveda_wellness_program',
+      'ayurveda_wellness_center',
       'ayurveda_all'
-    ] 
+    ]
   }],
   
   // ============================================
@@ -264,10 +266,21 @@ discountSchema.methods.canApply = function(amount, bookingType, userId) {
       if (tag === 'general') return true;
       
       // 🆕 AYURVEDA TAGS
-      if (tag === 'ayurveda_all' && ['ayurveda_consultation', 'ayurveda_panchakarma', 'ayurveda_home_therapy', 'ayurveda_doctor'].includes(bookingType)) return true;
+            // 🆕 AYURVEDA TAGS
+      if (tag === 'ayurveda_all' && [
+        'ayurveda_consultation',
+        'ayurveda_panchakarma',
+        'ayurveda_home_therapy',
+        'ayurveda_wellness_program',
+        'ayurveda_wellness_center',
+        'ayurveda_doctor'
+      ].includes(bookingType)) return true;
+
       if (tag === 'ayurveda_consultation' && bookingType === 'ayurveda_consultation') return true;
       if (tag === 'ayurveda_panchakarma' && bookingType === 'ayurveda_panchakarma') return true;
       if (tag === 'ayurveda_home_therapy' && bookingType === 'ayurveda_home_therapy') return true;
+      if (tag === 'ayurveda_wellness_program' && bookingType === 'ayurveda_wellness_program') return true;
+      if (tag === 'ayurveda_wellness_center' && bookingType === 'ayurveda_wellness_center') return true;
       
       return false;
     });
@@ -356,8 +369,15 @@ discountSchema.statics.findByCode = function(code) {
 discountSchema.statics.findAyurvedaDiscounts = function() {
   return this.find({
     isActive: true,
-    applicableTags: { 
-      $in: ['ayurveda_consultation', 'ayurveda_panchakarma', 'ayurveda_home_therapy', 'ayurveda_all'] 
+    applicableTags: {
+      $in: [
+        'ayurveda_consultation',
+        'ayurveda_panchakarma',
+        'ayurveda_home_therapy',
+        'ayurveda_wellness_program',
+        'ayurveda_wellness_center',
+        'ayurveda_all'
+      ]
     }
   }).sort({ value: -1 });
 };

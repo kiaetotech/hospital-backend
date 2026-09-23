@@ -422,6 +422,42 @@ router.post('/create', authenticatePatient, async (req, res) => {
       }
       amount = req.body.amount || doctor.consultationFee;
     }   // ← CLOSING BRACE ADDED HERE
+
+	else if (type === 'wellness_program') {
+  if (!doctorId) {
+    return res.status(400).json({ success: false, message: 'Doctor ID is required' });
+  }
+  doctor = await AyurvedaDoctor.findById(doctorId);
+  if (!doctor) {
+    return res.status(404).json({ success: false, message: 'Doctor not found' });
+  }
+  if (!doctor.isActive || doctor.verificationStatus !== 'approved') {
+    return res.status(400).json({ success: false, message: 'Doctor is not available' });
+  }
+
+  const programId = req.body.wellnessProgramId;
+  if (!programId) {
+    return res.status(400).json({ success: false, message: 'Wellness program ID is required' });
+  }
+
+  const program = (doctor.wellnessPrograms || []).find(
+    p => p._id.toString() === programId && p.approvalStatus === 'approved' && p.isActive !== false
+  );
+
+  if (!program) {
+    return res.status(404).json({ success: false, message: 'Wellness program not found or not approved' });
+  }
+
+  amount = program.discountPrice || program.price;
+  req.body.amount = amount;
+  // Store program reference for record-keeping
+  req.body.wellnessProgramDetails = {
+    programId: program._id.toString(),
+    name: program.name,
+    duration: program.duration,
+    price: program.price
+  };
+}
     
     else if (type === 'panchakarma_package') {
       if (!centerId || !req.body.packageId) {
@@ -530,6 +566,7 @@ router.post('/create', authenticatePatient, async (req, res) => {
       centerPhone: center?.phone || '',
       consultationType: consultationType || 'online',
       package: packageDetails,
+      wellnessProgram: req.body.wellnessProgramDetails || null,
       bookingDate: new Date(bookingDate),
       slotTime,
       symptoms,
