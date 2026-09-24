@@ -220,13 +220,28 @@ discountSchema.methods.canApply = function(amount, bookingType, userId) {
     return { valid: false, reason: 'Discount code is not active' };
   }
   
-  // Check validity period
-  if (this.validFrom && now < this.validFrom) {
-    return { valid: false, reason: 'Discount code is not yet active' };
-  }
-  if (this.validUntil && now > this.validUntil) {
-    return { valid: false, reason: 'Discount code has expired' };
-  }
+      // Check validity period (date-only comparison, timezone-safe)
+    const todayStart = new Date();
+    todayStart.setHours(0, 0, 0, 0);
+
+    const todayEnd = new Date();
+    todayEnd.setHours(23, 59, 59, 999);
+
+    if (this.validFrom) {
+      const startDate = new Date(this.validFrom);
+      startDate.setHours(0, 0, 0, 0);
+      if (todayStart < startDate) {
+        return { valid: false, reason: 'Discount code is not yet active' };
+      }
+    }
+
+    if (this.validUntil) {
+      const endDate = new Date(this.validUntil);
+      endDate.setHours(23, 59, 59, 999);
+      if (todayEnd > endDate) {
+        return { valid: false, reason: 'Discount code has expired' };
+      }
+    }
   
   // Check overall usage limit
   if (this.maxUses && this.usedCount >= this.maxUses) {
