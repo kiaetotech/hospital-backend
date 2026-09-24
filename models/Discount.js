@@ -220,25 +220,24 @@ discountSchema.methods.canApply = function(amount, bookingType, userId) {
     return { valid: false, reason: 'Discount code is not active' };
   }
   
-      // Check validity period (date-only comparison, timezone-safe)
-    const todayStart = new Date();
-    todayStart.setHours(0, 0, 0, 0);
-
-    const todayEnd = new Date();
-    todayEnd.setHours(23, 59, 59, 999);
+          // Check validity period (date-only comparison in IST — Asia/Kolkata)
+    const IST_OFFSET_MS = 5.5 * 60 * 60 * 1000;
+    const todayIST = new Date(Date.now() + IST_OFFSET_MS).toISOString().slice(0, 10);
 
     if (this.validFrom) {
-      const startDate = new Date(this.validFrom);
-      startDate.setHours(0, 0, 0, 0);
-      if (todayStart < startDate) {
+      const startIST = new Date(
+        new Date(this.validFrom).getTime() + IST_OFFSET_MS
+      ).toISOString().slice(0, 10);
+      if (todayIST < startIST) {
         return { valid: false, reason: 'Discount code is not yet active' };
       }
     }
 
     if (this.validUntil) {
-      const endDate = new Date(this.validUntil);
-      endDate.setHours(23, 59, 59, 999);
-      if (todayEnd > endDate) {
+      const endIST = new Date(
+        new Date(this.validUntil).getTime() + IST_OFFSET_MS
+      ).toISOString().slice(0, 10);
+      if (todayIST > endIST) {
         return { valid: false, reason: 'Discount code has expired' };
       }
     }

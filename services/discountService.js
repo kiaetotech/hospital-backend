@@ -25,20 +25,30 @@ const validateDiscount = async (code, amount, bookingType = 'general', userId = 
       };
     }
     
-        // Check validity period (date-only, timezone-safe)
-    const todayStart = new Date();
-    todayStart.setHours(0, 0, 0, 0);
-
-    const todayEnd = new Date();
-    todayEnd.setHours(23, 59, 59, 999);
+            // Check validity period (date-only comparison in IST — Asia/Kolkata)
+    const IST_OFFSET_MS = 5.5 * 60 * 60 * 1000;
+    const todayIST = new Date(Date.now() + IST_OFFSET_MS).toISOString().slice(0, 10); // 'YYYY-MM-DD'
 
     if (discount.validFrom) {
-      const startDate = new Date(discount.validFrom);
-      startDate.setHours(0, 0, 0, 0);
-      if (todayStart < startDate) {
+      const startIST = new Date(
+        new Date(discount.validFrom).getTime() + IST_OFFSET_MS
+      ).toISOString().slice(0, 10);
+      if (todayIST < startIST) {
         return {
           valid: false,
           message: 'Discount not yet active'
+        };
+      }
+    }
+
+    if (discount.validUntil) {
+      const endIST = new Date(
+        new Date(discount.validUntil).getTime() + IST_OFFSET_MS
+      ).toISOString().slice(0, 10);
+      if (todayIST > endIST) {
+        return {
+          valid: false,
+          message: 'Discount code has expired'
         };
       }
     }
