@@ -23,13 +23,19 @@ const ayurvedaBookingSchema = new mongoose.Schema({
   // ============================================
   // BOOKING TYPE
   // ============================================
-  type: { 
+    type: { 
     type: String, 
-    enum: ['doctor_consultation', 'panchakarma_package', 'home_therapy', 'medicine_order'],
+    enum: [
+      'doctor_consultation',
+      'wellness_program',      // NEW
+      'panchakarma_package',
+      'home_therapy',
+      'medicine_order'
+    ],
     required: true 
   },
   
-  // ============================================
+    // ============================================
   // DOCTOR CONSULTATION
   // ============================================
   doctor: { type: mongoose.Schema.Types.ObjectId, ref: 'AyurvedaDoctor' },
@@ -40,6 +46,16 @@ const ayurvedaBookingSchema = new mongoose.Schema({
     type: String, 
     enum: ['online', 'clinic', 'home'],
     default: 'online'
+  },
+
+  // ============================================
+  // WELLNESS PROGRAM (when type = 'wellness_program')
+  // ============================================
+  wellnessProgram: {
+    programId: { type: String },
+    name: { type: String },
+    duration: { type: String },
+    price: { type: Number }
   },
   
   // ============================================
