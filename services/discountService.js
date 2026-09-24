@@ -52,18 +52,7 @@ const validateDiscount = async (code, amount, bookingType = 'general', userId = 
         };
       }
     }
-
-    if (discount.validUntil) {
-      const endDate = new Date(discount.validUntil);
-      endDate.setHours(23, 59, 59, 999);
-      if (todayEnd > endDate) {
-        return {
-          valid: false,
-          message: 'Discount code has expired'
-        };
-      }
-    }
-    
+  
     // Check usage limit
     if (discount.maxUses && discount.usedCount >= discount.maxUses) {
       return { 
