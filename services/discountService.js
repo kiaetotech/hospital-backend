@@ -25,20 +25,33 @@ const validateDiscount = async (code, amount, bookingType = 'general', userId = 
       };
     }
     
-    // Check validity period
-    const now = new Date();
-    if (discount.validFrom && now < discount.validFrom) {
-      return { 
-        valid: false, 
-        message: 'Discount not yet active' 
-      };
+        // Check validity period (date-only, timezone-safe)
+    const todayStart = new Date();
+    todayStart.setHours(0, 0, 0, 0);
+
+    const todayEnd = new Date();
+    todayEnd.setHours(23, 59, 59, 999);
+
+    if (discount.validFrom) {
+      const startDate = new Date(discount.validFrom);
+      startDate.setHours(0, 0, 0, 0);
+      if (todayStart < startDate) {
+        return {
+          valid: false,
+          message: 'Discount not yet active'
+        };
+      }
     }
-    
-    if (discount.validUntil && now > discount.validUntil) {
-      return { 
-        valid: false, 
-        message: 'Discount code has expired' 
-      };
+
+    if (discount.validUntil) {
+      const endDate = new Date(discount.validUntil);
+      endDate.setHours(23, 59, 59, 999);
+      if (todayEnd > endDate) {
+        return {
+          valid: false,
+          message: 'Discount code has expired'
+        };
+      }
     }
     
     // Check usage limit
