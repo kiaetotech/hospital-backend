@@ -48,9 +48,9 @@ const MentalHealthBookingSchema = new mongoose.Schema({
   },
   
   // Payment Status (Enhanced)
-  paymentStatus: {
+    paymentStatus: {
     type: String,
-    enum: ['pending', 'paid', 'failed', 'refunded', 'partially_refunded'],
+    enum: ['pending', 'initiated', 'paid', 'failed', 'refunded', 'partially_refunded', 'expired'],
     default: 'pending'
   },
   paymentId: { type: String },

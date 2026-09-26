@@ -20,7 +20,7 @@ const ambulanceBookingSchema = new mongoose.Schema({
   totalAmount: Number,
   discount: Number,
   finalAmount: Number,
-  paymentStatus: { type: String, enum: ['pending', 'paid', 'failed'], default: 'pending' },
+  paymentStatus: { type: String, enum: ['pending', 'initiated', 'paid', 'failed', 'expired'], default: 'pending' },
   paymentId: String,
   status: { 
     type: String, 

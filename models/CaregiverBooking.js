@@ -21,7 +21,7 @@ const caregiverBookingSchema = new mongoose.Schema({
   },
   checkIn: { timestamp: Date, location: { lat: Number, lng: Number }, qrCode: String },
   checkOut: { timestamp: Date, location: { lat: Number, lng: Number } },
-  paymentStatus: { type: String, enum: ['pending', 'held', 'captured', 'released', 'refund_pending', 'refunded', 'partially_refunded', 'failed'], default: 'pending', index: true },
+  paymentStatus: { type: String, enum: ['pending', 'initiated', 'held', 'captured', 'released', 'refund_pending', 'refunded', 'partially_refunded', 'failed', 'expired'], default: 'pending', index: true },
   paymentId: String,
   paymentOrderId: String,
   refundId: String,

@@ -16,7 +16,7 @@ const healthPackageBookingSchema = new mongoose.Schema({
   total_amount: Number,
   discount_applied: Number,
   final_amount: Number,
-  payment_status: { type: String, enum: ['pending', 'completed', 'failed'], default: 'pending' },
+  payment_status: { type: String, enum: ['pending', 'initiated', 'completed', 'failed', 'expired'], default: 'pending' },
   payment_id: String,
   booking_status: { type: String, enum: ['confirmed', 'sample_collected', 'report_ready', 'completed', 'cancelled'], default: 'confirmed' },
   created_at: { type: Date, default: Date.now }
