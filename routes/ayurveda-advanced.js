@@ -1834,4 +1834,58 @@ router.put('/admin/fee-config', async (req, res) => {
   }
 });
 
+// ────────────────────────────────────────────────
+// ONE-TIME: Seed default Ayurveda configs
+// POST /api/ayurveda/admin/fee-config/seed
+// ────────────────────────────────────────────────
+router.post('/admin/fee-config/seed', async (req, res) => {
+  const adminKey = req.headers['x-admin-key'];
+  if (adminKey !== process.env.ADMIN_KEY) {
+    return res.status(401).json({ success: false, error: 'Admin authentication required' });
+  }
+
+  const seeds = [
+    { serviceType: 'ayurveda_consultation',    platformFees: { consultation: 30, onlineConsult: 30, followUp: 15 }, gst: 18, rate: 20 },
+    { serviceType: 'ayurveda_panchakarma',     platformFees: { panchakarma: 100 },                                  gst: 18, rate: 15 },
+    { serviceType: 'ayurveda_wellness_center', platformFees: { wellnessCenter: 100 },                              gst: 18, rate: 20 },
+    { serviceType: 'ayurveda_home_therapy',    platformFees: { homeTherapy: 50 },                                  gst: 18, rate: 20 },
+    { serviceType: 'ayurveda_medicine',        platformFees: { medicine: 20 },                                     gst: 18, rate: 25 },
+  ];
+
+  const results = [];
+  for (const s of seeds) {
+    try {
+      const existing = await CommissionConfig.getActiveConfig(s.serviceType);
+      if (existing) {
+        results.push({ serviceType: s.serviceType, status: 'exists' });
+        continue;
+      }
+      const config = new CommissionConfig({
+        configId: `COMM_${s.serviceType.toUpperCase()}_${Date.now()}`,
+        configName: s.serviceType,
+        serviceType: s.serviceType,
+        commissionType: 'percentage',
+        percentageRate: s.rate,
+        effectiveFrom: new Date(),
+        isActive: true,
+        isDefault: true,
+        createdBy: 'seed',
+        updatedBy: 'seed',
+        changeReason: 'Initial seed',
+        ayurvedaSpecific: {
+          platformFees: s.platformFees,
+          gstPercentage: s.gst,
+        }
+      });
+      await config.save();
+      results.push({ serviceType: s.serviceType, status: 'created' });
+    } catch (e) {
+      results.push({ serviceType: s.serviceType, status: 'error', error: e.message });
+    }
+  }
+
+  res.json({ success: true, message: `Seeded ${results.length} configs`, results });
+});
+
+
 module.exports = router;
