@@ -105,7 +105,7 @@ const ayurvedaBookingSchema = new mongoose.Schema({
   providerEarning: { type: Number, required: true },
   gstAmount: { type: Number, default: 0 },
   
-  paymentStatus: {
+    paymentStatus: {
     type: String,
     enum: ['pending', 'initiated', 'paid', 'failed', 'refunded', 'partial_refund', 'expired'],
     default: 'pending'

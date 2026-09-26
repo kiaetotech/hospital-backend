@@ -112,6 +112,28 @@ const calculateAyurvedaCancellation = (booking) => {
     }
   }
   
+  // Wellness Program
+  else if (booking.type === 'wellness_program') {
+    if (hoursBefore > 48) {
+      feePercentage = 10;
+      refundPercentage = 90;
+      reason = 'Cancelled more than 48 hours before program start';
+    } else if (hoursBefore > 24) {
+      feePercentage = 50;
+      refundPercentage = 50;
+      reason = 'Cancelled between 24-48 hours before program start';
+    } else if (hoursBefore > 6) {
+      feePercentage = 75;
+      refundPercentage = 25;
+      reason = 'Cancelled between 6-24 hours before program start';
+    } else {
+      feePercentage = 100;
+      refundPercentage = 0;
+      reason = 'Cancelled less than 6 hours before program start';
+      canCancel = false;
+    }
+  }
+  
   // Default
   else {
     if (hoursBefore > 24) {
