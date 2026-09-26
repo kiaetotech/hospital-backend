@@ -7,6 +7,7 @@ const WellnessCenter = require('../models/WellnessCenter');
 const Transaction = require('../models/Transaction');
 const Discount = require('../models/Discount');
 const commissionService = require('../services/commissionService');
+const pricingService = require('../services/pricingService');
 const cancellationService = require('../services/cancellationPolicyService');
 const razorpayService = require('../services/razorpayService');
 const notificationService = require('../services/notificationService');
@@ -550,21 +551,36 @@ router.post('/create', authenticatePatient, async (req, res) => {
       }
     }
 
-        // Calculate commission
-    const commissionResult = commissionService.calculateAyurvedaCommission({
-      amount: amount - discountAmount,
-      providerId: doctorId || centerId,
-      subType: type === 'panchakarma_package' ? 'panchakarma' : 'consultation'
-    });
+            // ─────────────────────────────────────────
+    // PRICING — single source of truth
+    // All numbers from CommissionConfig in DB.
+    // ─────────────────────────────────────────
+    let pricing;
+    try {
+      pricing = await pricingService.calculatePricing({
+        bookingType: type,
+        amount,
+        discountAmount
+      });
+    } catch (priceErr) {
+      console.error('[booking.create] pricing failed:', priceErr.message);
+      return res.status(503).json({
+        success: false,
+        message: 'Booking temporarily unavailable. Admin has not configured pricing. Please try again later.',
+        code: 'PRICING_NOT_CONFIGURED'
+      });
+    }
 
-    // Platform fee and GST (production)
-    const platformFee = type === 'panchakarma_package' ? 100 : 30;
-    const gstPercentage = 18;
-    const baseAmount = amount - discountAmount;
-    const gstAmount = Math.round((baseAmount + platformFee) * gstPercentage / 100);
-    const finalAmount = baseAmount + platformFee + gstAmount;
-    const platformCommission = commissionResult.commissionAmount;
-    const providerEarning = baseAmount - platformCommission;
+    const {
+      platformFee,
+      gstAmount,
+      total: finalAmount,
+      platformCommission,
+      providerEarning,
+      gstPercentage,
+      configVersion,
+      configId
+    } = pricing;
 
     // Create Razorpay order
     const orderResult = await razorpayService.createOrder(
