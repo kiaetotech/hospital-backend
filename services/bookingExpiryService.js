@@ -1,136 +1,132 @@
-/**
- * Booking Expiry Service
- * 
- * Runs on a schedule. Automatically marks lapsed bookings as no-show.
- * 
- * Rules:
- * - Booking date + 2 hours past
- * - Status is 'confirmed' (patient never cancelled, provider never completed)
- * - Payment is 'paid'
- * → Mark as no_show
- * → Decrement package counter
- * → Provider keeps earning
- * → Patient gets no refund
- * 
- * Runs every 15 minutes.
- */
+// D:\hospital backend\services\bookingExpiryService.js
+// Auto-mark no-show for paid but unattended bookings (all tags)
 
 const AyurvedaBooking = require('../models/AyurvedaBooking');
 const WellnessCenter = require('../models/WellnessCenter');
-const smsService = require('../services/smsService');
 
-// Grace period after booking date before auto-marking no-show
 const NO_SHOW_GRACE_HOURS = 2;
+const BATCH_LIMIT = 200;
 
-async function processExpiredBookings() {
-  const startTime = Date.now();
+async function markAyurvedaNoShow() {
   const cutoffTime = new Date(Date.now() - NO_SHOW_GRACE_HOURS * 60 * 60 * 1000);
+  const stale = await AyurvedaBooking.find({
+    status: 'confirmed',
+    paymentStatus: 'paid',
+    bookingDate: { $lt: cutoffTime }
+  }).limit(BATCH_LIMIT);
 
-  let processed = 0;
-  let failed = 0;
+  let processed = 0, failed = 0;
   const details = [];
 
+  for (const booking of stale) {
+    try {
+      const wasActiveBooking =
+        booking.type === 'panchakarma_package' &&
+        booking.center &&
+        booking.package?.packageId;
+
+      booking.status = 'no_show';
+      booking.noShowAt = new Date();
+      booking.noShowReason = `Auto-marked no-show after ${NO_SHOW_GRACE_HOURS}h grace period`;
+      booking.cancellationReason = 'Auto no-show — patient did not attend';
+      booking.statusHistory = booking.statusHistory || [];
+      booking.statusHistory.push({
+        status: 'no_show',
+        timestamp: new Date(),
+        note: 'Auto-marked as no-show by system',
+        updatedBy: 'system'
+      });
+      await booking.save();
+
+      if (wasActiveBooking) {
+        try {
+          await WellnessCenter.updateOne(
+            { _id: booking.center, 'packages._id': booking.package.packageId },
+            { $inc: { 'packages.$.currentBookings': -1 } }
+          );
+        } catch (e) { console.warn('[no-show] counter:', e.message); }
+      }
+
+      try {
+        const smsService = require('../services/smsService');
+        if (booking.patient?.phone) {
+          await smsService.sendSMS(
+            booking.patient.phone,
+            `Your appointment on ${new Date(booking.bookingDate).toLocaleDateString()} was missed. Booking ${booking.bookingId} marked no-show. No refund applicable. - KiaetoCare`
+          );
+        }
+      } catch (e) { /* SMS failures are non-fatal */ }
+
+      processed++;
+      details.push({ bookingId: booking.bookingId, action: 'marked_no_show', providerEarning: booking.providerEarning });
+    } catch (err) {
+      failed++;
+      details.push({ bookingId: booking.bookingId, action: 'failed', error: err.message });
+    }
+  }
+  return { tag: 'ayurveda', processed, failed, details };
+}
+
+async function markGenericBookingNoShow() {
   try {
-    // Find bookings that are past grace period but still confirmed
-    const staleBookings = await AyurvedaBooking.find({
+    const Booking = require('../models/Booking');
+    const cutoffTime = new Date(Date.now() - NO_SHOW_GRACE_HOURS * 60 * 60 * 1000);
+
+    // Booking model uses `appointmentDate` or `bookingDate` depending on setup — try both
+    const stale = await Booking.find({
       status: 'confirmed',
       paymentStatus: 'paid',
-      bookingDate: { $lt: cutoffTime }
-    }).limit(200); // Batch limit — safe for large volumes
+      $or: [
+        { appointmentDate: { $lt: cutoffTime } },
+        { bookingDate: { $lt: cutoffTime } }
+      ]
+    }).limit(BATCH_LIMIT);
 
-    console.log(`[bookingExpiry] Found ${staleBookings.length} stale bookings to process`);
-
-    for (const booking of staleBookings) {
+    let processed = 0, failed = 0;
+    for (const booking of stale) {
       try {
-        const wasActiveBooking = 
-          booking.type === 'panchakarma_package' &&
-          booking.center &&
-          booking.package?.packageId;
-
-        // Update booking
         booking.status = 'no_show';
         booking.noShowAt = new Date();
-        booking.noShowReason = `Auto-marked no-show after ${NO_SHOW_GRACE_HOURS}h grace period`;
-        booking.cancellationReason = 'Auto no-show — patient did not attend';
-
+        booking.noShowReason = `Auto-marked after ${NO_SHOW_GRACE_HOURS}h grace`;
         booking.statusHistory = booking.statusHistory || [];
         booking.statusHistory.push({
           status: 'no_show',
           timestamp: new Date(),
-          note: `Auto-marked as no-show by system after grace period`,
+          note: 'Auto-marked no-show by system',
           updatedBy: 'system'
         });
-
         await booking.save();
-
-        // Decrement package counter
-        if (wasActiveBooking) {
-          try {
-            await WellnessCenter.updateOne(
-              {
-                _id: booking.center,
-                'packages._id': booking.package.packageId
-              },
-              { $inc: { 'packages.$.currentBookings': -1 } }
-            );
-          } catch (decErr) {
-            console.error(`[bookingExpiry] Counter decrement failed for ${booking.bookingId}:`, decErr.message);
-          }
-        }
-
-        // Notify patient (informational — no refund)
-        try {
-          if (booking.patient?.phone) {
-            await smsService.sendSMS(
-              booking.patient.phone,
-              `Your appointment on ${new Date(booking.bookingDate).toLocaleDateString()} was missed. Booking ${booking.bookingId} has been marked as no-show. No refund applicable per policy. - KiaetoCare`
-            );
-          }
-        } catch (smsErr) {
-          console.warn(`[bookingExpiry] SMS failed for ${booking.bookingId}:`, smsErr.message);
-        }
-
         processed++;
-        details.push({
-          bookingId: booking.bookingId,
-          action: 'marked_no_show',
-          providerEarning: booking.providerEarning
-        });
-
       } catch (err) {
         failed++;
-        console.error(`[bookingExpiry] Failed for ${booking.bookingId}:`, err.message);
-        details.push({
-          bookingId: booking.bookingId,
-          action: 'failed',
-          error: err.message
-        });
       }
     }
-
-    const duration = Date.now() - startTime;
-    console.log(`[bookingExpiry] Complete in ${duration}ms — processed: ${processed}, failed: ${failed}`);
-
-    return {
-      success: true,
-      processed,
-      failed,
-      duration,
-      details
-    };
-
-  } catch (error) {
-    console.error('[bookingExpiry] Fatal error:', error.message);
-    return {
-      success: false,
-      error: error.message,
-      processed,
-      failed
-    };
+    return { tag: 'generic', processed, failed };
+  } catch (e) {
+    return { tag: 'generic', processed: 0, failed: 0, error: e.message };
   }
 }
 
-module.exports = {
-  processExpiredBookings,
-  NO_SHOW_GRACE_HOURS
-};
+async function processExpiredBookings() {
+  const startTime = Date.now();
+  const results = [];
+
+  results.push(await markAyurvedaNoShow());
+  results.push(await markGenericBookingNoShow());
+
+  const totalProcessed = results.reduce((s, r) => s + r.processed, 0);
+  const totalFailed = results.reduce((s, r) => s + r.failed, 0);
+  const duration = Date.now() - startTime;
+
+  console.log(`[no-show cron] ${totalProcessed} processed, ${totalFailed} failed in ${duration}ms`);
+
+  return {
+    success: true,
+    processed: totalProcessed,
+    failed: totalFailed,
+    duration,
+    breakdown: results
+  };
+}
+
+module.exports = { processExpiredBookings, NO_SHOW_GRACE_HOURS };

@@ -348,6 +348,37 @@ if (bookingExpiryService && typeof bookingExpiryService.processExpiredBookings =
   }, 15 * 60 * 1000);
 }
 
+// ─────────────────────────────────────────
+// UNPAID BOOKING EXPIRY (Cancel after 30 min)
+// ─────────────────────────────────────────
+let unpaidExpiryService = null;
+try {
+  unpaidExpiryService = require('./services/unpaidExpiryService');
+  console.log('✅ Unpaid expiry service loaded');
+} catch (e) {
+  console.warn('⚠️ Unpaid expiry service not available:', e.message);
+}
+
+if (unpaidExpiryService && typeof unpaidExpiryService.processUnpaidBookings === 'function') {
+  // Initial run after 60 sec
+  setTimeout(() => {
+    unpaidExpiryService.processUnpaidBookings()
+      .then(r => console.log('💰 Initial unpaid expiry:', JSON.stringify(r)))
+      .catch(err => console.error('Initial unpaid expiry failed:', err.message));
+  }, 60000);
+
+  // Then every 5 minutes
+  setInterval(async () => {
+    try {
+      await unpaidExpiryService.processUnpaidBookings();
+    } catch (error) {
+      console.error('Unpaid expiry cron error:', error.message);
+    }
+  }, 5 * 60 * 1000);
+
+  console.log('🕐 Unpaid expiry cron scheduled every 5 minutes');
+}
+
 // ============================================
 // MODELS WITH FALLBACK
 // ============================================
