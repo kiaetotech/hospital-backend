@@ -1366,16 +1366,20 @@ router.get('/admin/programs/pending', async (req, res) => {
   if (adminKey !== process.env.ADMIN_KEY) {
     return res.status(401).json({ success: false, error: 'Admin authentication required' });
   }
-  
+
   try {
+    // Fetch all doctors with any programs, filter in JS (matches /programs/all behavior)
     const doctors = await AyurvedaDoctor.find({
-      'wellnessPrograms.approvalStatus': 'pending'
+      'wellnessPrograms.0': { $exists: true }
     }).select('name phone email specialization address wellnessPrograms');
-    
+
     const pendingPrograms = [];
     doctors.forEach(doctor => {
       (doctor.wellnessPrograms || [])
-        .filter(prog => prog.approvalStatus === 'pending')
+        .filter(prog =>
+          prog.approvalStatus === 'pending' &&
+          prog.deleted !== true
+        )
         .forEach(prog => {
           pendingPrograms.push({
             doctorId: doctor._id,
@@ -1402,13 +1406,13 @@ router.get('/admin/programs/pending', async (req, res) => {
           });
         });
     });
-    
+
     pendingPrograms.sort((a, b) => new Date(b.submittedAt) - new Date(a.submittedAt));
-    
-    res.json({ 
-      success: true, 
+
+    res.json({
+      success: true,
       count: pendingPrograms.length,
-      data: pendingPrograms 
+      data: pendingPrograms
     });
   } catch (error) {
     console.error('Pending programs error:', error);
