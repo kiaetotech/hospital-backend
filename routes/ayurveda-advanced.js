@@ -1,6 +1,7 @@
 const express = require('express');
 const router = express.Router();
 const AyurvedaDoctor = require('../models/AyurvedaDoctor');
+const CommissionConfig = require('../models/CommissionConfig');
 const CorporateEmployee = require('../models/CorporateEmployee');
 const CorporateHR = require('../models/CorporateHR');
 const WellnessCenter = require('../models/WellnessCenter');
@@ -1249,55 +1250,6 @@ router.get('/doctors/available-now', async (req, res) => {
 });
 
 // ============================================
-// ADMIN: FEE & COMMISSION MANAGEMENT
-// ============================================
-
-// GET current config
-router.get('/admin/fee-config', async (req, res) => {
-  try {
-    const CommissionConfig = require('../models/CommissionConfig');
-    let config = await CommissionConfig.findOne({ tag: 'ayurveda' });
-    if (!config) {
-      config = new CommissionConfig({ tag: 'ayurveda' });
-      await config.save();
-    }
-    res.json({ success: true, data: config });
-  } catch (error) {
-    res.status(500).json({ success: false, error: error.message });
-  }
-});
-
-// UPDATE config
-router.put('/admin/fee-config', async (req, res) => {
-  try {
-    const { platformFee, gst, commission } = req.body;
-    const CommissionConfig = require('../models/CommissionConfig');
-    
-    let config = await CommissionConfig.findOne({ tag: 'ayurveda' });
-    if (!config) {
-      config = new CommissionConfig({ tag: 'ayurveda' });
-    }
-    
-    if (platformFee) {
-      config.platformFee = { ...config.platformFee, ...platformFee };
-    }
-    if (gst) {
-      config.gst = { ...config.gst, ...gst };
-    }
-    if (commission) {
-      config.commission = { ...config.commission, ...commission };
-    }
-    
-    config.updatedAt = new Date();
-    await config.save();
-    
-    res.json({ success: true, message: 'Fee config updated', data: config });
-  } catch (error) {
-    res.status(500).json({ success: false, error: error.message });
-  }
-});
-
-// ============================================
 // DOCTOR: UPDATE WELLNESS PROGRAM
 // ============================================
 router.put('/doctor/wellness-program/:doctorId/:programId', async (req, res) => {
@@ -1756,6 +1708,131 @@ router.delete('/discounts/:id', async (req, res) => {
   } catch (error) {
     console.error('[ayurveda.discounts.delete]', error.message);
     res.status(500).json({ success: false, message: error.message });
+  }
+});
+
+const CommissionConfig = require('../models/CommissionConfig');
+
+// ────────────────────────────────────────────────
+// GET current config (for admin UI)
+// ────────────────────────────────────────────────
+router.get('/admin/fee-config', async (req, res) => {
+  const adminKey = req.headers['x-admin-key'];
+  if (adminKey !== process.env.ADMIN_KEY) {
+    return res.status(401).json({ success: false, error: 'Admin authentication required' });
+  }
+
+  try {
+    const serviceTypes = [
+      'ayurveda_consultation',
+      'ayurveda_panchakarma',
+      'ayurveda_wellness_center',
+      'ayurveda_home_therapy',
+      'ayurveda_medicine',
+    ];
+
+    const configs = {};
+    for (const st of serviceTypes) {
+      configs[st] = await CommissionConfig.getActiveConfig(st);
+    }
+
+    const anyMissing = Object.values(configs).some(c => !c);
+
+    res.json({
+      success: true,
+      data: configs,
+      isConfigured: !anyMissing,
+      message: anyMissing ? 'Some service types are not configured' : 'OK',
+    });
+  } catch (error) {
+    res.status(500).json({ success: false, error: error.message });
+  }
+});
+
+// ────────────────────────────────────────────────
+// UPDATE config (per service type, with versioning)
+// ────────────────────────────────────────────────
+router.put('/admin/fee-config', async (req, res) => {
+  const adminKey = req.headers['x-admin-key'];
+  if (adminKey !== process.env.ADMIN_KEY) {
+    return res.status(401).json({ success: false, error: 'Admin authentication required' });
+  }
+
+  try {
+    const { serviceType, platformFeeKey, platformFeeValue, gstPercentage, commissionRate, reason } = req.body;
+
+    if (!serviceType || !reason || reason.trim().length < 5) {
+      return res.status(400).json({
+        success: false,
+        error: 'serviceType and reason (min 5 chars) are required'
+      });
+    }
+
+    // Validate ranges
+    if (gstPercentage != null && (gstPercentage < 0 || gstPercentage > 28)) {
+      return res.status(400).json({ success: false, error: 'GST % must be 0-28' });
+    }
+    if (commissionRate != null && (commissionRate < 0 || commissionRate > 50)) {
+      return res.status(400).json({ success: false, error: 'Commission % must be 0-50' });
+    }
+    if (platformFeeValue != null && platformFeeValue < 0) {
+      return res.status(400).json({ success: false, error: 'Platform fee must be ≥ 0' });
+    }
+
+    const existing = await CommissionConfig.getActiveConfig(serviceType);
+
+    if (!existing) {
+      // Seed new config
+      const newConfig = new CommissionConfig({
+        configId: `COMM_${serviceType.toUpperCase()}_${Date.now()}`,
+        configName: serviceType,
+        serviceType,
+        commissionType: 'percentage',
+        percentageRate: commissionRate ?? 20,
+        effectiveFrom: new Date(),
+        isActive: true,
+        isDefault: true,
+        createdBy: req.user?.id || 'admin',
+        updatedBy: req.user?.id || 'admin',
+        changeReason: reason.trim(),
+        ayurvedaSpecific: {
+          platformFees: {
+            [platformFeeKey]: platformFeeValue ?? 0
+          },
+          gstPercentage: gstPercentage ?? 18,
+        }
+      });
+      if (commissionRate != null) {
+        newConfig.ayurvedaSpecific[`${serviceType.replace('ayurveda_', '')}Rate`] = commissionRate;
+      }
+      await newConfig.save();
+      return res.json({ success: true, message: 'Config created', data: newConfig });
+    }
+
+    // Update existing via versioned approach
+    const updates = {
+      effectiveFrom: new Date(),
+      changeReason: reason.trim(),
+      updatedBy: req.user?.id || 'admin',
+    };
+    if (gstPercentage != null) updates['ayurvedaSpecific.gstPercentage'] = gstPercentage;
+    if (platformFeeKey && platformFeeValue != null) {
+      updates[`ayurvedaSpecific.platformFees.${platformFeeKey}`] = platformFeeValue;
+    }
+    if (commissionRate != null) {
+      updates.percentageRate = commissionRate;
+    }
+
+    const updated = await CommissionConfig.createNewVersion(existing.configId, updates, req.user?.id);
+
+    res.json({
+      success: true,
+      message: `Config updated (version ${updated.version})`,
+      data: updated,
+    });
+  } catch (error) {
+    console.error('[fee-config.update]', error.message);
+    res.status(500).json({ success: false, error: error.message });
   }
 });
 
