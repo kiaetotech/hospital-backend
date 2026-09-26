@@ -142,30 +142,49 @@ const payoutService = {
   // ============================================
   // GET PROVIDER EARNINGS
   // ============================================
-  getProviderEarnings: async (providerType, providerId) => {
-    const query = {
-      paymentStatus: 'paid',
-      commissionPayoutStatus: { $in: ['pending', 'processing'] }
-    };
-    
-    if (providerType === 'ayurveda_doctor') {
-      query.doctor = providerId;
-    } else if (providerType === 'wellness_center') {
-      query.center = providerId;
+    getProviderEarnings: async (providerType, providerId) => {
+    // Base filter — all paid bookings for this provider (regardless of payout status)
+    const baseQuery = { paymentStatus: 'paid' };
+
+    if (providerType === 'ayurveda_doctor' || providerType === 'doctor') {
+      baseQuery.doctor = providerId;
+    } else if (providerType === 'wellness_center' || providerType === 'center') {
+      baseQuery.center = providerId;
     } else {
       throw new Error('Invalid provider type');
     }
-    
-        const bookings = await AyurvedaBooking.find(query)
-      .select('bookingId finalAmount platformCommission providerEarning paidAt type paymentStatus commissionPayoutStatus')
-      .sort({ paidAt: -1 });
-    
-    const totalEarnings = bookings.reduce((sum, b) => sum + (b.providerEarning || 0), 0);
-    const totalCommission = bookings.reduce((sum, b) => sum + (b.platformCommission || 0), 0);
+
+    // All paid bookings for lifetime stats
+    const bookings = await AyurvedaBooking.find(baseQuery)
+      .select('bookingId finalAmount platformCommission providerEarning paidAt type paymentStatus status commissionPayoutStatus')
+      .sort({ paidAt: -1 })
+      .lean();
+
+    // Statuses that count toward provider earnings
+    // (excludes cancelled/refunded — includes completed + no_show + in_progress)
+    const earningStatuses = ['completed', 'no_show', 'in_progress', 'confirmed'];
+
+    const earningBookings = bookings.filter(b =>
+      earningStatuses.includes(b.status) ||
+      b.status === 'pending' // pending still counts (paid but not yet accepted)
+    );
+
+    // Lifetime totals
+    const totalEarnings = earningBookings.reduce(
+      (sum, b) => sum + (b.providerEarning || 0), 0
+    );
+    const totalCommission = earningBookings.reduce(
+      (sum, b) => sum + (b.platformCommission || 0), 0
+    );
+
+    // Pending payout = not yet settled (pending/processing)
     const pendingPayout = bookings
-      .filter(b => b.paymentStatus === 'paid' && b.commissionPayoutStatus !== 'paid')
+      .filter(b =>
+        b.commissionPayoutStatus !== 'paid' &&
+        earningStatuses.includes(b.status)
+      )
       .reduce((sum, b) => sum + (b.providerEarning || 0), 0);
-    
+
     return {
       providerType,
       providerId,
