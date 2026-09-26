@@ -319,6 +319,36 @@ router.put('/:bookingId/review/doctor-respond', authenticateUser, async (req, re
 });
 
 // ============================================
+// PUBLIC: Pricing preview (no auth needed)
+// POST /api/ayurveda/bookings/pricing-preview
+// ============================================
+router.post('/pricing-preview', async (req, res) => {
+  try {
+    const pricingService = require('../services/pricingService');
+    const { bookingType, amount, discountAmount = 0 } = req.body;
+
+    if (!bookingType || typeof amount !== 'number') {
+      return res.status(400).json({
+        success: false,
+        message: 'bookingType and amount are required'
+      });
+    }
+
+    const pricing = await pricingService.calculatePricing({
+      bookingType,
+      amount,
+      discountAmount
+    });
+
+    res.json({ success: true, data: pricing });
+  } catch (error) {
+    console.error('[pricing-preview]', error.message);
+    res.status(500).json({ success: false, message: error.message });
+  }
+});
+
+
+// ============================================
 // PATIENT-ONLY MIDDLEWARE
 // ============================================
 const authenticatePatient = (req, res, next) => {
