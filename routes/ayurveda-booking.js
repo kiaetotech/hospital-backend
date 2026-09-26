@@ -1753,7 +1753,7 @@ router.get('/center/reviews', authenticateUser, async (req, res) => {
 
     const bookings = await AyurvedaBooking.find({
       center: centerObjectId,
-      reviewed: true
+      'review.rating': { $exists: true, $ne: null }
     })
       .select('bookingId type patient package review centerName createdAt')
       .sort({ 'review.createdAt': -1 })
