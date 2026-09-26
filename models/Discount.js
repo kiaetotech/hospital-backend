@@ -297,10 +297,13 @@ discountSchema.methods.canApply = function(amount, bookingType, userId) {
       return false;
     });
 
-    if (!matches) {
+        if (!matches) {
       return { valid: false, reason: 'Discount code not applicable for this service' };
     }
   }
+
+  return { valid: true };
+};
 
 // Increment usage count
 discountSchema.methods.incrementUsage = async function(userId) {
