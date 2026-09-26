@@ -69,9 +69,44 @@ const validateDiscount = async (code, amount, bookingType = 'general', userId = 
       };
     }
     
-    // Check applicable tags
+        // Check applicable tags — with booking type mapper
     if (discount.applicableTags && discount.applicableTags.length > 0) {
-      if (!discount.applicableTags.includes(bookingType)) {
+      const BOOKING_TYPE_TO_DISCOUNT_TAG = {
+        'doctor_consultation': 'ayurveda_consultation',
+        'wellness_program': 'ayurveda_wellness_program',
+        'panchakarma_package': 'ayurveda_panchakarma',
+        'home_therapy': 'ayurveda_home_therapy'
+      };
+      const normalizedBookingType = BOOKING_TYPE_TO_DISCOUNT_TAG[bookingType] || bookingType;
+
+      const isApplicable = discount.applicableTags.some(tag => {
+        // Direct match
+        if (tag === normalizedBookingType) return true;
+
+        // Hospital umbrella
+        if (tag === 'hospital' && ['opd', 'admission'].includes(bookingType)) return true;
+
+        // Diagnostics umbrella
+        if (tag === 'diagnostics' && ['labtest', 'health_package'].includes(bookingType)) return true;
+
+        // Ayurveda umbrella
+        if (tag === 'ayurveda_all') {
+          const ayurvedaTypes = [
+            'doctor_consultation',
+            'wellness_program',
+            'panchakarma_package',
+            'home_therapy'
+          ];
+          if (ayurvedaTypes.includes(bookingType)) return true;
+        }
+
+        // General applies to all
+        if (tag === 'general') return true;
+
+        return false;
+      });
+
+      if (!isApplicable) {
         return { 
           valid: false, 
           message: `Discount not applicable for ${bookingType}` 
