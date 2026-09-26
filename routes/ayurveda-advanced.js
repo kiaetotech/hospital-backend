@@ -1488,6 +1488,58 @@ router.put('/admin/programs/:doctorId/:programId/reject', async (req, res) => {
   }
 });
 
+// Admin: All programs (pending + approved + rejected)
+router.get('/admin/programs/all', async (req, res) => {
+  const adminKey = req.headers['x-admin-key'];
+  if (adminKey !== process.env.ADMIN_KEY) {
+    return res.status(401).json({ success: false, error: 'Admin authentication required' });
+  }
+
+  try {
+    const doctors = await AyurvedaDoctor.find({
+      'wellnessPrograms.0': { $exists: true }
+    }).select('name phone email specialization address wellnessPrograms');
+
+    const programs = [];
+    doctors.forEach(doctor => {
+      (doctor.wellnessPrograms || []).forEach(prog => {
+        programs.push({
+          doctorId: doctor._id,
+          doctorName: doctor.name,
+          doctorPhone: doctor.phone,
+          doctorSpecialization: doctor.specialization,
+          doctorCity: doctor.address?.city,
+          programId: prog._id,
+          name: prog.name,
+          description: prog.description,
+          shortDescription: prog.shortDescription,
+          category: prog.category,
+          price: prog.price,
+          discountPrice: prog.discountPrice,
+          duration: prog.duration,
+          durationDays: prog.durationDays,
+          programType: prog.programType,
+          therapies: prog.therapies,
+          includes: prog.includes,
+          isActive: prog.isActive !== false,
+          approvalStatus: prog.approvalStatus || 'pending',
+          submittedAt: prog.submittedAt,
+          approvedAt: prog.approvedAt,
+          rejectedAt: prog.rejectedAt,
+          rejectionReason: prog.rejectionReason || ''
+        });
+      });
+    });
+
+    programs.sort((a, b) => new Date(b.submittedAt || 0) - new Date(a.submittedAt || 0));
+
+    res.json({ success: true, count: programs.length, data: programs });
+  } catch (error) {
+    console.error('[admin.programs.all]', error.message);
+    res.status(500).json({ success: false, error: error.message });
+  }
+});
+
 // Pending programs count
 router.get('/admin/programs/pending-count', async (req, res) => {
   const adminKey = req.headers['x-admin-key'];
