@@ -488,4 +488,160 @@ router.get('/admin/all', async (req, res) => {
   }
 });
 
+// ============================================
+// AYURVEDA ADMIN ALIAS ROUTES
+// Admin UI calls /api/ayurveda/discounts/*
+// Maps admin payload (discountType, validTill, _id)
+// → model fields (type, validUntil, code)
+// ============================================
+
+const normalizeAdminPayload = (body) => ({
+  code: body.code,
+  type: body.discountType || body.type,
+  value: Number(body.value),
+  description: body.description || '',
+  applicableTags: body.applicableTags || [],
+  minAmount: body.minAmount || 0,
+  maxDiscount: body.maxDiscount || null,
+  validFrom: body.validFrom || new Date(),
+  validUntil: body.validTill || body.validUntil || null,
+  maxUses: body.maxUses || null,
+  maxUsesPerUser: body.maxUsesPerUser || null,
+  isActive: body.isActive !== undefined ? body.isActive : true
+});
+
+// Public: validate (alias) — same as /validate
+router.post('/ayurveda/validate', async (req, res) => {
+  try {
+    const { code, amount, bookingType } = req.body;
+    if (!code || !amount) {
+      return res.status(400).json({ success: false, message: 'code and amount required' });
+    }
+    const result = await validateDiscount(code, amount, bookingType || 'general');
+    if (!result.valid) {
+      return res.status(400).json({ success: false, message: result.message });
+    }
+    res.json({
+      success: true,
+      discountAmount: result.discountAmount,
+      finalAmount: result.finalAmount,
+      discount: result.discount,
+      message: result.message
+    });
+  } catch (e) {
+    res.status(500).json({ success: false, message: e.message });
+  }
+});
+
+// Public: list active for a booking type
+router.get('/ayurveda/active', async (req, res) => {
+  try {
+    const { bookingType } = req.query;
+    const docs = await Discount.findActive(bookingType);
+    res.json({ success: true, count: docs.length, discounts: docs });
+  } catch (e) {
+    res.status(500).json({ success: false, message: e.message });
+  }
+});
+
+// Admin: create discount
+router.post('/ayurveda/discounts', async (req, res) => {
+  const adminKey = req.headers['x-admin-key'];
+  if (adminKey !== process.env.ADMIN_KEY) {
+    return res.status(401).json({ success: false, message: 'Admin auth required' });
+  }
+  try {
+    const payload = normalizeAdminPayload(req.body);
+    if (!payload.code) return res.status(400).json({ success: false, message: 'Code required' });
+    if (!payload.type || !['percentage', 'fixed'].includes(payload.type)) {
+      return res.status(400).json({ success: false, message: 'Invalid discount type' });
+    }
+    const existing = await Discount.findOne({ code: payload.code.toUpperCase() });
+    if (existing) return res.status(400).json({ success: false, message: 'Code exists' });
+    const d = await Discount.create(payload);
+    res.status(201).json({ success: true, data: d });
+  } catch (e) {
+    res.status(500).json({ success: false, message: e.message });
+  }
+});
+
+// Admin: list all (two paths — admin UI uses both)
+const listAllDiscounts = async (req, res) => {
+  try {
+    const docs = await Discount.find({}).sort({ createdAt: -1 }).lean();
+    res.json({ success: true, data: docs, total: docs.length });
+  } catch (e) {
+    res.status(500).json({ success: false, message: e.message });
+  }
+};
+router.get('/ayurveda/discounts', listAllDiscounts);
+router.get('/ayurveda/bookings/admin/discounts', listAllDiscounts);
+
+// Admin: update (toggle or full)
+router.put('/ayurveda/discounts/:id', async (req, res) => {
+  const adminKey = req.headers['x-admin-key'];
+  if (adminKey !== process.env.ADMIN_KEY) {
+    return res.status(401).json({ success: false, message: 'Admin auth required' });
+  }
+  try {
+    const isMongoId = /^[a-f\d]{24}$/i.test(req.params.id);
+    const query = isMongoId ? { _id: req.params.id } : { code: req.params.id.toUpperCase() };
+
+    if (Object.keys(req.body).length === 1 && 'isActive' in req.body) {
+      const d = await Discount.findOneAndUpdate(
+        query,
+        { isActive: req.body.isActive, updatedAt: new Date() },
+        { new: true }
+      );
+      if (!d) return res.status(404).json({ success: false, message: 'Not found' });
+      return res.json({ success: true, data: d });
+    }
+
+    const payload = normalizeAdminPayload(req.body);
+    const d = await Discount.findOneAndUpdate(query, payload, { new: true });
+    if (!d) return res.status(404).json({ success: false, message: 'Not found' });
+    res.json({ success: true, data: d });
+  } catch (e) {
+    res.status(500).json({ success: false, message: e.message });
+  }
+});
+
+// Admin: full edit
+router.put('/ayurveda/discounts/:id/full', async (req, res) => {
+  const adminKey = req.headers['x-admin-key'];
+  if (adminKey !== process.env.ADMIN_KEY) {
+    return res.status(401).json({ success: false, message: 'Admin auth required' });
+  }
+  try {
+    const isMongoId = /^[a-f\d]{24}$/i.test(req.params.id);
+    const query = isMongoId ? { _id: req.params.id } : { code: req.params.id.toUpperCase() };
+    const existing = await Discount.findOne(query);
+    if (!existing) return res.status(404).json({ success: false, message: 'Not found' });
+    const payload = normalizeAdminPayload({ ...existing.toObject(), ...req.body, code: existing.code });
+    Object.assign(existing, payload);
+    existing.updatedAt = new Date();
+    await existing.save();
+    res.json({ success: true, data: existing });
+  } catch (e) {
+    res.status(500).json({ success: false, message: e.message });
+  }
+});
+
+// Admin: delete
+router.delete('/ayurveda/discounts/:id', async (req, res) => {
+  const adminKey = req.headers['x-admin-key'];
+  if (adminKey !== process.env.ADMIN_KEY) {
+    return res.status(401).json({ success: false, message: 'Admin auth required' });
+  }
+  try {
+    const isMongoId = /^[a-f\d]{24}$/i.test(req.params.id);
+    const query = isMongoId ? { _id: req.params.id } : { code: req.params.id.toUpperCase() };
+    const d = await Discount.findOneAndDelete(query);
+    if (!d) return res.status(404).json({ success: false, message: 'Not found' });
+    res.json({ success: true, message: 'Deleted' });
+  } catch (e) {
+    res.status(500).json({ success: false, message: e.message });
+  }
+});
+
 module.exports = router;

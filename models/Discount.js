@@ -260,52 +260,47 @@ discountSchema.methods.canApply = function(amount, bookingType, userId) {
     }
   }
   
-  // Check applicable tags
+    // Check applicable tags — with booking type mapper
   if (this.applicableTags && this.applicableTags.length > 0) {
-    const matches = this.applicableTags.some(tag => {
-      // Existing hospital tags
-      if (tag === 'hospital' && ['opd', 'admission'].includes(bookingType)) return true;
-      if (tag === 'diagnostics' && ['labtest', 'health_package'].includes(bookingType)) return true;
-      
-      // Individual tags
-      if (tag === 'opd' && bookingType === 'opd') return true;
-      if (tag === 'admission' && bookingType === 'admission') return true;
-      if (tag === 'ambulance' && bookingType === 'ambulance') return true;
-      if (tag === 'caregiver' && bookingType === 'caregiver') return true;
-      if (tag === 'labtest' && bookingType === 'labtest') return true;
-      if (tag === 'health_package' && bookingType === 'health_package') return true;
-      if (tag === 'loan' && bookingType === 'loan') return true;
-      
-      // General (applies to all)
-      if (tag === 'general') return true;
-      
-      // 🆕 AYURVEDA TAGS
-            // 🆕 AYURVEDA TAGS
-      if (tag === 'ayurveda_all' && [
-        'ayurveda_consultation',
-        'ayurveda_panchakarma',
-        'ayurveda_home_therapy',
-        'ayurveda_wellness_program',
-        'ayurveda_wellness_center',
-        'ayurveda_doctor'
-      ].includes(bookingType)) return true;
+    const BOOKING_TYPE_TO_DISCOUNT_TAG = {
+      'doctor_consultation': 'ayurveda_consultation',
+      'wellness_program': 'ayurveda_wellness_program',
+      'panchakarma_package': 'ayurveda_panchakarma',
+      'home_therapy': 'ayurveda_home_therapy'
+    };
+    const normalizedBookingType = BOOKING_TYPE_TO_DISCOUNT_TAG[bookingType] || bookingType;
 
-      if (tag === 'ayurveda_consultation' && bookingType === 'ayurveda_consultation') return true;
-      if (tag === 'ayurveda_panchakarma' && bookingType === 'ayurveda_panchakarma') return true;
-      if (tag === 'ayurveda_home_therapy' && bookingType === 'ayurveda_home_therapy') return true;
-      if (tag === 'ayurveda_wellness_program' && bookingType === 'ayurveda_wellness_program') return true;
-      if (tag === 'ayurveda_wellness_center' && bookingType === 'ayurveda_wellness_center') return true;
-      
+    const matches = this.applicableTags.some(tag => {
+      // Direct match (ambulance, opd, labtest, caregiver, loan, ayurveda_*)
+      if (tag === normalizedBookingType) return true;
+
+      // Hospital umbrella
+      if (tag === 'hospital' && ['opd', 'admission'].includes(bookingType)) return true;
+
+      // Diagnostics umbrella
+      if (tag === 'diagnostics' && ['labtest', 'health_package'].includes(bookingType)) return true;
+
+      // Ayurveda umbrella — covers all 4 ayurveda sub-types
+      if (tag === 'ayurveda_all') {
+        const ayurvedaTypes = [
+          'doctor_consultation',
+          'wellness_program',
+          'panchakarma_package',
+          'home_therapy'
+        ];
+        if (ayurvedaTypes.includes(bookingType)) return true;
+      }
+
+      // General applies to all
+      if (tag === 'general') return true;
+
       return false;
     });
-    
+
     if (!matches) {
       return { valid: false, reason: 'Discount code not applicable for this service' };
     }
   }
-  
-  return { valid: true };
-};
 
 // Increment usage count
 discountSchema.methods.incrementUsage = async function(userId) {
