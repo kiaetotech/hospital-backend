@@ -1711,8 +1711,6 @@ router.delete('/discounts/:id', async (req, res) => {
   }
 });
 
-const CommissionConfig = require('../models/CommissionConfig');
-
 // ────────────────────────────────────────────────
 // GET current config (for admin UI)
 // ────────────────────────────────────────────────
