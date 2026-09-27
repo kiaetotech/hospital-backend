@@ -121,6 +121,19 @@ const discountSchema = new mongoose.Schema({
   },
   
   // ============================================
+  // 🆕 SCOPE — City / State / Provider targeting
+  // ============================================
+  scopeType: {
+    type: String,
+    enum: ['global', 'state', 'city', 'provider'],
+    default: 'global',
+    index: true
+  },
+  scopeValue: { type: String, index: true },
+  scopeState: { type: String },
+  priority: { type: Number, default: 0 },
+
+  // ============================================
   // STATUS
   // ============================================
   
@@ -212,7 +225,7 @@ discountSchema.methods.calculateDiscount = function(amount) {
 };
 
 // Check if discount can be applied to a booking
-discountSchema.methods.canApply = function(amount, bookingType, userId) {
+discountSchema.methods.canApply = function(amount, bookingType, userId, context = {}) {
   const now = new Date();
   
   // Check if active
@@ -250,6 +263,30 @@ discountSchema.methods.canApply = function(amount, bookingType, userId) {
   // Check minimum amount
   if (this.minAmount && amount < this.minAmount) {
     return { valid: false, reason: `Minimum order amount of ₹${this.minAmount} required` };
+  }
+
+  // ============================================
+  // 🆕 SCOPE CHECK (city / state / provider)
+  // ============================================
+  if (this.scopeType && this.scopeType !== 'global') {
+    const { city, state, providerId } = context;
+
+    if (this.scopeType === 'provider') {
+      if (!providerId || String(providerId) !== String(this.scopeValue)) {
+        return { valid: false, reason: 'Discount not available for this provider' };
+      }
+    } else if (this.scopeType === 'city') {
+      if (!city || city.toLowerCase() !== String(this.scopeValue).toLowerCase()) {
+        return { valid: false, reason: 'Discount not available in your city' };
+      }
+      if (this.scopeState && state && this.scopeState.toLowerCase() !== state.toLowerCase()) {
+        return { valid: false, reason: 'Discount not available in your state' };
+      }
+    } else if (this.scopeType === 'state') {
+      if (!state || state.toLowerCase() !== String(this.scopeValue).toLowerCase()) {
+        return { valid: false, reason: 'Discount not available in your state' };
+      }
+    }
   }
   
   // Check per-user limit
@@ -416,6 +453,7 @@ discountSchema.index({ isActive: 1 });
 discountSchema.index({ validFrom: 1, validUntil: 1 });
 discountSchema.index({ applicableTags: 1 });
 discountSchema.index({ createdBy: 1 });
+discountSchema.index({ scopeType: 1, scopeValue: 1, applicableTags: 1, isActive: 1 });
 
 // ============================================
 // EXPORT

@@ -335,11 +335,28 @@ router.post('/pricing-preview', async (req, res) => {
       });
     }
 
-    const pricing = await pricingService.calculatePricing({
-      bookingType,
-      amount,
-      discountAmount
-    });
+    let providerCity = null;
+let providerState = null;
+let providerModel = null;
+if (type === 'doctor_consultation' || type === 'wellness_program') {
+  providerCity = doctor?.address?.city;
+  providerState = doctor?.address?.state;
+  providerModel = 'AyurvedaDoctor';
+} else if (type === 'panchakarma_package') {
+  providerCity = center?.address?.city;
+  providerState = center?.address?.state;
+  providerModel = 'WellnessCenter';
+}
+
+pricing = await pricingService.calculatePricing({
+  bookingType: type,
+  amount,
+  discountAmount,
+  providerId: doctorId || centerId,
+  providerModel,
+  city: providerCity,
+  state: providerState
+});
 
     res.json({ success: true, data: pricing });
   } catch (error) {
@@ -533,7 +550,11 @@ router.post('/create', authenticatePatient, async (req, res) => {
     if (discountCode) {
       const discount = await Discount.findByCode(discountCode);
       if (discount) {
-        const canApply = discount.canApply(amount, type, req.user.id);
+        const canApply = discount.canApply(amount, type, req.user.id, {
+  city: providerCity,
+  state: providerState,
+  providerId: doctorId || centerId
+});
         if (canApply.valid) {
           discountAmount = discount.calculateDiscount(amount);
           discountDetails = {

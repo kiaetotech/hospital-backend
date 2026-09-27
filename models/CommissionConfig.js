@@ -100,7 +100,19 @@ const commissionConfigSchema = new mongoose.Schema({
   providerSpecific: { type: Boolean, default: false },
   providerId: { type: String },          // User ID of provider
   providerType: { type: String },        // 'ambulance_provider', 'hospital', etc.
-  
+    
+  // ============================================
+  // 🆕 SCOPE — City / State level overrides
+  // ============================================
+  scopeType: {
+    type: String,
+    enum: ['global', 'state', 'city', 'provider'],
+    default: 'global',
+    index: true
+  },
+  scopeValue: { type: String, index: true },   // 'Maharashtra' | 'Mumbai' | providerId
+  scopeState: { type: String },                // for city scope (disambiguates Mumbai MH vs Mumbai UP)  
+
   // Performance-based rate adjustment
   performanceBased: { type: Boolean, default: false },
   performanceRules: [{
@@ -299,6 +311,7 @@ commissionConfigSchema.index({ isDefault: 1, serviceType: 1 });
 commissionConfigSchema.index({ effectiveFrom: 1, effectiveUntil: 1 });
 commissionConfigSchema.index({ priority: -1 });
 commissionConfigSchema.index({ isActive: 1, effectiveFrom: 1, effectiveUntil: 1 });
+commissionConfigSchema.index({ scopeType: 1, scopeValue: 1, serviceType: 1, isActive: 1 });
 
 // ============================================
 // VIRTUAL FIELDS
@@ -670,5 +683,51 @@ commissionConfigSchema.pre('save', function(next) {
   this.updatedAt = new Date();
   next();
 });
+
+// ============================================
+// 🆕 RESOLVE — Priority-aware config resolution
+// Checks: provider → city → state → global
+// ============================================
+commissionConfigSchema.statics.resolve = async function({
+  serviceType,
+  providerId = null,
+  city = null,
+  state = null
+}) {
+  const now = new Date();
+
+  const baseFilter = {
+    serviceType,
+    isActive: true,
+    effectiveFrom: { $lte: now },
+    $or: [
+      { effectiveUntil: null },
+      { effectiveUntil: { $gte: now } }
+    ]
+  };
+
+  const candidates = await this.find({
+    ...baseFilter,
+    $or: [
+      { scopeType: 'provider', scopeValue: String(providerId), providerId: String(providerId) },
+      { scopeType: 'provider', providerId: String(providerId) },
+      { scopeType: 'city', scopeValue: city },
+      { scopeType: 'state', scopeValue: state },
+      { scopeType: 'global' },
+      { scopeType: { $exists: false } }  // legacy configs (no scopeType field)
+    ]
+  }).sort({ priority: -1, effectiveFrom: -1 });
+
+  // Priority order: provider > city > state > global
+  const order = { provider: 4, city: 3, state: 2, global: 1 };
+  candidates.sort((a, b) => {
+    const aOrder = order[a.scopeType] || 0;
+    const bOrder = order[b.scopeType] || 0;
+    if (aOrder !== bOrder) return bOrder - aOrder;
+    return (b.priority || 0) - (a.priority || 0);
+  });
+
+  return candidates[0] || null;
+};
 
 module.exports = mongoose.model('CommissionConfig', commissionConfigSchema);

@@ -10,7 +10,7 @@ const Discount = require('../models/Discount');
 // VALIDATE DISCOUNT CODE
 // ============================================
 
-const validateDiscount = async (code, amount, bookingType = 'general', userId = null) => {
+const validateDiscount = async (code, amount, bookingType = 'general', userId = null, context = {}) => {
   try {
     // Find discount by code
     const discount = await Discount.findOne({ 
@@ -67,6 +67,30 @@ const validateDiscount = async (code, amount, bookingType = 'general', userId = 
         valid: false, 
         message: `Minimum order amount of ₹${discount.minAmount} required` 
       };
+    }
+
+    // ============================================
+    // 🆕 SCOPE CHECK (city / state / provider)
+    // ============================================
+    if (discount.scopeType && discount.scopeType !== 'global') {
+      const { city, state, providerId } = context;
+
+      if (discount.scopeType === 'provider') {
+        if (!providerId || String(providerId) !== String(discount.scopeValue)) {
+          return { valid: false, message: 'Discount not available for this provider' };
+        }
+      } else if (discount.scopeType === 'city') {
+        if (!city || city.toLowerCase() !== String(discount.scopeValue).toLowerCase()) {
+          return { valid: false, message: 'Discount not available in your city' };
+        }
+        if (discount.scopeState && state && discount.scopeState.toLowerCase() !== state.toLowerCase()) {
+          return { valid: false, message: 'Discount not available in your state' };
+        }
+      } else if (discount.scopeType === 'state') {
+        if (!state || state.toLowerCase() !== String(discount.scopeValue).toLowerCase()) {
+          return { valid: false, message: 'Discount not available in your state' };
+        }
+      }
     }
     
         // Check applicable tags — with booking type mapper
@@ -292,7 +316,12 @@ const createDiscount = async (data) => {
       validFrom: data.validFrom || new Date(),
       validUntil: data.validUntil || null,
       maxUses: data.maxUses || null,
-      isActive: data.isActive !== undefined ? data.isActive : true
+      isActive: data.isActive !== undefined ? data.isActive : true,
+      // 🆕 scope fields
+      scopeType: data.scopeType || 'global',
+      scopeValue: data.scopeValue || null,
+      scopeState: data.scopeState || null,
+      priority: data.priority || 0
     });
     
     await discount.save();
@@ -324,6 +353,10 @@ const updateDiscount = async (code, data) => {
     if (data.validUntil) discount.validUntil = data.validUntil;
     if (data.maxUses !== undefined) discount.maxUses = data.maxUses;
     if (data.isActive !== undefined) discount.isActive = data.isActive;
+    if (data.scopeType) discount.scopeType = data.scopeType;
+    if (data.scopeValue !== undefined) discount.scopeValue = data.scopeValue;
+    if (data.scopeState !== undefined) discount.scopeState = data.scopeState;
+    if (data.priority !== undefined) discount.priority = data.priority;
     
     await discount.save();
     return discount;

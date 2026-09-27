@@ -1886,6 +1886,165 @@ router.post('/admin/fee-config/seed', async (req, res) => {
 
   res.json({ success: true, message: `Seeded ${results.length} configs`, results });
 });
+ 
+// ============================================
+// ADMIN: COMMISSION OVERRIDE RULES
+// ============================================
 
+router.get('/admin/commission-rules', async (req, res) => {
+  const adminKey = req.headers['x-admin-key'];
+  if (adminKey !== process.env.ADMIN_KEY) {
+    return res.status(401).json({ success: false, error: 'Admin auth required' });
+  }
+  try {
+    const { scopeType, serviceType, search } = req.query;
+    const query = {};
+    if (scopeType) query.scopeType = scopeType;
+    if (serviceType) query.serviceType = serviceType;
+    if (search) {
+      query.$or = [
+        { scopeValue: { $regex: search, $options: 'i' } },
+        { configName: { $regex: search, $options: 'i' } }
+      ];
+    }
+    const rules = await CommissionConfig.find(query)
+      .sort({ priority: -1, effectiveFrom: -1 })
+      .lean();
+    res.json({ success: true, count: rules.length, data: rules });
+  } catch (error) {
+    res.status(500).json({ success: false, error: error.message });
+  }
+});
+
+router.post('/admin/commission-rules', async (req, res) => {
+  const adminKey = req.headers['x-admin-key'];
+  if (adminKey !== process.env.ADMIN_KEY) {
+    return res.status(401).json({ success: false, error: 'Admin auth required' });
+  }
+  try {
+    const {
+      scopeType, scopeValue, scopeState, serviceType,
+      commissionType, percentageRate, fixedAmount,
+      hybridConfig, priority, effectiveFrom, effectiveUntil,
+      changeReason, configName, ayurvedaSpecific
+    } = req.body;
+
+    if (!scopeType || !serviceType) {
+      return res.status(400).json({ success: false, error: 'scopeType and serviceType required' });
+    }
+    if (scopeType !== 'global' && !scopeValue) {
+      return res.status(400).json({ success: false, error: 'scopeValue required for non-global scope' });
+    }
+    if (commissionType === 'percentage' && (percentageRate == null || percentageRate < 0 || percentageRate > 50)) {
+      return res.status(400).json({ success: false, error: 'percentageRate must be 0-50' });
+    }
+    if (commissionType === 'fixed' && (fixedAmount == null || fixedAmount < 0)) {
+      return res.status(400).json({ success: false, error: 'fixedAmount must be >= 0' });
+    }
+
+    const defaultPriority = scopeType === 'provider' ? 100
+      : scopeType === 'city' ? 50
+      : scopeType === 'state' ? 30
+      : 0;
+
+    const config = new CommissionConfig({
+      configId: `COMM_${serviceType.toUpperCase()}_${scopeType.toUpperCase()}_${Date.now()}`,
+      configName: configName || `${serviceType} — ${scopeType}:${scopeValue || 'all'}`,
+      scopeType,
+      scopeValue: scopeValue || null,
+      scopeState: scopeState || null,
+      providerSpecific: scopeType === 'provider',
+      providerId: scopeType === 'provider' ? scopeValue : undefined,
+      providerType: scopeType === 'provider' ? req.body.providerModel : undefined,
+      serviceType,
+      commissionType: commissionType || 'percentage',
+      percentageRate: percentageRate ?? 20,
+      fixedAmount: fixedAmount ?? 0,
+      hybridConfig: hybridConfig || undefined,
+      priority: priority ?? defaultPriority,
+      effectiveFrom: effectiveFrom ? new Date(effectiveFrom) : new Date(),
+      effectiveUntil: effectiveUntil ? new Date(effectiveUntil) : null,
+      isActive: true,
+      changeReason: changeReason || 'Admin created override',
+      createdBy: 'admin',
+      updatedBy: 'admin',
+      ayurvedaSpecific: ayurvedaSpecific || undefined
+    });
+
+    await config.save();
+    res.status(201).json({ success: true, message: 'Rule created', data: config });
+  } catch (error) {
+    console.error('[commission-rules.create]', error.message);
+    res.status(500).json({ success: false, error: error.message });
+  }
+});
+
+router.put('/admin/commission-rules/:id', async (req, res) => {
+  const adminKey = req.headers['x-admin-key'];
+  if (adminKey !== process.env.ADMIN_KEY) {
+    return res.status(401).json({ success: false, error: 'Admin auth required' });
+  }
+  try {
+    const rule = await CommissionConfig.findById(req.params.id);
+    if (!rule) return res.status(404).json({ success: false, error: 'Rule not found' });
+
+    const updates = req.body;
+    const tracked = ['percentageRate', 'fixedAmount', 'priority', 'effectiveUntil', 'isActive'];
+    const log = [];
+    tracked.forEach(f => {
+      if (updates[f] !== undefined && updates[f] !== rule[f]) {
+        log.push({
+          changedBy: 'admin',
+          field: f,
+          oldValue: rule[f],
+          newValue: updates[f],
+          reason: updates.changeReason || 'Admin update'
+        });
+        rule[f] = updates[f];
+      }
+    });
+    if (log.length === 0) {
+      return res.status(400).json({ success: false, error: 'No changes detected' });
+    }
+    rule.auditLog = rule.auditLog || [];
+    rule.auditLog.push(...log);
+    rule.version = (rule.version || 0) + 1;
+    rule.updatedAt = new Date();
+    rule.updatedBy = 'admin';
+    await rule.save();
+    res.json({ success: true, message: `Updated (v${rule.version})`, data: rule, changes: log.length });
+  } catch (error) {
+    res.status(500).json({ success: false, error: error.message });
+  }
+});
+
+router.delete('/admin/commission-rules/:id', async (req, res) => {
+  const adminKey = req.headers['x-admin-key'];
+  if (adminKey !== process.env.ADMIN_KEY) {
+    return res.status(401).json({ success: false, error: 'Admin auth required' });
+  }
+  try {
+    const rule = await CommissionConfig.findByIdAndDelete(req.params.id);
+    if (!rule) return res.status(404).json({ success: false, error: 'Rule not found' });
+    res.json({ success: true, message: 'Rule deleted' });
+  } catch (error) {
+    res.status(500).json({ success: false, error: error.message });
+  }
+});
+
+router.post('/admin/commission-resolve', async (req, res) => {
+  const adminKey = req.headers['x-admin-key'];
+  if (adminKey !== process.env.ADMIN_KEY) {
+    return res.status(401).json({ success: false, error: 'Admin auth required' });
+  }
+  try {
+    const { serviceType, providerId, city, state } = req.body;
+    if (!serviceType) return res.status(400).json({ success: false, error: 'serviceType required' });
+    const config = await CommissionConfig.resolve({ serviceType, providerId, city, state });
+    res.json({ success: true, data: config });
+  } catch (error) {
+    res.status(500).json({ success: false, error: error.message });
+  }
+});
 
 module.exports = router;
