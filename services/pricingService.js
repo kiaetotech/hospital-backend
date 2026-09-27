@@ -111,10 +111,11 @@ async function calculatePricing({
   } else if (commissionType === 'hybrid') {
     commissionPercentage = config.hybridConfig?.percentage || config.percentageRate || 0;
     commissionFixedAmount = config.hybridConfig?.fixedAmount || 0;
-  } else {
+    } else {
+    // Priority: explicit percentageRate wins over inherited ayurvedaSpecific default
     commissionPercentage =
-      ayurveda[mapping.rateKey] ??
       config.percentageRate ??
+      ayurveda[mapping.rateKey] ??
       20;
   }
 
