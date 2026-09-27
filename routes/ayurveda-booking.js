@@ -319,14 +319,20 @@ router.put('/:bookingId/review/doctor-respond', authenticateUser, async (req, re
   }
 });
 
-// ============================================
-// PUBLIC: Pricing preview (no auth needed)
 // POST /api/ayurveda/bookings/pricing-preview
 // ============================================
 router.post('/pricing-preview', async (req, res) => {
   try {
     const pricingService = require('../services/pricingService');
-    const { bookingType, amount, discountAmount = 0 } = req.body;
+    const {
+      bookingType,
+      amount,
+      discountAmount = 0,
+      providerId = null,
+      providerModel = null,
+      city = null,
+      state = null
+    } = req.body;
 
     if (!bookingType || typeof amount !== 'number') {
       return res.status(400).json({
@@ -335,28 +341,15 @@ router.post('/pricing-preview', async (req, res) => {
       });
     }
 
-    let providerCity = null;
-let providerState = null;
-let providerModel = null;
-if (type === 'doctor_consultation' || type === 'wellness_program') {
-  providerCity = doctor?.address?.city;
-  providerState = doctor?.address?.state;
-  providerModel = 'AyurvedaDoctor';
-} else if (type === 'panchakarma_package') {
-  providerCity = center?.address?.city;
-  providerState = center?.address?.state;
-  providerModel = 'WellnessCenter';
-}
-
-pricing = await pricingService.calculatePricing({
-  bookingType: type,
-  amount,
-  discountAmount,
-  providerId: doctorId || centerId,
-  providerModel,
-  city: providerCity,
-  state: providerState
-});
+    const pricing = await pricingService.calculatePricing({
+      bookingType,
+      amount,
+      discountAmount,
+      providerId,
+      providerModel,
+      city,
+      state
+    });
 
     res.json({ success: true, data: pricing });
   } catch (error) {
@@ -364,7 +357,6 @@ pricing = await pricingService.calculatePricing({
     res.status(500).json({ success: false, message: error.message });
   }
 });
-
 
 // ============================================
 // PATIENT-ONLY MIDDLEWARE
@@ -547,6 +539,20 @@ router.post('/create', authenticatePatient, async (req, res) => {
     // Apply discount
     let discountAmount = 0;
     let discountDetails = {};
+    // ─── Resolve provider context for scope-aware pricing ───
+    let providerCity = null;
+    let providerState = null;
+    let providerModel = null;
+    if (type === 'doctor_consultation' || type === 'wellness_program') {
+      providerCity = doctor?.address?.city;
+      providerState = doctor?.address?.state;
+      providerModel = 'AyurvedaDoctor';
+    } else if (type === 'panchakarma_package') {
+      providerCity = center?.address?.city;
+      providerState = center?.address?.state;
+      providerModel = 'WellnessCenter';
+    }
+
     if (discountCode) {
       const discount = await Discount.findByCode(discountCode);
       if (discount) {
@@ -576,12 +582,16 @@ router.post('/create', authenticatePatient, async (req, res) => {
     // PRICING — single source of truth
     // All numbers from CommissionConfig in DB.
     // ─────────────────────────────────────────
-    let pricing;
+        let pricing;
     try {
       pricing = await pricingService.calculatePricing({
         bookingType: type,
         amount,
-        discountAmount
+        discountAmount,
+        providerId: doctorId || centerId,
+        providerModel,
+        city: providerCity,
+        state: providerState
       });
     } catch (priceErr) {
       console.error('[booking.create] pricing failed:', priceErr.message);
