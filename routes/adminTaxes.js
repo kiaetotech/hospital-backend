@@ -383,4 +383,258 @@ router.post('/seed/tds', requireAdmin, async (req, res) => {
   });
 });
 
+// ============================================
+// COMMISSION RULES — clean aliases
+// Same logic as /api/ayurveda/admin/commission-rules/*
+// Reads/writes the shared CommissionConfig model
+// ============================================
+
+const CommissionConfig = require('../models/CommissionConfig');
+
+// List commission rules (filterable)
+router.get('/commission-rules', requireAdmin, async (req, res) => {
+  try {
+    const { scopeType, serviceType, search, isActive } = req.query;
+    const query = {};
+    if (scopeType) query.scopeType = scopeType;
+    if (serviceType) query.serviceType = serviceType;
+    if (isActive !== undefined) query.isActive = isActive === 'true';
+    if (search) {
+      query.$or = [
+        { scopeValue: { $regex: search, $options: 'i' } },
+        { configName: { $regex: search, $options: 'i' } }
+      ];
+    }
+    const rules = await CommissionConfig.find(query)
+      .sort({ priority: -1, effectiveFrom: -1 })
+      .lean();
+    res.json({ success: true, count: rules.length, data: rules });
+  } catch (error) {
+    res.status(500).json({ success: false, error: error.message });
+  }
+});
+
+// Create commission rule
+router.post('/commission-rules', requireAdmin, async (req, res) => {
+  try {
+    const {
+      scopeType, scopeValue, scopeState, serviceType,
+      commissionType, percentageRate, fixedAmount,
+      hybridConfig, priority, effectiveFrom, effectiveUntil,
+      changeReason, configName, ayurvedaSpecific
+    } = req.body;
+
+    if (!scopeType || !serviceType) {
+      return res.status(400).json({ success: false, error: 'scopeType and serviceType required' });
+    }
+    if (scopeType !== 'global' && !scopeValue) {
+      return res.status(400).json({ success: false, error: 'scopeValue required for non-global scope' });
+    }
+    if (commissionType === 'percentage' && (percentageRate == null || percentageRate < 0 || percentageRate > 50)) {
+      return res.status(400).json({ success: false, error: 'percentageRate must be 0-50' });
+    }
+    if (commissionType === 'fixed' && (fixedAmount == null || fixedAmount < 0)) {
+      return res.status(400).json({ success: false, error: 'fixedAmount must be >= 0' });
+    }
+
+    const defaultPriority = scopeType === 'provider' ? 100
+      : scopeType === 'city' ? 50
+      : scopeType === 'state' ? 30
+      : 0;
+
+    const config = new CommissionConfig({
+      configId: `COMM_${serviceType.toUpperCase()}_${scopeType.toUpperCase()}_${Date.now()}`,
+      configName: configName || `${serviceType} — ${scopeType}:${scopeValue || 'all'}`,
+      scopeType,
+      scopeValue: scopeValue || null,
+      scopeState: scopeState || null,
+      providerSpecific: scopeType === 'provider',
+      providerId: scopeType === 'provider' ? scopeValue : undefined,
+      providerType: scopeType === 'provider' ? req.body.providerModel : undefined,
+      serviceType,
+      commissionType: commissionType || 'percentage',
+      percentageRate: percentageRate ?? 20,
+      fixedAmount: fixedAmount ?? 0,
+      hybridConfig: hybridConfig || undefined,
+      priority: priority ?? defaultPriority,
+      effectiveFrom: effectiveFrom ? new Date(effectiveFrom) : new Date(),
+      effectiveUntil: effectiveUntil ? new Date(effectiveUntil) : null,
+      isActive: true,
+      changeReason: changeReason || 'Admin created via Taxes & Fees',
+      createdBy: 'admin',
+      updatedBy: 'admin',
+      ayurvedaSpecific: ayurvedaSpecific || undefined
+    });
+
+    await config.save();
+    res.status(201).json({ success: true, message: 'Rule created', data: config });
+  } catch (error) {
+    console.error('[taxes.commission.create]', error.message);
+    res.status(500).json({ success: false, error: error.message });
+  }
+});
+
+// Update commission rule
+router.put('/commission-rules/:id', requireAdmin, async (req, res) => {
+  try {
+    const rule = await CommissionConfig.findById(req.params.id);
+    if (!rule) return res.status(404).json({ success: false, error: 'Rule not found' });
+
+    const updates = req.body;
+    const tracked = ['percentageRate', 'fixedAmount', 'priority', 'effectiveUntil', 'isActive'];
+    const log = [];
+    tracked.forEach(f => {
+      if (updates[f] !== undefined && updates[f] !== rule[f]) {
+        log.push({
+          changedBy: 'admin',
+          field: f,
+          oldValue: rule[f],
+          newValue: updates[f],
+          reason: updates.changeReason || 'Admin update'
+        });
+        rule[f] = updates[f];
+      }
+    });
+    if (log.length === 0) {
+      return res.status(400).json({ success: false, error: 'No changes detected' });
+    }
+    rule.auditLog = rule.auditLog || [];
+    rule.auditLog.push(...log);
+    rule.version = (rule.version || 0) + 1;
+    rule.updatedAt = new Date();
+    rule.updatedBy = 'admin';
+    await rule.save();
+    res.json({ success: true, message: `Updated (v${rule.version})`, data: rule, changes: log.length });
+  } catch (error) {
+    res.status(500).json({ success: false, error: error.message });
+  }
+});
+
+// Deactivate / delete commission rule
+router.delete('/commission-rules/:id', requireAdmin, async (req, res) => {
+  try {
+    const rule = await CommissionConfig.findByIdAndDelete(req.params.id);
+    if (!rule) return res.status(404).json({ success: false, error: 'Rule not found' });
+    res.json({ success: true, message: 'Rule deleted' });
+  } catch (error) {
+    res.status(500).json({ success: false, error: error.message });
+  }
+});
+
+// ============================================
+// DISCOUNTS — clean aliases
+// Same logic as /api/ayurveda/discounts/*
+// Reads/writes the shared Discount model
+// ============================================
+
+const Discount = require('../models/Discount');
+
+// List discounts (filterable)
+router.get('/discounts', requireAdmin, async (req, res) => {
+  try {
+    const { isActive, applicableTag, search } = req.query;
+    const query = {};
+    if (isActive !== undefined) query.isActive = isActive === 'true';
+    if (applicableTag) query.applicableTags = applicableTag;
+    if (search) query.code = { $regex: search, $options: 'i' };
+    const discounts = await Discount.find(query)
+      .sort({ createdAt: -1 })
+      .lean();
+    res.json({ success: true, count: discounts.length, data: discounts });
+  } catch (error) {
+    res.status(500).json({ success: false, error: error.message });
+  }
+});
+
+// Create discount
+router.post('/discounts', requireAdmin, async (req, res) => {
+  try {
+    const {
+      code, discountType, value, maxDiscount,
+      validFrom, validTill, applicableTags
+    } = req.body;
+
+    if (!code || !discountType || value === undefined) {
+      return res.status(400).json({ success: false, error: 'code, discountType, and value are required' });
+    }
+    if (!['percentage', 'fixed'].includes(discountType)) {
+      return res.status(400).json({ success: false, error: 'discountType must be percentage or fixed' });
+    }
+
+    const normalizedCode = String(code).trim().toUpperCase();
+    const existing = await Discount.findOne({ code: normalizedCode });
+    if (existing) {
+      return res.status(400).json({ success: false, error: 'Discount code already exists' });
+    }
+
+    const tags = Array.isArray(applicableTags) && applicableTags.length > 0
+      ? applicableTags
+      : ['ayurveda_all'];
+
+    const discount = await Discount.create({
+      code: normalizedCode,
+      type: discountType,
+      value: Number(value),
+      maxDiscount: maxDiscount ? Number(maxDiscount) : undefined,
+      validFrom: validFrom ? new Date(validFrom) : new Date(),
+      validUntil: validTill ? new Date(validTill) : undefined,
+      applicableTags: tags,
+      createdBy: { type: 'admin' },
+      isActive: true
+    });
+
+    res.status(201).json({ success: true, message: 'Discount created', data: discount });
+  } catch (error) {
+    console.error('[taxes.discounts.create]', error.message);
+    res.status(500).json({ success: false, error: error.message });
+  }
+});
+
+// Update discount (partial)
+router.put('/discounts/:id', requireAdmin, async (req, res) => {
+  try {
+    const discount = await Discount.findByIdAndUpdate(
+      req.params.id,
+      { $set: { ...req.body, updatedAt: new Date() } },
+      { new: true }
+    );
+    if (!discount) return res.status(404).json({ success: false, error: 'Discount not found' });
+    res.json({ success: true, message: 'Discount updated', data: discount });
+  } catch (error) {
+    res.status(500).json({ success: false, error: error.message });
+  }
+});
+
+// Update discount (full)
+router.put('/discounts/:id/full', requireAdmin, async (req, res) => {
+  try {
+    const { value, maxDiscount, validFrom, validTill, applicableTags, isActive } = req.body;
+    const updates = {};
+    if (value !== undefined) updates.value = Number(value);
+    if (maxDiscount !== undefined) updates.maxDiscount = maxDiscount === null ? undefined : Number(maxDiscount);
+    if (validFrom) updates.validFrom = new Date(validFrom);
+    if (validTill) updates.validUntil = new Date(validTill);
+    if (Array.isArray(applicableTags) && applicableTags.length > 0) updates.applicableTags = applicableTags;
+    if (isActive !== undefined) updates.isActive = isActive;
+    updates.updatedAt = new Date();
+
+    const discount = await Discount.findByIdAndUpdate(req.params.id, { $set: updates }, { new: true });
+    if (!discount) return res.status(404).json({ success: false, error: 'Discount not found' });
+    res.json({ success: true, message: 'Discount updated', data: discount });
+  } catch (error) {
+    res.status(500).json({ success: false, error: error.message });
+  }
+});
+
+// Delete discount
+router.delete('/discounts/:id', requireAdmin, async (req, res) => {
+  try {
+    const discount = await Discount.findByIdAndDelete(req.params.id);
+    if (!discount) return res.status(404).json({ success: false, error: 'Discount not found' });
+    res.json({ success: true, message: 'Discount deleted' });
+  } catch (error) {
+    res.status(500).json({ success: false, error: error.message });
+  }
+});
+
 module.exports = router;
