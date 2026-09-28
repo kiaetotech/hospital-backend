@@ -3,6 +3,7 @@ const AyurvedaDoctor = require('../models/AyurvedaDoctor');
 const WellnessCenter = require('../models/WellnessCenter');
 const Payout = require('../models/Payout');
 const { buildPayoutSnapshotFields } = require('./providerSnapshotService');
+const tdsService = require('./tdsService');   // ← NEW
 
 const payoutService = {
   // ============================================
@@ -34,19 +35,29 @@ const payoutService = {
       doctorGroups[docId].total += (b.providerEarning || 0);
     });
     
-        for (const [docId, data] of Object.entries(doctorGroups)) {
+                for (const [docId, data] of Object.entries(doctorGroups)) {
       const doctor = await AyurvedaDoctor.findById(docId);
       if (!doctor) continue;
-      
-      const tds = data.total * 0.10; // 10% TDS
+
+      // ▼▼▼ CHANGE 1 — replace the two TDS lines ▼▼▼
+      const tdsResult = await tdsService.calculate({
+        serviceType: 'ayurveda_consultation',
+        providerType: 'ayurveda_doctor',
+        providerId: docId,
+        payoutAmount: data.total,
+        city: doctor.address?.city || null,
+        state: doctor.address?.state || null
+      });
+      const tds = tdsResult.tds;
       const netAmount = data.total - tds;
-      
+      // ▲▲▲ END CHANGE 1 ▲▲▲
+
       const snapshotFields = await buildPayoutSnapshotFields(
         'ayurveda_doctor',
         docId,
         doctor.name || 'Doctor'
       );
-      
+
       const payout = new Payout({
         payoutId: 'PAY' + Date.now() + Math.floor(Math.random() * 1000),
         providerType: 'ayurveda_doctor',
@@ -54,6 +65,14 @@ const payoutService = {
         amount: data.total,
         tdsDeducted: tds,
         netAmount,
+        // ▼▼▼ CHANGE 2 — add these four lines ▼▼▼
+        commissionDeducted: data.bookings.reduce(
+          (sum, b) => sum + (b.platformCommission || 0), 0
+        ),
+        tdsSection:  tdsResult.section,
+        tdsConfigId: tdsResult.configId,
+        tdsNote:     tdsResult.reason,
+        // ▲▲▲ END CHANGE 2 ▲▲▲
         bookingCount: data.bookings.length,
         period: 'weekly',
         periodStart: oneWeekAgo,
@@ -93,19 +112,29 @@ const payoutService = {
       centerGroups[centerId].total += (b.providerEarning || 0);
     });
     
-        for (const [centerId, data] of Object.entries(centerGroups)) {
+                for (const [centerId, data] of Object.entries(centerGroups)) {
       const center = await WellnessCenter.findById(centerId);
       if (!center) continue;
-      
-      const tds = data.total * 0.10; // 10% TDS
+
+      // ▼▼▼ CHANGE 1 ▼▼▼
+      const tdsResult = await tdsService.calculate({
+        serviceType: 'ayurveda_wellness_center',
+        providerType: 'wellness_center',
+        providerId: centerId,
+        payoutAmount: data.total,
+        city: center.address?.city || null,
+        state: center.address?.state || null
+      });
+      const tds = tdsResult.tds;
       const netAmount = data.total - tds;
-      
+      // ▲▲▲ END CHANGE 1 ▲▲▲
+
       const snapshotFields = await buildPayoutSnapshotFields(
         'wellness_center',
         centerId,
         center.name || 'Center'
       );
-      
+
       const payout = new Payout({
         payoutId: 'PAY' + Date.now() + Math.floor(Math.random() * 1000),
         providerType: 'wellness_center',
@@ -113,6 +142,14 @@ const payoutService = {
         amount: data.total,
         tdsDeducted: tds,
         netAmount,
+        // ▼▼▼ CHANGE 2 ▼▼▼
+        commissionDeducted: data.bookings.reduce(
+          (sum, b) => sum + (b.platformCommission || 0), 0
+        ),
+        tdsSection:  tdsResult.section,
+        tdsConfigId: tdsResult.configId,
+        tdsNote:     tdsResult.reason,
+        // ▲▲▲ END CHANGE 2 ▲▲▲
         bookingCount: data.bookings.length,
         period: 'weekly',
         periodStart: oneWeekAgo,
@@ -219,12 +256,23 @@ const payoutService = {
       throw new Error('No pending earnings to settle');
     }
     
-    const totalAmount = bookings.reduce((sum, b) => sum + (b.providerEarning || 0), 0);
-    const tds = totalAmount * 0.10;
+        const totalAmount = bookings.reduce((sum, b) => sum + (b.providerEarning || 0), 0);
+
+    // ▼▼▼ CHANGE 1 ▼▼▼
+    const tdsResult = await tdsService.calculate({
+      serviceType: providerType === 'wellness_center'
+        ? 'ayurveda_wellness_center'
+        : 'ayurveda_consultation',
+      providerType,
+      providerId,
+      payoutAmount: totalAmount
+    });
+    const tds = tdsResult.tds;
     const netAmount = totalAmount - tds;
-    
-        const snapshotFields = await buildPayoutSnapshotFields(providerType, providerId);
-    
+    // ▲▲▲ END CHANGE 1 ▲▲▲
+
+    const snapshotFields = await buildPayoutSnapshotFields(providerType, providerId);
+
     const payout = new Payout({
       payoutId: 'PAY' + Date.now() + Math.floor(Math.random() * 1000),
       providerType,
@@ -232,6 +280,14 @@ const payoutService = {
       amount: totalAmount,
       tdsDeducted: tds,
       netAmount,
+      // ▼▼▼ CHANGE 2 ▼▼▼
+      commissionDeducted: bookings.reduce(
+        (sum, b) => sum + (b.platformCommission || 0), 0
+      ),
+      tdsSection:  tdsResult.section,
+      tdsConfigId: tdsResult.configId,
+      tdsNote:     tdsResult.reason,
+      // ▲▲▲ END CHANGE 2 ▲▲▲
       bookingCount: bookings.length,
       period: 'manual',
       periodStart: new Date(),

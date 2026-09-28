@@ -40,6 +40,9 @@ const payoutSchema = new mongoose.Schema({
   amount: { type: Number, required: true, min: 0 },
   commissionDeducted: { type: Number, default: 0 },
   tdsDeducted: { type: Number, default: 0 },
+  tdsSection:  { type: String, default: 'none' },                                                    // ← NEW
+  tdsConfigId: { type: mongoose.Schema.Types.ObjectId, ref: 'TdsConfig', default: null },            // ← NEW
+  tdsNote:     { type: String, default: '' },                                                        // ← NEW
   netAmount: { type: Number, required: true, min: 0 },
   
   bookingCount: { type: Number, default: 0 },

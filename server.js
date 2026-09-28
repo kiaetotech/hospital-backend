@@ -408,6 +408,20 @@ try {
   console.warn('⚠️ TestPricing model not available:', e.message);
 }
 
+try {
+  require('./models/TdsConfig');
+  console.log('✅ TdsConfig model registered');
+} catch (e) {
+  console.warn('⚠️ TdsConfig model not available:', e.message);
+}
+
+try {
+  require('./models/GstConfig');
+  console.log('✅ GstConfig model registered');
+} catch (e) {
+  console.warn('⚠️ GstConfig model not available:', e.message);
+}
+
 // ============================================
 // ROUTES (ALL PRESERVED WITH FALLBACKS)
 // ============================================
@@ -845,6 +859,7 @@ app.use('/api/online-doctor', searchLimiter, onlineDoctorRoutes);
 app.use('/api/search', searchLimiter, globalSearchRoutes);
 app.use('/api/employee', employeePortalRoutes);
 app.use('/api/discounts', discountRoutes);
+app.use('/api/admin/taxes', require('./routes/adminTaxes'));   // ← or here
 
 // ============================================
 // TEST ROUTES
