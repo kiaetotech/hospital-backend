@@ -1269,4 +1269,176 @@ router.post('/review', async (req, res) => {
   }
 });
 
+// ============================================
+// ADMIN: OVERVIEW (single-call KPIs)
+// ============================================
+router.get('/admin/overview', requireAdmin, async (req, res) => {
+  try {
+    const HomeopathyBooking = require('../models/HomeopathyBooking');
+
+    const [
+      totalDoctors,
+      pendingDoctors,
+      totalCenters,
+      pendingCenters,
+      totalPharmacies,
+      pendingPharmacies,
+      bookingsAgg,
+      revenueAgg,
+      commissionAgg
+    ] = await Promise.all([
+      HomeopathyDoctor.countDocuments({ isActive: true, verificationStatus: 'approved' }),
+      HomeopathyDoctor.countDocuments({ verificationStatus: 'pending' }),
+      NaturopathyCenter.countDocuments({ isActive: true, verificationStatus: 'approved' }),
+      NaturopathyCenter.countDocuments({ verificationStatus: 'pending' }),
+      Pharmacy.countDocuments({ isActive: true, verificationStatus: 'approved' }),
+      Pharmacy.countDocuments({ verificationStatus: 'pending' }),
+
+      // Booking counts by status
+      HomeopathyBooking.aggregate([
+        {
+          $group: {
+            _id: '$status',
+            count: { $sum: 1 }
+          }
+        }
+      ]),
+
+      // Revenue — only paid bookings
+      HomeopathyBooking.aggregate([
+        { $match: { paymentStatus: 'paid' } },
+        {
+          $group: {
+            _id: null,
+            totalRevenue: { $sum: '$finalAmount' },
+            totalBookings: { $sum: 1 }
+          }
+        }
+      ]),
+
+      // Commission — only paid bookings
+      HomeopathyBooking.aggregate([
+        { $match: { paymentStatus: 'paid' } },
+        {
+          $group: {
+            _id: null,
+            totalCommission: { $sum: '$platformCommission' }
+          }
+        }
+      ])
+    ]);
+
+    const statusCounts = {
+      pending: 0,
+      confirmed: 0,
+      in_progress: 0,
+      completed: 0,
+      cancelled: 0,
+      no_show: 0,
+      rescheduled: 0
+    };
+    bookingsAgg.forEach(s => {
+      if (s._id in statusCounts) statusCounts[s._id] = s.count;
+    });
+
+    const totalBookings = Object.values(statusCounts).reduce((a, b) => a + b, 0);
+    const revenue = revenueAgg[0]?.totalRevenue || 0;
+    const commission = commissionAgg[0]?.totalCommission || 0;
+
+    res.json({
+      success: true,
+      data: {
+        providers: {
+          doctors: { total: totalDoctors, pending: pendingDoctors },
+          centers: { total: totalCenters, pending: pendingCenters },
+          pharmacies: { total: totalPharmacies, pending: pendingPharmacies },
+          totalPendingApprovals: pendingDoctors + pendingCenters + pendingPharmacies
+        },
+        bookings: {
+          total: totalBookings,
+          ...statusCounts
+        },
+        finance: {
+          revenue,
+          commission,
+          providerEarnings: revenue - commission
+        }
+      }
+    });
+  } catch (error) {
+    console.error('[homeopathy.admin.overview]', error.message);
+    res.status(500).json({ success: false, error: error.message });
+  }
+});
+
+// ============================================
+// ADMIN: REVENUE TREND (last N days)
+// ============================================
+router.get('/admin/revenue-trend', requireAdmin, async (req, res) => {
+  try {
+    const HomeopathyBooking = require('../models/HomeopathyBooking');
+
+    const days = Math.min(Math.max(parseInt(req.query.days) || 7, 1), 90);
+    const from = new Date();
+    from.setDate(from.getDate() - (days - 1));
+    from.setHours(0, 0, 0, 0);
+
+    const trend = await HomeopathyBooking.aggregate([
+      {
+        $match: {
+          paymentStatus: 'paid',
+          paidAt: { $gte: from }
+        }
+      },
+      {
+        $group: {
+          _id: {
+            $dateToString: {
+              format: '%Y-%m-%d',
+              date: '$paidAt',
+              timezone: 'Asia/Kolkata'
+            }
+          },
+          revenue: { $sum: '$finalAmount' },
+          commission: { $sum: '$platformCommission' },
+          bookings: { $sum: 1 }
+        }
+      },
+      { $sort: { _id: 1 } }
+    ]);
+
+    // Fill missing days with zeros so the chart is continuous
+    const byDate = {};
+    trend.forEach(t => { byDate[t._id] = t; });
+
+    const series = [];
+    for (let i = 0; i < days; i++) {
+      const d = new Date(from);
+      d.setDate(d.getDate() + i);
+      const key = d.toISOString().split('T')[0];
+      const row = byDate[key] || { revenue: 0, commission: 0, bookings: 0 };
+      series.push({
+        date: key,
+        revenue: row.revenue || 0,
+        commission: row.commission || 0,
+        bookings: row.bookings || 0
+      });
+    }
+
+    const totals = series.reduce(
+      (acc, d) => ({
+        revenue: acc.revenue + d.revenue,
+        commission: acc.commission + d.commission,
+        bookings: acc.bookings + d.bookings
+      }),
+      { revenue: 0, commission: 0, bookings: 0 }
+    );
+
+    res.json({ success: true, data: series, totals, days });
+  } catch (error) {
+    console.error('[homeopathy.admin.revenue-trend]', error.message);
+    res.status(500).json({ success: false, error: error.message });
+  }
+});
+
 module.exports = router;

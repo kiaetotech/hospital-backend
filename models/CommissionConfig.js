@@ -21,7 +21,7 @@ const commissionConfigSchema = new mongoose.Schema({
   // SERVICE TYPE (Which tag this applies to)
   // ============================================
   
-  serviceType: { 
+    serviceType: { 
     type: String, 
     enum: [
       'hospital_opd',
@@ -40,8 +40,11 @@ const commissionConfigSchema = new mongoose.Schema({
       'ayurveda_medicine',
       'ayurveda_product',
       'ayurveda_corporate',
-      'homeopathy_consult',
+      // ─── HOMEOPATHY ───
+      'homeopathy_consult',          // legacy alias (kept for existing rows)
+      'homeopathy_consultation',     // canonical (used by pricingService + seed)
       'homeopathy_medicine',
+      'naturopathy_center',          // NaturopathyCenter package bookings
       'insurance',
       'online_consult',
       'mental_health',

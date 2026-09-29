@@ -2033,4 +2033,91 @@ router.get('/admin/discounts', requireAdmin, async (req, res) => {
   }
 });
 
+// ============================================
+// ADMIN: EXPORT BOOKINGS CSV
+// ============================================
+router.get('/admin/export', requireAdmin, async (req, res) => {
+  try {
+    const { status, type, from, to } = req.query;
+
+    const query = {};
+    if (status) query.status = status;
+    if (type) query.type = type;
+    if (from || to) {
+      query.createdAt = {};
+      if (from) query.createdAt.$gte = new Date(from);
+      if (to) {
+        const toDate = new Date(to);
+        toDate.setHours(23, 59, 59, 999);
+        query.createdAt.$lte = toDate;
+      }
+    }
+
+    const bookings = await HomeopathyBooking.find(query)
+      .sort({ createdAt: -1 })
+      .limit(10000)
+      .lean();
+
+    const headers = [
+      'Booking ID',
+      'Type',
+      'Status',
+      'Payment Status',
+      'Patient Name',
+      'Patient Phone',
+      'Doctor',
+      'Center',
+      'Pharmacy',
+      'Amount',
+      'Discount',
+      'Final Amount',
+      'Platform Fee',
+      'GST',
+      'Platform Commission',
+      'Provider Earning',
+      'Created At',
+      'Paid At'
+    ];
+
+    const escapeCsv = (v) => {
+      if (v == null) return '';
+      const s = String(v);
+      if (s.includes(',') || s.includes('"') || s.includes('\n')) {
+        return '"' + s.replace(/"/g, '""') + '"';
+      }
+      return s;
+    };
+
+    const rows = bookings.map(b => [
+      b.bookingId || '',
+      b.type || '',
+      b.status || '',
+      b.paymentStatus || '',
+      b.patient?.name || '',
+      b.patient?.phone || '',
+      b.doctorName || '',
+      b.centerName || '',
+      b.pharmacyName || '',
+      b.amount || 0,
+      b.discount?.amount || 0,
+      b.finalAmount || 0,
+      b.platformFee || 0,
+      b.gstAmount || 0,
+      b.platformCommission || 0,
+      b.providerEarning || 0,
+      b.createdAt ? new Date(b.createdAt).toISOString() : '',
+      b.paidAt ? new Date(b.paidAt).toISOString() : ''
+    ]);
+
+    const csv = [headers.join(','), ...rows.map(r => r.map(escapeCsv).join(','))].join('\n');
+
+    res.setHeader('Content-Type', 'text/csv; charset=utf-8');
+    res.setHeader('Content-Disposition', `attachment; filename="homeopathy-bookings-${Date.now()}.csv"`);
+    res.send(csv);
+  } catch (error) {
+    console.error('[homeopathy.admin.bookings.export]', error.message);
+    res.status(500).json({ success: false, message: 'Failed to export bookings' });
+  }
+});
+
 module.exports = router;

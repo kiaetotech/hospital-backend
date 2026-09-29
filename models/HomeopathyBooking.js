@@ -337,6 +337,10 @@ homeopathyBookingSchema.index({ status: 1 });
 homeopathyBookingSchema.index({ commissionPayoutStatus: 1 });
 homeopathyBookingSchema.index({ type: 1, status: 1 });
 homeopathyBookingSchema.index({ createdAt: -1 });
+homeopathyBookingSchema.index({ paidAt: -1 });
+homeopathyBookingSchema.index({ type: 1, createdAt: -1 });
+homeopathyBookingSchema.index({ status: 1, createdAt: -1 });
+homeopathyBookingSchema.index({ pharmacy: 1, status: 1 });
 
 // ============================================
 // SINGLE PRE-SAVE HOOK (fixes duplicate-hook bug from AyurvedaBooking)
