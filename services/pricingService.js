@@ -6,6 +6,7 @@
 const CommissionConfig = require('../models/CommissionConfig');
 
 const BOOKING_TYPE_MAP = {
+  // AYURVEDA (existing — do not touch)
   doctor_consultation: {
     serviceType: 'ayurveda_consultation',
     platformFeeKey: 'consultation',
@@ -30,6 +31,52 @@ const BOOKING_TYPE_MAP = {
     serviceType: 'ayurveda_medicine',
     platformFeeKey: 'medicine',
     rateKey: 'medicineRate',
+  },
+
+  // HOSPITALS (new)
+  hospital_opd: {
+    serviceType: 'hospital_opd',
+    platformFeeKey: 'opd',
+    rateKey: 'opdRate',
+  },
+  hospital_admission: {
+    serviceType: 'hospital_admission',
+    platformFeeKey: 'admission',
+    rateKey: 'admissionRate',
+  },
+
+  // AMBULANCE (new)
+  ambulance: {
+    serviceType: 'ambulance',
+    platformFeeKey: 'ambulance',
+    rateKey: 'ambulanceRate',
+  },
+  ambulance_emergency: {
+    serviceType: 'ambulance_emergency',
+    platformFeeKey: 'emergency',
+    rateKey: 'emergencyRate',
+  },
+    ambulance_scheduled: {
+    serviceType: 'ambulance_scheduled',
+    platformFeeKey: 'scheduled',
+    rateKey: 'scheduledRate',
+  },
+
+  // HOMEOPATHY (new)
+  homeopathy_consult: {
+    serviceType: 'homeopathy_consultation',
+    platformFeeKey: 'consultation',
+    rateKey: 'consultationRate',
+  },
+  homeopathy_medicine: {
+    serviceType: 'homeopathy_medicine',
+    platformFeeKey: 'medicine',
+    rateKey: 'medicineRate',
+  },
+  naturopathy_center: {
+    serviceType: 'naturopathy_center',
+    platformFeeKey: 'centerVisit',
+    rateKey: 'centerVisitRate',
   },
 };
 

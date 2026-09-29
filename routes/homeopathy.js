@@ -14,9 +14,26 @@ const CorporateHR = require('../models/CorporateHR');
 const JWT_SECRET = process.env.JWT_SECRET;
 
 // ============================================
+// ADMIN AUTH MIDDLEWARE (security fix)
+// ============================================
+const requireAdmin = (req, res, next) => {
+  const adminKey = req.headers['x-admin-key'];
+  if (adminKey && adminKey === process.env.ADMIN_KEY) return next();
+
+  const authHeader = req.headers.authorization;
+  if (authHeader) {
+    try {
+      const token = authHeader.split(' ')[1];
+      const decoded = jwt.verify(token, process.env.JWT_SECRET);
+      if (decoded.role === 'admin') return next();
+    } catch (e) {}
+  }
+  return res.status(401).json({ success: false, message: 'Admin authentication required' });
+};
+
+// ============================================
 // AUTHENTICATE HR MIDDLEWARE (ADDED)
 // ============================================
-
 const authenticateHR = async (req, res, next) => {
   try {
     const token = req.headers.authorization?.split(' ')[1];
@@ -208,7 +225,7 @@ router.post('/review', async (req, res) => {
 });
 
 // GET /api/homeopathy/admin/pending-doctors
-router.get('/admin/pending-doctors', async (req, res) => {
+router.get('/admin/pending-doctors', requireAdmin, async (req, res) => {
   try {
     const doctors = await HomeopathyDoctor.find({ verificationStatus: 'pending' }).select('-password').sort({ createdAt: -1 });
     res.json({ success: true, data: doctors });
@@ -218,7 +235,7 @@ router.get('/admin/pending-doctors', async (req, res) => {
 });
 
 // PUT /api/homeopathy/admin/verify-doctor/:id
-router.put('/admin/verify-doctor/:id', async (req, res) => {
+router.put('/admin/verify-doctor/:id', requireAdmin, async (req, res) => {
   try {
     const { status, rejectionReason } = req.body;
     const doctor = await HomeopathyDoctor.findByIdAndUpdate(req.params.id, {
@@ -234,7 +251,7 @@ router.put('/admin/verify-doctor/:id', async (req, res) => {
 });
 
 // GET /api/homeopathy/admin/pending-centers
-router.get('/admin/pending-centers', async (req, res) => {
+router.get('/admin/pending-centers', requireAdmin, async (req, res) => {
   try {
     const centers = await NaturopathyCenter.find({ verificationStatus: 'pending' }).select('-password').sort({ createdAt: -1 });
     res.json({ success: true, data: centers });
@@ -244,7 +261,7 @@ router.get('/admin/pending-centers', async (req, res) => {
 });
 
 // PUT /api/homeopathy/admin/verify-center/:id
-router.put('/admin/verify-center/:id', async (req, res) => {
+router.put('/admin/verify-center/:id', requireAdmin, async (req, res) => {
   try {
     const { status } = req.body;
     await NaturopathyCenter.findByIdAndUpdate(req.params.id, { verificationStatus: status, isActive: status === 'approved', verifiedAt: new Date() });
@@ -255,7 +272,7 @@ router.put('/admin/verify-center/:id', async (req, res) => {
 });
 
 // GET /api/homeopathy/admin/pending-pharmacies
-router.get('/admin/pending-pharmacies', async (req, res) => {
+router.get('/admin/pending-pharmacies', requireAdmin, async (req, res) => {
   try {
     const pharmacies = await Pharmacy.find({ verificationStatus: 'pending' }).select('-password').sort({ createdAt: -1 });
     res.json({ success: true, data: pharmacies });
@@ -265,7 +282,7 @@ router.get('/admin/pending-pharmacies', async (req, res) => {
 });
 
 // PUT /api/homeopathy/admin/verify-pharmacy/:id
-router.put('/admin/verify-pharmacy/:id', async (req, res) => {
+router.put('/admin/verify-pharmacy/:id', requireAdmin, async (req, res) => {
   try {
     const { status } = req.body;
     await Pharmacy.findByIdAndUpdate(req.params.id, { verificationStatus: status, isActive: status === 'approved', verifiedAt: new Date() });
@@ -276,7 +293,7 @@ router.put('/admin/verify-pharmacy/:id', async (req, res) => {
 });
 
 // POST /api/homeopathy/admin/bulk-upload
-router.post('/admin/bulk-upload', async (req, res) => {
+router.post('/admin/bulk-upload', requireAdmin, async (req, res) => {
   try {
     const { type, data } = req.body;
     if (type === 'doctors') {

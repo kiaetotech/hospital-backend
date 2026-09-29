@@ -34,10 +34,14 @@ const transactionSchema = new mongoose.Schema({
       'ambulance_scheduled',
       'ambulance_payout',
       'ambulance_refund',
-      // 🧘 NEW: Ayurveda transaction types
+      // 🧘 Ayurveda transaction types
       'ayurveda_booking',
       'ayurveda_payout',
-      'ayurveda_refund'
+      'ayurveda_refund',
+      // 🏠 NEW: Homeopathy transaction types
+      'homeopathy_booking',
+      'homeopathy_payout',
+      'homeopathy_refund'
     ] 
   },
   amount: Number,
@@ -105,7 +109,12 @@ const transactionSchema = new mongoose.Schema({
       // ADD THESE:
       'panchakarma_package',
       'wellness_program',
-      'ayurveda_booking'
+      'ayurveda_booking',
+      // 🏠 NEW: Homeopathy booking types
+      'homeopathy_consult',
+      'homeopathy_consultation',
+      'homeopathy_medicine',
+      'naturopathy_center'
     ] 
   },
   userId: { type: String },

@@ -39,12 +39,35 @@ const PROVIDER_REGISTRY = {
     phonePath: 'phone',
     namePath: 'name'
   },
-  'center': {
+    'center': {
     collection: 'wellnesscenters',
     cityPath: 'address.city',
     statePath: 'address.state',
     phonePath: 'phone',
     namePath: 'name'
+  },
+
+  // HOMEOPATHY
+  'homeopathy_doctor': {
+    collection: 'homeopathydoctors',
+    cityPath: 'address.city',
+    statePath: 'address.state',
+    phonePath: 'phone',
+    namePath: 'name'
+  },
+  'naturopathy_center': {
+    collection: 'naturopathycenters',
+    cityPath: 'address.city',
+    statePath: 'address.state',
+    phonePath: 'phone',
+    namePath: 'name'
+  },
+  'pharmacy': {
+    collection: 'pharmacies',
+    cityPath: 'address.city',
+    statePath: 'address.state',
+    phonePath: 'phone',
+    namePath: 'businessName'
   }
 
   // Add more provider types here as modules go live:

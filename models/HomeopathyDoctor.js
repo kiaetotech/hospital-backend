@@ -1,125 +1,174 @@
+// D:\hospital backend\models\HomeopathyDoctor.js
 const mongoose = require('mongoose');
 
 const homeopathyDoctorSchema = new mongoose.Schema({
   // ============================================
-  // YOUR EXISTING FIELDS (ALL PRESERVED)
+  // IDENTITY
   // ============================================
-  
   name: { type: String, required: true },
   phone: { type: String, required: true, unique: true },
   email: { type: String },
   password: { type: String },
-  
-  specialization: { 
-    type: String, 
+
+  specialization: {
+    type: String,
     enum: [
-      'Classical Homeopathy', 
-      'Clinical Homeopathy', 
-      'Naturopathy', 
-      'Yoga & Naturopathy', 
-      'Diet Therapy', 
-      'Acupuncture', 
-      'Biochemic Medicine', 
+      'Classical Homeopathy',
+      'Clinical Homeopathy',
+      'Naturopathy',
+      'Yoga & Naturopathy',
+      'Diet Therapy',
+      'Acupuncture',
+      'Biochemic Medicine',
       'Bach Flower Therapy'
-    ], 
-    required: true 
+    ],
+    required: true
   },
   experience: { type: Number, required: true },
   education: { type: String },
   about: { type: String },
-  
+
   registrationNumber: { type: String, required: true, unique: true },
   registrationCouncil: { type: String },
-  
+
   languages: [String],
   consultationFee: { type: Number, required: true },
-  
+
+  // ============================================
+  // ADDRESS
+  // ============================================
   address: {
-    street: String, 
+    street: String,
     area: String,
     city: { type: String, required: true },
-    state: String, 
+    state: String,
     pincode: String,
-    coordinates: { lat: Number, lng: Number }
+    coordinates: {
+      lat: Number,
+      lng: Number
+    }
   },
-  
+
   clinicName: { type: String },
-  
-  consultationTypes: { 
-    online: { type: Boolean, default: true }, 
-    clinic: { type: Boolean, default: true } 
+
+  // ============================================
+  // CONSULTATION MODES
+  // ============================================
+  consultationTypes: {
+    online: { type: Boolean, default: true },
+    clinic: { type: Boolean, default: true }
   },
-  
+
+  // ============================================
+  // 🆕 LIVE AVAILABILITY STATUS (parity with AyurvedaDoctor)
+  // ============================================
+  isAvailable: {
+    type: Boolean,
+    default: false,
+    description: 'Whether doctor is currently accepting consultations'
+  },
+  currentStatus: {
+    type: String,
+    enum: ['online', 'offline', 'in_clinic'],
+    default: 'offline',
+    description: 'Real-time availability state for "available now" listings'
+  },
+  currentConsultationMode: {
+    type: String,
+    enum: ['video', 'clinic', 'both'],
+    default: 'video',
+    description: 'Current mode the doctor is consulting in'
+  },
+  lastStatusUpdate: {
+    type: Date,
+    default: null,
+    description: 'Timestamp of last isAvailable/currentStatus change'
+  },
+
+  // ============================================
+  // RATINGS & REVIEWS
+  // ============================================
   rating: { type: Number, default: 0 },
   totalReviews: { type: Number, default: 0 },
-  reviews: [{ 
-    patient: String, 
-    patientName: String, 
-    rating: Number, 
-    review: String, 
-    createdAt: { type: Date, default: Date.now } 
+  reviews: [{
+    patient: String,
+    patientName: String,
+    rating: Number,
+    review: String,
+    bookingId: { type: String, default: '' },
+    verified: { type: Boolean, default: false },
+    createdAt: { type: Date, default: Date.now }
   }],
-  
-  verificationStatus: { 
-    type: String, 
-    enum: ['pending', 'approved', 'rejected'], 
-    default: 'pending' 
+
+  // ============================================
+  // VERIFICATION
+  // ============================================
+  verificationStatus: {
+    type: String,
+    enum: ['pending', 'approved', 'rejected'],
+    default: 'pending'
   },
   isActive: { type: Boolean, default: false },
-  verifiedBy: String, 
-  verifiedAt: Date, 
+  verifiedKyc: { type: Boolean, default: false },
+  verifiedBy: String,
+  verifiedAt: Date,
   rejectionReason: String,
-  
-  documents: { 
-    degreeCertificate: String, 
-    registrationCertificate: String, 
-    idProof: String, 
-    photo: String 
+
+  documents: {
+    degreeCertificate: String,
+    registrationCertificate: String,
+    idProof: String,
+    photo: String
   },
-  
-  availability: [{ 
-    day: String, 
-    slots: [{ startTime: String, endTime: String }] 
+
+  // ============================================
+  // AVAILABILITY SLOTS
+  // ============================================
+  availability: [{
+    day: String,
+    slots: [{ startTime: String, endTime: String }]
   }],
-  
-  stats: { 
-    totalConsultations: { type: Number, default: 0 }, 
-    totalEarnings: { type: Number, default: 0 } 
-  },
-  
-  bankDetails: { 
-    accountHolder: String, 
-    accountNumber: String, 
-    ifscCode: String, 
-    bankName: String, 
-    upiId: String 
+
+  // ============================================
+  // STATS
+  // ============================================
+  stats: {
+    totalConsultations: { type: Number, default: 0 },
+    totalEarnings: { type: Number, default: 0 }
   },
 
   // ============================================
-  // 🆕 CORPORATE WELLNESS FIELDS (ADDED)
+  // BANK DETAILS
   // ============================================
+  bankDetails: {
+    accountHolder: String,
+    accountNumber: String,
+    ifscCode: String,
+    bankName: String,
+    upiId: String
+  },
 
-  // Whether doctor offers corporate wellness programs
+  // ============================================
+  // CORPORATE WELLNESS FIELDS (PRESERVED)
+  // ============================================
   offersCorporateWellness: {
     type: Boolean,
     default: false,
     description: 'Whether this doctor offers corporate wellness programs'
   },
 
-  // Minimum employees for corporate wellness
   minEmployees: {
     type: Number,
     default: 10,
     description: 'Minimum employees required for corporate wellness program'
   },
 
-  // Corporate wellness packages
   corporateWellnessPackages: [{
     name: { type: String, required: true },
     description: { type: String },
     pricePerEmployee: { type: Number, required: true },
-    duration: { 
-      type: String, 
+    duration: {
+      type: String,
       enum: ['1-day', '3-day', '5-day', '7-day', '14-day', '21-day', 'monthly'],
       default: '1-day'
     },
@@ -135,7 +184,6 @@ const homeopathyDoctorSchema = new mongoose.Schema({
     createdAt: { type: Date, default: Date.now }
   }],
 
-  // Corporate pricing structure
   corporatePricing: {
     basePricePerEmployee: { type: Number },
     discountPerEmployee: { type: Number, default: 0 },
@@ -149,7 +197,6 @@ const homeopathyDoctorSchema = new mongoose.Schema({
     }
   },
 
-  // Corporate discount percentage
   corporateDiscount: {
     type: Number,
     default: 15,
@@ -158,7 +205,6 @@ const homeopathyDoctorSchema = new mongoose.Schema({
     description: 'Discount percentage for corporate wellness bookings'
   },
 
-  // Services specifically for corporate clients
   corporateServices: [{
     name: { type: String },
     description: { type: String },
@@ -167,7 +213,6 @@ const homeopathyDoctorSchema = new mongoose.Schema({
     category: { type: String }
   }],
 
-  // Corporate workshops
   corporateWorkshops: [{
     name: { type: String },
     description: { type: String },
@@ -178,7 +223,6 @@ const homeopathyDoctorSchema = new mongoose.Schema({
     isActive: { type: Boolean, default: true }
   }],
 
-  // Corporate-specific settings
   corporateSettings: {
     allowGroupSessions: { type: Boolean, default: true },
     dedicatedWellnessCoach: { type: Boolean, default: false },
@@ -189,34 +233,33 @@ const homeopathyDoctorSchema = new mongoose.Schema({
     corporateVisitAvailable: { type: Boolean, default: false }
   },
 
-  // Corporate analytics
   corporateAnalytics: {
     totalCorporateBookings: { type: Number, default: 0 },
     totalCorporateRevenue: { type: Number, default: 0 },
-    corporateClients: [{ type: String }] // Company names
+    corporateClients: [{ type: String }]
   },
 
   createdAt: { type: Date, default: Date.now }
 });
 
 // ============================================
-// INDEXES (EXISTING + NEW)
+// INDEXES
 // ============================================
-
-// Existing indexes (implicit via unique fields)
 homeopathyDoctorSchema.index({ phone: 1 });
 homeopathyDoctorSchema.index({ registrationNumber: 1 });
-
-// 🆕 NEW INDEXES FOR CORPORATE
 homeopathyDoctorSchema.index({ offersCorporateWellness: 1 });
 homeopathyDoctorSchema.index({ minEmployees: 1 });
 homeopathyDoctorSchema.index({ specialization: 1 });
 homeopathyDoctorSchema.index({ 'corporateWellnessPackages.isActive': 1 });
 
-// ============================================
-// VIRTUAL FIELDS (NEW)
-// ============================================
+// 🆕 Live-status indexes (for "available now" queries)
+homeopathyDoctorSchema.index({ isAvailable: 1, currentStatus: 1 });
+homeopathyDoctorSchema.index({ isAvailable: 1, currentConsultationMode: 1 });
+homeopathyDoctorSchema.index({ isActive: 1, verificationStatus: 1, rating: -1 });
 
+// ============================================
+// VIRTUALS
+// ============================================
 homeopathyDoctorSchema.virtual('hasCorporateWellness').get(function() {
   return this.offersCorporateWellness === true;
 });
@@ -230,13 +273,19 @@ homeopathyDoctorSchema.virtual('corporateDiscountPercentage').get(function() {
 });
 
 homeopathyDoctorSchema.virtual('isCorporateReady').get(function() {
-  return this.isActive && 
-         this.verificationStatus === 'approved' && 
+  return this.isActive &&
+         this.verificationStatus === 'approved' &&
          this.offersCorporateWellness === true;
 });
 
+// 🆕 Live-status virtual
+homeopathyDoctorSchema.virtual('isOnlineNow').get(function() {
+  return this.isAvailable === true &&
+         ['online', 'in_clinic'].includes(this.currentStatus);
+});
+
 // ============================================
-// METHODS (NEW)
+// METHODS
 // ============================================
 
 /**
@@ -254,7 +303,6 @@ homeopathyDoctorSchema.methods.calculateCorporatePrice = function(
 
   let pricePerEmployee = packageItem.pricePerEmployee || this.corporatePricing?.basePricePerEmployee || 1000;
 
-  // Apply bulk discount
   if (this.corporatePricing?.bulkDiscount?.enabled) {
     const tiers = this.corporatePricing.bulkDiscount.tiers || [];
     let applicableDiscount = 0;
@@ -269,7 +317,6 @@ homeopathyDoctorSchema.methods.calculateCorporatePrice = function(
     }
   }
 
-  // Apply global corporate discount
   if (this.corporateDiscount) {
     pricePerEmployee = pricePerEmployee * (1 - this.corporateDiscount / 100);
   }
@@ -287,23 +334,14 @@ homeopathyDoctorSchema.methods.calculateCorporatePrice = function(
   };
 };
 
-/**
- * Get all active corporate wellness packages
- */
 homeopathyDoctorSchema.methods.getActiveCorporatePackages = function() {
   return this.corporateWellnessPackages?.filter(p => p.isActive !== false) || [];
 };
 
-/**
- * Get active corporate workshops
- */
 homeopathyDoctorSchema.methods.getActiveCorporateWorkshops = function() {
   return this.corporateWorkshops?.filter(w => w.isActive !== false) || [];
 };
 
-/**
- * Get corporate summary
- */
 homeopathyDoctorSchema.methods.getCorporateSummary = function() {
   if (!this.offersCorporateWellness) {
     return null;
@@ -323,13 +361,24 @@ homeopathyDoctorSchema.methods.getCorporateSummary = function() {
   };
 };
 
+// 🆕 Toggle live availability
+homeopathyDoctorSchema.methods.setAvailabilityStatus = async function(status, consultationMode) {
+  if (!['online', 'offline', 'in_clinic'].includes(status)) {
+    throw new Error('Invalid status. Use: online | offline | in_clinic');
+  }
+  this.isAvailable = status === 'online' || status === 'in_clinic';
+  this.currentStatus = status;
+  this.lastStatusUpdate = new Date();
+  if (consultationMode) {
+    this.currentConsultationMode = consultationMode;
+  }
+  return this.save();
+};
+
 // ============================================
-// STATIC METHODS (NEW)
+// STATIC METHODS
 // ============================================
 
-/**
- * Find all doctors offering corporate wellness
- */
 homeopathyDoctorSchema.statics.findCorporateDoctors = function(filters = {}) {
   const query = {
     offersCorporateWellness: true,
@@ -355,9 +404,6 @@ homeopathyDoctorSchema.statics.findCorporateDoctors = function(filters = {}) {
     .select('name rating address city specialization corporateWellnessPackages corporateDiscount');
 };
 
-/**
- * Get corporate doctor stats
- */
 homeopathyDoctorSchema.statics.getCorporateStats = async function() {
   const total = await this.countDocuments({ offersCorporateWellness: true });
   const active = await this.countDocuments({
@@ -385,6 +431,26 @@ homeopathyDoctorSchema.statics.getCorporateStats = async function() {
     bySpecialization,
     totalPackages: totalPackages[0]?.total || 0
   };
+};
+
+// 🆕 Find doctors available right now
+homeopathyDoctorSchema.statics.findAvailableNow = function(consultationType = 'video') {
+  const query = {
+    isActive: true,
+    verificationStatus: 'approved',
+    isAvailable: true
+  };
+
+  if (consultationType === 'video') {
+    query.currentConsultationMode = { $in: ['video', 'both'] };
+  } else if (consultationType === 'clinic') {
+    query.currentConsultationMode = { $in: ['clinic', 'both'] };
+  }
+
+  return this.find(query)
+    .select('name specialization experience rating consultationFee address.city currentStatus currentConsultationMode')
+    .sort({ rating: -1 })
+    .limit(20);
 };
 
 module.exports = mongoose.model('HomeopathyDoctor', homeopathyDoctorSchema);

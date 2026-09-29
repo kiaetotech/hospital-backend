@@ -426,7 +426,7 @@ try {
 // ROUTES (ALL PRESERVED WITH FALLBACKS)
 // ============================================
 
-let hospitalRoutes, hospitalProviderRoutes, labPricingRoutes, packageRoutes, authRoutes, caregiverRoutes, diagnosticsRoutes, diagnosticsUploadRoutes, ambulanceRoutes, healthPackageRoutes, testRoutes, uploadRoutes, providerAuthRoutes, bookingRoutes, razorpayRoutes, reviewRoutes, adminRoutes, bookingStatusRoutes, customPackageRoutes, lenderAuthRoutes, adminLenderRoutes, lenderRoutes, loanPatientRoutes, loanLenderRoutes, loanAdminRoutes, loanWebhookRoutes, webhookRoutes, ayurvedaRoutes, ayurvedaCenterRoutes, ayurvedaPrescriptionRoutes, ayurvedaReportRoutes, homeopathyRoutes, insuranceRoutes, insuranceClaimsRoutes, insuranceOnboardingRoutes, insuranceAdminRoutes, insuranceCompanyRoutes, otpRoutes, corporateRoutes, corporateBillingRoutes, corporateHubRoutes, mentalHealthRoutes, mentalHealthTherapistRoutes, mentalHealthAdminRoutes, mentalHealthPayoutRoutes, mentalHealthEarningsRoutes, onlineDoctorRoutes, hospitalStatusRoutes, globalSearchRoutes, employeePortalRoutes, discountRoutes;
+let hospitalRoutes, hospitalProviderRoutes, labPricingRoutes, packageRoutes, authRoutes, caregiverRoutes, diagnosticsRoutes, diagnosticsUploadRoutes, ambulanceRoutes, healthPackageRoutes, testRoutes, uploadRoutes, providerAuthRoutes, bookingRoutes, razorpayRoutes, reviewRoutes, adminRoutes, bookingStatusRoutes, customPackageRoutes, lenderAuthRoutes, adminLenderRoutes, lenderRoutes, loanPatientRoutes, loanLenderRoutes, loanAdminRoutes, loanWebhookRoutes, webhookRoutes, ayurvedaRoutes, ayurvedaCenterRoutes, ayurvedaPrescriptionRoutes, ayurvedaReportRoutes, homeopathyRoutes,homeopathyAdvancedRoutes, homeopathyBookingRoutes, homeopathySettlementRoutes, insuranceRoutes, insuranceClaimsRoutes, insuranceOnboardingRoutes, insuranceAdminRoutes, insuranceCompanyRoutes, otpRoutes, corporateRoutes, corporateBillingRoutes, corporateHubRoutes, mentalHealthRoutes, mentalHealthTherapistRoutes, mentalHealthAdminRoutes, mentalHealthPayoutRoutes, mentalHealthEarningsRoutes, onlineDoctorRoutes, hospitalStatusRoutes, globalSearchRoutes, employeePortalRoutes, discountRoutes;
 
 try { hospitalRoutes = require('./routes/hospitals'); } catch(e) { console.warn('⚠️ hospitals route missing'); hospitalRoutes = (req,res) => res.status(404).json({error:'Route not available'}); }
 try { hospitalProviderRoutes = require('./routes/hospitalProvider'); } catch(e) { console.warn('⚠️ hospitalProvider route missing'); hospitalProviderRoutes = (req,res) => res.status(404).json({error:'Route not available'}); }
@@ -460,6 +460,9 @@ try { ayurvedaCenterRoutes = require('./routes/ayurveda-centers'); } catch(e) { 
 try { ayurvedaPrescriptionRoutes = require('./routes/ayurveda-prescriptions'); } catch(e) { console.warn('⚠️ ayurveda-prescriptions route missing'); ayurvedaPrescriptionRoutes = (req,res) => res.status(404).json({error:'Route not available'}); }
 try { ayurvedaReportRoutes = require('./routes/ayurveda-reports'); } catch(e) { console.warn('⚠️ ayurveda-reports route missing'); ayurvedaReportRoutes = (req,res) => res.status(404).json({error:'Route not available'}); }
 try { homeopathyRoutes = require('./routes/homeopathy'); } catch(e) { console.warn('⚠️ homeopathy route missing'); homeopathyRoutes = (req,res) => res.status(404).json({error:'Route not available'}); }
+try { homeopathyAdvancedRoutes = require('./routes/homeopathy-advanced'); } catch(e) { console.warn('⚠️ homeopathy-advanced route missing: ' + e.message); homeopathyAdvancedRoutes = (req,res) => res.status(404).json({error:'Route not available', details: e.message}); }
+try { homeopathyBookingRoutes = require('./routes/homeopathy-booking'); } catch(e) { console.warn('⚠️ homeopathy-booking route missing: ' + e.message); homeopathyBookingRoutes = (req,res) => res.status(404).json({error:'Route not available', details: e.message}); }
+try { homeopathySettlementRoutes = require('./routes/homeopathy-settlement'); } catch(e) { console.warn('⚠️ homeopathy-settlement route missing: ' + e.message); homeopathySettlementRoutes = (req,res) => res.status(404).json({error:'Route not available', details: e.message}); }
 try { insuranceRoutes = require('./routes/insurance'); } catch(e) { console.warn('⚠️ insurance route missing'); insuranceRoutes = (req,res) => res.status(404).json({error:'Route not available'}); }
 try { insuranceClaimsRoutes = require('./routes/insurance-claims'); } catch(e) { console.warn('⚠️ insurance-claims route missing'); insuranceClaimsRoutes = (req,res) => res.status(404).json({error:'Route not available'}); }
 try { insuranceOnboardingRoutes = require('./routes/insurance-onboarding'); } catch(e) { console.warn('⚠️ insurance-onboarding route missing'); insuranceOnboardingRoutes = (req,res) => res.status(404).json({error:'Route not available'}); }
@@ -840,7 +843,19 @@ app.use('/api/ayurveda/reports', ayurvedaReportRoutes);
 app.use('/api/ayurveda/payments', razorpayRoutes);
 app.use('/api/ayurveda/bookings', require('./routes/ayurveda-booking'));
 app.use('/api/ayurveda/settlements', require('./routes/ayurveda-settlement'));
-app.use('/api/homeopathy', homeopathyRoutes);
+// ============================================
+// HOMEOPATHY ROUTES
+// ============================================
+// New modules mounted BEFORE legacy so they win on shared paths
+app.use('/api/homeopathy/bookings', homeopathyBookingRoutes);
+app.use('/api/homeopathy/settlements', homeopathySettlementRoutes);
+app.use('/api/homeopathy', homeopathyAdvancedRoutes);
+
+// ⚠️ LEGACY — mounted under different prefix to avoid path collisions.
+// Still holds /doctor/dashboard/:id, /review (POST), /corporate/* (v1).
+// Once homeopathy-advanced.js has all routes and frontend is migrated,
+// delete this line + archive routes/homeopathy.js.
+app.use('/api/homeopathy-legacy', homeopathyRoutes);
 app.use('/api/insurance', insuranceRoutes);
 app.use('/api/insurance-claims', insuranceClaimsRoutes);
 app.use('/api/insurance/company', insuranceOnboardingRoutes);
