@@ -314,8 +314,17 @@ router.post('/create', authenticatePatient, async (req, res) => {
       platformCommission, providerEarning
     } = pricing;
 
-    // ── RAZORPAY ORDER ──
-    const orderResult = await razorpayService.createOrder(
+        // ── RAZORPAY ORDER ──
+    if (!process.env.RAZORPAY_KEY_ID) {
+      console.error('[homeopathy.booking.create] RAZORPAY_KEY_ID missing');
+      return res.status(503).json({
+        success: false,
+        message: 'Payment gateway not configured. Please contact support.',
+        code: 'RAZORPAY_NOT_CONFIGURED'
+      });
+    }
+
+      const orderResult = await razorpayService.createOrder(
       finalAmount,
       'INR',
       `HOM_${Date.now()}`,
@@ -438,12 +447,13 @@ router.post('/create', authenticatePatient, async (req, res) => {
       console.error('SMS failed:', smsError.message);
     }
 
-    res.status(201).json({
+        res.status(201).json({
       success: true,
       message: 'Booking created. Please complete payment.',
       data: {
         bookingId: booking.bookingId,
         razorpayOrderId: orderResult.order.id,
+        razorpayKeyId: process.env.RAZORPAY_KEY_ID,
         amount: finalAmount,
         currency: 'INR',
         otp: booking.otp,
