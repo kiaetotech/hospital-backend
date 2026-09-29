@@ -1441,4 +1441,74 @@ router.get('/admin/revenue-trend', requireAdmin, async (req, res) => {
   }
 });
 
+// ============================================
+// ALIASES — match frontend URLs
+// ============================================
+
+// Frontend NaturopathyCenters.jsx calls /homeopathy/naturopathy
+router.get('/naturopathy', async (req, res) => {
+  try {
+    const centers = await NaturopathyCenter.find({
+      isActive: true,
+      verificationStatus: 'approved'
+    })
+      .select('-password -documents -bankDetails')
+      .lean();
+
+    const centersWithApprovedPackages = centers
+      .map(c => {
+        const approvedPackages = (c.packages || []).filter(
+          p => p.isActive !== false && p.approvalStatus === 'approved' && !p.deleted
+        );
+        return { ...c, packages: approvedPackages };
+      })
+      .filter(c => c.packages.length > 0);
+
+    res.json({ success: true, data: centersWithApprovedPackages });
+  } catch (error) {
+    console.error('[homeopathy.naturopathy.alias]', error.message);
+    res.status(500).json({ success: false, error: 'Failed to fetch centers', data: [] });
+  }
+});
+
+// Frontend HomeopathyPharmacy.jsx calls /homeopathy/pharmacy
+// Note: /homeopathy/pharmacy/register (POST) and /homeopathy/pharmacy/medicines (GET)
+// already exist as more-specific routes and take precedence.
+router.get('/pharmacy', async (req, res) => {
+  try {
+    const pharmacies = await Pharmacy.find({
+      isActive: true,
+      verificationStatus: 'approved'
+    }).select('businessName address medicines');
+
+    const allMedicines = [];
+    pharmacies.forEach(p => {
+      (p.medicines || []).forEach(m => {
+        allMedicines.push({
+          ...m.toObject(),
+          pharmacyName: p.businessName,
+          pharmacyId: p._id,
+          pharmacyCity: p.address?.city
+        });
+      });
+    });
+
+    res.json({ success: true, data: allMedicines });
+  } catch (error) {
+    console.error('[homeopathy.pharmacy.alias]', error.message);
+    res.json({ success: true, data: [] });
+  }
+});
+
+// ============================================
+// STUB — Remedy Matcher (not yet implemented)
+// ============================================
+router.post('/remedy-match', async (req, res) => {
+  res.status(503).json({
+    success: false,
+    message: 'Remedy Matcher AI is coming soon.',
+    code: 'NOT_IMPLEMENTED'
+  });
+});
+
 module.exports = router;
