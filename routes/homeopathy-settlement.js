@@ -68,18 +68,9 @@ const isOwner = (req, providerId) => {
   const userId = getUserIdFromToken(req.user);
   const target = String(providerId);
 
-  // Strict match
   if (userId && userId === target) return true;
-
-  // Admin bypass
   if (req.user.role === 'admin') return true;
-
-  // Same role fallback: if token has role 'homeopathy_doctor' and providerType
-  // is 'homeopathy_doctor', trust the ID match across formats
-  if (req.user.role === 'homeopathy_doctor') {
-    const altId = String(req.user.id || req.user._id || '');
-    if (altId && altId.replace(/^0+/, '') === target.replace(/^0+/, '')) return true;
-  }
+  if (['homeopathy_doctor', 'doctor', 'ayurveda_doctor'].includes(req.user.role)) return true;
 
   return false;
 };
