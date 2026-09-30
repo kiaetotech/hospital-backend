@@ -2583,4 +2583,108 @@ router.put('/center/reviews/:bookingId/respond', authenticateCenter, async (req,
   }
 });
 
+// ============================================
+// ADMIN: PENDING PACKAGES
+// ============================================
+router.get('/admin/packages/pending', requireAdmin, async (req, res) => {
+  try {
+    const centers = await NaturopathyCenter.find({
+      'packages.approvalStatus': 'pending',
+      'packages.deleted': { $ne: true }
+    }).select('name address phone packages');
+
+    const pending = [];
+    centers.forEach(c => {
+      (c.packages || [])
+        .filter(p => p.approvalStatus === 'pending' && !p.deleted)
+        .forEach(p => {
+          pending.push({
+            centerId: c._id,
+            centerName: c.name,
+            centerCity: c.address?.city,
+            centerPhone: c.phone,
+            packageId: p._id,
+            name: p.name,
+            description: p.description,
+            shortDescription: p.shortDescription,
+            duration: p.duration,
+            price: p.price,
+            discountPrice: p.discountPrice,
+            therapies: p.therapies || [],
+            inclusions: p.inclusions || [],
+            exclusions: p.exclusions || [],
+            maxCapacity: p.maxCapacity,
+            submittedAt: p.submittedAt,
+            createdAt: p.createdAt
+          });
+        });
+    });
+
+    pending.sort((a, b) => new Date(b.submittedAt || b.createdAt) - new Date(a.submittedAt || a.createdAt));
+
+    res.json({ success: true, count: pending.length, data: pending });
+  } catch (error) {
+    console.error('[admin.packages.pending]', error.message);
+    res.status(500).json({ success: false, error: error.message });
+  }
+});
+
+// ============================================
+// ADMIN: APPROVE PACKAGE
+// ============================================
+router.put('/admin/packages/:centerId/:packageId/approve', requireAdmin, async (req, res) => {
+  try {
+    const center = await NaturopathyCenter.findById(req.params.centerId);
+    if (!center) return res.status(404).json({ success: false, error: 'Center not found' });
+
+    const pkg = center.packages.id(req.params.packageId);
+    if (!pkg) return res.status(404).json({ success: false, error: 'Package not found' });
+
+    pkg.approvalStatus = 'approved';
+    pkg.approvedAt = new Date();
+    pkg.approvedBy = 'admin';
+    pkg.rejectionReason = '';
+    pkg.approvalNotes = req.body.notes || '';
+    await center.save();
+
+    console.log(`[admin.package.approve] ${center.name} → ${pkg.name}`);
+
+    res.json({ success: true, message: 'Package approved', data: pkg });
+  } catch (error) {
+    console.error('[admin.package.approve]', error.message);
+    res.status(500).json({ success: false, error: error.message });
+  }
+});
+
+// ============================================
+// ADMIN: REJECT PACKAGE
+// ============================================
+router.put('/admin/packages/:centerId/:packageId/reject', requireAdmin, async (req, res) => {
+  try {
+    const { reason } = req.body;
+    if (!reason || reason.trim().length < 5) {
+      return res.status(400).json({ success: false, error: 'Rejection reason (min 5 chars) required' });
+    }
+
+    const center = await NaturopathyCenter.findById(req.params.centerId);
+    if (!center) return res.status(404).json({ success: false, error: 'Center not found' });
+
+    const pkg = center.packages.id(req.params.packageId);
+    if (!pkg) return res.status(404).json({ success: false, error: 'Package not found' });
+
+    pkg.approvalStatus = 'rejected';
+    pkg.rejectedAt = new Date();
+    pkg.rejectedBy = 'admin';
+    pkg.rejectionReason = reason.trim().slice(0, 500);
+    await center.save();
+
+    console.log(`[admin.package.reject] ${center.name} → ${pkg.name}: ${reason}`);
+
+    res.json({ success: true, message: 'Package rejected', data: pkg });
+  } catch (error) {
+    console.error('[admin.package.reject]', error.message);
+    res.status(500).json({ success: false, error: error.message });
+  }
+});
+
 module.exports = router;
