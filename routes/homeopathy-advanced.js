@@ -1817,4 +1817,58 @@ router.get('/admin/all-centers', requireAdmin, async (req, res) => {
   }
 });
 
+// ============================================
+// ONE-TIME: Force-set new fields on all centers
+// ============================================
+router.post('/admin/backfill-center-fields', requireAdmin, async (req, res) => {
+  try {
+    const mongoose = require('mongoose');
+    const db = mongoose.connection.db;
+    const collection = db.collection('naturopathycenters');
+
+    const result = await collection.updateMany(
+      {},
+      {
+        $set: {
+          tagline: '',
+          established: null,
+          coverPhoto: '',
+          photos: [],
+          googleMapsUrl: '',
+          nearestAirport: '',
+          distanceFromAirport: null,
+          nearestRailway: '',
+          distanceFromRailway: null,
+          panchakarmaRooms: 0,
+          doctorCount: 0,
+          doctors: [],
+          accreditations: [],
+          'policies.cancellation.freeUntilDays': 7,
+          'policies.cancellation.partialRefundUntilDays': 3,
+          'policies.cancellation.partialRefundPercent': 50,
+          'policies.cancellation.noRefundAfterDays': 2,
+          'policies.checkInTime': '14:00',
+          'policies.checkOutTime': '11:00',
+          'policies.medicalEligibility': [],
+          'policies.companionPolicy': '',
+          'ratingBreakdown.treatment': 0,
+          'ratingBreakdown.accommodation': 0,
+          'ratingBreakdown.food': 0,
+          'ratingBreakdown.staff': 0
+        }
+      }
+    );
+
+    res.json({
+      success: true,
+      message: `Updated ${result.modifiedCount} centers`,
+      matched: result.matchedCount,
+      modified: result.modifiedCount
+    });
+  } catch (error) {
+    console.error('[backfill-center-fields]', error.message);
+    res.status(500).json({ success: false, error: error.message });
+  }
+});
+
 module.exports = router;
