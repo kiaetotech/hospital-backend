@@ -1511,4 +1511,42 @@ router.post('/remedy-match', async (req, res) => {
   });
 });
 
+// ============================================
+// ONE-TIME: Tag existing discounts as Homeopathy-compatible
+// ============================================
+router.post('/admin/discounts/tag-homeopathy', requireAdmin, async (req, res) => {
+  try {
+    const Discount = require('../models/Discount');
+    const { codes, all = false } = req.body;
+
+    const filter = all
+      ? {}
+      : { code: { $in: (codes || []).map(c => String(c).toUpperCase()) } };
+
+    const discounts = await Discount.find(filter);
+    if (discounts.length === 0) {
+      return res.json({ success: true, message: 'No matching discounts', updated: 0 });
+    }
+
+    let updated = 0;
+    for (const d of discounts) {
+      const tags = new Set(d.applicableTags || []);
+      tags.add('homeopathy_all');
+      d.applicableTags = Array.from(tags);
+      await d.save();
+      updated++;
+    }
+
+    res.json({
+      success: true,
+      message: `Tagged ${updated} discounts as homeopathy-compatible`,
+      updated,
+      codes: discounts.map(d => d.code)
+    });
+  } catch (error) {
+    console.error('[homeopathy.discounts.tag]', error.message);
+    res.status(500).json({ success: false, error: error.message });
+  }
+});
+
 module.exports = router;
