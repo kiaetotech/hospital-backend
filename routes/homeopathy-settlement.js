@@ -53,12 +53,35 @@ const requireAdmin = (req, res, next) => {
 // HELPERS
 // ============================================
 const getUserIdFromToken = (user) => {
-  return String(user.id || user._id || user.userId || '');
+  if (!user) return '';
+  // Try every known key the JWT might use
+  const candidates = [user.id, user._id, user.userId, user.doctorId, user.providerId];
+  for (const c of candidates) {
+    if (c) return String(c);
+  }
+  return '';
 };
 
 const isOwner = (req, providerId) => {
+  if (!req.user || !providerId) return false;
+
   const userId = getUserIdFromToken(req.user);
-  return userId === String(providerId);
+  const target = String(providerId);
+
+  // Strict match
+  if (userId && userId === target) return true;
+
+  // Admin bypass
+  if (req.user.role === 'admin') return true;
+
+  // Same role fallback: if token has role 'homeopathy_doctor' and providerType
+  // is 'homeopathy_doctor', trust the ID match across formats
+  if (req.user.role === 'homeopathy_doctor') {
+    const altId = String(req.user.id || req.user._id || '');
+    if (altId && altId.replace(/^0+/, '') === target.replace(/^0+/, '')) return true;
+  }
+
+  return false;
 };
 
 const buildPayoutMatch = (query = {}) => {
