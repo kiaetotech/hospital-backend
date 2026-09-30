@@ -1871,4 +1871,88 @@ router.post('/admin/backfill-center-fields', requireAdmin, async (req, res) => {
   }
 });
 
+// ============================================
+// ONE-TIME MIGRATION: panchakarmaRooms → therapyRooms
+// Safe to run multiple times (idempotent)
+// ============================================
+router.post('/admin/migrate/rename-panchakarma-rooms', requireAdmin, async (req, res) => {
+  const migrationId = 'mig_2026_10_rename_therapy_rooms';
+  const startedAt = new Date();
+
+  try {
+    const mongoose = require('mongoose');
+    const db = mongoose.connection.db;
+    const collection = db.collection('naturopathycenters');
+
+    // Check if already run — log collection with migrationId
+    const migrationsCollection = db.collection('_migrations');
+    const alreadyRan = await migrationsCollection.findOne({ migrationId });
+    if (alreadyRan && !req.body?.force) {
+      return res.json({
+        success: true,
+        message: 'Migration already applied — skipped',
+        migrationId,
+        previouslyRanAt: alreadyRan.ranAt
+      });
+    }
+
+    // Execute the rename — $rename is atomic per-document
+    const result = await collection.updateMany(
+      { panchakarmaRooms: { $exists: true } },
+      { $rename: { 'panchakarmaRooms': 'therapyRooms' } }
+    );
+
+    // Record the migration in a log collection
+    await migrationsCollection.updateOne(
+      { migrationId },
+      {
+        $set: {
+          migrationId,
+          description: 'Rename panchakarmaRooms → therapyRooms',
+          ranAt: startedAt,
+          matched: result.matchedCount,
+          modified: result.modifiedCount,
+          forced: Boolean(req.body?.force)
+        }
+      },
+      { upsert: true }
+    );
+
+    console.log(`[migration:${migrationId}] matched=${result.matchedCount} modified=${result.modifiedCount}`);
+
+    res.json({
+      success: true,
+      migrationId,
+      message: `Renamed field on ${result.modifiedCount} centers`,
+      matched: result.matchedCount,
+      modified: result.modifiedCount,
+      ranAt: startedAt.toISOString()
+    });
+  } catch (error) {
+    console.error(`[migration:${migrationId}] FAILED`, error.message);
+    res.status(500).json({
+      success: false,
+      migrationId,
+      error: error.message
+    });
+  }
+});
+
+// Check migration status
+router.get('/admin/migrate/status', requireAdmin, async (req, res) => {
+  try {
+    const mongoose = require('mongoose');
+    const db = mongoose.connection.db;
+    const migrations = await db.collection('_migrations').find({}).toArray();
+
+    res.json({
+      success: true,
+      count: migrations.length,
+      migrations
+    });
+  } catch (error) {
+    res.status(500).json({ success: false, error: error.message });
+  }
+});
+
 module.exports = router;
