@@ -34,7 +34,7 @@ const discountSchema = new mongoose.Schema({
   // APPLICABILITY
   // ============================================
   
-    applicableTags: [{
+        applicableTags: [{
     type: String,
     enum: [
       // Existing Tags (DO NOT DELETE)
@@ -54,7 +54,13 @@ const discountSchema = new mongoose.Schema({
       'ayurveda_home_therapy',
       'ayurveda_wellness_program',
       'ayurveda_wellness_center',
-      'ayurveda_all'
+      'ayurveda_all',
+      // 🆕 Homeopathy Tags
+      'homeopathy_all',
+      'homeopathy_consultation',
+      'homeopathy_consult',
+      'homeopathy_medicine',
+      'naturopathy_center'
     ]
   }],
   
@@ -297,18 +303,22 @@ discountSchema.methods.canApply = function(amount, bookingType, userId, context 
     }
   }
   
-    // Check applicable tags — with booking type mapper
+        // Check applicable tags — with booking type mapper
   if (this.applicableTags && this.applicableTags.length > 0) {
     const BOOKING_TYPE_TO_DISCOUNT_TAG = {
       'doctor_consultation': 'ayurveda_consultation',
       'wellness_program': 'ayurveda_wellness_program',
       'panchakarma_package': 'ayurveda_panchakarma',
-      'home_therapy': 'ayurveda_home_therapy'
+      'home_therapy': 'ayurveda_home_therapy',
+      // Homeopathy mappings
+      'homeopathy_consult': 'homeopathy_consultation',
+      'homeopathy_medicine': 'homeopathy_medicine',
+      'naturopathy_center': 'naturopathy_center'
     };
     const normalizedBookingType = BOOKING_TYPE_TO_DISCOUNT_TAG[bookingType] || bookingType;
 
     const matches = this.applicableTags.some(tag => {
-      // Direct match (ambulance, opd, labtest, caregiver, loan, ayurveda_*)
+      // Direct match (ambulance, opd, labtest, caregiver, loan, ayurveda_*, homeopathy_*)
       if (tag === normalizedBookingType) return true;
 
       // Hospital umbrella
@@ -326,6 +336,16 @@ discountSchema.methods.canApply = function(amount, bookingType, userId, context 
           'home_therapy'
         ];
         if (ayurvedaTypes.includes(bookingType)) return true;
+      }
+
+      // Homeopathy umbrella — covers all 3 homeopathy sub-types
+      if (tag === 'homeopathy_all') {
+        const homeopathyTypes = [
+          'homeopathy_consult',
+          'homeopathy_medicine',
+          'naturopathy_center'
+        ];
+        if (homeopathyTypes.includes(bookingType)) return true;
       }
 
       // General applies to all
