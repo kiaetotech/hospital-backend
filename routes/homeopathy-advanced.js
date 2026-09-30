@@ -1956,25 +1956,6 @@ router.get('/admin/migrate/status', requireAdmin, async (req, res) => {
 });
 
 // ============================================
-// CENTER AUTH MIDDLEWARE
-// ============================================
-const authenticateCenter = (req, res, next) => {
-  const token = req.headers.authorization?.split(' ')[1];
-  if (!token) return res.status(401).json({ success: false, message: 'Please login' });
-  try {
-    const jwt = require('jsonwebtoken');
-    const decoded = jwt.verify(token, JWT_SECRET);
-    if (decoded.role !== 'naturopathy_center') {
-      return res.status(403).json({ success: false, message: 'Center access required' });
-    }
-    req.center = decoded;
-    next();
-  } catch (e) {
-    return res.status(401).json({ success: false, message: 'Invalid or expired token' });
-  }
-};
-
-// ============================================
 // CENTER: GET OWN PROFILE (dashboard bootstrap)
 // ============================================
 router.get('/center/me', authenticateCenter, async (req, res) => {
