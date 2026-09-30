@@ -54,7 +54,7 @@ const naturopathyCenterSchema = new mongoose.Schema({
   // ============================================
   facilities: [String],
   bedCount: Number,
-  panchakarmaRooms: { type: Number, default: 0 },
+  therapyRooms: { type: Number, default: 0 },
   doctorCount: { type: Number, default: 0 },
 
   // ============================================

@@ -512,7 +512,7 @@ router.put('/center/profile', authenticateCenter, async (req, res) => {
 
     const allowed = [
       'tagline', 'established', 'coverPhoto', 'photos',
-      'facilities', 'bedCount', 'panchakarmaRooms',
+      'facilities', 'bedCount', 'therapyRooms',
       'googleMapsUrl', 'nearestAirport', 'distanceFromAirport',
       'nearestRailway', 'distanceFromRailway',
       'accreditations', 'policies'
@@ -1839,7 +1839,7 @@ router.post('/admin/backfill-center-fields', requireAdmin, async (req, res) => {
           distanceFromAirport: null,
           nearestRailway: '',
           distanceFromRailway: null,
-          panchakarmaRooms: 0,
+          therapyRooms: 0,
           doctorCount: 0,
           doctors: [],
           accreditations: [],
