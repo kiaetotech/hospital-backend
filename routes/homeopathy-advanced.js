@@ -1549,4 +1549,27 @@ router.post('/admin/discounts/tag-homeopathy', requireAdmin, async (req, res) =>
   }
 });
 
+// ============================================
+// ADMIN: Reset doctor password (test helper)
+// ============================================
+router.post('/admin/reset-doctor-password', requireAdmin, async (req, res) => {
+  try {
+    const { phone, newPassword } = req.body;
+    if (!phone || !newPassword || newPassword.length < 6) {
+      return res.status(400).json({ success: false, error: 'phone and newPassword (min 6 chars) required' });
+    }
+    const bcrypt = require('bcryptjs');
+    const doctor = await HomeopathyDoctor.findOne({ phone });
+    if (!doctor) return res.status(404).json({ success: false, error: 'Doctor not found' });
+
+    doctor.password = await bcrypt.hash(newPassword, 10);
+    await doctor.save();
+
+    res.json({ success: true, message: `Password reset for ${doctor.name}`, phone });
+  } catch (error) {
+    console.error('[admin.reset-doctor-password]', error.message);
+    res.status(500).json({ success: false, error: error.message });
+  }
+});
+
 module.exports = router;
