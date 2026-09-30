@@ -2436,4 +2436,170 @@ router.post('/center/settlements/request', authenticateCenter, async (req, res) 
   }
 });
 
+// ============================================
+// CENTER: COMPLAINTS
+// ============================================
+router.get('/center/complaints', authenticateCenter, async (req, res) => {
+  try {
+    const HomeopathyBooking = require('../models/HomeopathyBooking');
+    const centerId = req.center.id;
+
+    const bookings = await HomeopathyBooking.find({
+      center: centerId,
+      'complaints.0': { $exists: true }
+    })
+      .select('bookingId type patient complaints package createdAt updatedAt')
+      .sort({ updatedAt: -1 })
+      .lean();
+
+    const complaints = [];
+    bookings.forEach(b => {
+      (b.complaints || []).forEach(c => {
+        complaints.push({
+          complaintId: c._id,
+          bookingId: b.bookingId,
+          bookingType: b.type,
+          patientName: b.patient?.name || 'Patient',
+          patientPhone: b.patient?.phone || '',
+          packageName: b.package?.name || '',
+          category: c.category,
+          description: c.description,
+          priority: c.priority,
+          status: c.status,
+          adminResponse: c.adminResponse || '',
+          centerResponse: c.centerResponse || '',
+          resolvedAt: c.resolvedAt,
+          createdAt: c.createdAt
+        });
+      });
+    });
+
+    complaints.sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt));
+    res.json({ success: true, data: complaints });
+  } catch (error) {
+    console.error('[center.complaints]', error.message);
+    res.status(500).json({ success: false, error: error.message });
+  }
+});
+
+router.put('/center/complaints/:bookingId/:complaintId/respond', authenticateCenter, async (req, res) => {
+  try {
+    const HomeopathyBooking = require('../models/HomeopathyBooking');
+    const { response } = req.body;
+    if (!response || response.trim().length < 3) {
+      return res.status(400).json({ success: false, error: 'Response must be at least 3 characters' });
+    }
+
+    const booking = await HomeopathyBooking.findOne({
+      bookingId: req.params.bookingId,
+      center: req.center.id
+    });
+    if (!booking) return res.status(404).json({ success: false, error: 'Booking not found' });
+
+    const complaint = booking.complaints.id(req.params.complaintId);
+    if (!complaint) return res.status(404).json({ success: false, error: 'Complaint not found' });
+
+    complaint.centerResponse = response.trim().slice(0, 2000);
+    complaint.centerRespondedAt = new Date();
+    complaint.status = 'in_review';
+    await booking.save();
+
+    res.json({ success: true, message: 'Response submitted', data: complaint });
+  } catch (error) {
+    console.error('[center.complaint.respond]', error.message);
+    res.status(500).json({ success: false, error: error.message });
+  }
+});
+
+router.put('/center/complaints/:bookingId/:complaintId/resolve', authenticateCenter, async (req, res) => {
+  try {
+    const HomeopathyBooking = require('../models/HomeopathyBooking');
+    const booking = await HomeopathyBooking.findOne({
+      bookingId: req.params.bookingId,
+      center: req.center.id
+    });
+    if (!booking) return res.status(404).json({ success: false, error: 'Booking not found' });
+
+    const complaint = booking.complaints.id(req.params.complaintId);
+    if (!complaint) return res.status(404).json({ success: false, error: 'Complaint not found' });
+
+    complaint.status = 'resolved';
+    complaint.resolvedAt = new Date();
+    await booking.save();
+
+    res.json({ success: true, message: 'Complaint resolved', data: complaint });
+  } catch (error) {
+    console.error('[center.complaint.resolve]', error.message);
+    res.status(500).json({ success: false, error: error.message });
+  }
+});
+
+// ============================================
+// CENTER: REVIEWS
+// ============================================
+router.get('/center/reviews', authenticateCenter, async (req, res) => {
+  try {
+    const HomeopathyBooking = require('../models/HomeopathyBooking');
+    const centerId = req.center.id;
+
+    const bookings = await HomeopathyBooking.find({
+      center: centerId,
+      'review.rating': { $exists: true, $ne: null }
+    })
+      .select('bookingId type patient package review centerName createdAt')
+      .sort({ 'review.createdAt': -1 })
+      .lean();
+
+    const reviews = bookings.map(b => ({
+      bookingId: b.bookingId,
+      bookingType: b.type,
+      patientName: b.patient?.name || 'Patient',
+      packageName: b.package?.name || '',
+      rating: b.review?.rating,
+      comment: b.review?.comment,
+      centerResponse: b.review?.centerResponse || '',
+      centerRespondedAt: b.review?.centerRespondedAt,
+      createdAt: b.review?.createdAt
+    }));
+
+    const avg = reviews.length > 0
+      ? Math.round((reviews.reduce((s, r) => s + (r.rating || 0), 0) / reviews.length) * 10) / 10
+      : 0;
+
+    res.json({ success: true, data: reviews, averageRating: avg, totalReviews: reviews.length });
+  } catch (error) {
+    console.error('[center.reviews]', error.message);
+    res.status(500).json({ success: false, error: error.message });
+  }
+});
+
+router.put('/center/reviews/:bookingId/respond', authenticateCenter, async (req, res) => {
+  try {
+    const HomeopathyBooking = require('../models/HomeopathyBooking');
+    const { response } = req.body;
+    if (!response || response.trim().length < 3) {
+      return res.status(400).json({ success: false, error: 'Response must be at least 3 characters' });
+    }
+
+    const booking = await HomeopathyBooking.findOne({
+      bookingId: req.params.bookingId,
+      center: req.center.id
+    });
+    if (!booking) return res.status(404).json({ success: false, error: 'Booking not found' });
+    if (!booking.review || (!booking.review.rating && !booking.review.comment)) {
+      return res.status(404).json({ success: false, error: 'No review on this booking' });
+    }
+
+    booking.review.centerResponse = response.trim().slice(0, 1000);
+    booking.review.centerRespondedAt = new Date();
+    booking.markModified('review');
+    await booking.save();
+
+    res.json({ success: true, message: 'Response submitted', data: booking.review });
+  } catch (error) {
+    console.error('[center.review.respond]', error.message);
+    res.status(500).json({ success: false, error: error.message });
+  }
+});
+
 module.exports = router;
