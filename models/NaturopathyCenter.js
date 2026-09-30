@@ -142,6 +142,21 @@ const naturopathyCenterSchema = new mongoose.Schema({
     createdAt: { type: Date, default: Date.now }
   }],
 
+    // ============================================
+  // ROOM TYPES (accommodation for multi-day programs)
+  // ============================================
+  roomTypes: [{
+    name: { type: String, required: true },       // e.g. Single AC, Double Deluxe
+    description: { type: String, default: '' },
+    price: { type: Number, required: true },       // per night
+    maxOccupancy: { type: Number, default: 1 },
+    amenities: [{ type: String }],
+    photos: [{ type: String }],
+    totalRooms: { type: Number, default: 1 },
+    isActive: { type: Boolean, default: true },
+    createdAt: { type: Date, default: Date.now }
+  }],
+
   // ============================================
   // RATINGS & REVIEWS
   // ============================================

@@ -1955,4 +1955,485 @@ router.get('/admin/migrate/status', requireAdmin, async (req, res) => {
   }
 });
 
+// ============================================
+// CENTER AUTH MIDDLEWARE
+// ============================================
+const authenticateCenter = (req, res, next) => {
+  const token = req.headers.authorization?.split(' ')[1];
+  if (!token) return res.status(401).json({ success: false, message: 'Please login' });
+  try {
+    const jwt = require('jsonwebtoken');
+    const decoded = jwt.verify(token, JWT_SECRET);
+    if (decoded.role !== 'naturopathy_center') {
+      return res.status(403).json({ success: false, message: 'Center access required' });
+    }
+    req.center = decoded;
+    next();
+  } catch (e) {
+    return res.status(401).json({ success: false, message: 'Invalid or expired token' });
+  }
+};
+
+// ============================================
+// CENTER: GET OWN PROFILE (dashboard bootstrap)
+// ============================================
+router.get('/center/me', authenticateCenter, async (req, res) => {
+  try {
+    const center = await NaturopathyCenter.findById(req.center.id)
+      .select('-password -documents -bankDetails')
+      .lean();
+    if (!center) return res.status(404).json({ success: false, error: 'Center not found' });
+
+    // Add setup checklist
+    const checklist = {
+      profileComplete: Boolean(center.description && center.phone && center.address?.city),
+      hasPackage: (center.packages || []).some(p => p.isActive !== false && !p.deleted),
+      hasRoom: (center.roomTypes || []).some(r => r.isActive !== false),
+      policiesConfigured: Boolean(center.policies?.cancellation?.freeUntilDays),
+      photosUploaded: Boolean(center.coverPhoto || (center.photos || []).length > 0)
+    };
+    checklist.allDone = Object.values(checklist).every(Boolean);
+    checklist.completedCount = Object.values(checklist).filter(Boolean).length;
+    checklist.totalSteps = 5;
+
+    res.json({ success: true, data: center, checklist });
+  } catch (error) {
+    res.status(500).json({ success: false, error: error.message });
+  }
+});
+
+// ============================================
+// CENTER: UPDATE PROFILE
+// ============================================
+router.put('/center/profile', authenticateCenter, async (req, res) => {
+  try {
+    const center = await NaturopathyCenter.findById(req.center.id);
+    if (!center) return res.status(404).json({ success: false, error: 'Center not found' });
+
+    const allowed = [
+      'tagline', 'established', 'coverPhoto', 'photos', 'description',
+      'facilities', 'bedCount', 'therapyRooms',
+      'googleMapsUrl', 'nearestAirport', 'distanceFromAirport',
+      'nearestRailway', 'distanceFromRailway',
+      'accreditations'
+    ];
+    allowed.forEach(key => {
+      if (req.body[key] !== undefined) center[key] = req.body[key];
+    });
+
+    if (req.body.address) {
+      center.address = { ...center.address, ...req.body.address };
+    }
+
+    await center.save();
+    res.json({ success: true, message: 'Profile updated', data: center });
+  } catch (error) {
+    res.status(500).json({ success: false, error: error.message });
+  }
+});
+
+// ============================================
+// CENTER: UPDATE POLICIES
+// ============================================
+router.put('/center/policies', authenticateCenter, async (req, res) => {
+  try {
+    const center = await NaturopathyCenter.findById(req.center.id);
+    if (!center) return res.status(404).json({ success: false, error: 'Center not found' });
+
+    if (req.body.policies) {
+      center.policies = { ...center.policies, ...req.body.policies };
+    }
+    await center.save();
+    res.json({ success: true, message: 'Policies updated', data: center.policies });
+  } catch (error) {
+    res.status(500).json({ success: false, error: error.message });
+  }
+});
+
+// ============================================
+// CENTER: PACKAGES CRUD
+// ============================================
+router.get('/center/packages', authenticateCenter, async (req, res) => {
+  try {
+    const center = await NaturopathyCenter.findById(req.center.id).select('packages');
+    if (!center) return res.status(404).json({ success: false, error: 'Center not found' });
+
+    const packages = (center.packages || []).filter(p => !p.deleted);
+    res.json({ success: true, data: packages });
+  } catch (error) {
+    res.status(500).json({ success: false, error: error.message });
+  }
+});
+
+router.post('/center/packages', authenticateCenter, async (req, res) => {
+  try {
+    const center = await NaturopathyCenter.findById(req.center.id);
+    if (!center) return res.status(404).json({ success: false, error: 'Center not found' });
+
+    const {
+      name, description, shortDescription, duration, price, discountPrice,
+      therapies, inclusions, exclusions,
+      includesConsultation, includesAccommodation, includesMeals,
+      includesMedicines, includesYoga, includesAirportTransfer, includesFollowUp,
+      programSchedule, maxCapacity
+    } = req.body;
+
+    if (!name || !price) {
+      return res.status(400).json({ success: false, error: 'name and price required' });
+    }
+
+    const newPackage = {
+      name,
+      description: description || '',
+      shortDescription: shortDescription || '',
+      duration: Number(duration) || 1,
+      price: Number(price),
+      discountPrice: discountPrice ? Number(discountPrice) : null,
+      therapies: therapies || [],
+      inclusions: inclusions || [],
+      exclusions: exclusions || [],
+      includesConsultation: Boolean(includesConsultation),
+      includesAccommodation: Boolean(includesAccommodation),
+      includesMeals: Boolean(includesMeals),
+      includesMedicines: Boolean(includesMedicines),
+      includesYoga: Boolean(includesYoga),
+      includesAirportTransfer: Boolean(includesAirportTransfer),
+      includesFollowUp: Boolean(includesFollowUp),
+      programSchedule: programSchedule || [],
+      maxCapacity: Number(maxCapacity) || 5,
+      currentBookings: 0,
+      isActive: true,
+      approvalStatus: 'pending',
+      submittedAt: new Date(),
+      createdAt: new Date()
+    };
+
+    center.packages.push(newPackage);
+    await center.save();
+
+    const added = center.packages[center.packages.length - 1];
+    res.json({ success: true, message: 'Package submitted for admin approval', data: added });
+  } catch (error) {
+    res.status(500).json({ success: false, error: error.message });
+  }
+});
+
+router.put('/center/packages/:packageId', authenticateCenter, async (req, res) => {
+  try {
+    const center = await NaturopathyCenter.findById(req.center.id);
+    if (!center) return res.status(404).json({ success: false, error: 'Center not found' });
+
+    const pkg = center.packages.id(req.params.packageId);
+    if (!pkg) return res.status(404).json({ success: false, error: 'Package not found' });
+
+    const allowed = [
+      'name', 'description', 'shortDescription', 'duration', 'price', 'discountPrice',
+      'therapies', 'inclusions', 'exclusions',
+      'includesConsultation', 'includesAccommodation', 'includesMeals',
+      'includesMedicines', 'includesYoga', 'includesAirportTransfer', 'includesFollowUp',
+      'programSchedule', 'maxCapacity', 'isActive'
+    ];
+    allowed.forEach(k => {
+      if (req.body[k] !== undefined) pkg[k] = req.body[k];
+    });
+
+    // Any edit resets approval
+    pkg.approvalStatus = 'pending';
+    pkg.submittedAt = new Date();
+
+    await center.save();
+    res.json({ success: true, message: 'Package updated — sent for re-approval', data: pkg });
+  } catch (error) {
+    res.status(500).json({ success: false, error: error.message });
+  }
+});
+
+router.delete('/center/packages/:packageId', authenticateCenter, async (req, res) => {
+  try {
+    const center = await NaturopathyCenter.findById(req.center.id);
+    if (!center) return res.status(404).json({ success: false, error: 'Center not found' });
+
+    const pkg = center.packages.id(req.params.packageId);
+    if (!pkg) return res.status(404).json({ success: false, error: 'Package not found' });
+
+    pkg.deleted = true;
+    pkg.isActive = false;
+    await center.save();
+    res.json({ success: true, message: 'Package deleted' });
+  } catch (error) {
+    res.status(500).json({ success: false, error: error.message });
+  }
+});
+
+// ============================================
+// CENTER: ROOMS CRUD
+// ============================================
+router.get('/center/rooms', authenticateCenter, async (req, res) => {
+  try {
+    const center = await NaturopathyCenter.findById(req.center.id).select('roomTypes');
+    if (!center) return res.status(404).json({ success: false, error: 'Center not found' });
+    res.json({ success: true, data: center.roomTypes || [] });
+  } catch (error) {
+    res.status(500).json({ success: false, error: error.message });
+  }
+});
+
+router.post('/center/rooms', authenticateCenter, async (req, res) => {
+  try {
+    const center = await NaturopathyCenter.findById(req.center.id);
+    if (!center) return res.status(404).json({ success: false, error: 'Center not found' });
+
+    const { name, description, price, maxOccupancy, amenities, photos, totalRooms } = req.body;
+    if (!name || !price) {
+      return res.status(400).json({ success: false, error: 'name and price required' });
+    }
+
+    if (!center.roomTypes) center.roomTypes = [];
+    center.roomTypes.push({
+      name,
+      description: description || '',
+      price: Number(price),
+      maxOccupancy: Number(maxOccupancy) || 1,
+      amenities: amenities || [],
+      photos: photos || [],
+      totalRooms: Number(totalRooms) || 1,
+      isActive: true,
+      createdAt: new Date()
+    });
+
+    await center.save();
+    const added = center.roomTypes[center.roomTypes.length - 1];
+    res.json({ success: true, message: 'Room type added', data: added });
+  } catch (error) {
+    res.status(500).json({ success: false, error: error.message });
+  }
+});
+
+router.put('/center/rooms/:roomId', authenticateCenter, async (req, res) => {
+  try {
+    const center = await NaturopathyCenter.findById(req.center.id);
+    if (!center) return res.status(404).json({ success: false, error: 'Center not found' });
+
+    const room = center.roomTypes.id(req.params.roomId);
+    if (!room) return res.status(404).json({ success: false, error: 'Room not found' });
+
+    const allowed = ['name', 'description', 'price', 'maxOccupancy', 'amenities', 'photos', 'totalRooms', 'isActive'];
+    allowed.forEach(k => {
+      if (req.body[k] !== undefined) room[k] = req.body[k];
+    });
+
+    await center.save();
+    res.json({ success: true, message: 'Room updated', data: room });
+  } catch (error) {
+    res.status(500).json({ success: false, error: error.message });
+  }
+});
+
+router.delete('/center/rooms/:roomId', authenticateCenter, async (req, res) => {
+  try {
+    const center = await NaturopathyCenter.findById(req.center.id);
+    if (!center) return res.status(404).json({ success: false, error: 'Center not found' });
+
+    center.roomTypes.pull({ _id: req.params.roomId });
+    await center.save();
+    res.json({ success: true, message: 'Room deleted' });
+  } catch (error) {
+    res.status(500).json({ success: false, error: error.message });
+  }
+});
+
+// ============================================
+// CENTER: COMPLAINTS
+// ============================================
+router.get('/center/complaints', authenticateCenter, async (req, res) => {
+  try {
+    const HomeopathyBooking = require('../models/HomeopathyBooking');
+    const centerId = req.center.id;
+
+    const bookings = await HomeopathyBooking.find({
+      center: centerId,
+      'complaints.0': { $exists: true }
+    })
+      .select('bookingId type patient complaints package createdAt updatedAt')
+      .sort({ updatedAt: -1 })
+      .lean();
+
+    const complaints = [];
+    bookings.forEach(b => {
+      (b.complaints || []).forEach(c => {
+        complaints.push({
+          complaintId: c._id,
+          bookingId: b.bookingId,
+          bookingType: b.type,
+          patientName: b.patient?.name || 'Patient',
+          patientPhone: b.patient?.phone || '',
+          packageName: b.package?.name || '',
+          category: c.category,
+          description: c.description,
+          priority: c.priority,
+          status: c.status,
+          adminResponse: c.adminResponse || '',
+          centerResponse: c.centerResponse || '',
+          resolvedAt: c.resolvedAt,
+          createdAt: c.createdAt
+        });
+      });
+    });
+
+    complaints.sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt));
+    res.json({ success: true, data: complaints });
+  } catch (error) {
+    res.status(500).json({ success: false, error: error.message });
+  }
+});
+
+router.put('/center/complaints/:bookingId/:complaintId/respond', authenticateCenter, async (req, res) => {
+  try {
+    const HomeopathyBooking = require('../models/HomeopathyBooking');
+    const { response } = req.body;
+    if (!response || response.trim().length < 3) {
+      return res.status(400).json({ success: false, error: 'Response must be at least 3 characters' });
+    }
+
+    const booking = await HomeopathyBooking.findOne({
+      bookingId: req.params.bookingId,
+      center: req.center.id
+    });
+    if (!booking) return res.status(404).json({ success: false, error: 'Booking not found' });
+
+    const complaint = booking.complaints.id(req.params.complaintId);
+    if (!complaint) return res.status(404).json({ success: false, error: 'Complaint not found' });
+
+    complaint.centerResponse = response.trim().slice(0, 2000);
+    complaint.centerRespondedAt = new Date();
+    complaint.status = 'in_review';
+    await booking.save();
+
+    res.json({ success: true, message: 'Response submitted', data: complaint });
+  } catch (error) {
+    res.status(500).json({ success: false, error: error.message });
+  }
+});
+
+router.put('/center/complaints/:bookingId/:complaintId/resolve', authenticateCenter, async (req, res) => {
+  try {
+    const HomeopathyBooking = require('../models/HomeopathyBooking');
+    const booking = await HomeopathyBooking.findOne({
+      bookingId: req.params.bookingId,
+      center: req.center.id
+    });
+    if (!booking) return res.status(404).json({ success: false, error: 'Booking not found' });
+
+    const complaint = booking.complaints.id(req.params.complaintId);
+    if (!complaint) return res.status(404).json({ success: false, error: 'Complaint not found' });
+
+    complaint.status = 'resolved';
+    complaint.resolvedAt = new Date();
+    await booking.save();
+
+    res.json({ success: true, message: 'Complaint resolved', data: complaint });
+  } catch (error) {
+    res.status(500).json({ success: false, error: error.message });
+  }
+});
+
+// ============================================
+// CENTER: REVIEWS
+// ============================================
+router.get('/center/reviews', authenticateCenter, async (req, res) => {
+  try {
+    const HomeopathyBooking = require('../models/HomeopathyBooking');
+    const centerId = req.center.id;
+
+    const bookings = await HomeopathyBooking.find({
+      center: centerId,
+      'review.rating': { $exists: true, $ne: null }
+    })
+      .select('bookingId type patient package review centerName createdAt')
+      .sort({ 'review.createdAt': -1 })
+      .lean();
+
+    const reviews = bookings.map(b => ({
+      bookingId: b.bookingId,
+      bookingType: b.type,
+      patientName: b.patient?.name || 'Patient',
+      packageName: b.package?.name || '',
+      rating: b.review?.rating,
+      comment: b.review?.comment,
+      centerResponse: b.review?.centerResponse || '',
+      centerRespondedAt: b.review?.centerRespondedAt,
+      createdAt: b.review?.createdAt
+    }));
+
+    const avg = reviews.length > 0
+      ? Math.round((reviews.reduce((s, r) => s + (r.rating || 0), 0) / reviews.length) * 10) / 10
+      : 0;
+
+    res.json({ success: true, data: reviews, averageRating: avg, totalReviews: reviews.length });
+  } catch (error) {
+    res.status(500).json({ success: false, error: error.message });
+  }
+});
+
+router.put('/center/reviews/:bookingId/respond', authenticateCenter, async (req, res) => {
+  try {
+    const HomeopathyBooking = require('../models/HomeopathyBooking');
+    const { response } = req.body;
+    if (!response || response.trim().length < 3) {
+      return res.status(400).json({ success: false, error: 'Response must be at least 3 characters' });
+    }
+
+    const booking = await HomeopathyBooking.findOne({
+      bookingId: req.params.bookingId,
+      center: req.center.id
+    });
+    if (!booking) return res.status(404).json({ success: false, error: 'Booking not found' });
+    if (!booking.review || (!booking.review.rating && !booking.review.comment)) {
+      return res.status(404).json({ success: false, error: 'No review on this booking' });
+    }
+
+    booking.review.centerResponse = response.trim().slice(0, 1000);
+    booking.review.centerRespondedAt = new Date();
+    booking.markModified('review');
+    await booking.save();
+
+    res.json({ success: true, message: 'Response submitted', data: booking.review });
+  } catch (error) {
+    res.status(500).json({ success: false, error: error.message });
+  }
+});
+
+// ============================================
+// CENTER: EARNINGS / PAYOUT (delegate to service)
+// ============================================
+router.get('/center/earnings', authenticateCenter, async (req, res) => {
+  try {
+    const homeopathyPayoutService = require('../services/homeopathyPayoutService');
+    const earnings = await homeopathyPayoutService.getProviderEarnings('naturopathy_center', req.center.id);
+    res.json({ success: true, data: earnings });
+  } catch (error) {
+    res.status(400).json({ success: false, error: error.message });
+  }
+});
+
+router.get('/center/settlements', authenticateCenter, async (req, res) => {
+  try {
+    const homeopathyPayoutService = require('../services/homeopathyPayoutService');
+    const history = await homeopathyPayoutService.getSettlementHistory('naturopathy_center', req.center.id);
+    res.json({ success: true, data: history });
+  } catch (error) {
+    res.status(400).json({ success: false, error: error.message });
+  }
+});
+
+router.post('/center/settlements/request', authenticateCenter, async (req, res) => {
+  try {
+    const homeopathyPayoutService = require('../services/homeopathyPayoutService');
+    const settlement = await homeopathyPayoutService.requestSettlement('naturopathy_center', req.center.id);
+    res.json({ success: true, message: 'Settlement requested', data: settlement });
+  } catch (error) {
+    res.status(400).json({ success: false, error: error.message });
+  }
+});
+
 module.exports = router;
