@@ -326,6 +326,21 @@ router.get('/centers/:id', async (req, res) => {
       .sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt))
       .slice(0, 20);
 
+    // Populate doctors list (only approved + active)
+    if (center.doctors && center.doctors.length > 0) {
+      const doctors = await HomeopathyDoctor.find(
+        {
+          _id: { $in: center.doctors },
+          isActive: true,
+          verificationStatus: 'approved'
+        },
+        'name specialization experience education rating totalReviews consultationFee consultationTypes languages about address.city clinicName'
+      ).lean();
+      center.doctors = doctors;
+    } else {
+      center.doctors = [];
+    }
+
     res.json({ success: true, data: center });
   } catch (error) {
     console.error('Center detail error:', error);
@@ -394,6 +409,125 @@ router.post('/center/login', async (req, res) => {
   }
 });
 
+// ============================================
+// CENTER: MANAGE DOCTORS
+// ============================================
+const authenticateCenter = (req, res, next) => {
+  const token = req.headers.authorization?.split(' ')[1];
+  if (!token) return res.status(401).json({ success: false, message: 'Please login' });
+  try {
+    const jwt = require('jsonwebtoken');
+    const decoded = jwt.verify(token, JWT_SECRET);
+    if (decoded.role !== 'naturopathy_center') {
+      return res.status(403).json({ success: false, message: 'Center access required' });
+    }
+    req.center = decoded;
+    next();
+  } catch (e) {
+    return res.status(401).json({ success: false, message: 'Invalid or expired token' });
+  }
+};
+
+// Get center's own doctors
+router.get('/center/my-doctors', authenticateCenter, async (req, res) => {
+  try {
+    const center = await NaturopathyCenter.findById(req.center.id);
+    if (!center) return res.status(404).json({ success: false, error: 'Center not found' });
+
+    const doctors = await HomeopathyDoctor.find(
+      { _id: { $in: center.doctors || [] } },
+      'name specialization experience rating consultationFee isActive verificationStatus'
+    ).lean();
+
+    res.json({ success: true, data: doctors });
+  } catch (error) {
+    res.status(500).json({ success: false, error: error.message });
+  }
+});
+
+// Add doctor to center
+router.post('/center/add-doctor', authenticateCenter, async (req, res) => {
+  try {
+    const { doctorId } = req.body;
+    if (!doctorId) return res.status(400).json({ success: false, error: 'doctorId required' });
+
+    const doctor = await HomeopathyDoctor.findById(doctorId);
+    if (!doctor) return res.status(404).json({ success: false, error: 'Doctor not found' });
+    if (!doctor.isActive || doctor.verificationStatus !== 'approved') {
+      return res.status(400).json({ success: false, error: 'Doctor is not approved' });
+    }
+
+    const center = await NaturopathyCenter.findById(req.center.id);
+    if (!center.doctors) center.doctors = [];
+
+    if (center.doctors.some(id => String(id) === String(doctorId))) {
+      return res.status(400).json({ success: false, error: 'Doctor already added' });
+    }
+
+    center.doctors.push(doctorId);
+    center.doctorCount = center.doctors.length;
+    await center.save();
+
+    res.json({ success: true, message: 'Doctor added', doctorCount: center.doctorCount });
+  } catch (error) {
+    res.status(500).json({ success: false, error: error.message });
+  }
+});
+
+// Remove doctor from center
+router.delete('/center/remove-doctor/:doctorId', authenticateCenter, async (req, res) => {
+  try {
+    const center = await NaturopathyCenter.findById(req.center.id);
+    if (!center) return res.status(404).json({ success: false, error: 'Center not found' });
+
+    center.doctors = (center.doctors || []).filter(id => String(id) !== String(req.params.doctorId));
+    center.doctorCount = center.doctors.length;
+    await center.save();
+
+    res.json({ success: true, message: 'Doctor removed', doctorCount: center.doctorCount });
+  } catch (error) {
+    res.status(500).json({ success: false, error: error.message });
+  }
+});
+
+// List all approved doctors (for center to choose from)
+router.get('/center/all-doctors', authenticateCenter, async (req, res) => {
+  try {
+    const doctors = await HomeopathyDoctor.find(
+      { isActive: true, verificationStatus: 'approved' },
+      'name specialization experience rating consultationFee address.city'
+    ).sort({ rating: -1 }).lean();
+
+    res.json({ success: true, data: doctors });
+  } catch (error) {
+    res.status(500).json({ success: false, error: error.message });
+  }
+});
+
+// Update center profile (photos, policies, facilities, etc.)
+router.put('/center/profile', authenticateCenter, async (req, res) => {
+  try {
+    const center = await NaturopathyCenter.findById(req.center.id);
+    if (!center) return res.status(404).json({ success: false, error: 'Center not found' });
+
+    const allowed = [
+      'tagline', 'established', 'coverPhoto', 'photos',
+      'facilities', 'bedCount', 'panchakarmaRooms',
+      'googleMapsUrl', 'nearestAirport', 'distanceFromAirport',
+      'nearestRailway', 'distanceFromRailway',
+      'accreditations', 'policies'
+    ];
+
+    allowed.forEach(key => {
+      if (req.body[key] !== undefined) center[key] = req.body[key];
+    });
+
+    await center.save();
+    res.json({ success: true, message: 'Profile updated', data: center });
+  } catch (error) {
+    res.status(500).json({ success: false, error: error.message });
+  }
+});
 
 // ============================================
 // PHARMACIES

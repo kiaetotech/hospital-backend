@@ -16,6 +16,14 @@ const naturopathyCenterSchema = new mongoose.Schema({
     default: 'Naturopathy Center'
   },
   description: String,
+  tagline: { type: String, default: '' },
+  established: { type: Number, default: null },
+
+  // ============================================
+  // MEDIA
+  // ============================================
+  coverPhoto: { type: String, default: '' },
+  photos: [{ type: String }],
 
   // ============================================
   // ADDRESS
@@ -32,27 +40,91 @@ const naturopathyCenterSchema = new mongoose.Schema({
     }
   },
 
-  facilities: [String],
-  bedCount: Number,
+  // ============================================
+  // LOCATION / DIRECTIONS
+  // ============================================
+  googleMapsUrl: { type: String, default: '' },
+  nearestAirport: { type: String, default: '' },
+  distanceFromAirport: { type: Number, default: null },
+  nearestRailway: { type: String, default: '' },
+  distanceFromRailway: { type: Number, default: null },
 
   // ============================================
-  // 🆕 PACKAGES (extended with approval + capacity + inclusions)
+  // FACILITIES & CAPACITY
+  // ============================================
+  facilities: [String],
+  bedCount: Number,
+  panchakarmaRooms: { type: Number, default: 0 },
+  doctorCount: { type: Number, default: 0 },
+
+  // ============================================
+  // DOCTORS ASSOCIATED WITH THE CENTER
+  // ============================================
+  doctors: [{ type: mongoose.Schema.Types.ObjectId, ref: 'HomeopathyDoctor' }],
+
+  // ============================================
+  // ACCREDITATIONS (AYUSH, ISO, etc.)
+  // ============================================
+  accreditations: [{
+    name: { type: String, required: true },
+    number: { type: String, default: '' },
+    issuedBy: { type: String, default: '' },
+    verified: { type: Boolean, default: false }
+  }],
+
+  // ============================================
+  // POLICIES
+  // ============================================
+  policies: {
+    cancellation: {
+      freeUntilDays: { type: Number, default: 7 },
+      partialRefundUntilDays: { type: Number, default: 3 },
+      partialRefundPercent: { type: Number, default: 50 },
+      noRefundAfterDays: { type: Number, default: 2 }
+    },
+    checkInTime: { type: String, default: '14:00' },
+    checkOutTime: { type: String, default: '11:00' },
+    medicalEligibility: [{ type: String }],
+    companionPolicy: { type: String, default: '' }
+  },
+
+  // ============================================
+  // PACKAGES
   // ============================================
   packages: [{
     name: { type: String, required: true },
     description: { type: String },
+    shortDescription: { type: String, default: '' },
     duration: { type: Number },              // days
     price: { type: Number, required: true },
     discountPrice: { type: Number, default: null },
     therapies: [{ type: String }],
     inclusions: [{ type: String }],
+    exclusions: [{ type: String }],
     isActive: { type: Boolean, default: true },
 
-    // 🆕 Capacity tracking
+    // Inclusion flags (used by listing card icons)
+    includesConsultation: { type: Boolean, default: false },
+    includesAccommodation: { type: Boolean, default: false },
+    includesMeals: { type: Boolean, default: false },
+    includesMedicines: { type: Boolean, default: false },
+    includesYoga: { type: Boolean, default: false },
+    includesAirportTransfer: { type: Boolean, default: false },
+    includesFollowUp: { type: Boolean, default: false },
+
+    // Day-by-day program schedule
+    programSchedule: [{
+      day: { type: Number },
+      title: { type: String, default: '' },
+      description: { type: String, default: '' },
+      therapies: [{ type: String }]
+    }],
+
+    // Capacity tracking
     currentBookings: { type: Number, default: 0 },
     maxCapacity: { type: Number, default: 5 },
 
-    // 🆕 Admin approval workflow
+    // Admin approval workflow
     approvalStatus: {
       type: String,
       enum: ['pending', 'approved', 'rejected'],
@@ -66,9 +138,7 @@ const naturopathyCenterSchema = new mongoose.Schema({
     rejectionReason: { type: String, default: '' },
     approvalNotes: { type: String, default: '' },
 
-    // Soft delete
     deleted: { type: Boolean, default: false },
-
     createdAt: { type: Date, default: Date.now }
   }],
 
@@ -77,13 +147,24 @@ const naturopathyCenterSchema = new mongoose.Schema({
   // ============================================
   rating: { type: Number, default: 0 },
   totalReviews: { type: Number, default: 0 },
+  ratingBreakdown: {
+    treatment: { type: Number, default: 0 },
+    accommodation: { type: Number, default: 0 },
+    food: { type: Number, default: 0 },
+    staff: { type: Number, default: 0 }
+  },
   reviews: [{
     patient: { type: String },
     patientName: { type: String },
     rating: { type: Number, min: 1, max: 5 },
     review: { type: String },
     packageName: { type: String, default: '' },
+    verified: { type: Boolean, default: false },
     adminApproved: { type: Boolean, default: true },
+    providerResponse: {
+      text: { type: String, default: '' },
+      respondedAt: { type: Date }
+    },
     createdAt: { type: Date, default: Date.now }
   }],
 
