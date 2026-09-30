@@ -145,11 +145,14 @@ const naturopathyCenterSchema = new mongoose.Schema({
     // ============================================
   // ROOM TYPES (accommodation for multi-day programs)
   // ============================================
-  roomTypes: [{
-    name: { type: String, required: true },       // e.g. Single AC, Double Deluxe
+    roomTypes: [{
+    name: { type: String, required: true },
+    type: { type: String, default: 'Standard' },   // Standard / Deluxe / Suite / etc.
     description: { type: String, default: '' },
-    price: { type: Number, required: true },       // per night
+    price: { type: Number, required: true },
+    pricePerNight: { type: Number, default: null }, // alias for compatibility
     maxOccupancy: { type: Number, default: 1 },
+    capacity: { type: Number, default: null },      // alias for compatibility
     amenities: [{ type: String }],
     photos: [{ type: String }],
     totalRooms: { type: Number, default: 1 },
@@ -213,13 +216,30 @@ const naturopathyCenterSchema = new mongoose.Schema({
     upiId: { type: String, default: '' }
   },
 
-  // ============================================
+    // ============================================
   // STATS
   // ============================================
   stats: {
     totalBookings: { type: Number, default: 0 },
     totalRevenue: { type: Number, default: 0 }
   },
+
+  // ============================================
+  // CONTACT (extended)
+  // ============================================
+  contact: {
+    primaryPhone: { type: String, default: '' },
+    secondaryPhone: { type: String, default: '' },
+    whatsapp: { type: String, default: '' },
+    email: { type: String, default: '' },
+    website: { type: String, default: '' }
+  },
+
+  // ============================================
+  // STAFF & DIETARY
+  // ============================================
+  staffCount: { type: Number, default: 0 },
+  dietaryAccommodations: [{ type: String }],
 
   createdAt: { type: Date, default: Date.now }
 });
