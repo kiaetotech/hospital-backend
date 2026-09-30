@@ -351,6 +351,50 @@ router.post('/center/register', async (req, res) => {
   }
 });
 
+    // Center login
+router.post('/center/login', async (req, res) => {
+  try {
+    const { phone, password } = req.body;
+    const bcrypt = require('bcryptjs');
+    const jwt = require('jsonwebtoken');
+
+    if (!phone || !password) {
+      return res.status(400).json({ success: false, error: 'Phone and password required' });
+    }
+
+    const center = await NaturopathyCenter.findOne({ phone });
+    if (!center) return res.status(401).json({ success: false, error: 'Invalid credentials' });
+
+    const valid = await bcrypt.compare(password, center.password);
+    if (!valid) return res.status(401).json({ success: false, error: 'Invalid credentials' });
+
+    if (center.verificationStatus !== 'approved') {
+      return res.status(403).json({ success: false, error: 'Account not approved' });
+    }
+
+    const token = jwt.sign(
+      { id: center._id, role: 'naturopathy_center' },
+      process.env.JWT_SECRET,
+      { expiresIn: '30d' }
+    );
+
+    res.json({
+      success: true,
+      token,
+      center: {
+        id: center._id,
+        _id: center._id,
+        name: center.name,
+        type: center.type
+      }
+    });
+  } catch (error) {
+    console.error('[homeopathy.center.login]', error.message);
+    res.status(500).json({ success: false, error: error.message });
+  }
+});
+
+
 // ============================================
 // PHARMACIES
 // ============================================
@@ -412,6 +456,48 @@ router.post('/pharmacy/register', async (req, res) => {
     await pharmacy.save();
     res.status(201).json({ success: true, message: 'Pharmacy registration submitted' });
   } catch (error) {
+    res.status(500).json({ success: false, error: error.message });
+  }
+});
+
+   // Pharmacy login
+router.post('/pharmacy/login', async (req, res) => {
+  try {
+    const { phone, password } = req.body;
+    const bcrypt = require('bcryptjs');
+    const jwt = require('jsonwebtoken');
+
+    if (!phone || !password) {
+      return res.status(400).json({ success: false, error: 'Phone and password required' });
+    }
+
+    const pharmacy = await Pharmacy.findOne({ phone });
+    if (!pharmacy) return res.status(401).json({ success: false, error: 'Invalid credentials' });
+
+    const valid = await bcrypt.compare(password, pharmacy.password);
+    if (!valid) return res.status(401).json({ success: false, error: 'Invalid credentials' });
+
+    if (pharmacy.verificationStatus !== 'approved') {
+      return res.status(403).json({ success: false, error: 'Account not approved' });
+    }
+
+    const token = jwt.sign(
+      { id: pharmacy._id, role: 'pharmacy' },
+      process.env.JWT_SECRET,
+      { expiresIn: '30d' }
+    );
+
+    res.json({
+      success: true,
+      token,
+      pharmacy: {
+        id: pharmacy._id,
+        _id: pharmacy._id,
+        businessName: pharmacy.businessName
+      }
+    });
+  } catch (error) {
+    console.error('[homeopathy.pharmacy.login]', error.message);
     res.status(500).json({ success: false, error: error.message });
   }
 });
