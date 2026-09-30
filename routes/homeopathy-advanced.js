@@ -1792,4 +1792,29 @@ router.post('/admin/reset-doctor-password', requireAdmin, async (req, res) => {
   }
 });
 
+// ============================================
+// ADMIN: List all centers (including those without packages)
+// ============================================
+router.get('/admin/all-centers', requireAdmin, async (req, res) => {
+  try {
+    const centers = await NaturopathyCenter.find({})
+      .select('name phone email address verificationStatus isActive packages createdAt')
+      .sort({ createdAt: -1 })
+      .lean();
+
+    const withCounts = centers.map(c => ({
+      ...c,
+      totalPackages: (c.packages || []).length,
+      approvedPackages: (c.packages || []).filter(
+        p => p.isActive !== false && p.approvalStatus === 'approved' && !p.deleted
+      ).length
+    }));
+
+    res.json({ success: true, data: withCounts, count: withCounts.length });
+  } catch (error) {
+    console.error('[admin.all-centers]', error.message);
+    res.status(500).json({ success: false, error: error.message });
+  }
+});
+
 module.exports = router;
