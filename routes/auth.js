@@ -8,10 +8,6 @@ const Otp = require('../models/Otp');
 const { authenticateToken } = require('../middleware/auth');
 const smsService = require('../services/smsService');
 
-// ============================================
-// MULTI-ROLE MODEL MAP
-// Each user type maps to its model + contact fields
-// ============================================
 const getModelForUserType = (userType) => {
   const models = {
     patient: {
@@ -21,6 +17,8 @@ const getModelForUserType = (userType) => {
       nameField: 'name',
       passwordField: 'password'
     },
+
+    // ─── Ayurveda ───
     doctor: {
       Model: require('../models/AyurvedaDoctor'),
       phoneField: 'phone',
@@ -35,6 +33,59 @@ const getModelForUserType = (userType) => {
       nameField: 'name',
       passwordField: 'password'
     },
+    ayurveda_doctor: {
+      Model: require('../models/AyurvedaDoctor'),
+      phoneField: 'phone',
+      emailField: 'email',
+      nameField: 'name',
+      passwordField: 'password'
+    },
+    ayurveda_center: {
+      Model: require('../models/WellnessCenter'),
+      phoneField: 'phone',
+      emailField: 'email',
+      nameField: 'name',
+      passwordField: 'password'
+    },
+
+    // ─── Homeopathy ───
+    homeopathy_doctor: {
+      Model: require('../models/HomeopathyDoctor'),
+      phoneField: 'phone',
+      emailField: 'email',
+      nameField: 'name',
+      passwordField: 'password'
+    },
+    homeopathy_center: {
+      Model: require('../models/NaturopathyCenter'),
+      phoneField: 'phone',
+      emailField: 'email',
+      nameField: 'name',
+      passwordField: 'password'
+    },
+    homeopathy_pharmacy: {
+      Model: (() => { try { return require('../models/Pharmacy'); } catch { return null; } })(),
+      phoneField: 'phone',
+      emailField: 'email',
+      nameField: 'name',
+      passwordField: 'password'
+    },
+    naturopathy_center: {
+      Model: require('../models/NaturopathyCenter'),
+      phoneField: 'phone',
+      emailField: 'email',
+      nameField: 'name',
+      passwordField: 'password'
+    },
+    pharmacy: {
+      Model: (() => { try { return require('../models/Pharmacy'); } catch { return null; } })(),
+      phoneField: 'phone',
+      emailField: 'email',
+      nameField: 'name',
+      passwordField: 'password'
+    },
+
+    // ─── Hospital ───
     hospital: {
       Model: (() => { try { return require('../models/Hospital'); } catch { return null; } })(),
       phoneField: 'phone',
@@ -42,6 +93,8 @@ const getModelForUserType = (userType) => {
       nameField: 'name',
       passwordField: 'password'
     },
+
+    // ─── Online Doctor ───
     online_doctor: {
       Model: (() => { try { return require('../models/OnlineDoctor'); } catch { return null; } })(),
       phoneField: 'phone',
@@ -49,6 +102,8 @@ const getModelForUserType = (userType) => {
       nameField: 'name',
       passwordField: 'password'
     },
+
+    // ─── Mental Health ───
     therapist: {
       Model: (() => { try { return require('../models/MentalHealthTherapist'); } catch { return null; } })(),
       phoneField: 'phone',
@@ -56,6 +111,15 @@ const getModelForUserType = (userType) => {
       nameField: 'name',
       passwordField: 'password'
     },
+    mental_therapist: {
+      Model: (() => { try { return require('../models/MentalHealthTherapist'); } catch { return null; } })(),
+      phoneField: 'phone',
+      emailField: 'email',
+      nameField: 'name',
+      passwordField: 'password'
+    },
+
+    // ─── Caregivers ───
     caregiver: {
       Model: (() => { try { return require('../models/Caregiver'); } catch { return null; } })(),
       phoneField: 'phone',
@@ -63,6 +127,8 @@ const getModelForUserType = (userType) => {
       nameField: 'name',
       passwordField: 'password'
     },
+
+    // ─── Diagnostics ───
     diagnostics: {
       Model: (() => { try { return require('../models/DiagnosticsProvider'); } catch { return null; } })(),
       phoneField: 'phone',
@@ -70,6 +136,56 @@ const getModelForUserType = (userType) => {
       nameField: 'name',
       passwordField: 'password'
     },
+
+    // ─── Ambulance ───
+    ambulance: {
+      Model: (() => { try { return require('../models/AmbulanceProvider'); } catch { return null; } })(),
+      phoneField: 'phone',
+      emailField: 'email',
+      nameField: 'name',
+      passwordField: 'password'
+    },
+    ambulance_provider: {
+      Model: (() => { try { return require('../models/AmbulanceProvider'); } catch { return null; } })(),
+      phoneField: 'phone',
+      emailField: 'email',
+      nameField: 'name',
+      passwordField: 'password'
+    },
+
+    // ─── Corporate ───
+    corporate_hr: {
+      Model: (() => { try { return require('../models/CorporateHR'); } catch { return null; } })(),
+      phoneField: 'phone',
+      emailField: 'email',
+      nameField: 'name',
+      passwordField: 'password'
+    },
+    corporate_employee: {
+      Model: (() => { try { return require('../models/CorporateEmployee'); } catch { return null; } })(),
+      phoneField: 'phone',
+      emailField: 'email',
+      nameField: 'name',
+      passwordField: 'password'
+    },
+
+    // ─── Insurance ───
+    insurance: {
+      Model: (() => { try { return require('../models/InsuranceCompany'); } catch { return null; } })(),
+      phoneField: 'phone',
+      emailField: 'email',
+      nameField: 'name',
+      passwordField: 'password'
+    },
+    insurance_company: {
+      Model: (() => { try { return require('../models/InsuranceCompany'); } catch { return null; } })(),
+      phoneField: 'phone',
+      emailField: 'email',
+      nameField: 'name',
+      passwordField: 'password'
+    },
+
+    // ─── Lender ───
     lender: {
       Model: (() => { try { return require('../models/Lender'); } catch { return null; } })(),
       phoneField: 'phone',
@@ -77,8 +193,10 @@ const getModelForUserType = (userType) => {
       nameField: 'name',
       passwordField: 'password'
     },
-    insurance: {
-      Model: (() => { try { return require('../models/InsuranceCompany'); } catch { return null; } })(),
+
+    // ─── Lab ───
+    lab: {
+      Model: (() => { try { return require('../models/Lab'); } catch { return null; } })(),
       phoneField: 'phone',
       emailField: 'email',
       nameField: 'name',
