@@ -329,7 +329,7 @@ router.post('/forgot-password', async (req, res) => {
 
     const user = await Model.findOne(query);
 
-    console.log('[FORGOT-DEBUG]', { userType, email, phone, query, found: !!user, model: config.Model?.modelName });
+    console.log(`[FORGOT-1] userType=${userType} phone=${phone} email=${email} query=${JSON.stringify(query)} found=${!!user} collection=${Model.collection?.name}`);
 
     if (user) {
       try {
