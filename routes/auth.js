@@ -327,11 +327,11 @@ router.post('/forgot-password', async (req, res) => {
       ? { [emailField]: email.toLowerCase().trim() } 
       : { [phoneField]: phone.trim() };
 
-    const user = await Model.findOne(query);
+    console.log('[FORGOT-DEBUG]', { userType, email, phone, query, found: !!user, model: config.Model?.modelName });
 
     if (user) {
       try {
-        const otpDoc = await Otp.createOTP({
+                const otpDoc = await Otp.createOTP({
           phone: user[phoneField],
           email: user[emailField],
           type: 'password_reset',
@@ -342,6 +342,8 @@ router.post('/forgot-password', async (req, res) => {
           sentVia: 'sms',
           expiresIn: 600
         });
+
+        global.__lastOtp = otpDoc.otp;
 
         if (user[phoneField]) {
           try {
@@ -362,11 +364,19 @@ router.post('/forgot-password', async (req, res) => {
       }
     }
 
-    // Same response regardless — no user enumeration
-    res.json({
+        // Same response regardless — no user enumeration
+    const response = {
       success: true,
       message: 'If an account exists with these details, an OTP has been sent.'
-    });
+    };
+
+    // TEMP: expose OTP when SMS isn't configured (remove in production)
+    if (process.env.SHOW_OTP_IN_RESPONSE === 'true' && global.__lastOtp) {
+      response.debugOtp = global.__lastOtp;
+      global.__lastOtp = null;
+    }
+
+    res.json(response);
 
   } catch (error) {
     console.error('Forgot password error:', error.message);
