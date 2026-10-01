@@ -328,9 +328,7 @@ router.post('/forgot-password', async (req, res) => {
       : { [phoneField]: phone.trim() };
 
     const user = await Model.findOne(query);
-
-    console.log(`[FORGOT-1] userType=${userType} phone=${phone} email=${email} query=${JSON.stringify(query)} found=${!!user} collection=${Model.collection?.name}`);
-
+   
     if (user) {
       try {
                 const otpDoc = await Otp.createOTP({
@@ -345,9 +343,7 @@ router.post('/forgot-password', async (req, res) => {
           expiresIn: 600
         });
 
-        global.__lastOtp = otpDoc.otp;
-
-        if (user[phoneField]) {
+         if (user[phoneField]) {
           try {
             await smsService.sendSMS(
               user[phoneField],
@@ -371,13 +367,7 @@ router.post('/forgot-password', async (req, res) => {
       success: true,
       message: 'If an account exists with these details, an OTP has been sent.'
     };
-
-    // TEMP: expose OTP when SMS isn't configured (remove in production)
-    if (process.env.SHOW_OTP_IN_RESPONSE === 'true' && global.__lastOtp) {
-      response.debugOtp = global.__lastOtp;
-      global.__lastOtp = null;
-    }
-
+    
     res.json(response);
 
   } catch (error) {
@@ -428,8 +418,6 @@ router.post('/verify-reset-otp', async (req, res) => {
         // Issue reset token (15 min)
     const resetToken = crypto.randomBytes(32).toString('hex');
 
-    console.log(`[VERIFY] userId=${otpDoc.userId} userType=${userType} refModel=${otpDoc.referenceModel}`);
-
     resetAttempts.set(`reset-token:${resetToken}`, {
       userId: otpDoc.userId,
       userType,
@@ -465,8 +453,6 @@ router.post('/reset-password', async (req, res) => {
       return res.status(400).json({ success: false, message: 'Invalid or expired reset token' });
     }
 
-    console.log(`[RESET] tokenData=${JSON.stringify(tokenData)}`);
-
     if (Date.now() > tokenData.expiresAt) {
       resetAttempts.delete(`reset-token:${resetToken}`);
       return res.status(400).json({ success: false, message: 'Reset token expired' });
@@ -485,8 +471,6 @@ router.post('/reset-password', async (req, res) => {
     const { Model, passwordField } = config;
 
         const user = await Model.findById(tokenData.userId);
-
-    console.log(`[RESET] userType=${tokenData.userType} userId=${tokenData.userId} found=${!!user} collection=${Model.collection?.name}`);
 
     if (!user) {
       resetAttempts.delete(`reset-token:${resetToken}`);
