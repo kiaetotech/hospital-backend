@@ -97,8 +97,9 @@ async function markGenericBookingNoShow() {
         });
         await booking.save();
         processed++;
-      } catch (err) {
+            } catch (err) {
         failed++;
+        console.error(`[no-show:generic] booking ${booking._id} (${booking.bookingId || 'no-id'}): ${err.message}`);
       }
     }
     return { tag: 'generic', processed, failed };
