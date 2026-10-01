@@ -65,14 +65,12 @@ const getUserIdFromToken = (user) => {
 const isOwner = (req, providerId) => {
   if (!req.user || !providerId) return false;
 
+  if (req.user.role === 'admin') return true;
+
   const userId = getUserIdFromToken(req.user);
   const target = String(providerId);
 
-  if (userId && userId === target) return true;
-  if (req.user.role === 'admin') return true;
-  if (['homeopathy_doctor', 'doctor', 'ayurveda_doctor'].includes(req.user.role)) return true;
-
-  return false;
+  return userId && userId === target;
 };
 
 const buildPayoutMatch = (query = {}) => {
