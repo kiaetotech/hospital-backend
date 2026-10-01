@@ -66,17 +66,34 @@ const otpSchema = new mongoose.Schema({
     index: true
   },
     referenceModel: { 
-    type: String,
-    enum: [
-      // Model names (existing)
-      'User', 'Booking', 'InsurancePolicy', 'Hospital', 'Ambulance', 'Caregiver',
-      // User types (multi-role password reset)
-      'patient', 'doctor', 'center', 'hospital', 'online_doctor',
-      'therapist', 'caregiver', 'diagnostics', 'lender', 'insurance',
-      // Model names for password reset
-      'AyurvedaDoctor', 'WellnessCenter', 'OnlineDoctor',
-      'MentalHealthTherapist', 'DiagnosticsProvider', 'Lender', 'InsuranceCompany'
-    ]
+  type: String,
+  enum: [
+    // Model names (existing)
+    'User', 'Booking', 'InsurancePolicy', 'Hospital', 'Ambulance', 'Caregiver',
+
+    // User types (multi-role password reset)
+    'patient', 'doctor', 'center', 'hospital', 'online_doctor',
+    'therapist', 'caregiver', 'diagnostics', 'lender', 'insurance',
+
+    // Model names for password reset
+    'AyurvedaDoctor', 'WellnessCenter', 'OnlineDoctor',
+    'MentalHealthTherapist', 'DiagnosticsProvider', 'Lender', 'InsuranceCompany',
+
+    // ─── New (from auth.js map) ───
+    'ayurveda_doctor', 'ayurveda_center',
+    'homeopathy_doctor', 'homeopathy_center', 'homeopathy_pharmacy',
+    'naturopathy_center', 'pharmacy',
+    'mental_therapist',
+    'ambulance', 'ambulance_provider',
+    'corporate_hr', 'corporate_employee',
+    'insurance_company',
+    'lab',
+
+    // ─── Model class names (fallback safety) ───
+    'HomeopathyDoctor', 'NaturopathyCenter', 'Pharmacy',
+    'AmbulanceProvider', 'CorporateHR', 'CorporateEmployee',
+    'Lab'
+  ]
 },
   
   // ============================================
