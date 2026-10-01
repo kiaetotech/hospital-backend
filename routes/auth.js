@@ -425,8 +425,11 @@ router.post('/verify-reset-otp', async (req, res) => {
       });
     }
 
-    // Issue reset token (15 min)
+        // Issue reset token (15 min)
     const resetToken = crypto.randomBytes(32).toString('hex');
+
+    console.log(`[VERIFY] userId=${otpDoc.userId} userType=${userType} refModel=${otpDoc.referenceModel}`);
+
     resetAttempts.set(`reset-token:${resetToken}`, {
       userId: otpDoc.userId,
       userType,
@@ -457,10 +460,12 @@ router.post('/reset-password', async (req, res) => {
       return res.status(400).json({ success: false, message: 'Reset token and new password required' });
     }
 
-    const tokenData = resetAttempts.get(`reset-token:${resetToken}`);
+        const tokenData = resetAttempts.get(`reset-token:${resetToken}`);
     if (!tokenData) {
       return res.status(400).json({ success: false, message: 'Invalid or expired reset token' });
     }
+
+    console.log(`[RESET] tokenData=${JSON.stringify(tokenData)}`);
 
     if (Date.now() > tokenData.expiresAt) {
       resetAttempts.delete(`reset-token:${resetToken}`);
@@ -479,7 +484,10 @@ router.post('/reset-password', async (req, res) => {
 
     const { Model, passwordField } = config;
 
-    const user = await Model.findById(tokenData.userId);
+        const user = await Model.findById(tokenData.userId);
+
+    console.log(`[RESET] userType=${tokenData.userType} userId=${tokenData.userId} found=${!!user} collection=${Model.collection?.name}`);
+
     if (!user) {
       resetAttempts.delete(`reset-token:${resetToken}`);
       return res.status(404).json({ success: false, message: 'User not found' });
