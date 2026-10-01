@@ -323,9 +323,11 @@ router.post('/forgot-password', async (req, res) => {
 
     const { Model, phoneField, emailField } = config;
 
-    const query = email 
+        const query = email 
       ? { [emailField]: email.toLowerCase().trim() } 
       : { [phoneField]: phone.trim() };
+
+    const user = await Model.findOne(query);
 
     console.log('[FORGOT-DEBUG]', { userType, email, phone, query, found: !!user, model: config.Model?.modelName });
 
