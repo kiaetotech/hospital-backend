@@ -124,9 +124,14 @@ const homeopathyDoctorSchema = new mongoose.Schema({
   // ============================================
   // AVAILABILITY SLOTS
   // ============================================
-  availability: [{
+      availability: [{
     day: String,
-    slots: [{ startTime: String, endTime: String }]
+    slots: [{
+      startTime: String,
+      endTime: String,
+      maxBookings: { type: Number, default: 1 },
+      currentBookings: { type: Number, default: 0 }
+    }]
   }],
 
   // ============================================
