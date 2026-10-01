@@ -42,18 +42,18 @@ const bookingSchema = new mongoose.Schema({
   },
   paymentId: { type: String },
   orderId: { type: String },
-  status: { 
-    type: String, 
+    status: {
+    type: String,
     enum: [
-      'pending', 
-      'confirmed', 
-      'sample_collected', 
-      'processing', 
-      'report_ready', 
-      'completed', 
-      'cancelled', 
-      'shipped', 
-      'out_for_delivery', 
+      'pending',
+      'confirmed',
+      'sample_collected',
+      'processing',
+      'report_ready',
+      'completed',
+      'cancelled',
+      'shipped',
+      'out_for_delivery',
       'delivered',
       'policy_issued',
       // 🚑 NEW: Ambulance emergency statuses
@@ -62,9 +62,10 @@ const bookingSchema = new mongoose.Schema({
       'driver_arrived',
       'patient_onboard',
       'arrived_hospital',
-      'no_driver_found'
-    ], 
-    default: 'pending' 
+      'no_driver_found',
+      'no_show'
+    ],
+    default: 'pending'
   },
   createdAt: { type: Date, default: Date.now },
   
@@ -280,19 +281,19 @@ const bookingSchema = new mongoose.Schema({
   // STATUS TRACKING
   // ============================================
   
-  statusHistory: [{
-    status: { 
-      type: String, 
+    statusHistory: [{
+    status: {
+      type: String,
       enum: [
-        'pending', 
-        'confirmed', 
-        'sample_collected', 
-        'processing', 
-        'report_ready', 
-        'completed', 
-        'cancelled', 
-        'shipped', 
-        'out_for_delivery', 
+        'pending',
+        'confirmed',
+        'sample_collected',
+        'processing',
+        'report_ready',
+        'completed',
+        'cancelled',
+        'shipped',
+        'out_for_delivery',
         'delivered',
         'policy_issued',
         // 🚑 Ambulance statuses in history
@@ -301,8 +302,9 @@ const bookingSchema = new mongoose.Schema({
         'driver_arrived',
         'patient_onboard',
         'arrived_hospital',
-        'no_driver_found'
-      ] 
+        'no_driver_found',
+        'no_show'
+      ]
     },
     timestamp: { type: Date, default: Date.now },
     note: { type: String }
