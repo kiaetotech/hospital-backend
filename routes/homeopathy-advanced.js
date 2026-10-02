@@ -126,6 +126,42 @@ router.get('/doctor/:id/availability', async (req, res) => {
   }
 });
 
+// Build expanded slots from sessions (called from doctor dashboard)
+router.post('/doctor/availability/build', async (req, res) => {
+  try {
+    const { doctorId, weekly } = req.body;
+    // weekly = [{ day: 'Monday', active: true, sessions: [{start:'09:00 AM',end:'01:00 PM'}], slotDuration: 20, maxPerSlot: 1 }]
+
+    if (!doctorId || !Array.isArray(weekly)) {
+      return res.status(400).json({ success: false, error: 'doctorId and weekly[] required' });
+    }
+
+    const doctor = await HomeopathyDoctor.findById(doctorId);
+    if (!doctor) return res.status(404).json({ success: false, error: 'Doctor not found' });
+
+    const { expandSessionsToSlots } = require('../utils/slotHelper');
+
+    const availability = weekly
+      .filter(d => d.active && Array.isArray(d.sessions) && d.sessions.length > 0)
+      .map(d => ({
+        day: d.day,
+        slots: expandSessionsToSlots(d.sessions, d.slotDuration || 30, d.maxPerSlot || 1)
+      }));
+
+    doctor.availability = availability;
+    await doctor.save();
+
+    res.json({
+      success: true,
+      message: 'Availability saved',
+      data: { availability, totalSlots: availability.reduce((s, d) => s + d.slots.length, 0) }
+    });
+  } catch (error) {
+    console.error('[homeopathy.availability.build]', error.message);
+    res.status(500).json({ success: false, error: error.message });
+  }
+});
+
 router.put('/doctor/availability', async (req, res) => {
   try {
     const { doctorId, availability } = req.body;
