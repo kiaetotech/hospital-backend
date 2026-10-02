@@ -269,6 +269,20 @@ router.post('/create', authenticatePatient, async (req, res) => {
         return res.status(400).json({ success: false, message: 'Invalid discount code' });
       }
 
+	      // Tag filter — accept homeopathy-tagged or global discounts only
+      const allowedTags = [
+        'homeopathy_all', 'homeopathy_consultation', 'homeopathy_medicine',
+        'naturopathy_center', 'all', 'general'
+      ];
+      const tagList = discount.applicableTags || [];
+      const isCompatible = tagList.length === 0 || tagList.some(t => allowedTags.includes(t));
+      if (!isCompatible) {
+        return res.status(400).json({
+          success: false,
+          message: 'This discount is not applicable to Homeopathy services'
+        });
+      }
+
        const canApply = discount.canApply(amount, type, req.user.id, {
         city: providerCity,
         state: providerState,
