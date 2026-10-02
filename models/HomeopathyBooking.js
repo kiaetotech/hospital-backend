@@ -439,12 +439,11 @@ homeopathyBookingSchema.methods.generateOtp = function() {
 
 homeopathyBookingSchema.methods.verifyOtp = async function(otp) {
   if (this.otpAttempts >= 5) {
-    throw new Error('Too many OTP attempts. Please request a new OTP.');
+    throw new Error('Too many OTP attempts. Please contact support.');
   }
 
-  if (this.otpExpiry < new Date()) {
-    throw new Error('OTP expired. Please request a new OTP.');
-  }
+  // OTP stays valid until used or booking completes/cancels.
+  // No time-based expiry — patients often book days in advance.
 
   if (this.otp !== otp) {
     this.otpAttempts += 1;
