@@ -1414,7 +1414,19 @@ router.post('/admin/commission-resolve', requireAdmin, async (req, res) => {
 router.get('/admin/discounts', requireAdmin, async (req, res) => {
   try {
     const Discount = require('../models/Discount');
-    const discounts = await Discount.find({})
+    const homeopathyTags = [
+      'homeopathy_all',
+      'homeopathy_consultation',
+      'homeopathy_medicine',
+      'naturopathy_center'
+    ];
+    // Return discounts that apply to homeopathy OR are global (all/general)
+    const discounts = await Discount.find({
+      $or: [
+        { applicableTags: { $in: homeopathyTags } },
+        { applicableTags: { $in: ['all', 'general'] } }
+      ]
+    })
       .sort({ createdAt: -1 })
       .limit(500)
       .lean();
