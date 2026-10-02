@@ -269,27 +269,7 @@ router.post('/create', authenticatePatient, async (req, res) => {
         return res.status(400).json({ success: false, message: 'Invalid discount code' });
       }
 
-      // Map homeopathy booking type → tag names the discount model understands
-      const homeopathyTags = [];
-      if (type === 'homeopathy_consult')      homeopathyTags.push('homeopathy_consultation', 'homeopathy_consult');
-      if (type === 'homeopathy_medicine')     homeopathyTags.push('homeopathy_medicine');
-      if (type === 'naturopathy_center')      homeopathyTags.push('naturopathy_center');
-      homeopathyTags.push('homeopathy_all');
-
-      const applicableTags = discount.applicableTags || [];
-      const isCompatible =
-        applicableTags.includes('all') ||
-        applicableTags.includes('homeopathy_all') ||
-        applicableTags.some(tag => homeopathyTags.includes(tag));
-
-      if (!isCompatible) {
-        return res.status(400).json({
-          success: false,
-          message: 'This discount is not applicable to Homeopathy services'
-        });
-      }
-
-      const canApply = discount.canApply(amount, type, req.user.id, {
+       const canApply = discount.canApply(amount, type, req.user.id, {
         city: providerCity,
         state: providerState,
         providerId: doctorId || centerId || pharmacyId
