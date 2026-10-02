@@ -162,6 +162,41 @@ router.post('/doctor/availability/build', async (req, res) => {
   }
 });
 
+// Build expanded slots from sessions (called from doctor dashboard)
+router.post('/doctor/availability/build', async (req, res) => {
+  try {
+    const { doctorId, weekly } = req.body;
+
+    if (!doctorId || !Array.isArray(weekly)) {
+      return res.status(400).json({ success: false, error: 'doctorId and weekly[] required' });
+    }
+
+    const doctor = await HomeopathyDoctor.findById(doctorId);
+    if (!doctor) return res.status(404).json({ success: false, error: 'Doctor not found' });
+
+    const { expandSessionsToSlots } = require('../utils/slotHelper');
+
+    const availability = weekly
+      .filter(d => d.active && Array.isArray(d.sessions) && d.sessions.length > 0)
+      .map(d => ({
+        day: d.day,
+        slots: expandSessionsToSlots(d.sessions, d.slotDuration || 30, d.maxPerSlot || 1)
+      }));
+
+    doctor.availability = availability;
+    await doctor.save();
+
+    res.json({
+      success: true,
+      message: 'Availability saved',
+      data: { availability, totalSlots: availability.reduce((s, d) => s + d.slots.length, 0) }
+    });
+  } catch (error) {
+    console.error('[homeopathy.availability.build]', error.message);
+    res.status(500).json({ success: false, error: error.message });
+  }
+});
+
 router.put('/doctor/availability', async (req, res) => {
   try {
     const { doctorId, availability } = req.body;
@@ -1370,6 +1405,23 @@ router.post('/admin/commission-resolve', requireAdmin, async (req, res) => {
     res.json({ success: true, data: config });
   } catch (error) {
     res.status(500).json({ success: false, error: error.message });
+  }
+});
+
+// ============================================
+// ADMIN: GET ALL DISCOUNTS (Homeopathy view — shares collection with all tags)
+// ============================================
+router.get('/admin/discounts', requireAdmin, async (req, res) => {
+  try {
+    const Discount = require('../models/Discount');
+    const discounts = await Discount.find({})
+      .sort({ createdAt: -1 })
+      .limit(500)
+      .lean();
+    res.json({ success: true, data: discounts, total: discounts.length });
+  } catch (error) {
+    console.error('[homeopathy.admin.discounts]', error.message);
+    res.status(500).json({ success: false, message: 'Failed to fetch discounts' });
   }
 });
 
