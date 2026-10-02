@@ -460,7 +460,7 @@ router.post('/create', authenticatePatient, async (req, res) => {
 
     // ── SMS ──
     try {
-      await smsService.sendSms(
+      await smsService.sendSMS(
         patientPhone || req.user.phone,
         `Your Homeopathy booking ${booking.bookingId} is pending payment. OTP: ${booking.otp}`
       );
@@ -613,7 +613,7 @@ router.post('/resend-otp', authenticatePatient, async (req, res) => {
     await booking.save();
 
     try {
-      await smsService.sendSms(
+      await smsService.sendSMS(
         booking.patient.phone,
         `Your new OTP for booking ${booking.bookingId} is: ${newOtp}`
       );
@@ -1078,7 +1078,7 @@ router.put('/:bookingId/cancel', authenticatePatient, async (req, res) => {
     }
 
     try {
-      await smsService.sendSms(
+      await smsService.sendSMS(
         booking.patient.phone,
         `Your Homeopathy booking ${booking.bookingId} has been cancelled. Refund: ₹${refundAmount}`
       );
@@ -1728,13 +1728,13 @@ router.put('/admin/complaints/:bookingId/:complaintId', requireAdmin, async (req
           `Please respond within 24 hours.`;
 
         if (booking.doctor && booking.doctorPhone) {
-          try { await smsService.sendSms(booking.doctorPhone, notificationMessage); } catch (e) {}
+          try { await smsService.sendSMS(booking.doctorPhone, notificationMessage); } catch (e) {}
         }
         if (booking.center && booking.centerPhone) {
-          try { await smsService.sendSms(booking.centerPhone, notificationMessage); } catch (e) {}
+          try { await smsService.sendSMS(booking.centerPhone, notificationMessage); } catch (e) {}
         }
         if (booking.pharmacy && booking.pharmacyPhone) {
-          try { await smsService.sendSms(booking.pharmacyPhone, notificationMessage); } catch (e) {}
+          try { await smsService.sendSMS(booking.pharmacyPhone, notificationMessage); } catch (e) {}
         }
       } catch (notifyError) {
         console.error('Escalation notify error (non-fatal):', notifyError.message);
@@ -2022,7 +2022,7 @@ router.put('/admin/mark-no-show/:bookingId', requireAdmin, async (req, res) => {
 
     try {
       if (booking.patient?.phone) {
-        await smsService.sendSms(
+        await smsService.sendSMS(
           booking.patient.phone,
           `Your Homeopathy appointment on ${new Date(booking.bookingDate).toLocaleDateString()} was marked as no-show. Booking ID: ${booking.bookingId}. No refund applicable.`
         );

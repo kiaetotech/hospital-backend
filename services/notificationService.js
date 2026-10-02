@@ -990,4 +990,31 @@ const notificationService = {
   }
 };
 
+notificationService.sendBookingConfirmation = async (booking) => {
+  try {
+    if (!booking) return { success: false, reason: 'no_booking' };
+    const patientPhone = booking.patient?.phone;
+    const patientEmail = booking.patient?.email;
+    if (!patientPhone && !patientEmail) return { success: false, reason: 'no_contact' };
+
+    const tag = String(booking.type || '').includes('homeopathy') ? 'Homeopathy' : 'Healthcare';
+    const date = booking.bookingDate ? new Date(booking.bookingDate).toLocaleDateString('en-IN', { day: 'numeric', month: 'short' }) : '';
+    const provider = booking.doctorName || booking.centerName || booking.pharmacyName || '';
+
+    const msg = `${tag} booking confirmed! ID: ${booking.bookingId}. ` +
+                (provider ? `Provider: ${provider}. ` : '') +
+                (date ? `Date: ${date}. ` : '') +
+                (booking.slotTime ? `Time: ${booking.slotTime}. ` : '') +
+                `OTP: ${booking.otp || 'N/A'} — show this at consultation. - KiaetoCare`;
+
+    if (patientPhone) {
+      try { await notificationService.sendSMS(patientPhone, msg, 'high'); } catch (e) { console.error('[notif.confirm.sms]', e.message); }
+    }
+    return { success: true };
+  } catch (error) {
+    console.error('[notif.confirm]', error.message);
+    return { success: false, error: error.message };
+  }
+};
+
 module.exports = notificationService;
