@@ -565,13 +565,25 @@ router.post('/verify-payment', authenticatePatient, async (req, res) => {
 // ============================================
 // VERIFY OTP
 // ============================================
-router.post('/verify-otp', authenticatePatient, async (req, res) => {
+router.post('/verify-otp', authenticateUser, async (req, res) => {
   try {
     const { bookingId, otp } = req.body;
 
-    const booking = await HomeopathyBooking.findOne({ bookingId, userId: req.user.id });
+    const booking = await HomeopathyBooking.findOne({ bookingId });
     if (!booking) {
       return res.status(404).json({ success: false, message: 'Booking not found' });
+    }
+
+    // Allow patient, doctor, center, pharmacy, or admin
+    const userIdStr = String(req.user.id || req.user._id || '');
+    const isPatient = String(booking.userId) === userIdStr;
+    const isDoctor = booking.doctor && String(booking.doctor) === userIdStr;
+    const isCenter = booking.center && String(booking.center) === userIdStr;
+    const isPharmacy = booking.pharmacy && String(booking.pharmacy) === userIdStr;
+    const isAdmin = req.user.role === 'admin';
+
+    if (!isPatient && !isDoctor && !isCenter && !isPharmacy && !isAdmin) {
+      return res.status(403).json({ success: false, message: 'You cannot verify this booking' });
     }
     if (booking.paymentStatus !== 'paid') {
       return res.status(400).json({ success: false, message: 'Payment required before OTP verification' });
