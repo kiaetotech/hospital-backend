@@ -232,6 +232,7 @@ discountSchema.methods.calculateDiscount = function(amount) {
 
 // Check if discount can be applied to a booking
 discountSchema.methods.canApply = function(amount, bookingType, userId, context = {}) {
+  console.log('[DISCOUNT.CANAPPLY] v2 reached with bookingType=', bookingType, 'tags=', this.applicableTags);
   const now = new Date();
   
   // Check if active
