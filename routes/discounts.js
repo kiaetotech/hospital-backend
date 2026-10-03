@@ -25,6 +25,7 @@ const {
 // ============================================
 
 router.post('/validate', async (req, res) => {
+  console.log('[VALIDATE.ROUTE] hit with', req.body);
   try {
     const { code, amount, bookingType } = req.body;
     
