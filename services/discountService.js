@@ -95,11 +95,15 @@ const validateDiscount = async (code, amount, bookingType = 'general', userId = 
     
         // Check applicable tags — with booking type mapper
     if (discount.applicableTags && discount.applicableTags.length > 0) {
-      const BOOKING_TYPE_TO_DISCOUNT_TAG = {
+            const BOOKING_TYPE_TO_DISCOUNT_TAG = {
         'doctor_consultation': 'ayurveda_consultation',
         'wellness_program': 'ayurveda_wellness_program',
         'panchakarma_package': 'ayurveda_panchakarma',
-        'home_therapy': 'ayurveda_home_therapy'
+        'home_therapy': 'ayurveda_home_therapy',
+        // Homeopathy aliases — map to canonical discount tags
+        'homeopathy_consult': 'homeopathy_consultation',
+        'homeopathy_medicine': 'homeopathy_medicine',
+        'naturopathy_center': 'naturopathy_center'
       };
       const normalizedBookingType = BOOKING_TYPE_TO_DISCOUNT_TAG[bookingType] || bookingType;
 
@@ -122,6 +126,17 @@ const validateDiscount = async (code, amount, bookingType = 'general', userId = 
             'home_therapy'
           ];
           if (ayurvedaTypes.includes(bookingType)) return true;
+        }
+
+        // Homeopathy umbrella — covers all homeopathy sub-types
+        if (tag === 'homeopathy_all') {
+          const homeopathyTypes = [
+            'homeopathy_consult',
+            'homeopathy_consultation',
+            'homeopathy_medicine',
+            'naturopathy_center'
+          ];
+          if (homeopathyTypes.includes(bookingType)) return true;
         }
 
         // General applies to all
