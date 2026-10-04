@@ -1258,8 +1258,12 @@ router.get('/doctor/:doctorId', authenticateUser, async (req, res) => {
 // ============================================
 router.get('/center/:centerId', authenticateUser, async (req, res) => {
   try {
+    const { centerId } = req.params;
+    if (!centerId || centerId === 'undefined' || centerId === 'null') {
+      return res.status(400).json({ success: false, message: 'Valid center ID required' });
+    }
     const { status, page = 1, limit = 10 } = req.query;
-    const query = { center: req.params.centerId };
+    const query = { center: centerId };
     if (status) query.status = status;
 
     const skip = (parseInt(page) - 1) * parseInt(limit);
