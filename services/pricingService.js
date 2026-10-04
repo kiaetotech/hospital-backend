@@ -73,11 +73,12 @@ const BOOKING_TYPE_MAP = {
     platformFeeKey: 'medicine',
     rateKey: 'medicineRate',
   },
-    naturopathy_center: {
+      naturopathy_center: {
     serviceType: 'naturopathy_center',
     platformFeeKey: 'wellnessCenter',
     rateKey: 'wellnessCenterRate',
-  },
+  }
+};
 
 // ────────────────────────────────────────────────
 // Resolve config — scope-aware, with fallback
