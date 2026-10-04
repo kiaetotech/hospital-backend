@@ -10,19 +10,49 @@ const homeopathyDoctorSchema = new mongoose.Schema({
   email: { type: String },
   password: { type: String },
 
-  specialization: {
+    specialization: {
     type: String,
     enum: [
       'Classical Homeopathy',
       'Clinical Homeopathy',
+      'Pediatric Homeopathy',
+      "Women's Homeopathy",
+      'Homeopathy for Skin',
+      'Homeopathy for Hair',
+      'Constitutional Homeopathy',
+      'Acute Homeopathy',
+      'Homeopathy for Allergies',
+      'Homeopathy for Digestion',
+      'Homeopathy for Respiratory',
+      'Homeopathy for Joint & Arthritis',
       'Naturopathy',
       'Yoga & Naturopathy',
       'Diet Therapy',
-      'Acupuncture',
-      'Biochemic Medicine',
-      'Bach Flower Therapy'
+      'Acupuncture'
     ],
     required: true
+  },
+  specializations: [{
+    type: String,
+    enum: [
+      'Classical Homeopathy',
+      'Clinical Homeopathy',
+      'Pediatric Homeopathy',
+      "Women's Homeopathy",
+      'Homeopathy for Skin',
+      'Homeopathy for Hair',
+      'Constitutional Homeopathy',
+      'Acute Homeopathy',
+      'Homeopathy for Allergies',
+      'Homeopathy for Digestion',
+      'Homeopathy for Respiratory',
+      'Homeopathy for Joint & Arthritis',
+      'Naturopathy',
+      'Yoga & Naturopathy',
+      'Diet Therapy',
+      'Acupuncture'
+    ]
+  }],
   },
   experience: { type: Number, required: true },
   education: { type: String },
@@ -394,8 +424,11 @@ homeopathyDoctorSchema.statics.findCorporateDoctors = function(filters = {}) {
   if (filters.city) {
     query['address.city'] = { $regex: filters.city, $options: 'i' };
   }
-  if (filters.specialization) {
-    query.specialization = filters.specialization;
+    if (filters.specialization) {
+    query.$or = [
+      { specialization: filters.specialization },
+      { specializations: filters.specialization }
+    ];
   }
   if (filters.minEmployees) {
     query.minEmployees = { $lte: parseInt(filters.minEmployees) };
