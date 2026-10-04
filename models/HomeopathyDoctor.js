@@ -53,7 +53,6 @@ const homeopathyDoctorSchema = new mongoose.Schema({
       'Acupuncture'
     ]
   }],
-  },
   experience: { type: Number, required: true },
   education: { type: String },
   about: { type: String },
