@@ -19,7 +19,7 @@ const homeopathyBookingSchema = new mongoose.Schema({
     email: { type: String },
     abhaId: { type: String },
     age: { type: Number },
-    gender: { type: String, enum: ['male', 'female', 'other'] }
+    gender: { type: String, enum: ['male', 'female', 'other', ''], default: '' }
   },
 
   // ============================================
