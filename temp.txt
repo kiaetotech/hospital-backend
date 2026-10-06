@@ -1,2 +1,0 @@
-require('./models/TestMaster'); 
-require('./models/TestPricing'); 

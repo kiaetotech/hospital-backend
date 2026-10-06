@@ -1824,16 +1824,104 @@ router.get('/pharmacy', async (req, res) => {
 });
 
 // ============================================
-// STUB — Remedy Matcher (not yet implemented)
+// REMEDY MATCHER AI — Groq + Gemini fallback
 // ============================================
 router.post('/remedy-match', async (req, res) => {
-  res.status(503).json({
-    success: false,
-    message: 'Remedy Matcher AI is coming soon.',
-    code: 'NOT_IMPLEMENTED'
-  });
-});
+  try {
+    const { symptoms, age, gender, duration, chronic } = req.body || {};
 
+    if (!symptoms || typeof symptoms !== 'string' || symptoms.trim().length < 5) {
+      return res.status(400).json({
+        success: false,
+        message: 'Please describe your symptoms (at least 5 characters).'
+      });
+    }
+
+    const aiService = require('../services/aiService');
+
+    const prompt = `You are an experienced classical homeopath. Analyze the patient's symptoms and suggest 3-5 homeopathic remedies.
+
+PATIENT DETAILS:
+- Symptoms: ${symptoms.trim()}
+- Age: ${age || 'not specified'}
+- Gender: ${gender || 'not specified'}
+- Duration: ${duration || 'not specified'}
+- Chronic: ${chronic ? 'yes' : 'no'}
+
+Return ONLY valid JSON (no markdown, no code fences) in this EXACT structure:
+{
+  "remedies": [
+    {
+      "name": "Remedy Latin name (e.g. Belladonna)",
+      "potency": "e.g. 30C",
+      "reason": "1-2 sentences explaining why this remedy matches the symptoms",
+      "confidence": "High" or "Medium" or "Low"
+    }
+  ],
+  "disclaimer": "These are AI suggestions only. Consult a qualified homeopath before taking any remedy."
+}
+
+RULES:
+- Suggest 3-5 remedies, ordered by confidence
+- Use classical homeopathy principles (like cures like, totality of symptoms)
+- Potency: 30C for acute, 200C for chronic (mention in reason)
+- Confidence: "High" if symptoms strongly match, "Medium" if partial, "Low" if general
+- Do NOT include dosages or frequency — that requires a doctor
+- Keep reasons short (max 2 sentences)`;
+
+    let result = await aiService.callGroq(prompt);
+
+    if (!result) {
+      console.log('[remedy-match] Groq failed, trying Gemini');
+      result = await aiService.callGemini(prompt);
+    }
+
+    if (!result || !Array.isArray(result.remedies) || result.remedies.length === 0) {
+      return res.status(500).json({
+        success: false,
+        message: 'Unable to generate remedy suggestions right now. Please try again.'
+      });
+    }
+
+    // Sanitize + cap at 5
+    const remedies = result.remedies.slice(0, 5).map((r) => ({
+      name: String(r.name || '').slice(0, 100),
+      potency: String(r.potency || '30C').slice(0, 20),
+      reason: String(r.reason || '').slice(0, 500),
+      confidence: ['High', 'Medium', 'Low'].includes(r.confidence) ? r.confidence : 'Medium'
+    })).filter(r => r.name);
+
+    // Optional: fetch available homeopathy doctors in patient's city
+    let availableDoctors = [];
+    try {
+      const HomeopathyDoctor = require('../models/HomeopathyDoctor');
+      const city = req.query.city || req.body.city || '';
+      const query = { isVerified: true, isActive: true };
+      if (city) query['address.city'] = new RegExp(`^${city}$`, 'i');
+      availableDoctors = await HomeopathyDoctor.find(query)
+        .select('name specialization rating consultationFee')
+        .limit(3)
+        .lean();
+    } catch (docErr) {
+      console.warn('[remedy-match] doctor fetch failed:', docErr.message);
+    }
+
+    res.json({
+      success: true,
+      data: {
+        remedies,
+        disclaimer: result.disclaimer || 'These are AI suggestions only. Consult a qualified homeopath before taking any remedy.',
+        availableDoctors
+      }
+    });
+  } catch (error) {
+    console.error('[remedy-match] error:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Something went wrong. Please try again.'
+    });
+  }
+});
 // ============================================
 // ONE-TIME: Tag existing discounts as Homeopathy-compatible
 // ============================================
