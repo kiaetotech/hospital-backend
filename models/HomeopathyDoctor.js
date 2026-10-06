@@ -132,11 +132,18 @@ const homeopathyDoctorSchema = new mongoose.Schema({
   // ============================================
   // VERIFICATION
   // ============================================
-  verificationStatus: {
+    verificationStatus: {
     type: String,
-    enum: ['pending', 'approved', 'rejected'],
+    enum: ['pending', 'approved', 'rejected', 'suspended'],
     default: 'pending'
   },
+  verificationHistory: [{
+    action: { type: String, enum: ['pending', 'approved', 'rejected', 'suspended', 'unsuspended'] },
+    at: { type: Date, default: Date.now },
+    reason: { type: String }
+  }],
+  suspendedReason: { type: String },
+  suspendedAt: { type: Date },
   isActive: { type: Boolean, default: false },
   verifiedKyc: { type: Boolean, default: false },
   verifiedBy: String,
@@ -200,11 +207,16 @@ const homeopathyDoctorSchema = new mongoose.Schema({
     name: { type: String, required: true },
     description: { type: String },
     pricePerEmployee: { type: Number, required: true },
-    approvalStatus: {
+     approvalStatus: {
       type: String,
       enum: ['pending', 'approved', 'rejected'],
       default: 'approved'
     },
+    approvalHistory: [{
+      action: { type: String, enum: ['pending', 'approved', 'rejected'] },
+      at: { type: Date, default: Date.now },
+      reason: { type: String }
+    }],
     rejectionReason: { type: String },
     approvedAt: { type: Date },
     duration: {

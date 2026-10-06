@@ -20,7 +20,14 @@ const pharmacySchema = new mongoose.Schema({
   rating: { type: Number, default: 0 },
   totalOrders: { type: Number, default: 0 },
   
-  verificationStatus: { type: String, enum: ['pending', 'approved', 'rejected'], default: 'pending' },
+    verificationStatus: { type: String, enum: ['pending', 'approved', 'rejected', 'suspended'], default: 'pending' },
+  verificationHistory: [{
+    action: { type: String, enum: ['pending', 'approved', 'rejected', 'suspended', 'unsuspended'] },
+    at: { type: Date, default: Date.now },
+    reason: { type: String }
+  }],
+  suspendedReason: { type: String },
+  suspendedAt: { type: Date },
   isActive: { type: Boolean, default: false },
   
   documents: { drugLicense: String, gstCertificate: String, shopPhoto: String },

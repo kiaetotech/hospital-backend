@@ -1223,13 +1223,23 @@ router.get('/admin/pending-doctors', requireAdmin, async (req, res) => {
 router.put('/admin/verify-doctor/:id', requireAdmin, async (req, res) => {
   try {
     const { status, rejectionReason } = req.body;
-    const doctor = await HomeopathyDoctor.findByIdAndUpdate(req.params.id, {
-      verificationStatus: status,
-      isActive: status === 'approved',
-      verifiedKyc: status === 'approved',
-      verifiedAt: new Date(),
-      rejectionReason: status === 'rejected' ? rejectionReason : null
-    }, { new: true });
+    const doctor = await HomeopathyDoctor.findById(req.params.id);
+    if (!doctor) return res.status(404).json({ success: false, message: 'Doctor not found' });
+
+    doctor.verificationStatus = status;
+    doctor.isActive = status === 'approved';
+    doctor.verifiedKyc = status === 'approved';
+    doctor.verifiedAt = new Date();
+    doctor.rejectionReason = status === 'rejected' ? rejectionReason : null;
+
+    if (!Array.isArray(doctor.verificationHistory)) doctor.verificationHistory = [];
+    doctor.verificationHistory.push({
+      action: status,
+      at: new Date(),
+      reason: rejectionReason || ''
+    });
+
+    await doctor.save();
     res.json({ success: true, message: `Doctor ${status}`, data: doctor });
   } catch (error) {
     res.status(500).json({ success: false, error: error.message });
@@ -1249,13 +1259,24 @@ router.get('/admin/pending-centers', requireAdmin, async (req, res) => {
 
 router.put('/admin/verify-center/:id', requireAdmin, async (req, res) => {
   try {
-    const { status } = req.body;
-    await NaturopathyCenter.findByIdAndUpdate(req.params.id, {
-      verificationStatus: status,
-      isActive: status === 'approved',
-      verifiedAt: new Date()
+    const { status, rejectionReason } = req.body;
+    const center = await NaturopathyCenter.findById(req.params.id);
+    if (!center) return res.status(404).json({ success: false, message: 'Center not found' });
+
+    center.verificationStatus = status;
+    center.isActive = status === 'approved';
+    center.verifiedAt = new Date();
+    if (status === 'rejected') center.rejectionReason = rejectionReason || null;
+
+    if (!Array.isArray(center.verificationHistory)) center.verificationHistory = [];
+    center.verificationHistory.push({
+      action: status,
+      at: new Date(),
+      reason: rejectionReason || ''
     });
-    res.json({ success: true, message: `Center ${status}` });
+
+    await center.save();
+    res.json({ success: true, message: `Center ${status}`, data: center });
   } catch (error) {
     res.status(500).json({ success: false, error: error.message });
   }
@@ -1274,13 +1295,24 @@ router.get('/admin/pending-pharmacies', requireAdmin, async (req, res) => {
 
 router.put('/admin/verify-pharmacy/:id', requireAdmin, async (req, res) => {
   try {
-    const { status } = req.body;
-    await Pharmacy.findByIdAndUpdate(req.params.id, {
-      verificationStatus: status,
-      isActive: status === 'approved',
-      verifiedAt: new Date()
+    const { status, rejectionReason } = req.body;
+    const pharmacy = await Pharmacy.findById(req.params.id);
+    if (!pharmacy) return res.status(404).json({ success: false, message: 'Pharmacy not found' });
+
+    pharmacy.verificationStatus = status;
+    pharmacy.isActive = status === 'approved';
+    pharmacy.verifiedAt = new Date();
+    if (status === 'rejected') pharmacy.rejectionReason = rejectionReason || null;
+
+    if (!Array.isArray(pharmacy.verificationHistory)) pharmacy.verificationHistory = [];
+    pharmacy.verificationHistory.push({
+      action: status,
+      at: new Date(),
+      reason: rejectionReason || ''
     });
-    res.json({ success: true, message: `Pharmacy ${status}` });
+
+    await pharmacy.save();
+    res.json({ success: true, message: `Pharmacy ${status}`, data: pharmacy });
   } catch (error) {
     res.status(500).json({ success: false, error: error.message });
   }
@@ -2838,6 +2870,155 @@ router.get('/admin/corporate-packages/pending', requireAdmin, async (req, res) =
     res.json({ success: true, count: pending.length, data: pending });
   } catch (error) {
     console.error('[admin/corporate-packages/pending]', error);
+    res.status(500).json({ success: false, message: error.message });
+  }
+});
+
+// ============================================
+// ADMIN: SUSPEND / UNSUSPEND / SUSPENDED LIST
+// ============================================
+
+const SUSPEND_MODELS = {
+  doctor: { model: 'HomeopathyDoctor', path: 'doctor' },
+  center: { model: 'NaturopathyCenter', path: 'center' },
+  pharmacy: { model: 'Pharmacy', path: 'pharmacy' }
+};
+
+router.put('/admin/suspend/:type/:id', requireAdmin, async (req, res) => {
+  try {
+    const { type, id } = req.params;
+    const { reason } = req.body;
+    const map = SUSPEND_MODELS[type];
+    if (!map) return res.status(400).json({ success: false, message: 'Invalid type' });
+    if (!reason || reason.trim().length < 3) {
+      return res.status(400).json({ success: false, message: 'Reason required (min 3 chars)' });
+    }
+
+    const Model = require(`../models/${map.model}`);
+    const doc = await Model.findById(id);
+    if (!doc) return res.status(404).json({ success: false, message: `${type} not found` });
+
+    doc.verificationStatus = 'suspended';
+    doc.suspendedReason = reason.trim();
+    doc.suspendedAt = new Date();
+    if (!Array.isArray(doc.verificationHistory)) doc.verificationHistory = [];
+    doc.verificationHistory.push({ action: 'suspended', at: new Date(), reason: reason.trim() });
+    await doc.save();
+
+    res.json({ success: true, message: `${type} suspended`, data: doc });
+  } catch (error) {
+    console.error('[admin/suspend]', error);
+    res.status(500).json({ success: false, message: error.message });
+  }
+});
+
+router.put('/admin/unsuspend/:type/:id', requireAdmin, async (req, res) => {
+  try {
+    const { type, id } = req.params;
+    const map = SUSPEND_MODELS[type];
+    if (!map) return res.status(400).json({ success: false, message: 'Invalid type' });
+
+    const Model = require(`../models/${map.model}`);
+    const doc = await Model.findById(id);
+    if (!doc) return res.status(404).json({ success: false, message: `${type} not found` });
+
+    doc.verificationStatus = 'approved';
+    doc.suspendedReason = undefined;
+    doc.suspendedAt = undefined;
+    if (!Array.isArray(doc.verificationHistory)) doc.verificationHistory = [];
+    doc.verificationHistory.push({ action: 'unsuspended', at: new Date(), reason: 'Restored by admin' });
+    await doc.save();
+
+    res.json({ success: true, message: `${type} unsuspended`, data: doc });
+  } catch (error) {
+    console.error('[admin/unsuspend]', error);
+    res.status(500).json({ success: false, message: error.message });
+  }
+});
+
+router.get('/admin/suspended', requireAdmin, async (req, res) => {
+  try {
+    const HomeopathyDoctor = require('../models/HomeopathyDoctor');
+    const NaturopathyCenter = require('../models/NaturopathyCenter');
+    const Pharmacy = require('../models/Pharmacy');
+
+    const [doctors, centers, pharmacies] = await Promise.all([
+      HomeopathyDoctor.find({ verificationStatus: 'suspended' })
+        .select('name phone address verificationStatus suspendedReason suspendedAt').lean(),
+      NaturopathyCenter.find({ verificationStatus: 'suspended' })
+        .select('name phone address verificationStatus suspendedReason suspendedAt').lean(),
+      Pharmacy.find({ verificationStatus: 'suspended' })
+        .select('businessName phone address verificationStatus suspendedReason suspendedAt').lean()
+    ]);
+
+    const out = [
+      ...doctors.map(d => ({ _id: d._id, type: 'doctor', name: d.name, phone: d.phone, city: d.address?.city, suspendedReason: d.suspendedReason, suspendedAt: d.suspendedAt })),
+      ...centers.map(c => ({ _id: c._id, type: 'center', name: c.name, phone: c.phone, city: c.address?.city, suspendedReason: c.suspendedReason, suspendedAt: c.suspendedAt })),
+      ...pharmacies.map(p => ({ _id: p._id, type: 'pharmacy', name: p.businessName, phone: p.phone, city: p.address?.city, suspendedReason: p.suspendedReason, suspendedAt: p.suspendedAt }))
+    ];
+
+    // Also collect suspended corporate packages
+    const docsWithPkgs = await HomeopathyDoctor.find({ 'corporateWellnessPackages.approvalStatus': 'rejected' })
+      .select('name phone address corporateWellnessPackages').lean();
+    // Note: 'rejected' packages - if you want a 'suspended' status for packages, add it to enum
+
+    out.sort((a, b) => new Date(b.suspendedAt || 0) - new Date(a.suspendedAt || 0));
+
+    res.json({ success: true, count: out.length, data: out });
+  } catch (error) {
+    console.error('[admin/suspended]', error);
+    res.status(500).json({ success: false, message: error.message });
+  }
+});
+
+// ============================================
+// ADMIN: BULK ACTION (approve/reject/suspend multiple)
+// ============================================
+
+router.put('/admin/bulk-action', requireAdmin, async (req, res) => {
+  try {
+    const { type, ids, action, reason } = req.body;
+    if (!type || !Array.isArray(ids) || !ids.length || !action) {
+      return res.status(400).json({ success: false, message: 'type, ids[], action required' });
+    }
+    if (!['approve', 'reject', 'suspend'].includes(action)) {
+      return res.status(400).json({ success: false, message: 'action must be approve|reject|suspend' });
+    }
+
+    const map = SUSPEND_MODELS[type];
+    if (!map) return res.status(400).json({ success: false, message: 'Invalid type' });
+
+    const Model = require(`../models/${map.model}`);
+    const statusMap = { approve: 'approved', reject: 'rejected', suspend: 'suspended' };
+    const newStatus = statusMap[action];
+
+    const results = { updated: 0, failed: 0, errors: [] };
+    for (const id of ids) {
+      try {
+        const doc = await Model.findById(id);
+        if (!doc) { results.failed++; results.errors.push(`${id}: not found`); continue; }
+        doc.verificationStatus = newStatus;
+        if (action === 'suspend') {
+          doc.suspendedReason = reason || 'Bulk suspended by admin';
+          doc.suspendedAt = new Date();
+        }
+        if (!Array.isArray(doc.verificationHistory)) doc.verificationHistory = [];
+        doc.verificationHistory.push({
+          action: newStatus,
+          at: new Date(),
+          reason: reason || `Bulk ${action} by admin`
+        });
+        await doc.save();
+        results.updated++;
+      } catch (e) {
+        results.failed++;
+        results.errors.push(`${id}: ${e.message}`);
+      }
+    }
+
+    res.json({ success: true, message: `Bulk ${action}: ${results.updated} updated, ${results.failed} failed`, data: results });
+  } catch (error) {
+    console.error('[admin/bulk-action]', error);
     res.status(500).json({ success: false, message: error.message });
   }
 });

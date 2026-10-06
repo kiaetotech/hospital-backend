@@ -189,11 +189,18 @@ const naturopathyCenterSchema = new mongoose.Schema({
   // ============================================
   // VERIFICATION
   // ============================================
-  verificationStatus: {
+    verificationStatus: {
     type: String,
-    enum: ['pending', 'approved', 'rejected'],
+    enum: ['pending', 'approved', 'rejected', 'suspended'],
     default: 'pending'
   },
+  verificationHistory: [{
+    action: { type: String, enum: ['pending', 'approved', 'rejected', 'suspended', 'unsuspended'] },
+    at: { type: Date, default: Date.now },
+    reason: { type: String }
+  }],
+  suspendedReason: { type: String },
+  suspendedAt: { type: Date },
   isActive: { type: Boolean, default: false },
   verifiedKyc: { type: Boolean, default: false },
   verifiedAt: { type: Date, default: null },
