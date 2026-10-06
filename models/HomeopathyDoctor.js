@@ -193,7 +193,6 @@ const homeopathyDoctorSchema = new mongoose.Schema({
 
   minEmployees: {
     type: Number,
-    default: 10,
     description: 'Minimum employees required for corporate wellness program'
   },
 
@@ -231,7 +230,7 @@ const homeopathyDoctorSchema = new mongoose.Schema({
     bulkDiscount: {
       enabled: { type: Boolean, default: false },
       tiers: [{
-        minEmployees: { type: Number },
+        minEmployees: { type: Number, min: 1 },
         maxEmployees: { type: Number },
         discountPercentage: { type: Number }
       }]
@@ -405,7 +404,7 @@ homeopathyDoctorSchema.methods.getCorporateSummary = function() {
     name: this.name,
     city: this.address?.city,
     rating: this.rating,
-    minEmployees: this.minEmployees || 10,
+    minEmployees: this.minEmployees || null,
     packages: this.getActiveCorporatePackages().length,
     workshops: this.getActiveCorporateWorkshops().length,
     discount: this.corporateDiscount || 0,

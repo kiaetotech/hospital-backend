@@ -737,7 +737,7 @@ router.get('/corporate/packages', async (req, res) => {
       _id: p._id,
       packageName: p.name,
       pricePerEmployee: p.pricePerEmployee,
-      minEmployees: p.minEmployees || 10,
+      minEmployees: p.minEmployees,
       validityDays: 365,
       servicesIncluded: p.includes || [],
       description: p.description || '',
@@ -795,7 +795,7 @@ router.post('/corporate/packages', async (req, res) => {
       benefits: [],
       therapies: [],
       category: 'general_wellness',
-      minEmployees: Number(minEmployees) || 10,
+      minEmployees: minEmployees ? Number(minEmployees) : undefined,
       isActive: true,
       createdAt: new Date()
     };
@@ -953,7 +953,7 @@ router.get('/corporate/wellness', async (req, res) => {
           doctorRating: doctor.rating,
           specialization: doctor.specialization,
           discount: doctor.corporateDiscount || 0,
-          minEmployees: doctor.minEmployees || 10
+          minEmployees: doctor.minEmployees || null
         });
       });
     });
@@ -998,7 +998,7 @@ router.get('/corporate/wellness/:id', async (req, res) => {
           specialization: doctor.specialization,
           experience: doctor.experience,
           discount: doctor.corporateDiscount || 0,
-          minEmployees: doctor.minEmployees || 10
+          minEmployees: doctor.minEmployees || null
         }
       }
     });
