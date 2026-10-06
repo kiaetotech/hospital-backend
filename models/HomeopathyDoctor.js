@@ -273,6 +273,18 @@ const homeopathyDoctorSchema = new mongoose.Schema({
     corporateClients: [{ type: String }]
   },
 
+  corporateEnquiries: [{
+    companyName: { type: String, trim: true },
+    contactPerson: { type: String, trim: true },
+    email: { type: String, trim: true, lowercase: true },
+    phone: { type: String, trim: true },
+    employeeCount: { type: Number },
+    message: { type: String },
+    status: { type: String, enum: ['new', 'contacted', 'converted', 'closed'], default: 'new' },
+    createdAt: { type: Date, default: Date.now },
+    updatedAt: { type: Date }
+  }],
+
   createdAt: { type: Date, default: Date.now }
 });
 

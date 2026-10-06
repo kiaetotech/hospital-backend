@@ -713,47 +713,191 @@ router.post('/pharmacy/login', async (req, res) => {
 // ============================================
 // CORPORATE PLANS — Doctor's own packages & enquiries
 // ============================================
+// ============================================
+// CORPORATE PLANS — Doctor's own packages & enquiries
+// ============================================
+
+// Helper: resolve doctorId from body or query
+const resolveDoctorId = (req) => req.body?.doctorId || req.query?.doctorId;
+
+// GET packages
 router.get('/corporate/packages', async (req, res) => {
   try {
-    const { doctorId } = req.query;
-    if (!doctorId) {
-      return res.status(400).json({ success: false, message: 'doctorId required' });
-    }
+    const doctorId = resolveDoctorId(req);
+    if (!doctorId) return res.status(400).json({ success: false, message: 'doctorId required' });
+
     const HomeopathyDoctor = require('../models/HomeopathyDoctor');
     const doctor = await HomeopathyDoctor.findById(doctorId)
-      .select('corporateWellnessPackages corporateServices corporateWorkshops offersCorporateWellness')
+      .select('corporateWellnessPackages offersCorporateWellness')
       .lean();
 
-    if (!doctor) {
-      return res.status(404).json({ success: false, message: 'Doctor not found' });
-    }
+    if (!doctor) return res.status(404).json({ success: false, message: 'Doctor not found' });
 
-    res.json({
-      success: true,
-      data: [
-        ...(doctor.corporateWellnessPackages || []).map(p => ({ ...p, type: 'wellness' })),
-        ...(doctor.corporateServices || []).map(s => ({ ...s, type: 'service' })),
-        ...(doctor.corporateWorkshops || []).map(w => ({ ...w, type: 'workshop' }))
-      ]
-    });
+        const packages = (doctor.corporateWellnessPackages || []).map(p => ({
+      _id: p._id,
+      packageName: p.name,
+      pricePerEmployee: p.pricePerEmployee,
+      minEmployees: p.minEmployees || 10,
+      validityDays: 365,
+      servicesIncluded: p.includes || [],
+      description: p.description || '',
+      isActive: p.isActive !== false,
+      createdAt: p.createdAt
+    }));
+    res.json({ success: true, data: packages });
   } catch (error) {
-    console.error('[corporate/packages]', error);
+    console.error('[corporate/packages GET]', error);
     res.status(500).json({ success: false, message: 'Failed to load packages' });
   }
 });
 
+// POST create package
+router.post('/corporate/packages', async (req, res) => {
+  try {
+    const doctorId = resolveDoctorId(req);
+    if (!doctorId) return res.status(400).json({ success: false, message: 'doctorId required' });
+
+    const {
+      packageName, packageType, description, servicesIncluded,
+      pricePerEmployee, discountedPricePerEmployee, minEmployees,
+      validityDays, availableCities, slaTerms
+    } = req.body;
+
+    if (!packageName || !pricePerEmployee) {
+      return res.status(400).json({ success: false, message: 'packageName and pricePerEmployee required' });
+    }
+
+    const HomeopathyDoctor = require('../models/HomeopathyDoctor');
+    const doctor = await HomeopathyDoctor.findById(doctorId);
+    if (!doctor) return res.status(404).json({ success: false, message: 'Doctor not found' });
+
+    if (!Array.isArray(doctor.corporateWellnessPackages)) {
+      doctor.corporateWellnessPackages = [];
+    }
+
+        const newPkg = {
+      _id: new (require('mongoose').Types.ObjectId)(),
+      name: packageName,
+      description: description || '',
+      pricePerEmployee: Number(pricePerEmployee),
+      duration: '1-day',
+      sessions: 1,
+      includes: Array.isArray(servicesIncluded) ? servicesIncluded : [],
+      benefits: [],
+      therapies: [],
+      category: 'general_wellness',
+      minEmployees: Number(minEmployees) || 10,
+      isActive: true,
+      createdAt: new Date()
+    };
+
+    doctor.corporateWellnessPackages.push(newPkg);
+    await doctor.save();
+
+    res.json({ success: true, data: newPkg });
+  } catch (error) {
+    console.error('[corporate/packages POST]', error);
+    res.status(500).json({ success: false, message: error.message || 'Failed to create package' });
+  }
+});
+
+// PUT toggle/update package
+router.put('/corporate/packages/:pkgId', async (req, res) => {
+  try {
+    const doctorId = resolveDoctorId(req);
+    const { pkgId } = req.params;
+    if (!doctorId) return res.status(400).json({ success: false, message: 'doctorId required' });
+
+    const HomeopathyDoctor = require('../models/HomeopathyDoctor');
+    const doctor = await HomeopathyDoctor.findById(doctorId);
+    if (!doctor) return res.status(404).json({ success: false, message: 'Doctor not found' });
+
+    const pkg = (doctor.corporateWellnessPackages || []).find(p => String(p._id) === String(pkgId));
+    if (!pkg) return res.status(404).json({ success: false, message: 'Package not found' });
+
+    if (typeof req.body.isActive === 'boolean') pkg.isActive = req.body.isActive;
+    if (req.body.packageName) pkg.packageName = req.body.packageName;
+    if (req.body.pricePerEmployee != null) pkg.pricePerEmployee = Number(req.body.pricePerEmployee);
+
+    await doctor.save();
+    res.json({ success: true, data: pkg });
+  } catch (error) {
+    console.error('[corporate/packages PUT]', error);
+    res.status(500).json({ success: false, message: 'Failed to update package' });
+  }
+});
+
+// GET enquiries
 router.get('/corporate/enquiries', async (req, res) => {
   try {
-    const { doctorId } = req.query;
-    if (!doctorId) {
-      return res.status(400).json({ success: false, message: 'doctorId required' });
-    }
-    // Enquiries would come from a separate collection if you have one.
-    // For now, return empty — extend when you add CorporateEnquiry model.
-    res.json({ success: true, data: [] });
+    const doctorId = resolveDoctorId(req);
+    if (!doctorId) return res.status(400).json({ success: false, message: 'doctorId required' });
+
+    const HomeopathyDoctor = require('../models/HomeopathyDoctor');
+    const doctor = await HomeopathyDoctor.findById(doctorId)
+      .select('corporateEnquiries')
+      .lean();
+
+    if (!doctor) return res.status(404).json({ success: false, message: 'Doctor not found' });
+
+    res.json({ success: true, data: doctor.corporateEnquiries || [] });
   } catch (error) {
-    console.error('[corporate/enquiries]', error);
+    console.error('[corporate/enquiries GET]', error);
     res.status(500).json({ success: false, message: 'Failed to load enquiries' });
+  }
+});
+
+// PUT update enquiry status
+router.put('/corporate/enquiries/:enqId', async (req, res) => {
+  try {
+    const doctorId = resolveDoctorId(req);
+    const { enqId } = req.params;
+    const { status } = req.body;
+    if (!doctorId) return res.status(400).json({ success: false, message: 'doctorId required' });
+    if (!status) return res.status(400).json({ success: false, message: 'status required' });
+
+    const HomeopathyDoctor = require('../models/HomeopathyDoctor');
+    const doctor = await HomeopathyDoctor.findById(doctorId);
+    if (!doctor) return res.status(404).json({ success: false, message: 'Doctor not found' });
+
+    if (!Array.isArray(doctor.corporateEnquiries)) {
+      doctor.corporateEnquiries = [];
+    }
+
+    const enq = doctor.corporateEnquiries.find(e => String(e._id) === String(enqId));
+    if (!enq) return res.status(404).json({ success: false, message: 'Enquiry not found' });
+
+    enq.status = status;
+    enq.updatedAt = new Date();
+    await doctor.save();
+
+    res.json({ success: true, data: enq });
+  } catch (error) {
+    console.error('[corporate/enquiries PUT]', error);
+    res.status(500).json({ success: false, message: 'Failed to update enquiry' });
+  }
+});
+
+// PUT toggle corporate wellness on/off
+router.put('/corporate/toggle', async (req, res) => {
+  try {
+    const doctorId = resolveDoctorId(req);
+    const { enable } = req.body;
+    if (!doctorId) return res.status(400).json({ success: false, message: 'doctorId required' });
+    if (typeof enable !== 'boolean') return res.status(400).json({ success: false, message: 'enable (boolean) required' });
+
+    const HomeopathyDoctor = require('../models/HomeopathyDoctor');
+    const doctor = await HomeopathyDoctor.findByIdAndUpdate(
+      doctorId,
+      { $set: { offersCorporateWellness: enable } },
+      { new: true }
+    );
+    if (!doctor) return res.status(404).json({ success: false, message: 'Doctor not found' });
+
+    res.json({ success: true, data: { offersCorporateWellness: doctor.offersCorporateWellness } });
+  } catch (error) {
+    console.error('[corporate/toggle]', error);
+    res.status(500).json({ success: false, message: 'Failed to toggle' });
   }
 });
 
