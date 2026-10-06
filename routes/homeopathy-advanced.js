@@ -1830,13 +1830,31 @@ router.post('/remedy-match', async (req, res) => {
   try {
     const { symptoms, age, gender, duration, chronic } = req.body || {};
 
-    if (!symptoms || typeof symptoms !== 'string' || symptoms.trim().length < 5) {
-      return res.status(400).json({
-        success: false,
-        message: 'Please describe your symptoms (at least 5 characters).'
-      });
-    }
+    
+    // Emergency / red-flag detection
+    const RED_FLAGS = [
+      { pattern: /blood in (urine|stool|vomit)|hematuria|hematemesis|melena/i, warning: 'Blood in urine, stool, or vomit can indicate a serious condition. Please see a doctor or visit an emergency room immediately — homeopathy alone is not appropriate for this symptom.' },
+      { pattern: /chest pain|heart attack|angina/i, warning: 'Chest pain can indicate a cardiac emergency. Call 108 or go to the nearest emergency room immediately.' },
+      { pattern: /difficulty breathing|can'?t breathe|shortness of breath|suffocat/i, warning: 'Breathing difficulty is a medical emergency. Call 108 or go to the nearest emergency room immediately.' },
+      { pattern: /severe bleeding|heavy bleeding|hemorrhage|blood loss/i, warning: 'Severe bleeding is a medical emergency. Call 108 or go to the nearest emergency room immediately.' },
+      { pattern: /unconscious|fainted|passed out|not responding|collapse/i, warning: 'Loss of consciousness is a medical emergency. Call 108 or go to the nearest emergency room immediately.' },
+      { pattern: /seizure|convulsion|fit(s)?\b/i, warning: 'Seizures require immediate medical attention. Call 108 or go to the nearest emergency room.' },
+      { pattern: /stroke|slurred speech|face drooping|paralysis|one side weak/i, warning: 'Signs of stroke. Call 108 or go to the nearest emergency room IMMEDIATELY.' },
+      { pattern: /suicid|kill myself|end my life|want to die|self.?harm/i, warning: 'If you are in crisis, please call AASRA at 9820466726 or the national helpline 1800-599-0019. You are not alone.' },
+      { pattern: /poison|overdose|snake bite|dog bite/i, warning: 'Possible poisoning or envenomation — go to an emergency room immediately. Do not wait.' },
+      { pattern: /high fever|very high fever|103|104|105/i, warning: 'Very high fever needs immediate medical evaluation. Please see a doctor now.' },
+      { pattern: /severe (abdominal|stomach) pain|acute abdomen/i, warning: 'Severe abdominal pain needs urgent medical evaluation. Please see a doctor or emergency room now.' },
+      { pattern: /pregnan.*(bleed|pain|cramp)/i, warning: 'Bleeding or pain during pregnancy needs urgent medical attention. Contact your doctor or go to the hospital immediately.' }
+    ];
 
+    let warning = null;
+    for (const flag of RED_FLAGS) {
+      if (flag.pattern.test(symptoms)) {
+        warning = flag.warning;
+        break;
+      }
+    }
+	
     const aiService = require('../services/aiService');
 
     const prompt = `You are an experienced classical homeopath. Analyze the patient's symptoms and suggest 3-5 homeopathic remedies.
@@ -1906,11 +1924,12 @@ RULES:
       console.warn('[remedy-match] doctor fetch failed:', docErr.message);
     }
 
-    res.json({
+        res.json({
       success: true,
       data: {
         remedies,
         disclaimer: result.disclaimer || 'These are AI suggestions only. Consult a qualified homeopath before taking any remedy.',
+        warning,
         availableDoctors
       }
     });
