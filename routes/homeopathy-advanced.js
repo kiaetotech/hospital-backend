@@ -711,6 +711,53 @@ router.post('/pharmacy/login', async (req, res) => {
 });
 
 // ============================================
+// CORPORATE PLANS — Doctor's own packages & enquiries
+// ============================================
+router.get('/corporate/packages', async (req, res) => {
+  try {
+    const { doctorId } = req.query;
+    if (!doctorId) {
+      return res.status(400).json({ success: false, message: 'doctorId required' });
+    }
+    const HomeopathyDoctor = require('../models/HomeopathyDoctor');
+    const doctor = await HomeopathyDoctor.findById(doctorId)
+      .select('corporateWellnessPackages corporateServices corporateWorkshops offersCorporateWellness')
+      .lean();
+
+    if (!doctor) {
+      return res.status(404).json({ success: false, message: 'Doctor not found' });
+    }
+
+    res.json({
+      success: true,
+      data: [
+        ...(doctor.corporateWellnessPackages || []).map(p => ({ ...p, type: 'wellness' })),
+        ...(doctor.corporateServices || []).map(s => ({ ...s, type: 'service' })),
+        ...(doctor.corporateWorkshops || []).map(w => ({ ...w, type: 'workshop' }))
+      ]
+    });
+  } catch (error) {
+    console.error('[corporate/packages]', error);
+    res.status(500).json({ success: false, message: 'Failed to load packages' });
+  }
+});
+
+router.get('/corporate/enquiries', async (req, res) => {
+  try {
+    const { doctorId } = req.query;
+    if (!doctorId) {
+      return res.status(400).json({ success: false, message: 'doctorId required' });
+    }
+    // Enquiries would come from a separate collection if you have one.
+    // For now, return empty — extend when you add CorporateEnquiry model.
+    res.json({ success: true, data: [] });
+  } catch (error) {
+    console.error('[corporate/enquiries]', error);
+    res.status(500).json({ success: false, message: 'Failed to load enquiries' });
+  }
+});
+
+// ============================================
 // CORPORATE WELLNESS (preserved)
 // ============================================
 router.get('/corporate/wellness', async (req, res) => {
