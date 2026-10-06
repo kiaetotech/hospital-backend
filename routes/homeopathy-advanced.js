@@ -744,7 +744,13 @@ router.get('/corporate/packages', async (req, res) => {
       isActive: p.isActive !== false,
       createdAt: p.createdAt
     }));
-    res.json({ success: true, data: packages });
+    res.json({
+      success: true,
+      data: {
+        packages,
+        servesCorporate: doctor.offersCorporateWellness === true
+      }
+    });
   } catch (error) {
     console.error('[corporate/packages GET]', error);
     res.status(500).json({ success: false, message: 'Failed to load packages' });
@@ -894,7 +900,13 @@ router.put('/corporate/toggle', async (req, res) => {
     );
     if (!doctor) return res.status(404).json({ success: false, message: 'Doctor not found' });
 
-    res.json({ success: true, data: { offersCorporateWellness: doctor.offersCorporateWellness } });
+    res.json({
+      success: true,
+      data: {
+        servesCorporate: doctor.offersCorporateWellness === true,
+        offersCorporateWellness: doctor.offersCorporateWellness
+      }
+    });
   } catch (error) {
     console.error('[corporate/toggle]', error);
     res.status(500).json({ success: false, message: 'Failed to toggle' });
