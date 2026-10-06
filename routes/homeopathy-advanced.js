@@ -742,6 +742,8 @@ router.get('/corporate/packages', async (req, res) => {
       servicesIncluded: p.includes || [],
       description: p.description || '',
       isActive: p.isActive !== false,
+      approvalStatus: p.approvalStatus || 'pending',
+      rejectionReason: p.rejectionReason || null,
       createdAt: p.createdAt
     }));
     res.json({
@@ -783,6 +785,7 @@ router.post('/corporate/packages', async (req, res) => {
 
         const newPkg = {
       _id: new (require('mongoose').Types.ObjectId)(),
+      approvalStatus: 'pending',
       name: packageName,
       description: description || '',
       pricePerEmployee: Number(pricePerEmployee),
@@ -2797,6 +2800,121 @@ router.post('/center/settlements/request', authenticateCenter, async (req, res) 
     res.json({ success: true, message: 'Settlement requested', data: settlement });
   } catch (error) {
     res.status(400).json({ success: false, error: error.message });
+  }
+});
+
+// ============================================
+// ADMIN: CORPORATE PACKAGES (Homeopathy Doctors)
+// ============================================
+router.get('/admin/corporate-packages/pending', requireAdmin, async (req, res) => {
+  try {
+    const HomeopathyDoctor = require('../models/HomeopathyDoctor');
+    const doctors = await HomeopathyDoctor.find({
+      'corporateWellnessPackages.approvalStatus': 'pending'
+    }).select('name phone email address corporateWellnessPackages').lean();
+
+    const pending = [];
+    doctors.forEach(d => {
+      (d.corporateWellnessPackages || [])
+        .filter(p => (p.approvalStatus || 'pending') === 'pending')
+        .forEach(p => {
+          pending.push({
+            doctorId: d._id,
+            doctorName: d.name,
+            doctorPhone: d.phone,
+            doctorCity: d.address?.city,
+            packageId: p._id,
+            packageName: p.name,
+            description: p.description,
+            pricePerEmployee: p.pricePerEmployee,
+            minEmployees: p.minEmployees,
+            includes: p.includes || [],
+            createdAt: p.createdAt,
+            approvalStatus: p.approvalStatus
+          });
+        });
+    });
+
+    res.json({ success: true, count: pending.length, data: pending });
+  } catch (error) {
+    console.error('[admin/corporate-packages/pending]', error);
+    res.status(500).json({ success: false, message: error.message });
+  }
+});
+
+router.get('/admin/corporate-packages/all', requireAdmin, async (req, res) => {
+  try {
+    const { status } = req.query; // pending | approved | rejected | all
+    const HomeopathyDoctor = require('../models/HomeopathyDoctor');
+    const doctors = await HomeopathyDoctor.find({}).select('name phone address corporateWellnessPackages').lean();
+
+    const all = [];
+    doctors.forEach(d => {
+      (d.corporateWellnessPackages || []).forEach(p => {
+        if (status && status !== 'all' && (p.approvalStatus || 'pending') !== status) return;
+        all.push({
+          doctorId: d._id,
+          doctorName: d.name,
+          doctorCity: d.address?.city,
+          packageId: p._id,
+          packageName: p.name,
+          pricePerEmployee: p.pricePerEmployee,
+          minEmployees: p.minEmployees,
+          approvalStatus: p.approvalStatus || 'pending',
+          rejectionReason: p.rejectionReason,
+          createdAt: p.createdAt
+        });
+      });
+    });
+
+    res.json({ success: true, count: all.length, data: all });
+  } catch (error) {
+    console.error('[admin/corporate-packages/all]', error);
+    res.status(500).json({ success: false, message: error.message });
+  }
+});
+
+router.put('/admin/corporate-packages/:doctorId/:pkgId/approve', requireAdmin, async (req, res) => {
+  try {
+    const { doctorId, pkgId } = req.params;
+    const HomeopathyDoctor = require('../models/HomeopathyDoctor');
+    const doctor = await HomeopathyDoctor.findById(doctorId);
+    if (!doctor) return res.status(404).json({ success: false, message: 'Doctor not found' });
+
+    const pkg = (doctor.corporateWellnessPackages || []).find(p => String(p._id) === String(pkgId));
+    if (!pkg) return res.status(404).json({ success: false, message: 'Package not found' });
+
+    pkg.approvalStatus = 'approved';
+    pkg.rejectionReason = undefined;
+    pkg.approvedAt = new Date();
+    await doctor.save();
+
+    res.json({ success: true, message: 'Package approved', data: pkg });
+  } catch (error) {
+    console.error('[admin/corporate-packages/approve]', error);
+    res.status(500).json({ success: false, message: error.message });
+  }
+});
+
+router.put('/admin/corporate-packages/:doctorId/:pkgId/reject', requireAdmin, async (req, res) => {
+  try {
+    const { doctorId, pkgId } = req.params;
+    const { reason } = req.body;
+    const HomeopathyDoctor = require('../models/HomeopathyDoctor');
+    const doctor = await HomeopathyDoctor.findById(doctorId);
+    if (!doctor) return res.status(404).json({ success: false, message: 'Doctor not found' });
+
+    const pkg = (doctor.corporateWellnessPackages || []).find(p => String(p._id) === String(pkgId));
+    if (!pkg) return res.status(404).json({ success: false, message: 'Package not found' });
+
+    pkg.approvalStatus = 'rejected';
+    pkg.rejectionReason = reason || 'Not specified';
+    await doctor.save();
+
+    res.json({ success: true, message: 'Package rejected', data: pkg });
+  } catch (error) {
+    console.error('[admin/corporate-packages/reject]', error);
+    res.status(500).json({ success: false, message: error.message });
   }
 });
 

@@ -197,10 +197,17 @@ const homeopathyDoctorSchema = new mongoose.Schema({
     description: 'Minimum employees required for corporate wellness program'
   },
 
-  corporateWellnessPackages: [{
+    corporateWellnessPackages: [{
     name: { type: String, required: true },
     description: { type: String },
     pricePerEmployee: { type: Number, required: true },
+    approvalStatus: {
+      type: String,
+      enum: ['pending', 'approved', 'rejected'],
+      default: 'approved'
+    },
+    rejectionReason: { type: String },
+    approvedAt: { type: Date },
     duration: {
       type: String,
       enum: ['1-day', '3-day', '5-day', '7-day', '14-day', '21-day', 'monthly'],
