@@ -1225,6 +1225,274 @@ router.get('/doctor/:id/reviews', async (req, res) => {
 });
 
 // ============================================
+// KYC — Doctor submission + Admin verification
+// ============================================
+
+router.post('/doctor/kyc/submit', async (req, res) => {
+  try {
+    const { doctorId, panNumber, panImage, aadhaarNumber, aadhaarImage, selfie, degreeCertificate, registrationCertificate } = req.body;
+    if (!doctorId) return res.status(400).json({ success: false, message: 'doctorId required' });
+
+    const doctor = await HomeopathyDoctor.findById(doctorId);
+    if (!doctor) return res.status(404).json({ success: false, message: 'Doctor not found' });
+
+    doctor.kyc = {
+      ...(doctor.kyc || {}),
+      panNumber: panNumber || doctor.kyc?.panNumber,
+      panImage: panImage || doctor.kyc?.panImage,
+      aadhaarNumber: aadhaarNumber || doctor.kyc?.aadhaarNumber,
+      aadhaarImage: aadhaarImage || doctor.kyc?.aadhaarImage,
+      selfie: selfie || doctor.kyc?.selfie,
+      degreeCertificate: degreeCertificate || doctor.kyc?.degreeCertificate,
+      registrationCertificate: registrationCertificate || doctor.kyc?.registrationCertificate,
+      kycStatus: 'submitted',
+      submittedAt: new Date()
+    };
+
+    await doctor.save();
+    res.json({ success: true, message: 'KYC submitted for review', data: doctor.kyc });
+  } catch (error) {
+    console.error('[kyc/submit]', error);
+    res.status(500).json({ success: false, message: error.message });
+  }
+});
+
+router.get('/doctor/kyc/:doctorId', async (req, res) => {
+  try {
+    const doctor = await HomeopathyDoctor.findById(req.params.doctorId)
+      .select('kyc').lean();
+    if (!doctor) return res.status(404).json({ success: false, message: 'Doctor not found' });
+    res.json({ success: true, data: doctor.kyc || { kycStatus: 'not_started' } });
+  } catch (error) {
+    console.error('[kyc/get]', error);
+    res.status(500).json({ success: false, message: error.message });
+  }
+});
+
+router.get('/admin/kyc/pending', requireAdmin, async (req, res) => {
+  try {
+    const doctors = await HomeopathyDoctor.find({ 'kyc.kycStatus': 'submitted' })
+      .select('name phone email kyc address')
+      .sort({ 'kyc.submittedAt': 1 })
+      .lean();
+    res.json({ success: true, count: doctors.length, data: doctors });
+  } catch (error) {
+    console.error('[admin/kyc/pending]', error);
+    res.status(500).json({ success: false, message: error.message });
+  }
+});
+
+router.put('/admin/kyc/:doctorId/verify', requireAdmin, async (req, res) => {
+  try {
+    const doctor = await HomeopathyDoctor.findById(req.params.doctorId);
+    if (!doctor) return res.status(404).json({ success: false, message: 'Doctor not found' });
+
+    doctor.kyc.kycStatus = 'verified';
+    doctor.kyc.verifiedAt = new Date();
+    doctor.kyc.verifiedBy = req.body.verifiedBy || 'admin';
+    doctor.kyc.rejectionReason = undefined;
+    doctor.verifiedKyc = true;
+    await doctor.save();
+
+    res.json({ success: true, message: 'KYC verified', data: doctor.kyc });
+  } catch (error) {
+    console.error('[admin/kyc/verify]', error);
+    res.status(500).json({ success: false, message: error.message });
+  }
+});
+
+router.put('/admin/kyc/:doctorId/reject', requireAdmin, async (req, res) => {
+  try {
+    const { reason } = req.body;
+    if (!reason || reason.trim().length < 3) {
+      return res.status(400).json({ success: false, message: 'Reason required (min 3 chars)' });
+    }
+
+    const doctor = await HomeopathyDoctor.findById(req.params.doctorId);
+    if (!doctor) return res.status(404).json({ success: false, message: 'Doctor not found' });
+
+    doctor.kyc.kycStatus = 'rejected';
+    doctor.kyc.rejectionReason = reason.trim();
+    doctor.verifiedKyc = false;
+    await doctor.save();
+
+    res.json({ success: true, message: 'KYC rejected', data: doctor.kyc });
+  } catch (error) {
+    console.error('[admin/kyc/reject]', error);
+    res.status(500).json({ success: false, message: error.message });
+  }
+});
+
+// ============================================
+// KYC — Center
+// ============================================
+
+router.post('/center/kyc/submit', authenticateCenter, async (req, res) => {
+  try {
+    const { panNumber, panImage, gstNumber, gstImage, ownerName, ownerAadhaarNumber, ownerAadhaarImage, businessRegistrationNumber, businessRegistrationImage, premisesPhoto, selfie } = req.body;
+    const center = await NaturopathyCenter.findById(req.center.id);
+    if (!center) return res.status(404).json({ success: false, message: 'Center not found' });
+
+    center.kyc = {
+      ...(center.kyc || {}),
+      panNumber: panNumber || center.kyc?.panNumber,
+      panImage: panImage || center.kyc?.panImage,
+      gstNumber: gstNumber || center.kyc?.gstNumber,
+      gstImage: gstImage || center.kyc?.gstImage,
+      ownerName: ownerName || center.kyc?.ownerName,
+      ownerAadhaarNumber: ownerAadhaarNumber || center.kyc?.ownerAadhaarNumber,
+      ownerAadhaarImage: ownerAadhaarImage || center.kyc?.ownerAadhaarImage,
+      businessRegistrationNumber: businessRegistrationNumber || center.kyc?.businessRegistrationNumber,
+      businessRegistrationImage: businessRegistrationImage || center.kyc?.businessRegistrationImage,
+      premisesPhoto: premisesPhoto || center.kyc?.premisesPhoto,
+      selfie: selfie || center.kyc?.selfie,
+      kycStatus: 'submitted',
+      submittedAt: new Date()
+    };
+    await center.save();
+    res.json({ success: true, message: 'KYC submitted', data: center.kyc });
+  } catch (error) {
+    console.error('[center/kyc/submit]', error);
+    res.status(500).json({ success: false, message: error.message });
+  }
+});
+
+router.get('/center/kyc', authenticateCenter, async (req, res) => {
+  try {
+    const center = await NaturopathyCenter.findById(req.center.id).select('kyc').lean();
+    if (!center) return res.status(404).json({ success: false, message: 'Not found' });
+    res.json({ success: true, data: center.kyc || { kycStatus: 'not_started' } });
+  } catch (error) {
+    res.status(500).json({ success: false, message: error.message });
+  }
+});
+
+router.get('/admin/kyc/centers/pending', requireAdmin, async (req, res) => {
+  try {
+    const centers = await NaturopathyCenter.find({ 'kyc.kycStatus': 'submitted' })
+      .select('name phone email kyc address').sort({ 'kyc.submittedAt': 1 }).lean();
+    res.json({ success: true, count: centers.length, data: centers });
+  } catch (error) {
+    res.status(500).json({ success: false, message: error.message });
+  }
+});
+
+router.put('/admin/kyc/center/:centerId/verify', requireAdmin, async (req, res) => {
+  try {
+    const center = await NaturopathyCenter.findById(req.params.centerId);
+    if (!center) return res.status(404).json({ success: false, message: 'Not found' });
+    center.kyc.kycStatus = 'verified';
+    center.kyc.verifiedAt = new Date();
+    center.kyc.verifiedBy = req.body.verifiedBy || 'admin';
+    center.kyc.rejectionReason = undefined;
+    await center.save();
+    res.json({ success: true, message: 'KYC verified', data: center.kyc });
+  } catch (error) {
+    res.status(500).json({ success: false, message: error.message });
+  }
+});
+
+router.put('/admin/kyc/center/:centerId/reject', requireAdmin, async (req, res) => {
+  try {
+    const { reason } = req.body;
+    if (!reason || reason.trim().length < 3) return res.status(400).json({ success: false, message: 'Reason required' });
+    const center = await NaturopathyCenter.findById(req.params.centerId);
+    if (!center) return res.status(404).json({ success: false, message: 'Not found' });
+    center.kyc.kycStatus = 'rejected';
+    center.kyc.rejectionReason = reason.trim();
+    await center.save();
+    res.json({ success: true, message: 'KYC rejected', data: center.kyc });
+  } catch (error) {
+    res.status(500).json({ success: false, message: error.message });
+  }
+});
+
+// ============================================
+// KYC — Pharmacy
+// ============================================
+
+router.post('/pharmacy/kyc/submit', async (req, res) => {
+  try {
+    const { pharmacyId, panNumber, panImage, gstNumber, gstImage, ownerName, ownerAadhaarNumber, ownerAadhaarImage, drugLicenseNumber, drugLicenseImage, shopPhoto, selfie } = req.body;
+    if (!pharmacyId) return res.status(400).json({ success: false, message: 'pharmacyId required' });
+    const pharmacy = await Pharmacy.findById(pharmacyId);
+    if (!pharmacy) return res.status(404).json({ success: false, message: 'Not found' });
+
+    pharmacy.kyc = {
+      ...(pharmacy.kyc || {}),
+      panNumber: panNumber || pharmacy.kyc?.panNumber,
+      panImage: panImage || pharmacy.kyc?.panImage,
+      gstNumber: gstNumber || pharmacy.kyc?.gstNumber,
+      gstImage: gstImage || pharmacy.kyc?.gstImage,
+      ownerName: ownerName || pharmacy.kyc?.ownerName,
+      ownerAadhaarNumber: ownerAadhaarNumber || pharmacy.kyc?.ownerAadhaarNumber,
+      ownerAadhaarImage: ownerAadhaarImage || pharmacy.kyc?.ownerAadhaarImage,
+      drugLicenseNumber: drugLicenseNumber || pharmacy.kyc?.drugLicenseNumber,
+      drugLicenseImage: drugLicenseImage || pharmacy.kyc?.drugLicenseImage,
+      shopPhoto: shopPhoto || pharmacy.kyc?.shopPhoto,
+      selfie: selfie || pharmacy.kyc?.selfie,
+      kycStatus: 'submitted',
+      submittedAt: new Date()
+    };
+    await pharmacy.save();
+    res.json({ success: true, message: 'KYC submitted', data: pharmacy.kyc });
+  } catch (error) {
+    console.error('[pharmacy/kyc/submit]', error);
+    res.status(500).json({ success: false, message: error.message });
+  }
+});
+
+router.get('/pharmacy/kyc/:pharmacyId', async (req, res) => {
+  try {
+    const pharmacy = await Pharmacy.findById(req.params.pharmacyId).select('kyc').lean();
+    if (!pharmacy) return res.status(404).json({ success: false, message: 'Not found' });
+    res.json({ success: true, data: pharmacy.kyc || { kycStatus: 'not_started' } });
+  } catch (error) {
+    res.status(500).json({ success: false, message: error.message });
+  }
+});
+
+router.get('/admin/kyc/pharmacies/pending', requireAdmin, async (req, res) => {
+  try {
+    const pharmacies = await Pharmacy.find({ 'kyc.kycStatus': 'submitted' })
+      .select('businessName phone email kyc address').sort({ 'kyc.submittedAt': 1 }).lean();
+    res.json({ success: true, count: pharmacies.length, data: pharmacies });
+  } catch (error) {
+    res.status(500).json({ success: false, message: error.message });
+  }
+});
+
+router.put('/admin/kyc/pharmacy/:pharmacyId/verify', requireAdmin, async (req, res) => {
+  try {
+    const pharmacy = await Pharmacy.findById(req.params.pharmacyId);
+    if (!pharmacy) return res.status(404).json({ success: false, message: 'Not found' });
+    pharmacy.kyc.kycStatus = 'verified';
+    pharmacy.kyc.verifiedAt = new Date();
+    pharmacy.kyc.verifiedBy = req.body.verifiedBy || 'admin';
+    pharmacy.kyc.rejectionReason = undefined;
+    await pharmacy.save();
+    res.json({ success: true, message: 'KYC verified', data: pharmacy.kyc });
+  } catch (error) {
+    res.status(500).json({ success: false, message: error.message });
+  }
+});
+
+router.put('/admin/kyc/pharmacy/:pharmacyId/reject', requireAdmin, async (req, res) => {
+  try {
+    const { reason } = req.body;
+    if (!reason || reason.trim().length < 3) return res.status(400).json({ success: false, message: 'Reason required' });
+    const pharmacy = await Pharmacy.findById(req.params.pharmacyId);
+    if (!pharmacy) return res.status(404).json({ success: false, message: 'Not found' });
+    pharmacy.kyc.kycStatus = 'rejected';
+    pharmacy.kyc.rejectionReason = reason.trim();
+    await pharmacy.save();
+    res.json({ success: true, message: 'KYC rejected', data: pharmacy.kyc });
+  } catch (error) {
+    res.status(500).json({ success: false, message: error.message });
+  }
+});
+
+// ============================================
 // ADMIN: VERIFICATION (doctors, centers, pharmacies)
 // ============================================
 router.get('/admin/pending-doctors', requireAdmin, async (req, res) => {

@@ -213,6 +213,32 @@ const naturopathyCenterSchema = new mongoose.Schema({
   },
 
   // ============================================
+  // KYC
+  // ============================================
+  kyc: {
+    panNumber: { type: String, trim: true, uppercase: true },
+    panImage: String,
+    gstNumber: { type: String, trim: true, uppercase: true },
+    gstImage: String,
+    ownerName: String,
+    ownerAadhaarNumber: { type: String, trim: true },
+    ownerAadhaarImage: String,
+    businessRegistrationNumber: String,
+    businessRegistrationImage: String,
+    premisesPhoto: String,
+    selfie: String,
+    kycStatus: {
+      type: String,
+      enum: ['not_started', 'submitted', 'verified', 'rejected'],
+      default: 'not_started'
+    },
+    submittedAt: Date,
+    verifiedAt: Date,
+    verifiedBy: String,
+    rejectionReason: String
+  },
+
+  // ============================================
   // BANK DETAILS
   // ============================================
   bankDetails: {

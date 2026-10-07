@@ -158,6 +158,28 @@ const homeopathyDoctorSchema = new mongoose.Schema({
   },
 
   // ============================================
+  // KYC (Know Your Customer)
+  // ============================================
+  kyc: {
+    panNumber: { type: String, trim: true, uppercase: true },
+    panImage: String,
+    aadhaarNumber: { type: String, trim: true },
+    aadhaarImage: String,
+    selfie: String,
+    degreeCertificate: String,
+    registrationCertificate: String,
+    kycStatus: {
+      type: String,
+      enum: ['not_started', 'submitted', 'verified', 'rejected'],
+      default: 'not_started'
+    },
+    submittedAt: Date,
+    verifiedAt: Date,
+    verifiedBy: String,
+    rejectionReason: String
+  },
+
+  // ============================================
   // AVAILABILITY SLOTS
   // ============================================
       availability: [{

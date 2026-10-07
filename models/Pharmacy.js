@@ -37,4 +37,30 @@ const pharmacySchema = new mongoose.Schema({
   createdAt: { type: Date, default: Date.now }
 });
 
+  // ============================================
+  // KYC
+  // ============================================
+  kyc: {
+    panNumber: { type: String, trim: true, uppercase: true },
+    panImage: String,
+    gstNumber: { type: String, trim: true, uppercase: true },
+    gstImage: String,
+    ownerName: String,
+    ownerAadhaarNumber: { type: String, trim: true },
+    ownerAadhaarImage: String,
+    drugLicenseNumber: { type: String, trim: true },
+    drugLicenseImage: String,
+    shopPhoto: String,
+    selfie: String,
+    kycStatus: {
+      type: String,
+      enum: ['not_started', 'submitted', 'verified', 'rejected'],
+      default: 'not_started'
+    },
+    submittedAt: Date,
+    verifiedAt: Date,
+    verifiedBy: String,
+    rejectionReason: String
+  },
+
 module.exports = mongoose.model('Pharmacy', pharmacySchema);
