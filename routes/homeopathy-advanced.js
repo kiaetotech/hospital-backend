@@ -1225,6 +1225,39 @@ router.get('/doctor/:id/reviews', async (req, res) => {
 });
 
 // ============================================
+// KYC UPLOAD — shared for doctor/center/pharmacy
+// ============================================
+const multer = require('multer');
+const kycUpload = multer({ storage: multer.memoryStorage(), limits: { fileSize: 10 * 1024 * 1024 } });
+const { uploadFile } = require('../services/cloudinaryService');
+
+router.post('/kyc/upload', kycUpload.single('file'), async (req, res) => {
+  try {
+    if (!req.file) return res.status(400).json({ success: false, message: 'No file uploaded' });
+
+    const folder = req.body.folder || 'kyc_documents';
+    const ext = (req.file.originalname.split('.').pop() || '').toLowerCase();
+    const publicId = `${folder}/${req.body.type || 'doc'}_${Date.now()}`;
+
+    const result = await uploadFile(req.file.buffer, {
+      folder,
+      public_id: publicId
+    });
+
+    res.json({
+      success: true,
+      url: result.secure_url,
+      publicId: result.public_id,
+      size: result.bytes,
+      format: result.format
+    });
+  } catch (error) {
+    console.error('[kyc/upload]', error);
+    res.status(500).json({ success: false, message: error.message });
+  }
+});
+
+// ============================================
 // KYC — Doctor submission + Admin verification
 // ============================================
 
