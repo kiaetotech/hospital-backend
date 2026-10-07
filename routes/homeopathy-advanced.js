@@ -1235,12 +1235,13 @@ router.post('/kyc/upload', kycUpload.single('file'), async (req, res) => {
   try {
     if (!req.file) return res.status(400).json({ success: false, message: 'No file uploaded' });
 
-    const folder = req.body.folder || 'kyc_documents';
-    const ext = (req.file.originalname.split('.').pop() || '').toLowerCase();
     const publicId = `kyc/${req.body.type || 'doc'}_${Date.now()}`;
 
-      const result = await uploadFile(req.file.buffer, {
-      public_id: publicId
+    const isPdf = req.file.mimetype === 'application/pdf';
+    const result = await uploadFile(req.file.buffer, {
+      public_id: publicId,
+      resource_type: isPdf ? 'raw' : 'auto',
+      access_mode: 'public'
     });
 
     res.json({
