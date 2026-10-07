@@ -55,22 +55,40 @@ const authenticateHR = async (req, res, next) => {
 // ============================================
 router.get('/doctors', async (req, res) => {
   try {
-    const { city, specialization, minRating, maxFee, mode } = req.query;
-    const query = { isActive: true, verificationStatus: 'approved' };
-    if (city) query['address.city'] = city;
+    const { city, specialization, minRating, maxFee, mode, status = 'approved' } = req.query;
+
+    const query = {};
+
+    // Admin override: allow fetching any status
+    if (status === 'all') {
+      // no status filter — return everything
+    } else {
+      query.verificationStatus = status;
+    }
+
+    // Only require isActive for public (approved) queries.
+    // Admin views should see inactive/rejected too.
+    if (status === 'approved' && req.query.admin !== 'true') {
+      query.isActive = true;
+    }
+
+    if (city) query['address.city'] = new RegExp(`^${city}$`, 'i');
     if (specialization) query.specialization = specialization;
     if (minRating) query.rating = { $gte: parseFloat(minRating) };
     if (maxFee) query.consultationFee = { $lte: parseInt(maxFee) };
     if (mode === 'online') query['consultationTypes.online'] = true;
     if (mode === 'clinic') query['consultationTypes.clinic'] = true;
 
-    const doctors = await HomeopathyDoctor.find(query).select('-password').sort({ rating: -1 });
+    const doctors = await HomeopathyDoctor.find(query)
+      .select('-password')
+      .sort({ createdAt: -1 });  // newest first for admin review
+
     res.json({ success: true, data: doctors, count: doctors.length });
   } catch (error) {
-    res.json({ success: true, data: [], count: 0 });
+    console.error('[doctors]', error);
+    res.json({ success: false, data: [], count: 0 });
   }
 });
-
 router.get('/doctors/featured', async (req, res) => {
   try {
     const doctors = await HomeopathyDoctor.find({
