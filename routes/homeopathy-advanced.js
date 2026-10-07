@@ -1237,10 +1237,9 @@ router.post('/kyc/upload', kycUpload.single('file'), async (req, res) => {
 
     const folder = req.body.folder || 'kyc_documents';
     const ext = (req.file.originalname.split('.').pop() || '').toLowerCase();
-    const publicId = `${folder}/${req.body.type || 'doc'}_${Date.now()}`;
+    const publicId = `kyc/${req.body.type || 'doc'}_${Date.now()}`;
 
-    const result = await uploadFile(req.file.buffer, {
-      folder,
+      const result = await uploadFile(req.file.buffer, {
       public_id: publicId
     });
 

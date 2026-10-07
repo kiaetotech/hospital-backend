@@ -166,8 +166,17 @@ router.post('/create', authenticatePatient, async (req, res) => {
       if (!doctor.isActive || doctor.verificationStatus !== 'approved') {
         return res.status(400).json({ success: false, message: 'Doctor is not available' });
       }
+      // KYC gating — doctor must be KYC-verified to accept bookings
+      if (!doctor.kyc || doctor.kyc.kycStatus !== 'verified') {
+        return res.status(403).json({
+          success: false,
+          message: 'This doctor is not yet KYC-verified. Please choose another doctor.',
+          code: 'DOCTOR_KYC_PENDING'
+        });
+      }
       amount = req.body.amount || doctor.consultationFee;
     }
+
     // ── NATUROPATHY CENTER PACKAGE ──
     else if (type === 'naturopathy_center') {
       if (!centerId || !packageId) {
@@ -179,6 +188,14 @@ router.post('/create', authenticatePatient, async (req, res) => {
       }
       if (!center.isActive || center.verificationStatus !== 'approved') {
         return res.status(400).json({ success: false, message: 'Center is not available' });
+      }
+      // KYC gating for centers
+      if (!center.kyc || center.kyc.kycStatus !== 'verified') {
+        return res.status(403).json({
+          success: false,
+          message: 'This center is not yet KYC-verified.',
+          code: 'CENTER_KYC_PENDING'
+        });
       }
       const pkg = center.packages?.find(p => p._id.toString() === packageId);
       if (!pkg) {
@@ -216,6 +233,14 @@ router.post('/create', authenticatePatient, async (req, res) => {
       }
       if (!pharmacy.isActive || pharmacy.verificationStatus !== 'approved') {
         return res.status(400).json({ success: false, message: 'Pharmacy is not available' });
+      }
+      // KYC gating for pharmacies
+      if (!pharmacy.kyc || pharmacy.kyc.kycStatus !== 'verified') {
+        return res.status(403).json({
+          success: false,
+          message: 'This pharmacy is not yet KYC-verified.',
+          code: 'PHARMACY_KYC_PENDING'
+        });
       }
 
       // Calculate amount from medicines
