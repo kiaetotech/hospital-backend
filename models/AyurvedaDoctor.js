@@ -92,6 +92,13 @@ const ayurvedaDoctorSchema = new mongoose.Schema({
     enum: ['pending', 'documents_verified', 'approved', 'rejected', 'suspended'],
     default: 'pending'
   },
+  verificationHistory: [{
+    action: { type: String, enum: ['pending', 'approved', 'rejected', 'suspended', 'unsuspended'] },
+    at: { type: Date, default: Date.now },
+    reason: { type: String }
+  }],
+  suspendedReason: { type: String },
+  suspendedAt: { type: Date },
   verifiedBy: { type: mongoose.Schema.Types.ObjectId, ref: 'Admin' },
   verifiedAt: Date,
   rejectionReason: String,

@@ -2245,4 +2245,90 @@ router.put('/admin/kyc/center/:centerId/reject', async (req, res) => {
   }
 });
 
+// ============================================
+// SUSPEND / UNSUSPEND / SUSPENDED LIST
+// ============================================
+const SUSPEND_MODELS = {
+  doctor: { model: 'AyurvedaDoctor', path: 'doctor' },
+  center: { model: 'WellnessCenter', path: 'center' }
+};
+
+router.put('/admin/suspend/:type/:id', async (req, res) => {
+  try {
+    const { type, id } = req.params;
+    const { reason } = req.body;
+    const map = SUSPEND_MODELS[type];
+    if (!map) return res.status(400).json({ success: false, message: 'Invalid type' });
+    if (!reason || reason.trim().length < 3) {
+      return res.status(400).json({ success: false, message: 'Reason required (min 3 chars)' });
+    }
+
+    const Model = require(`../models/${map.model}`);
+    const doc = await Model.findById(id);
+    if (!doc) return res.status(404).json({ success: false, message: `${type} not found` });
+
+    doc.verificationStatus = 'suspended';
+    doc.suspendedReason = reason.trim();
+    doc.suspendedAt = new Date();
+    if (!Array.isArray(doc.verificationHistory)) doc.verificationHistory = [];
+    doc.verificationHistory.push({ action: 'suspended', at: new Date(), reason: reason.trim() });
+    await doc.save();
+
+    res.json({ success: true, message: `${type} suspended`, data: doc });
+  } catch (error) {
+    console.error('[ayurveda/admin/suspend]', error);
+    res.status(500).json({ success: false, message: error.message });
+  }
+});
+
+router.put('/admin/unsuspend/:type/:id', async (req, res) => {
+  try {
+    const { type, id } = req.params;
+    const map = SUSPEND_MODELS[type];
+    if (!map) return res.status(400).json({ success: false, message: 'Invalid type' });
+
+    const Model = require(`../models/${map.model}`);
+    const doc = await Model.findById(id);
+    if (!doc) return res.status(404).json({ success: false, message: `${type} not found` });
+
+    doc.verificationStatus = 'approved';
+    doc.suspendedReason = undefined;
+    doc.suspendedAt = undefined;
+    if (!Array.isArray(doc.verificationHistory)) doc.verificationHistory = [];
+    doc.verificationHistory.push({ action: 'unsuspended', at: new Date(), reason: 'Restored by admin' });
+    await doc.save();
+
+    res.json({ success: true, message: `${type} unsuspended`, data: doc });
+  } catch (error) {
+    console.error('[ayurveda/admin/unsuspend]', error);
+    res.status(500).json({ success: false, message: error.message });
+  }
+});
+
+router.get('/admin/suspended', async (req, res) => {
+  try {
+    const AyurvedaDoctor = require('../models/AyurvedaDoctor');
+    const WellnessCenter = require('../models/WellnessCenter');
+
+    const [doctors, centers] = await Promise.all([
+      AyurvedaDoctor.find({ verificationStatus: 'suspended' })
+        .select('name phone address verificationStatus suspendedReason suspendedAt').lean(),
+      WellnessCenter.find({ verificationStatus: 'suspended' })
+        .select('name phone address verificationStatus suspendedReason suspendedAt').lean()
+    ]);
+
+    const out = [
+      ...doctors.map(d => ({ _id: d._id, type: 'doctor', name: d.name, phone: d.phone, city: d.address?.city, suspendedReason: d.suspendedReason, suspendedAt: d.suspendedAt })),
+      ...centers.map(c => ({ _id: c._id, type: 'center', name: c.name, phone: c.phone, city: c.address?.city, suspendedReason: c.suspendedReason, suspendedAt: c.suspendedAt }))
+    ];
+
+    out.sort((a, b) => new Date(b.suspendedAt || 0) - new Date(a.suspendedAt || 0));
+
+    res.json({ success: true, count: out.length, data: out });
+  } catch (error) {
+    console.error('[ayurveda/admin/suspended]', error);
+    res.status(500).json({ success: false, message: error.message });
+  }
+});
+
 module.exports = router;
