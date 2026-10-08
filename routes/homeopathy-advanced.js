@@ -2565,7 +2565,7 @@ router.post('/admin/reset-doctor-password', requireAdmin, async (req, res) => {
 router.get('/admin/all-centers', requireAdmin, async (req, res) => {
   try {
     const centers = await NaturopathyCenter.find({})
-      .select('name phone email address verificationStatus isActive packages createdAt')
+      .select('name phone email address verificationStatus isActive packages createdAt kyc')
       .sort({ createdAt: -1 })
       .lean();
 
