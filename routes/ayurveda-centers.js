@@ -857,7 +857,7 @@ router.get('/admin/pending', async (req, res) => {
 router.get('/admin/all', async (req, res) => {
   try {
     const centers = await WellnessCenter.find()
-      .select('name phone email type address verificationStatus isActive createdAt')
+      .select('name phone email type address verificationStatus isActive createdAt documents')
       .sort({ createdAt: -1 });
     res.json({ success: true, data: centers });
   } catch (error) {
