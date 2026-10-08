@@ -151,7 +151,7 @@ router.get('/doctors', async (req, res) => {
     if (available === 'true') query.isAvailable = true;
     
     const doctors = await AyurvedaDoctor.find(query)
-      .select('name specialization experience rating consultationFee languages address wellnessCenter consultationTypes isAvailable availableSlots')
+            .select('name email phone specialization experience rating consultationFee languages address wellnessCenter consultationTypes isAvailable availableSlots verificationStatus documents')
       .sort({ rating: -1 });
     
     res.json({ success: true, data: doctors, count: doctors.length });
