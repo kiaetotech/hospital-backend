@@ -183,12 +183,28 @@ const wellnessCenterSchema = new mongoose.Schema({
   // ============================================
   // VERIFICATION DOCUMENTS
   // ============================================
-  documents: {
+    documents: {
     license: String,
     registration: String,
     panCard: String,
     gstCertificate: String,
-    photos: [String]
+    photos: [String],
+    kycStatus: {
+      type: String,
+      enum: ['not_started', 'submitted', 'verified', 'rejected'],
+      default: 'not_started'
+    },
+    panNumber: { type: String, trim: true, uppercase: true },
+    gstNumber: { type: String, trim: true, uppercase: true },
+    aadhaarNumber: { type: String, trim: true },
+    ownerName: String,
+    businessRegistrationNumber: String,
+    premisesPhoto: String,
+    selfie: String,
+    submittedAt: Date,
+    verifiedAt: Date,
+    verifiedBy: String,
+    rejectionReason: String
   },
   verificationStatus: {
     type: String,

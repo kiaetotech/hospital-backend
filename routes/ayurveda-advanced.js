@@ -2047,4 +2047,202 @@ router.post('/admin/commission-resolve', async (req, res) => {
   }
 });
 
+// ============================================
+// KYC UPLOAD — shared
+// ============================================
+const multer = require('multer');
+const kycUpload = multer({ storage: multer.memoryStorage(), limits: { fileSize: 10 * 1024 * 1024 } });
+const { uploadFile } = require('../services/cloudinaryService');
+
+router.post('/kyc/upload', kycUpload.single('file'), async (req, res) => {
+  try {
+    if (!req.file) return res.status(400).json({ success: false, message: 'No file uploaded' });
+    const publicId = `ayurveda_kyc/${req.body.type || 'doc'}_${Date.now()}`;
+    const isPdf = req.file.mimetype === 'application/pdf';
+    const result = await uploadFile(req.file.buffer, {
+      public_id: publicId,
+      resource_type: isPdf ? 'raw' : 'auto',
+      access_mode: 'public'
+    });
+    res.json({ success: true, url: result.secure_url, publicId: result.public_id });
+  } catch (error) {
+    console.error('[ayurveda/kyc/upload]', error);
+    res.status(500).json({ success: false, message: error.message });
+  }
+});
+
+// ============================================
+// KYC — Ayurveda Doctor
+// ============================================
+router.post('/doctor/kyc/submit', async (req, res) => {
+  try {
+    const { doctorId, panNumber, aadhaarNumber, panCard, idProof, degreeCertificate, ayushCertificate, clinicLicense, photo, selfie } = req.body;
+    if (!doctorId) return res.status(400).json({ success: false, message: 'doctorId required' });
+
+    const doctor = await AyurvedaDoctor.findById(doctorId);
+    if (!doctor) return res.status(404).json({ success: false, message: 'Doctor not found' });
+
+    if (!doctor.documents) doctor.documents = {};
+    doctor.documents = {
+      ...doctor.documents,
+      panNumber: panNumber || doctor.documents.panNumber,
+      aadhaarNumber: aadhaarNumber || doctor.documents.aadhaarNumber,
+      panCard: panCard || doctor.documents.panCard,
+      idProof: idProof || doctor.documents.idProof,
+      degreeCertificate: degreeCertificate || doctor.documents.degreeCertificate,
+      ayushCertificate: ayushCertificate || doctor.documents.ayushCertificate,
+      clinicLicense: clinicLicense || doctor.documents.clinicLicense,
+      photo: photo || doctor.documents.photo,
+      selfie: selfie || doctor.documents.selfie,
+      kycStatus: 'submitted',
+      submittedAt: new Date()
+    };
+    await doctor.save();
+    res.json({ success: true, message: 'KYC submitted for review', data: doctor.documents });
+  } catch (error) {
+    console.error('[ayurveda/doctor/kyc/submit]', error);
+    res.status(500).json({ success: false, message: error.message });
+  }
+});
+
+router.get('/doctor/kyc/:doctorId', async (req, res) => {
+  try {
+    const doctor = await AyurvedaDoctor.findById(req.params.doctorId).select('documents').lean();
+    if (!doctor) return res.status(404).json({ success: false, message: 'Not found' });
+    res.json({ success: true, data: doctor.documents || { kycStatus: 'not_started' } });
+  } catch (error) {
+    res.status(500).json({ success: false, message: error.message });
+  }
+});
+
+router.get('/admin/kyc/doctors/pending', async (req, res) => {
+  try {
+    const doctors = await AyurvedaDoctor.find({ 'documents.kycStatus': 'submitted' })
+      .select('name phone email documents address').sort({ 'documents.submittedAt': 1 }).lean();
+    res.json({ success: true, count: doctors.length, data: doctors });
+  } catch (error) {
+    res.status(500).json({ success: false, message: error.message });
+  }
+});
+
+router.put('/admin/kyc/doctor/:doctorId/verify', async (req, res) => {
+  try {
+    const doctor = await AyurvedaDoctor.findById(req.params.doctorId);
+    if (!doctor) return res.status(404).json({ success: false, message: 'Not found' });
+    if (!doctor.documents) doctor.documents = {};
+    doctor.documents.kycStatus = 'verified';
+    doctor.documents.verifiedAt = new Date();
+    doctor.documents.verifiedBy = req.body.verifiedBy || 'admin';
+    doctor.documents.rejectionReason = undefined;
+    await doctor.save();
+    res.json({ success: true, message: 'KYC verified', data: doctor.documents });
+  } catch (error) {
+    res.status(500).json({ success: false, message: error.message });
+  }
+});
+
+router.put('/admin/kyc/doctor/:doctorId/reject', async (req, res) => {
+  try {
+    const { reason } = req.body;
+    if (!reason || reason.trim().length < 3) return res.status(400).json({ success: false, message: 'Reason required' });
+    const doctor = await AyurvedaDoctor.findById(req.params.doctorId);
+    if (!doctor) return res.status(404).json({ success: false, message: 'Not found' });
+    if (!doctor.documents) doctor.documents = {};
+    doctor.documents.kycStatus = 'rejected';
+    doctor.documents.rejectionReason = reason.trim();
+    await doctor.save();
+    res.json({ success: true, message: 'KYC rejected', data: doctor.documents });
+  } catch (error) {
+    res.status(500).json({ success: false, message: error.message });
+  }
+});
+
+// ============================================
+// KYC — Wellness Center
+// ============================================
+router.post('/center/kyc/submit', async (req, res) => {
+  try {
+    const { centerId, panNumber, gstNumber, ownerName, aadhaarNumber, businessRegistrationNumber, panCard, license, registration, gstCertificate, premisesPhoto, selfie } = req.body;
+    if (!centerId) return res.status(400).json({ success: false, message: 'centerId required' });
+
+    const center = await WellnessCenter.findById(centerId);
+    if (!center) return res.status(404).json({ success: false, message: 'Center not found' });
+
+    if (!center.documents) center.documents = {};
+    center.documents = {
+      ...center.documents,
+      panNumber: panNumber || center.documents.panNumber,
+      gstNumber: gstNumber || center.documents.gstNumber,
+      ownerName: ownerName || center.documents.ownerName,
+      aadhaarNumber: aadhaarNumber || center.documents.aadhaarNumber,
+      businessRegistrationNumber: businessRegistrationNumber || center.documents.businessRegistrationNumber,
+      panCard: panCard || center.documents.panCard,
+      license: license || center.documents.license,
+      registration: registration || center.documents.registration,
+      gstCertificate: gstCertificate || center.documents.gstCertificate,
+      premisesPhoto: premisesPhoto || center.documents.premisesPhoto,
+      selfie: selfie || center.documents.selfie,
+      kycStatus: 'submitted',
+      submittedAt: new Date()
+    };
+    await center.save();
+    res.json({ success: true, message: 'KYC submitted', data: center.documents });
+  } catch (error) {
+    console.error('[ayurveda/center/kyc/submit]', error);
+    res.status(500).json({ success: false, message: error.message });
+  }
+});
+
+router.get('/center/kyc/:centerId', async (req, res) => {
+  try {
+    const center = await WellnessCenter.findById(req.params.centerId).select('documents').lean();
+    if (!center) return res.status(404).json({ success: false, message: 'Not found' });
+    res.json({ success: true, data: center.documents || { kycStatus: 'not_started' } });
+  } catch (error) {
+    res.status(500).json({ success: false, message: error.message });
+  }
+});
+
+router.get('/admin/kyc/centers/pending', async (req, res) => {
+  try {
+    const centers = await WellnessCenter.find({ 'documents.kycStatus': 'submitted' })
+      .select('name phone email documents address').sort({ 'documents.submittedAt': 1 }).lean();
+    res.json({ success: true, count: centers.length, data: centers });
+  } catch (error) {
+    res.status(500).json({ success: false, message: error.message });
+  }
+});
+
+router.put('/admin/kyc/center/:centerId/verify', async (req, res) => {
+  try {
+    const center = await WellnessCenter.findById(req.params.centerId);
+    if (!center) return res.status(404).json({ success: false, message: 'Not found' });
+    if (!center.documents) center.documents = {};
+    center.documents.kycStatus = 'verified';
+    center.documents.verifiedAt = new Date();
+    center.documents.verifiedBy = req.body.verifiedBy || 'admin';
+    center.documents.rejectionReason = undefined;
+    await center.save();
+    res.json({ success: true, message: 'KYC verified', data: center.documents });
+  } catch (error) {
+    res.status(500).json({ success: false, message: error.message });
+  }
+});
+
+router.put('/admin/kyc/center/:centerId/reject', async (req, res) => {
+  try {
+    const { reason } = req.body;
+    if (!reason || reason.trim().length < 3) return res.status(400).json({ success: false, message: 'Reason required' });
+    const center = await WellnessCenter.findById(req.params.centerId);
+    if (!center) return res.status(404).json({ success: false, message: 'Not found' });
+    if (!center.documents) center.documents = {};
+    center.documents.kycStatus = 'rejected';
+    center.documents.rejectionReason = reason.trim();
+    await center.save();
+    res.json({ success: true, message: 'KYC rejected', data: center.documents });
+  } catch (error) {
+    res.status(500).json({ success: false, message: error.message });
+  }
+});
+
 module.exports = router;

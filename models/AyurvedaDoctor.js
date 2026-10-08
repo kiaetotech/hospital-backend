@@ -61,13 +61,25 @@ const ayurvedaDoctorSchema = new mongoose.Schema({
   },
   
   // KYC & Verification Documents
-  documents: {
+    documents: {
     ayushCertificate: { type: String, required: true },
     degreeCertificate: { type: String },
     idProof: { type: String, required: true },
     photo: { type: String },
     clinicLicense: { type: String },
-    panCard: { type: String }
+    panCard: { type: String },
+    kycStatus: {
+      type: String,
+      enum: ['not_started', 'submitted', 'verified', 'rejected'],
+      default: 'not_started'
+    },
+    panNumber: { type: String, trim: true, uppercase: true },
+    aadhaarNumber: { type: String, trim: true },
+    selfie: { type: String },
+    submittedAt: Date,
+    verifiedAt: Date,
+    verifiedBy: String,
+    rejectionReason: String
   },
   
   // AYUSH Registration
