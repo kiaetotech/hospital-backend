@@ -2256,7 +2256,7 @@ const SUSPEND_MODELS = {
 router.put('/admin/suspend/:type/:id', async (req, res) => {
   try {
     const { type, id } = req.params;
-    const { reason } = req.body;
+    const { reason, until } = req.body;
     const map = SUSPEND_MODELS[type];
     if (!map) return res.status(400).json({ success: false, message: 'Invalid type' });
     if (!reason || reason.trim().length < 3) {
@@ -2270,8 +2270,15 @@ router.put('/admin/suspend/:type/:id', async (req, res) => {
     doc.verificationStatus = 'suspended';
     doc.suspendedReason = reason.trim();
     doc.suspendedAt = new Date();
+    doc.suspendedUntil = until ? new Date(until) : undefined;
+
     if (!Array.isArray(doc.verificationHistory)) doc.verificationHistory = [];
-    doc.verificationHistory.push({ action: 'suspended', at: new Date(), reason: reason.trim() });
+    doc.verificationHistory.push({
+      action: 'suspended',
+      at: new Date(),
+      reason: reason.trim(),
+      until: until ? new Date(until) : undefined
+    });
     await doc.save();
 
     res.json({ success: true, message: `${type} suspended`, data: doc });
@@ -2291,9 +2298,10 @@ router.put('/admin/unsuspend/:type/:id', async (req, res) => {
     const doc = await Model.findById(id);
     if (!doc) return res.status(404).json({ success: false, message: `${type} not found` });
 
-    doc.verificationStatus = 'approved';
+        doc.verificationStatus = 'approved';
     doc.suspendedReason = undefined;
     doc.suspendedAt = undefined;
+    doc.suspendedUntil = undefined;
     if (!Array.isArray(doc.verificationHistory)) doc.verificationHistory = [];
     doc.verificationHistory.push({ action: 'unsuspended', at: new Date(), reason: 'Restored by admin' });
     await doc.save();
@@ -2311,15 +2319,15 @@ router.get('/admin/suspended', async (req, res) => {
     const WellnessCenter = require('../models/WellnessCenter');
 
     const [doctors, centers] = await Promise.all([
-      AyurvedaDoctor.find({ verificationStatus: 'suspended' })
-        .select('name phone address verificationStatus suspendedReason suspendedAt').lean(),
+            AyurvedaDoctor.find({ verificationStatus: 'suspended' })
+        .select('name phone address verificationStatus suspendedReason suspendedAt suspendedUntil').lean(),
       WellnessCenter.find({ verificationStatus: 'suspended' })
-        .select('name phone address verificationStatus suspendedReason suspendedAt').lean()
+        .select('name phone address verificationStatus suspendedReason suspendedAt suspendedUntil').lean()
     ]);
 
     const out = [
-      ...doctors.map(d => ({ _id: d._id, type: 'doctor', name: d.name, phone: d.phone, city: d.address?.city, suspendedReason: d.suspendedReason, suspendedAt: d.suspendedAt })),
-      ...centers.map(c => ({ _id: c._id, type: 'center', name: c.name, phone: c.phone, city: c.address?.city, suspendedReason: c.suspendedReason, suspendedAt: c.suspendedAt }))
+            ...doctors.map(d => ({ _id: d._id, type: 'doctor', name: d.name, phone: d.phone, city: d.address?.city, suspendedReason: d.suspendedReason, suspendedAt: d.suspendedAt, suspendedUntil: d.suspendedUntil })),
+      ...centers.map(c => ({ _id: c._id, type: 'center', name: c.name, phone: c.phone, city: c.address?.city, suspendedReason: c.suspendedReason, suspendedAt: c.suspendedAt, suspendedUntil: c.suspendedUntil }))
     ];
 
     out.sort((a, b) => new Date(b.suspendedAt || 0) - new Date(a.suspendedAt || 0));

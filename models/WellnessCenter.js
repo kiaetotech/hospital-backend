@@ -218,6 +218,7 @@ const wellnessCenterSchema = new mongoose.Schema({
   }],
   suspendedReason: { type: String },
   suspendedAt: { type: Date },
+  suspendedUntil: { type: Date },
   verifiedBy: { type: mongoose.Schema.Types.ObjectId, ref: 'Admin' },
   verifiedAt: Date,
   rejectionReason: String,
