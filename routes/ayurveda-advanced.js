@@ -583,14 +583,55 @@ router.put('/corporate/packages/:pkgId', async (req, res) => {
     const pkg = (doctor.corporateWellnessPackages || []).find(p => String(p._id) === String(pkgId));
     if (!pkg) return res.status(404).json({ success: false, message: 'Package not found' });
 
-    if (typeof req.body.isActive === 'boolean') pkg.isActive = req.body.isActive;
-    if (req.body.packageName) pkg.name = req.body.packageName;
-    if (req.body.pricePerEmployee != null) pkg.pricePerEmployee = Number(req.body.pricePerEmployee);
+    const b = req.body;
+    let contentChanged = false;
+
+    if (typeof b.isActive === 'boolean') pkg.isActive = b.isActive;
+    if (b.packageName) { pkg.name = b.packageName; contentChanged = true; }
+    if (b.description !== undefined) { pkg.description = b.description; contentChanged = true; }
+    if (b.pricePerEmployee != null) { pkg.pricePerEmployee = Number(b.pricePerEmployee); contentChanged = true; }
+    if (b.minEmployees !== undefined) { pkg.minEmployees = b.minEmployees ? Number(b.minEmployees) : undefined; contentChanged = true; }
+    if (b.validityDays !== undefined) { pkg.validityDays = b.validityDays ? Number(b.validityDays) : undefined; contentChanged = true; }
+    if (b.duration !== undefined) { pkg.duration = b.duration || undefined; contentChanged = true; }
+    if (b.durationDays !== undefined) { pkg.durationDays = b.durationDays ? Number(b.durationDays) : undefined; contentChanged = true; }
+    if (Array.isArray(b.servicesIncluded)) { pkg.includes = b.servicesIncluded; contentChanged = true; }
+
+    // If substantive content changed, force admin re-approval
+    if (contentChanged) {
+      pkg.approvalStatus = 'pending';
+      pkg.rejectionReason = undefined;
+      pkg.approvedAt = undefined;
+    }
 
     await doctor.save();
     res.json({ success: true, data: pkg });
   } catch (error) {
     console.error('[ayurveda/corporate/packages PUT]', error);
+    res.status(500).json({ success: false, message: error.message });
+  }
+});
+
+router.delete('/corporate/packages/:pkgId', async (req, res) => {
+  try {
+    const doctorId = resolveAyurDoctorId(req);
+    const { pkgId } = req.params;
+    if (!doctorId) return res.status(400).json({ success: false, message: 'doctorId required' });
+
+    const doctor = await AyurvedaDoctor.findById(doctorId);
+    if (!doctor) return res.status(404).json({ success: false, message: 'Doctor not found' });
+
+    const before = (doctor.corporateWellnessPackages || []).length;
+    doctor.corporateWellnessPackages = (doctor.corporateWellnessPackages || [])
+      .filter(p => String(p._id) !== String(pkgId));
+
+    if (doctor.corporateWellnessPackages.length === before) {
+      return res.status(404).json({ success: false, message: 'Package not found' });
+    }
+
+    await doctor.save();
+    res.json({ success: true, message: 'Package deleted' });
+  } catch (error) {
+    console.error('[ayurveda/corporate/packages DELETE]', error);
     res.status(500).json({ success: false, message: error.message });
   }
 });
