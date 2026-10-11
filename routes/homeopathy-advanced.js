@@ -3206,7 +3206,7 @@ const SUSPEND_MODELS = {
 router.put('/admin/suspend/:type/:id', requireAdmin, async (req, res) => {
   try {
     const { type, id } = req.params;
-    const { reason } = req.body;
+    const { reason, until } = req.body;
     const map = SUSPEND_MODELS[type];
     if (!map) return res.status(400).json({ success: false, message: 'Invalid type' });
     if (!reason || reason.trim().length < 3) {
@@ -3220,8 +3220,14 @@ router.put('/admin/suspend/:type/:id', requireAdmin, async (req, res) => {
     doc.verificationStatus = 'suspended';
     doc.suspendedReason = reason.trim();
     doc.suspendedAt = new Date();
+    doc.suspendedUntil = until ? new Date(until) : undefined;
     if (!Array.isArray(doc.verificationHistory)) doc.verificationHistory = [];
-    doc.verificationHistory.push({ action: 'suspended', at: new Date(), reason: reason.trim() });
+    doc.verificationHistory.push({
+      action: 'suspended',
+      at: new Date(),
+      reason: reason.trim(),
+      until: until ? new Date(until) : null
+    });
     await doc.save();
 
     res.json({ success: true, message: `${type} suspended`, data: doc });

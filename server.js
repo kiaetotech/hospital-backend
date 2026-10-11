@@ -376,7 +376,40 @@ if (unpaidExpiryService && typeof unpaidExpiryService.processUnpaidBookings === 
     }
   }, 5 * 60 * 1000);
 
-  console.log('🕐 Unpaid expiry cron scheduled every 5 minutes');
+  console.log('💰 Unpaid expiry cron scheduled every 5 minutes');
+}
+
+// ============================================
+// AUTO-UNSUSPEND PROVIDERS WHOSE SUSPENSION EXPIRED
+// Runs every hour
+// ============================================
+let schedulerService = null;
+try {
+  schedulerService = require('./services/schedulerService');
+  console.log('[scheduler] Scheduler service loaded');
+} catch (e) {
+  console.warn('[scheduler] Scheduler service not available:', e.message);
+}
+
+if (schedulerService && typeof schedulerService.processExpiredSuspensions === 'function') {
+  setTimeout(() => {
+    schedulerService.processExpiredSuspensions()
+      .then(r => console.log('[auto-unsuspend] Initial run:', JSON.stringify(r)))
+      .catch(err => console.error('[auto-unsuspend] Initial run failed:', err.message));
+  }, 90000);
+
+  setInterval(async () => {
+    try {
+      const r = await schedulerService.processExpiredSuspensions();
+      if (r.restored > 0) {
+        console.log('[auto-unsuspend] Restored ' + r.restored + ' providers');
+      }
+    } catch (error) {
+      console.error('[auto-unsuspend] Cron error:', error.message);
+    }
+  }, 60 * 60 * 1000);
+
+  console.log('[auto-unsuspend] Cron scheduled every hour');
 }
 
 // ============================================
