@@ -720,6 +720,11 @@ router.put('/corporate/toggle', async (req, res) => {
 // ============================================
 router.get('/admin/corporate-packages/all', async (req, res) => {
   try {
+    const adminKey = req.headers['x-admin-key'];
+    if (adminKey !== process.env.ADMIN_KEY) {
+      return res.status(403).json({ success: false, message: 'Admin access required' });
+    }
+
     const { status } = req.query;
     const doctors = await AyurvedaDoctor.find({}).select('name phone address corporateWellnessPackages').lean();
 
@@ -751,6 +756,11 @@ router.get('/admin/corporate-packages/all', async (req, res) => {
 
 router.put('/admin/corporate-packages/:doctorId/:pkgId/approve', async (req, res) => {
   try {
+    const adminKey = req.headers['x-admin-key'];
+    if (adminKey !== process.env.ADMIN_KEY) {
+      return res.status(403).json({ success: false, message: 'Admin access required' });
+    }
+
     const { doctorId, pkgId } = req.params;
     const doctor = await AyurvedaDoctor.findById(doctorId);
     if (!doctor) return res.status(404).json({ success: false, message: 'Doctor not found' });
@@ -770,10 +780,15 @@ router.put('/admin/corporate-packages/:doctorId/:pkgId/approve', async (req, res
   }
 });
 
+
 router.put('/admin/corporate-packages/:doctorId/:pkgId/reject', async (req, res) => {
   try {
-    const { doctorId, pkgId } = req.params;
-    const { reason } = req.body;
+    const adminKey = req.headers['x-admin-key'];
+    if (adminKey !== process.env.ADMIN_KEY) {
+      return res.status(403).json({ success: false, message: 'Admin access required' });
+    }
+
+    const { doctorId, pkgId } = req.params;    const { reason } = req.body;
     const doctor = await AyurvedaDoctor.findById(doctorId);
     if (!doctor) return res.status(404).json({ success: false, message: 'Doctor not found' });
 
