@@ -478,7 +478,12 @@ router.put('/admin/verify-doctor/:id', async (req, res) => {
 // CORPORATE PACKAGES — Doctor's own packages & enquiries
 // ============================================
 
-const resolveAyurDoctorId = (req) => req.body?.doctorId || req.query?.doctorId;
+const resolveAyurDoctorId = (req) =>
+  req.body?.doctorId ||
+  req.query?.doctorId ||
+  req.params?.doctorId ||
+  req.user?.id ||
+  req.user?._id;
 
 router.get('/corporate/packages', async (req, res) => {
   try {
