@@ -2732,7 +2732,21 @@ router.get('/admin/discounts', async (req, res) => {
 
   try {
     const Discount = require('../models/Discount');
-    const discounts = await Discount.find({})
+        const ayurvedaTags = [
+      'ayurveda_all',
+      'ayurveda_consultation',
+      'ayurveda_panchakarma',
+      'ayurveda_home_therapy',
+      'ayurveda_wellness_program',
+      'ayurveda_wellness_center'
+    ];
+    const discounts = await Discount.find({
+      $or: [
+        { applicableTags: { $in: ayurvedaTags } },
+        { applicableTags: { $in: ['all', 'general'] } },
+        { applicableTags: { $size: 0 } }
+      ]
+    })
       .sort({ createdAt: -1 })
       .limit(200)
       .lean();
