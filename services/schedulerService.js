@@ -276,11 +276,54 @@ const getReminderStats = async () => {
   };
 };
 
+/**
+ * Auto-unsuspend providers whose suspendedUntil date has passed
+ * Call this on a recurring interval (every hour recommended)
+ */
+const processExpiredSuspensions = async () => {
+  const now = new Date();
+  const models = [
+    'AyurvedaDoctor',
+    'AyurvedaCenter',
+    'HomeopathyDoctor',
+    'HomeopathyCenter',
+    'HomeopathyPharmacy'
+  ];
+  let restored = 0;
+  let errors = 0;
+
+  for (const m of models) {
+    try {
+      const Model = require(`../models/${m}`);
+      const result = await Model.updateMany(
+        {
+          verificationStatus: 'suspended',
+          suspendedUntil: { $ne: null, $lte: now }
+        },
+        {
+          $set: { verificationStatus: 'approved' },
+          $unset: { suspendedReason: 1, suspendedAt: 1, suspendedUntil: 1 }
+        }
+      );
+      if (result.modifiedCount) {
+        console.log(`[auto-unsuspend] ${m}: restored ${result.modifiedCount}`);
+        restored += result.modifiedCount;
+      }
+    } catch (e) {
+      console.error(`[auto-unsuspend] ${m} failed:`, e.message);
+      errors++;
+    }
+  }
+
+  return { success: true, restored, errors, timestamp: now };
+};
+
 module.exports = {
   processFollowUpReminders,
   sendReminder,
   markFollowUpBooked,
   triggerManualReminder,
   getReminderStats,
+  processExpiredSuspensions,
   CONFIG
 };
