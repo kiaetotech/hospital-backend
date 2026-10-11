@@ -732,16 +732,22 @@ router.get('/admin/corporate-packages/all', async (req, res) => {
     doctors.forEach(d => {
       (d.corporateWellnessPackages || []).forEach(p => {
         if (status && status !== 'all' && (p.approvalStatus || 'pending') !== status) return;
-        all.push({
+                all.push({
           doctorId: d._id,
           doctorName: d.name,
           doctorCity: d.address?.city,
           packageId: p._id,
           packageName: p.name,
+          description: p.description,
           pricePerEmployee: p.pricePerEmployee,
+          discountedPricePerEmployee: p.discountedPricePerEmployee,
           minEmployees: p.minEmployees,
+          validityDays: p.validityDays,
+          duration: p.duration,
+          servicesIncluded: p.includes || p.therapies || [],
           approvalStatus: p.approvalStatus || 'pending',
           rejectionReason: p.rejectionReason,
+          isActive: p.isActive,
           createdAt: p.createdAt
         });
       });
