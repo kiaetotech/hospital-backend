@@ -473,6 +473,274 @@ router.put('/admin/verify-doctor/:id', async (req, res) => {
     res.status(500).json({ success: false, error: error.message });
   }
 });
+
+// ============================================
+// CORPORATE PACKAGES — Doctor's own packages & enquiries
+// ============================================
+
+const resolveAyurDoctorId = (req) => req.body?.doctorId || req.query?.doctorId;
+
+router.get('/corporate/packages', async (req, res) => {
+  try {
+    const doctorId = resolveAyurDoctorId(req);
+    if (!doctorId) return res.status(400).json({ success: false, message: 'doctorId required' });
+
+    const doctor = await AyurvedaDoctor.findById(doctorId)
+      .select('corporateWellnessPackages offersCorporateWellness')
+      .lean();
+
+    if (!doctor) return res.status(404).json({ success: false, message: 'Doctor not found' });
+
+    const packages = (doctor.corporateWellnessPackages || []).map(p => ({
+      _id: p._id,
+      packageName: p.name,
+      pricePerEmployee: p.pricePerEmployee,
+      minEmployees: p.minEmployees || 10,
+      validityDays: 365,
+      servicesIncluded: p.includes || p.therapies || [],
+      description: p.description || '',
+      isActive: p.isActive !== false,
+      approvalStatus: p.approvalStatus || 'pending',
+      rejectionReason: p.rejectionReason || null,
+      createdAt: p.createdAt
+    }));
+
+    res.json({
+      success: true,
+      data: {
+        packages,
+        servesCorporate: doctor.offersCorporateWellness === true
+      }
+    });
+  } catch (error) {
+    console.error('[ayurveda/corporate/packages GET]', error);
+    res.status(500).json({ success: false, message: error.message });
+  }
+});
+
+router.post('/corporate/packages', async (req, res) => {
+  try {
+    const doctorId = resolveAyurDoctorId(req);
+    if (!doctorId) return res.status(400).json({ success: false, message: 'doctorId required' });
+
+    const {
+      packageName, description, servicesIncluded,
+      pricePerEmployee, minEmployees
+    } = req.body;
+
+    if (!packageName || !pricePerEmployee) {
+      return res.status(400).json({ success: false, message: 'packageName and pricePerEmployee required' });
+    }
+
+    const doctor = await AyurvedaDoctor.findById(doctorId);
+    if (!doctor) return res.status(404).json({ success: false, message: 'Doctor not found' });
+
+    if (!Array.isArray(doctor.corporateWellnessPackages)) {
+      doctor.corporateWellnessPackages = [];
+    }
+
+    const newPkg = {
+      _id: new (require('mongoose').Types.ObjectId)(),
+      name: packageName,
+      description: description || '',
+      pricePerEmployee: Number(pricePerEmployee),
+      minEmployees: minEmployees ? Number(minEmployees) : undefined,
+      duration: '1-day',
+      sessions: 1,
+      includes: Array.isArray(servicesIncluded) ? servicesIncluded : [],
+      benefits: [],
+      therapies: [],
+      category: 'general_wellness',
+      isActive: true,
+      approvalStatus: 'pending',
+      createdAt: new Date()
+    };
+
+    doctor.corporateWellnessPackages.push(newPkg);
+    await doctor.save();
+
+    res.json({ success: true, data: newPkg });
+  } catch (error) {
+    console.error('[ayurveda/corporate/packages POST]', error);
+    res.status(500).json({ success: false, message: error.message });
+  }
+});
+
+router.put('/corporate/packages/:pkgId', async (req, res) => {
+  try {
+    const doctorId = resolveAyurDoctorId(req);
+    const { pkgId } = req.params;
+    if (!doctorId) return res.status(400).json({ success: false, message: 'doctorId required' });
+
+    const doctor = await AyurvedaDoctor.findById(doctorId);
+    if (!doctor) return res.status(404).json({ success: false, message: 'Doctor not found' });
+
+    const pkg = (doctor.corporateWellnessPackages || []).find(p => String(p._id) === String(pkgId));
+    if (!pkg) return res.status(404).json({ success: false, message: 'Package not found' });
+
+    if (typeof req.body.isActive === 'boolean') pkg.isActive = req.body.isActive;
+    if (req.body.packageName) pkg.name = req.body.packageName;
+    if (req.body.pricePerEmployee != null) pkg.pricePerEmployee = Number(req.body.pricePerEmployee);
+
+    await doctor.save();
+    res.json({ success: true, data: pkg });
+  } catch (error) {
+    console.error('[ayurveda/corporate/packages PUT]', error);
+    res.status(500).json({ success: false, message: error.message });
+  }
+});
+
+router.get('/corporate/enquiries', async (req, res) => {
+  try {
+    const doctorId = resolveAyurDoctorId(req);
+    if (!doctorId) return res.status(400).json({ success: false, message: 'doctorId required' });
+
+    const doctor = await AyurvedaDoctor.findById(doctorId)
+      .select('corporateEnquiries')
+      .lean();
+
+    if (!doctor) return res.status(404).json({ success: false, message: 'Doctor not found' });
+
+    res.json({ success: true, data: doctor.corporateEnquiries || [] });
+  } catch (error) {
+    console.error('[ayurveda/corporate/enquiries GET]', error);
+    res.status(500).json({ success: false, message: error.message });
+  }
+});
+
+router.put('/corporate/enquiries/:enqId', async (req, res) => {
+  try {
+    const doctorId = resolveAyurDoctorId(req);
+    const { enqId } = req.params;
+    const { status } = req.body;
+    if (!doctorId) return res.status(400).json({ success: false, message: 'doctorId required' });
+    if (!status) return res.status(400).json({ success: false, message: 'status required' });
+
+    const doctor = await AyurvedaDoctor.findById(doctorId);
+    if (!doctor) return res.status(404).json({ success: false, message: 'Doctor not found' });
+
+    if (!Array.isArray(doctor.corporateEnquiries)) {
+      doctor.corporateEnquiries = [];
+    }
+
+    const enq = doctor.corporateEnquiries.find(e => String(e._id) === String(enqId));
+    if (!enq) return res.status(404).json({ success: false, message: 'Enquiry not found' });
+
+    enq.status = status;
+    enq.updatedAt = new Date();
+    await doctor.save();
+
+    res.json({ success: true, data: enq });
+  } catch (error) {
+    console.error('[ayurveda/corporate/enquiries PUT]', error);
+    res.status(500).json({ success: false, message: error.message });
+  }
+});
+
+router.put('/corporate/toggle', async (req, res) => {
+  try {
+    const doctorId = resolveAyurDoctorId(req);
+    const { enable } = req.body;
+    if (!doctorId) return res.status(400).json({ success: false, message: 'doctorId required' });
+    if (typeof enable !== 'boolean') return res.status(400).json({ success: false, message: 'enable (boolean) required' });
+
+    const doctor = await AyurvedaDoctor.findByIdAndUpdate(
+      doctorId,
+      { $set: { offersCorporateWellness: enable } },
+      { new: true }
+    );
+    if (!doctor) return res.status(404).json({ success: false, message: 'Doctor not found' });
+
+    res.json({
+      success: true,
+      data: {
+        servesCorporate: doctor.offersCorporateWellness === true,
+        offersCorporateWellness: doctor.offersCorporateWellness
+      }
+    });
+  } catch (error) {
+    console.error('[ayurveda/corporate/toggle]', error);
+    res.status(500).json({ success: false, message: error.message });
+  }
+});
+
+// ============================================
+// ADMIN: CORPORATE PACKAGE APPROVAL
+// ============================================
+router.get('/admin/corporate-packages/all', async (req, res) => {
+  try {
+    const { status } = req.query;
+    const doctors = await AyurvedaDoctor.find({}).select('name phone address corporateWellnessPackages').lean();
+
+    const all = [];
+    doctors.forEach(d => {
+      (d.corporateWellnessPackages || []).forEach(p => {
+        if (status && status !== 'all' && (p.approvalStatus || 'pending') !== status) return;
+        all.push({
+          doctorId: d._id,
+          doctorName: d.name,
+          doctorCity: d.address?.city,
+          packageId: p._id,
+          packageName: p.name,
+          pricePerEmployee: p.pricePerEmployee,
+          minEmployees: p.minEmployees,
+          approvalStatus: p.approvalStatus || 'pending',
+          rejectionReason: p.rejectionReason,
+          createdAt: p.createdAt
+        });
+      });
+    });
+
+    res.json({ success: true, count: all.length, data: all });
+  } catch (error) {
+    console.error('[ayurveda/admin/corporate-packages/all]', error);
+    res.status(500).json({ success: false, message: error.message });
+  }
+});
+
+router.put('/admin/corporate-packages/:doctorId/:pkgId/approve', async (req, res) => {
+  try {
+    const { doctorId, pkgId } = req.params;
+    const doctor = await AyurvedaDoctor.findById(doctorId);
+    if (!doctor) return res.status(404).json({ success: false, message: 'Doctor not found' });
+
+    const pkg = (doctor.corporateWellnessPackages || []).find(p => String(p._id) === String(pkgId));
+    if (!pkg) return res.status(404).json({ success: false, message: 'Package not found' });
+
+    pkg.approvalStatus = 'approved';
+    pkg.rejectionReason = undefined;
+    pkg.approvedAt = new Date();
+    await doctor.save();
+
+    res.json({ success: true, message: 'Package approved', data: pkg });
+  } catch (error) {
+    console.error('[ayurveda/admin/corporate-packages/approve]', error);
+    res.status(500).json({ success: false, message: error.message });
+  }
+});
+
+router.put('/admin/corporate-packages/:doctorId/:pkgId/reject', async (req, res) => {
+  try {
+    const { doctorId, pkgId } = req.params;
+    const { reason } = req.body;
+    const doctor = await AyurvedaDoctor.findById(doctorId);
+    if (!doctor) return res.status(404).json({ success: false, message: 'Doctor not found' });
+
+    const pkg = (doctor.corporateWellnessPackages || []).find(p => String(p._id) === String(pkgId));
+    if (!pkg) return res.status(404).json({ success: false, message: 'Package not found' });
+
+    pkg.approvalStatus = 'rejected';
+    pkg.rejectionReason = reason || 'Not specified';
+    await doctor.save();
+
+    res.json({ success: true, message: 'Package rejected', data: pkg });
+  } catch (error) {
+    console.error('[ayurveda/admin/corporate-packages/reject]', error);
+    res.status(500).json({ success: false, message: error.message });
+  }
+});
+
+
 // ============================================
 // 🆕 CORPORATE WELLNESS ROUTES (ADDED)
 // ============================================
