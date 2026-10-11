@@ -194,23 +194,20 @@ const ayurvedaDoctorSchema = new mongoose.Schema({
   },
 
   // Corporate wellness packages
-  corporateWellnessPackages: [{
+      corporateWellnessPackages: [{
     name: { type: String, required: true },
     description: { type: String },
     pricePerEmployee: { type: Number, required: true },
-    duration: { 
-      type: String, 
-      enum: ['1-day', '3-day', '5-day', '7-day', '14-day', '21-day', 'monthly'],
-      default: '1-day'
-    },
+    duration: { type: String },
+    durationDays: { type: Number },
     sessions: { type: Number, default: 1 },
     includes: [{ type: String }],
     benefits: [{ type: String }],
     therapies: [{ type: String }],
-    category: {
-      type: String,
-      enum: ['stress_management', 'detox', 'panchakarma', 'immunity_boost', 'sleep_health', 'weight_management', 'general_wellness']
-    },
+    category: { type: String },
+    minEmployees: { type: Number },
+    validityDays: { type: Number },
+    approvalStatus: { type: String, enum: ['pending', 'approved', 'rejected'], default: 'pending' },
     isActive: { type: Boolean, default: true },
     createdAt: { type: Date, default: Date.now }
   }],

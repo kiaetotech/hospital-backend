@@ -491,12 +491,14 @@ router.get('/corporate/packages', async (req, res) => {
 
     if (!doctor) return res.status(404).json({ success: false, message: 'Doctor not found' });
 
-    const packages = (doctor.corporateWellnessPackages || []).map(p => ({
+        const packages = (doctor.corporateWellnessPackages || []).map(p => ({
       _id: p._id,
       packageName: p.name,
       pricePerEmployee: p.pricePerEmployee,
-      minEmployees: p.minEmployees || 10,
-      validityDays: 365,
+      minEmployees: p.minEmployees,
+      validityDays: p.validityDays,
+      duration: p.duration,
+      durationDays: p.durationDays,
       servicesIncluded: p.includes || p.therapies || [],
       description: p.description || '',
       isActive: p.isActive !== false,
@@ -523,9 +525,10 @@ router.post('/corporate/packages', async (req, res) => {
     const doctorId = resolveAyurDoctorId(req);
     if (!doctorId) return res.status(400).json({ success: false, message: 'doctorId required' });
 
-    const {
+        const {
       packageName, description, servicesIncluded,
-      pricePerEmployee, minEmployees
+      pricePerEmployee, minEmployees, validityDays,
+      duration, durationDays
     } = req.body;
 
     if (!packageName || !pricePerEmployee) {
@@ -539,13 +542,15 @@ router.post('/corporate/packages', async (req, res) => {
       doctor.corporateWellnessPackages = [];
     }
 
-    const newPkg = {
+            const newPkg = {
       _id: new (require('mongoose').Types.ObjectId)(),
       name: packageName,
       description: description || '',
       pricePerEmployee: Number(pricePerEmployee),
       minEmployees: minEmployees ? Number(minEmployees) : undefined,
-      duration: '1-day',
+      validityDays: validityDays ? Number(validityDays) : undefined,
+      duration: duration || undefined,
+      durationDays: durationDays ? Number(durationDays) : undefined,
       sessions: 1,
       includes: Array.isArray(servicesIncluded) ? servicesIncluded : [],
       benefits: [],
