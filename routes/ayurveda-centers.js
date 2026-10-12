@@ -370,7 +370,8 @@ const authenticateCenter = async (req, res, next) => {
       return res.status(403).json({ success: false, error: 'Center access required' });
     }
 
-    if (decoded.id !== req.params.centerId) {
+        // Only enforce param-based check when a :centerId is present in the URL
+    if (req.params.centerId && decoded.id !== req.params.centerId) {
       return res.status(403).json({ success: false, error: 'You can only modify your own packages' });
     }
 
