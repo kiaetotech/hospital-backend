@@ -3384,7 +3384,7 @@ router.get('/admin/corporate-packages/all', requireAdmin, async (req, res) => {
     doctors.forEach(d => {
       (d.corporateWellnessPackages || []).forEach(p => {
         if (status && status !== 'all' && (p.approvalStatus || 'pending') !== status) return;
-                all.push({
+           all.push({
           doctorId: d._id,
           doctorName: d.name,
           doctorCity: d.address?.city,
