@@ -518,6 +518,7 @@ try { insuranceAdminRoutes = require('./routes/insurance-admin'); } catch(e) { c
 try { insuranceAllTabsRoutes = require('./routes/insurance-all-tabs'); } catch(e) { console.warn('⚠️ insurance-all-tabs route missing: ' + e.message); insuranceAllTabsRoutes = (req,res) => res.status(404).json({error:'Route not available', details: e.message}); }
 try { var insuranceMarketplaceRoutes = require('./routes/insurance-marketplace'); } catch(e) { console.warn('⚠️ insurance-marketplace route missing: ' + e.message); insuranceMarketplaceRoutes = (req,res) => res.status(404).json({error:'Route not available', details: e.message}); }
 try { var insuranceAdminPlansRoutes = require('./routes/insurance-admin-plans'); } catch(e) { console.warn('⚠️ insurance-admin-plans route missing: ' + e.message); insuranceAdminPlansRoutes = (req,res) => res.status(404).json({error:'Route not available', details: e.message}); }
+try { var insurancePolicyCenterRoutes = require('./routes/insurance-policy-center'); } catch(e) { console.warn('⚠️ insurance-policy-center route missing: ' + e.message); insurancePolicyCenterRoutes = (req,res) => res.status(404).json({error:'Route not available', details: e.message}); }
 try { otpRoutes = require('./routes/otp'); } catch(e) { console.warn('⚠️ otp route missing'); otpRoutes = (req,res) => res.status(404).json({error:'Route not available'}); }
 try { corporateRoutes = require('./routes/corporate'); } catch(e) { console.warn('⚠️ corporate route missing'); corporateRoutes = (req,res) => res.status(404).json({error:'Route not available'}); }
 try { corporateBillingRoutes = require('./routes/corporate-billing'); } catch(e) { console.warn('⚠️ corporate-billing route missing'); corporateBillingRoutes = (req,res) => res.status(404).json({error:'Route not available'}); }
@@ -908,6 +909,7 @@ app.use('/api/homeopathy-legacy', homeopathyRoutes);
 app.use('/api/insurance', insuranceAllTabsRoutes);
 app.use('/api/insurance-marketplace', searchLimiter, insuranceMarketplaceRoutes);
 app.use('/api/insurance-admin/plans', insuranceAdminPlansRoutes);
+app.use('/api/insurance-policy-center', insurancePolicyCenterRoutes);
 app.use('/api/insurance', insuranceRoutes);
 app.use('/api/insurance-claims', insuranceClaimsRoutes);
 app.use('/api/insurance/company', insuranceOnboardingRoutes);
