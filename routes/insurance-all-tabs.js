@@ -496,7 +496,7 @@ router.get('/admin/plans', requireAdminKey, asyncHandler(async (req, res) => {
 
   const skip = (parseInt(page) - 1) * parseInt(limit);
   const [plans, total] = await Promise.all([
-    InsurancePlan.find(query).populate('companyId', 'companyName').sort({ createdAt: -1 }).skip(skip).limit(parseInt(limit)).lean(),
+    InsurancePlan.find(query).sort({ createdAt: -1 }).skip(skip).limit(parseInt(limit)).lean(),
     InsurancePlan.countDocuments(query)
   ]);
   return ok(res, plans, {
@@ -1056,6 +1056,48 @@ router.get('/admin/ads/revenue', requireAdminKey, asyncHandler(async (req, res) 
     total: totalAgg[0] || { totalRevenue: 0, totalEvents: 0 },
     byCompany, byPlacement
   });
+}));
+
+// ============================================
+// ADMIN — SETTLEMENTS
+// ============================================
+
+router.get('/admin/settlements', requireAdminKey, asyncHandler(async (req, res) => {
+  const { status = 'all', page = 1, limit = 30 } = req.query;
+
+  const query = { bookingType: 'insurance' };
+  if (status === 'pending') query.insuranceSettlementStatus = 'pending';
+  else if (status === 'completed') query.insuranceSettlementStatus = 'completed';
+
+  const skip = (parseInt(page) - 1) * parseInt(limit);
+  const [settlements, total] = await Promise.all([
+    Transaction.find(query)
+      .populate('providerId', 'companyName name')
+      .sort({ createdAt: -1 })
+      .skip(skip)
+      .limit(parseInt(limit))
+      .lean(),
+    Transaction.countDocuments(query)
+  ]);
+
+  return ok(res, settlements, {
+    pagination: { page: parseInt(page), limit: parseInt(limit), total, pages: Math.ceil(total / parseInt(limit)) }
+  });
+}));
+
+router.post('/admin/settlements/:id/process', requireAdminKey, asyncHandler(async (req, res) => {
+  const transaction = await Transaction.findById(req.params.id);
+  if (!transaction) return fail(res, 404, 'NOT_FOUND', 'Transaction not found');
+  if (transaction.insuranceSettlementStatus === 'completed') {
+    return fail(res, 400, 'ALREADY_SETTLED', 'Already settled');
+  }
+  transaction.insuranceSettlementStatus = 'completed';
+  transaction.insuranceSettlementDate = new Date();
+  transaction.insuranceSettlementTransactionId = 'SETTLE_' + Date.now();
+  transaction.settledToProvider = true;
+  transaction.settledAt = new Date();
+  await transaction.save();
+  return ok(res, transaction);
 }));
 
 module.exports = router;
