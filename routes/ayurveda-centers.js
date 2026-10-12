@@ -11,13 +11,13 @@ const JWT_SECRET = process.env.JWT_SECRET;
 // ============================================
 router.post('/register', async (req, res) => {
   try {
-    const { name, phone, email, password, type, description, address, bedCount, panchakarmaRooms, facilities } = req.body;
-    
+    const { name, phone, email, password, type, description, address, bedCount, panchakarmaRooms, facilities, offersCorporateWellness } = req.body;
+
     const existing = await WellnessCenter.findOne({ $or: [{ phone }, { email }] });
     if (existing) return res.status(400).json({ success: false, error: 'Center already registered' });
-    
+
     const hashedPassword = await bcrypt.hash(password, 10);
-    
+
     const center = new WellnessCenter({
       name, phone, email, password: hashedPassword,
       type: type || 'Wellness Center',
@@ -25,6 +25,7 @@ router.post('/register', async (req, res) => {
       address: address || {},
       bedCount, panchakarmaRooms,
       facilities: facilities || [],
+      offersCorporateWellness: Boolean(offersCorporateWellness),
       verificationStatus: 'pending'
     });
     

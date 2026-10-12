@@ -439,13 +439,15 @@ router.get('/centers/:id', async (req, res) => {
 
 router.post('/center/register', async (req, res) => {
   try {
-    const { name, phone, email, password, type, description, city, state, facilities } = req.body;
+    const { name, phone, email, password, type, description, city, state, facilities, offersCorporateWellness } = req.body;
     const existing = await NaturopathyCenter.findOne({ phone });
-    if (existing) return res.status(400).json({ success: false, error: 'Phone already registered' });
+    if (existing) return res.status(400).json({ success: false, error: 'Center already registered' });
+
     const hashedPassword = await bcrypt.hash(password, 10);
     const center = new NaturopathyCenter({
       name, phone, email, password: hashedPassword, type, description,
       address: { city, state }, facilities: facilities || [],
+      offersCorporateWellness: Boolean(offersCorporateWellness),
       verificationStatus: 'pending'
     });
     await center.save();
