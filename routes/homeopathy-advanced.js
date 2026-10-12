@@ -3376,18 +3376,56 @@ router.put('/admin/bulk-action', requireAdmin, async (req, res) => {
 
 router.get('/admin/corporate-packages/all', requireAdmin, async (req, res) => {
   try {
-    const { status } = req.query; // pending | approved | rejected | all
+        const { status } = req.query; // pending | approved | rejected | all
     const HomeopathyDoctor = require('../models/HomeopathyDoctor');
-    const doctors = await HomeopathyDoctor.find({}).select('name phone address corporateWellnessPackages').lean();
+    const NaturopathyCenter = require('../models/NaturopathyCenter');
+
+    const [doctors, centers] = await Promise.all([
+      HomeopathyDoctor.find({}).select('name phone address corporateWellnessPackages').lean(),
+      NaturopathyCenter.find({}).select('name phone address corporateWellnessPackages').lean()
+    ]);
 
     const all = [];
+
     doctors.forEach(d => {
       (d.corporateWellnessPackages || []).forEach(p => {
         if (status && status !== 'all' && (p.approvalStatus || 'pending') !== status) return;
-           all.push({
+        all.push({
+          providerType: 'doctor',
+          providerId: d._id,
+          providerName: d.name,
+          providerCity: d.address?.city,
           doctorId: d._id,
           doctorName: d.name,
           doctorCity: d.address?.city,
+          packageId: p._id,
+          packageName: p.name,
+          description: p.description,
+          pricePerEmployee: p.pricePerEmployee,
+          discountedPricePerEmployee: p.discountedPricePerEmployee,
+          minEmployees: p.minEmployees,
+          validityDays: p.validityDays,
+          duration: p.duration,
+          servicesIncluded: p.includes || p.therapies || [],
+          approvalStatus: p.approvalStatus || 'pending',
+          rejectionReason: p.rejectionReason,
+          isActive: p.isActive,
+          createdAt: p.createdAt
+        });
+      });
+    });
+
+    centers.forEach(c => {
+      (c.corporateWellnessPackages || []).forEach(p => {
+        if (status && status !== 'all' && (p.approvalStatus || 'pending') !== status) return;
+        all.push({
+          providerType: 'center',
+          providerId: c._id,
+          providerName: c.name,
+          providerCity: c.address?.city,
+          doctorId: c._id,
+          doctorName: c.name,
+          doctorCity: c.address?.city,
           packageId: p._id,
           packageName: p.name,
           description: p.description,

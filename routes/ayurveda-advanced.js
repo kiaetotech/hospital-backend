@@ -725,17 +725,57 @@ router.get('/admin/corporate-packages/all', async (req, res) => {
       return res.status(403).json({ success: false, message: 'Admin access required' });
     }
 
-    const { status } = req.query;
-    const doctors = await AyurvedaDoctor.find({}).select('name phone address corporateWellnessPackages').lean();
+        const { status } = req.query;
+    const WellnessCenter = require('../models/WellnessCenter');
+
+    const [doctors, centers] = await Promise.all([
+      AyurvedaDoctor.find({}).select('name phone address corporateWellnessPackages').lean(),
+      WellnessCenter.find({}).select('name phone address corporateWellnessPackages').lean()
+    ]);
 
     const all = [];
+
     doctors.forEach(d => {
       (d.corporateWellnessPackages || []).forEach(p => {
         if (status && status !== 'all' && (p.approvalStatus || 'pending') !== status) return;
-                all.push({
+        all.push({
+          providerType: 'doctor',
+          providerId: d._id,
+          providerName: d.name,
+          providerCity: d.address?.city,
+          // Backward-compat aliases (existing frontend uses these)
           doctorId: d._id,
           doctorName: d.name,
           doctorCity: d.address?.city,
+          packageId: p._id,
+          packageName: p.name,
+          description: p.description,
+          pricePerEmployee: p.pricePerEmployee,
+          discountedPricePerEmployee: p.discountedPricePerEmployee,
+          minEmployees: p.minEmployees,
+          validityDays: p.validityDays,
+          duration: p.duration,
+          servicesIncluded: p.includes || p.therapies || [],
+          approvalStatus: p.approvalStatus || 'pending',
+          rejectionReason: p.rejectionReason,
+          isActive: p.isActive,
+          createdAt: p.createdAt
+        });
+      });
+    });
+
+    centers.forEach(c => {
+      (c.corporateWellnessPackages || []).forEach(p => {
+        if (status && status !== 'all' && (p.approvalStatus || 'pending') !== status) return;
+        all.push({
+          providerType: 'center',
+          providerId: c._id,
+          providerName: c.name,
+          providerCity: c.address?.city,
+          // Same aliases so frontend can stay unchanged
+          doctorId: c._id,
+          doctorName: c.name,
+          doctorCity: c.address?.city,
           packageId: p._id,
           packageName: p.name,
           description: p.description,
