@@ -33,7 +33,12 @@ const { calculatePremium } = require('../services/insurancePremiumEngine');
 // Re-register needed models at request time so populate() works.
 // ============================================
 function ensureModels() {
-  const needed = [
+  const mongoose = require('mongoose');
+
+  // If User is registered, assume all models are — done.
+  if (mongoose.models.User) return;
+
+  const paths = [
     '../models/User',
     '../models/InsurancePlan',
     '../models/InsuranceCompany',
@@ -42,8 +47,16 @@ function ensureModels() {
     '../models/Transaction',
     '../models/InsuranceMarketplace',
   ];
-  for (const p of needed) {
-    try { require(p); } catch (e) {}
+
+  for (const p of paths) {
+    try {
+      // Clear require cache so the file re-executes and calls mongoose.model(...) again
+      const resolved = require.resolve(p);
+      delete require.cache[resolved];
+      require(p);
+    } catch (e) {
+      console.warn('[ensureModels] failed:', p, e.message);
+    }
   }
 }
 

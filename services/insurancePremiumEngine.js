@@ -35,8 +35,16 @@ function calculatePremium(input) {
     addonLines: [],
   };
 
-  // 1) Sum insured factor — normalized to plan base cover
-  const planBaseCover = (plan.coverage && plan.coverage.sumInsured) || 500000;
+    // 1) Sum insured factor — normalized to plan base cover
+  // Support both old schema (sumInsured as object/number) and new (coverage.sumInsured)
+  let planBaseCover = 500000;
+  if (plan.coverage && plan.coverage.sumInsured) {
+    planBaseCover = plan.coverage.sumInsured;
+  } else if (plan.sumInsured && typeof plan.sumInsured === 'object' && plan.sumInsured.default) {
+    planBaseCover = plan.sumInsured.default;
+  } else if (typeof plan.sumInsured === 'number') {
+    planBaseCover = plan.sumInsured;
+  }
   const siFactor = sumInsured / planBaseCover;
   breakdown.sumInsuredFactor = siFactor;
 
