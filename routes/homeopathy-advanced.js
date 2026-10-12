@@ -3454,18 +3454,24 @@ router.get('/admin/corporate-packages/all', requireAdmin, async (req, res) => {
 
 router.put('/admin/corporate-packages/:doctorId/:pkgId/approve', requireAdmin, async (req, res) => {
   try {
-    const { doctorId, pkgId } = req.params;
+        const { doctorId, pkgId } = req.params;
     const HomeopathyDoctor = require('../models/HomeopathyDoctor');
-    const doctor = await HomeopathyDoctor.findById(doctorId);
-    if (!doctor) return res.status(404).json({ success: false, message: 'Doctor not found' });
+    const NaturopathyCenter = require('../models/NaturopathyCenter');
 
-    const pkg = (doctor.corporateWellnessPackages || []).find(p => String(p._id) === String(pkgId));
+    // Try doctor first, then center (centers can now offer corporate packages too)
+    let provider = await HomeopathyDoctor.findById(doctorId);
+    if (!provider) {
+      provider = await NaturopathyCenter.findById(doctorId);
+    }
+    if (!provider) return res.status(404).json({ success: false, message: 'Provider not found' });
+
+    const pkg = (provider.corporateWellnessPackages || []).find(p => String(p._id) === String(pkgId));
     if (!pkg) return res.status(404).json({ success: false, message: 'Package not found' });
 
     pkg.approvalStatus = 'approved';
     pkg.rejectionReason = undefined;
     pkg.approvedAt = new Date();
-    await doctor.save();
+    await provider.save();
 
     res.json({ success: true, message: 'Package approved', data: pkg });
   } catch (error) {
@@ -3476,18 +3482,24 @@ router.put('/admin/corporate-packages/:doctorId/:pkgId/approve', requireAdmin, a
 
 router.put('/admin/corporate-packages/:doctorId/:pkgId/reject', requireAdmin, async (req, res) => {
   try {
-    const { doctorId, pkgId } = req.params;
+        const { doctorId, pkgId } = req.params;
     const { reason } = req.body;
     const HomeopathyDoctor = require('../models/HomeopathyDoctor');
-    const doctor = await HomeopathyDoctor.findById(doctorId);
-    if (!doctor) return res.status(404).json({ success: false, message: 'Doctor not found' });
+    const NaturopathyCenter = require('../models/NaturopathyCenter');
 
-    const pkg = (doctor.corporateWellnessPackages || []).find(p => String(p._id) === String(pkgId));
+    // Try doctor first, then center (centers can now offer corporate packages too)
+    let provider = await HomeopathyDoctor.findById(doctorId);
+    if (!provider) {
+      provider = await NaturopathyCenter.findById(doctorId);
+    }
+    if (!provider) return res.status(404).json({ success: false, message: 'Provider not found' });
+
+    const pkg = (provider.corporateWellnessPackages || []).find(p => String(p._id) === String(pkgId));
     if (!pkg) return res.status(404).json({ success: false, message: 'Package not found' });
 
     pkg.approvalStatus = 'rejected';
     pkg.rejectionReason = reason || 'Not specified';
-    await doctor.save();
+    await provider.save();
 
     res.json({ success: true, message: 'Package rejected', data: pkg });
   } catch (error) {
