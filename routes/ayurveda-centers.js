@@ -1044,8 +1044,176 @@ router.post('/admin/recalculate-counters', async (req, res) => {
       message: `Recalculated. Fixed ${totalFixed} packages.`,
       log
     });
-  } catch (error) {
+    } catch (error) {
     console.error('Recalculate error:', error);
+    res.status(500).json({ success: false, error: error.message });
+  }
+});
+
+// ============================================
+// CENTER: CORPORATE WELLNESS ROUTES
+// ============================================
+
+// GET /corporate/packages — list center's corporate packages + toggle state
+router.get('/corporate/packages', authenticateCenter, async (req, res) => {
+  try {
+    const center = req.center;
+    const packages = (center.corporateWellnessPackages || []).map(p => ({
+      _id: p._id,
+      packageName: p.name,
+      description: p.description || '',
+      pricePerEmployee: p.pricePerEmployee,
+      minEmployees: p.minEmployees,
+      validityDays: p.validityDays,
+      duration: p.duration,
+      servicesIncluded: p.includes || p.therapies || [],
+      isActive: p.isActive !== false,
+      approvalStatus: p.approvalStatus || 'pending',
+      rejectionReason: p.rejectionReason || null,
+      createdAt: p.createdAt
+    }));
+    res.json({ success: true, data: { packages, servesCorporate: Boolean(center.offersCorporateWellness) } });
+  } catch (error) {
+    console.error('[ayurveda-center/corporate/packages GET]', error.message);
+    res.status(500).json({ success: false, error: error.message });
+  }
+});
+
+// POST /corporate/packages — create a corporate package
+router.post('/corporate/packages', authenticateCenter, async (req, res) => {
+  try {
+    const center = req.center;
+    const {
+      packageName, description, pricePerEmployee, minEmployees,
+      validityDays, duration, servicesIncluded
+    } = req.body;
+
+    if (!packageName || !pricePerEmployee) {
+      return res.status(400).json({ success: false, error: 'packageName and pricePerEmployee required' });
+    }
+
+    if (!Array.isArray(center.corporateWellnessPackages)) {
+      center.corporateWellnessPackages = [];
+    }
+
+    const newPkg = {
+      _id: new (require('mongoose').Types.ObjectId)(),
+      name: packageName,
+      description: description || '',
+      pricePerEmployee: Number(pricePerEmployee),
+      minEmployees: minEmployees ? Number(minEmployees) : undefined,
+      validityDays: validityDays ? Number(validityDays) : undefined,
+      duration: duration || undefined,
+      sessions: 1,
+      includes: Array.isArray(servicesIncluded) ? servicesIncluded : [],
+      benefits: [],
+      therapies: [],
+      category: 'general_wellness',
+      isActive: true,
+      approvalStatus: 'pending',
+      createdAt: new Date()
+    };
+
+    center.corporateWellnessPackages.push(newPkg);
+    await center.save();
+
+    res.json({ success: true, data: newPkg });
+  } catch (error) {
+    console.error('[ayurveda-center/corporate/packages POST]', error.message);
+    res.status(500).json({ success: false, error: error.message });
+  }
+});
+
+// PUT /corporate/packages/:pkgId — edit a corporate package
+router.put('/corporate/packages/:pkgId', authenticateCenter, async (req, res) => {
+  try {
+    const center = req.center;
+    const { pkgId } = req.params;
+    const pkg = (center.corporateWellnessPackages || []).find(p => String(p._id) === String(pkgId));
+    if (!pkg) return res.status(404).json({ success: false, error: 'Package not found' });
+
+    const b = req.body;
+    let contentChanged = false;
+
+    if (typeof b.isActive === 'boolean') pkg.isActive = b.isActive;
+    if (b.packageName) { pkg.name = b.packageName; contentChanged = true; }
+    if (b.description !== undefined) { pkg.description = b.description; contentChanged = true; }
+    if (b.pricePerEmployee != null) { pkg.pricePerEmployee = Number(b.pricePerEmployee); contentChanged = true; }
+    if (b.minEmployees !== undefined) { pkg.minEmployees = b.minEmployees ? Number(b.minEmployees) : undefined; contentChanged = true; }
+    if (b.validityDays !== undefined) { pkg.validityDays = b.validityDays ? Number(b.validityDays) : undefined; contentChanged = true; }
+    if (b.duration !== undefined) { pkg.duration = b.duration || undefined; contentChanged = true; }
+    if (Array.isArray(b.servicesIncluded)) { pkg.includes = b.servicesIncluded; contentChanged = true; }
+
+    if (contentChanged) {
+      pkg.approvalStatus = 'pending';
+      pkg.rejectionReason = undefined;
+      pkg.approvedAt = undefined;
+    }
+
+    await center.save();
+    res.json({ success: true, data: pkg });
+  } catch (error) {
+    console.error('[ayurveda-center/corporate/packages PUT]', error.message);
+    res.status(500).json({ success: false, error: error.message });
+  }
+});
+
+// DELETE /corporate/packages/:pkgId — delete a corporate package
+router.delete('/corporate/packages/:pkgId', authenticateCenter, async (req, res) => {
+  try {
+    const center = req.center;
+    const { pkgId } = req.params;
+    const before = (center.corporateWellnessPackages || []).length;
+    center.corporateWellnessPackages = (center.corporateWellnessPackages || [])
+      .filter(p => String(p._id) !== String(pkgId));
+
+    if (center.corporateWellnessPackages.length === before) {
+      return res.status(404).json({ success: false, error: 'Package not found' });
+    }
+
+    await center.save();
+    res.json({ success: true, message: 'Package deleted' });
+  } catch (error) {
+    console.error('[ayurveda-center/corporate/packages DELETE]', error.message);
+    res.status(500).json({ success: false, error: error.message });
+  }
+});
+
+// PUT /corporate/toggle — enable/disable corporate wellness offering
+router.put('/corporate/toggle', authenticateCenter, async (req, res) => {
+  try {
+    const center = req.center;
+    center.offersCorporateWellness = req.body.enable !== false;
+    await center.save();
+    res.json({ success: true, servesCorporate: center.offersCorporateWellness });
+  } catch (error) {
+    console.error('[ayurveda-center/corporate/toggle PUT]', error.message);
+    res.status(500).json({ success: false, error: error.message });
+  }
+});
+
+// GET /corporate/enquiries — list enquiries
+router.get('/corporate/enquiries', authenticateCenter, async (req, res) => {
+  try {
+    const center = req.center;
+    res.json({ success: true, data: center.corporateEnquiries || [] });
+  } catch (error) {
+    console.error('[ayurveda-center/corporate/enquiries GET]', error.message);
+    res.status(500).json({ success: false, error: error.message });
+  }
+});
+
+// PUT /corporate/enquiries/:enqId — update enquiry status
+router.put('/corporate/enquiries/:enqId', authenticateCenter, async (req, res) => {
+  try {
+    const center = req.center;
+    const enq = (center.corporateEnquiries || []).find(e => String(e._id) === String(req.params.enqId));
+    if (!enq) return res.status(404).json({ success: false, error: 'Enquiry not found' });
+    if (req.body.status) enq.status = req.body.status;
+    await center.save();
+    res.json({ success: true, data: enq });
+  } catch (error) {
+    console.error('[ayurveda-center/corporate/enquiries PUT]', error.message);
     res.status(500).json({ success: false, error: error.message });
   }
 });
