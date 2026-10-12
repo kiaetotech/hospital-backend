@@ -282,12 +282,13 @@ const getReminderStats = async () => {
  */
 const processExpiredSuspensions = async () => {
   const now = new Date();
-  const models = [
+    const models = [
     'AyurvedaDoctor',
-    'AyurvedaCenter',
+    'WellnessCenter',
+    'PanchakarmaCenter',
     'HomeopathyDoctor',
-    'HomeopathyCenter',
-    'HomeopathyPharmacy'
+    'NaturopathyCenter',
+    'Pharmacy'
   ];
   let restored = 0;
   let errors = 0;
