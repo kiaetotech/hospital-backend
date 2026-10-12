@@ -459,7 +459,7 @@ try {
 // ROUTES (ALL PRESERVED WITH FALLBACKS)
 // ============================================
 
-let hospitalRoutes, hospitalProviderRoutes, labPricingRoutes, packageRoutes, authRoutes, caregiverRoutes, diagnosticsRoutes, diagnosticsUploadRoutes, ambulanceRoutes, healthPackageRoutes, testRoutes, uploadRoutes, providerAuthRoutes, bookingRoutes, razorpayRoutes, reviewRoutes, adminRoutes, bookingStatusRoutes, customPackageRoutes, lenderAuthRoutes, adminLenderRoutes, lenderRoutes, loanPatientRoutes, loanLenderRoutes, loanAdminRoutes, loanWebhookRoutes, webhookRoutes, ayurvedaRoutes, ayurvedaCenterRoutes, ayurvedaPrescriptionRoutes, ayurvedaReportRoutes, homeopathyRoutes,homeopathyAdvancedRoutes, homeopathyBookingRoutes, homeopathySettlementRoutes, insuranceRoutes, insuranceClaimsRoutes, insuranceOnboardingRoutes, insuranceAdminRoutes, insuranceCompanyRoutes, otpRoutes, corporateRoutes, corporateBillingRoutes, corporateHubRoutes, mentalHealthRoutes, mentalHealthTherapistRoutes, mentalHealthAdminRoutes, mentalHealthPayoutRoutes, mentalHealthEarningsRoutes, onlineDoctorRoutes, hospitalStatusRoutes, globalSearchRoutes, employeePortalRoutes, discountRoutes;
+let hospitalRoutes, hospitalProviderRoutes, labPricingRoutes, packageRoutes, authRoutes, caregiverRoutes, diagnosticsRoutes, diagnosticsUploadRoutes, ambulanceRoutes, healthPackageRoutes, testRoutes, uploadRoutes, providerAuthRoutes, bookingRoutes, razorpayRoutes, reviewRoutes, adminRoutes, bookingStatusRoutes, customPackageRoutes, lenderAuthRoutes, adminLenderRoutes, lenderRoutes, loanPatientRoutes, loanLenderRoutes, loanAdminRoutes, loanWebhookRoutes, webhookRoutes, ayurvedaRoutes, ayurvedaCenterRoutes, ayurvedaPrescriptionRoutes, ayurvedaReportRoutes, homeopathyRoutes,homeopathyAdvancedRoutes, homeopathyBookingRoutes, homeopathySettlementRoutes, insuranceRoutes, insuranceClaimsRoutes, insuranceOnboardingRoutes, insuranceAdminRoutes, insuranceCompanyRoutes, insuranceAllTabsRoutes, otpRoutes, corporateRoutes, corporateBillingRoutes, corporateHubRoutes, mentalHealthRoutes, mentalHealthTherapistRoutes, mentalHealthAdminRoutes, mentalHealthPayoutRoutes, mentalHealthEarningsRoutes, onlineDoctorRoutes, hospitalStatusRoutes, globalSearchRoutes, employeePortalRoutes, discountRoutes;
 
 try { hospitalRoutes = require('./routes/hospitals'); } catch(e) { console.warn('⚠️ hospitals route missing'); hospitalRoutes = (req,res) => res.status(404).json({error:'Route not available'}); }
 try { hospitalProviderRoutes = require('./routes/hospitalProvider'); } catch(e) { console.warn('⚠️ hospitalProvider route missing'); hospitalProviderRoutes = (req,res) => res.status(404).json({error:'Route not available'}); }
@@ -502,6 +502,7 @@ try { insuranceOnboardingRoutes = require('./routes/insurance-onboarding'); } ca
 try { insuranceOnboardingRoutes = require('./routes/insurance-onboarding'); } catch(e) { console.warn('⚠️ insurance-onboarding route missing'); insuranceOnboardingRoutes = (req,res) => res.status(404).json({error:'Route not available'}); }
 try { insuranceCompanyRoutes = require('./routes/insurance-company'); } catch(e) { console.warn('⚠️ insurance-company route missing'); insuranceCompanyRoutes = (req,res) => res.status(404).json({error:'Route not available'}); }
 try { insuranceAdminRoutes = require('./routes/insurance-admin'); } catch(e) { console.warn('⚠️ insurance-admin route missing'); insuranceAdminRoutes = (req,res) => res.status(404).json({error:'Route not available'}); }
+try { insuranceAllTabsRoutes = require('./routes/insurance-all-tabs'); } catch(e) { console.warn('⚠️ insurance-all-tabs route missing: ' + e.message); insuranceAllTabsRoutes = (req,res) => res.status(404).json({error:'Route not available', details: e.message}); }
 try { otpRoutes = require('./routes/otp'); } catch(e) { console.warn('⚠️ otp route missing'); otpRoutes = (req,res) => res.status(404).json({error:'Route not available'}); }
 try { corporateRoutes = require('./routes/corporate'); } catch(e) { console.warn('⚠️ corporate route missing'); corporateRoutes = (req,res) => res.status(404).json({error:'Route not available'}); }
 try { corporateBillingRoutes = require('./routes/corporate-billing'); } catch(e) { console.warn('⚠️ corporate-billing route missing'); corporateBillingRoutes = (req,res) => res.status(404).json({error:'Route not available'}); }
@@ -889,6 +890,7 @@ app.use('/api/homeopathy', homeopathyAdvancedRoutes);
 // Once homeopathy-advanced.js has all routes and frontend is migrated,
 // delete this line + archive routes/homeopathy.js.
 app.use('/api/homeopathy-legacy', homeopathyRoutes);
+app.use('/api/insurance', insuranceAllTabsRoutes);
 app.use('/api/insurance', insuranceRoutes);
 app.use('/api/insurance-claims', insuranceClaimsRoutes);
 app.use('/api/insurance/company', insuranceOnboardingRoutes);
