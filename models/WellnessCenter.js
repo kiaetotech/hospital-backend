@@ -144,8 +144,43 @@ const wellnessCenterSchema = new mongoose.Schema({
     rejectedAt: { type: Date },
     rejectedBy: { type: mongoose.Schema.Types.ObjectId, ref: 'Admin' },
     rejectionReason: { type: String, default: '' }
+    }],
+
+  // ============================================
+  // CORPORATE WELLNESS PACKAGES
+  // ============================================
+  corporateWellnessPackages: [{
+    name: { type: String, required: true },
+    description: { type: String },
+    pricePerEmployee: { type: Number, required: true },
+    duration: { type: String },
+    sessions: { type: Number, default: 1 },
+    includes: [{ type: String }],
+    benefits: [{ type: String }],
+    therapies: [{ type: String }],
+    category: { type: String },
+    minEmployees: { type: Number },
+    validityDays: { type: Number },
+    approvalStatus: { type: String, enum: ['pending', 'approved', 'rejected'], default: 'pending' },
+    rejectionReason: { type: String },
+    approvedAt: { type: Date },
+    isActive: { type: Boolean, default: true },
+    createdAt: { type: Date, default: Date.now }
   }],
-  
+
+  offersCorporateWellness: { type: Boolean, default: false },
+
+  corporateEnquiries: [{
+    companyName: { type: String },
+    contactName: { type: String },
+    contactEmail: { type: String },
+    contactPhone: { type: String },
+    packageId: { type: mongoose.Schema.Types.ObjectId },
+    message: { type: String },
+    status: { type: String, enum: ['new', 'contacted', 'negotiating', 'converted', 'closed'], default: 'new' },
+    createdAt: { type: Date, default: Date.now }
+  }],
+
   // ============================================
   // POLICIES
   // ============================================
