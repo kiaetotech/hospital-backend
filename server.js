@@ -454,6 +454,13 @@ try {
 } catch (e) {
   console.warn('⚠️ GstConfig model not available:', e.message);
 }
+try {
+  require('./models/InsuranceMarketplace');
+  console.log('✅ InsuranceMarketplace models registered (Proposal, ClaimEvent, PreAuth, Addon)');
+} catch (e) {
+  console.warn('⚠️ InsuranceMarketplace models not available:', e.message);
+}
+
 
 // ============================================
 // ROUTES (ALL PRESERVED WITH FALLBACKS)
@@ -503,6 +510,7 @@ try { insuranceOnboardingRoutes = require('./routes/insurance-onboarding'); } ca
 try { insuranceCompanyRoutes = require('./routes/insurance-company'); } catch(e) { console.warn('⚠️ insurance-company route missing'); insuranceCompanyRoutes = (req,res) => res.status(404).json({error:'Route not available'}); }
 try { insuranceAdminRoutes = require('./routes/insurance-admin'); } catch(e) { console.warn('⚠️ insurance-admin route missing'); insuranceAdminRoutes = (req,res) => res.status(404).json({error:'Route not available'}); }
 try { insuranceAllTabsRoutes = require('./routes/insurance-all-tabs'); } catch(e) { console.warn('⚠️ insurance-all-tabs route missing: ' + e.message); insuranceAllTabsRoutes = (req,res) => res.status(404).json({error:'Route not available', details: e.message}); }
+try { var insuranceMarketplaceRoutes = require('./routes/insurance-marketplace'); } catch(e) { console.warn('⚠️ insurance-marketplace route missing: ' + e.message); insuranceMarketplaceRoutes = (req,res) => res.status(404).json({error:'Route not available', details: e.message}); }
 try { otpRoutes = require('./routes/otp'); } catch(e) { console.warn('⚠️ otp route missing'); otpRoutes = (req,res) => res.status(404).json({error:'Route not available'}); }
 try { corporateRoutes = require('./routes/corporate'); } catch(e) { console.warn('⚠️ corporate route missing'); corporateRoutes = (req,res) => res.status(404).json({error:'Route not available'}); }
 try { corporateBillingRoutes = require('./routes/corporate-billing'); } catch(e) { console.warn('⚠️ corporate-billing route missing'); corporateBillingRoutes = (req,res) => res.status(404).json({error:'Route not available'}); }
@@ -891,6 +899,7 @@ app.use('/api/homeopathy', homeopathyAdvancedRoutes);
 // delete this line + archive routes/homeopathy.js.
 app.use('/api/homeopathy-legacy', homeopathyRoutes);
 app.use('/api/insurance', insuranceAllTabsRoutes);
+app.use('/api/insurance-marketplace', searchLimiter, insuranceMarketplaceRoutes);
 app.use('/api/insurance', insuranceRoutes);
 app.use('/api/insurance-claims', insuranceClaimsRoutes);
 app.use('/api/insurance/company', insuranceOnboardingRoutes);

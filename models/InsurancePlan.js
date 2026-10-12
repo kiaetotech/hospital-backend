@@ -804,4 +804,85 @@ InsurancePlanSchema.statics.getCorporateStats = async function() {
   };
 };
 
+// ============================================
+// P2.0 — MARKETPLACE FIELDS (append above module.exports)
+// ============================================
+
+const _coverageSchema = new mongoose.Schema({
+  sumInsured: { type: Number, default: 0 },
+  roomRent: { type: String, default: 'No Limit' },
+  icu: { type: String, default: 'No Limit' },
+  preHospitalization: { type: Number, default: 60 },
+  postHospitalization: { type: Number, default: 180 },
+  dayCare: { type: Boolean, default: true },
+  ambulance: { type: Boolean, default: true },
+  domiciliary: { type: Boolean, default: false },
+  organDonor: { type: Boolean, default: false },
+  psychiatric: { type: Boolean, default: true },
+  ayush: { type: Boolean, default: true },
+  modernTreatments: { type: Boolean, default: true },
+  restoration: { type: Boolean, default: true },
+  restorationType: { type: String, default: 'Automatic' },
+  maternity: { type: Boolean, default: false },
+  opd: { type: Boolean, default: false },
+}, { _id: false });
+
+const _waitingPeriodsSchema = new mongoose.Schema({
+  initial: { type: Number, default: 30 },
+  specificDiseases: { type: Number, default: 730 },
+  preExisting: { type: Number, default: 1095 },
+  maternity: { type: Number, default: 0 },
+}, { _id: false });
+
+const _ncbSchema = new mongoose.Schema({
+  applicable: { type: Boolean, default: true },
+  percentage: { type: Number, default: 50 },
+  maxPercentage: { type: Number, default: 100 },
+}, { _id: false });
+
+const _addonSchema = new mongoose.Schema({
+  code: { type: String, required: true },
+  name: { type: String, required: true },
+  price: { type: Number, required: true },
+  description: { type: String, default: '' },
+  coverage: { type: String, default: '' },
+}, { _id: false });
+
+const _limitSchema = new mongoose.Schema({
+  deductible: { type: Number, default: 0 },
+  coPay: { type: Number, default: 0 },
+  subLimits: [{ label: String, value: String }],
+}, { _id: false });
+
+// Attach fields to existing schema
+InsurancePlanSchema.add({
+  coverage: { type: _coverageSchema, default: () => ({}) },
+  waitingPeriods: { type: _waitingPeriodsSchema, default: () => ({}) },
+  ncb: { type: _ncbSchema, default: () => ({}) },
+  addons: { type: [_addonSchema], default: [] },
+  limits: { type: _limitSchema, default: () => ({}) },
+  exclusions: { type: [String], default: [] },
+  benefits: { type: [String], default: [] },
+  networkHospitalCount: { type: Number, default: 0 },
+  cashlessHospitals: [{
+    type: mongoose.Schema.Types.ObjectId,
+    ref: 'Hospital',
+  }],
+  planCategory: {
+    type: String,
+    enum: [
+      'individual', 'family_floater', 'senior',
+      'maternity', 'critical', 'topup',
+    ],
+    default: 'individual',
+  },
+  minAge: { type: Number, default: 18 },
+  maxAge: { type: Number, default: 65 },
+  minMembers: { type: Number, default: 1 },
+  maxMembers: { type: Number, default: 6 },
+  availablePincodes: { type: [String], default: [] },
+  isFeatured: { type: Boolean, default: false },
+  rating: { type: Number, default: 0 },
+});
+
 module.exports = mongoose.model('InsurancePlan', InsurancePlanSchema);
