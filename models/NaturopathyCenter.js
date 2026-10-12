@@ -201,6 +201,7 @@ const naturopathyCenterSchema = new mongoose.Schema({
   }],
   suspendedReason: { type: String },
   suspendedAt: { type: Date },
+  suspendedUntil: { type: Date },
   isActive: { type: Boolean, default: false },
   verifiedKyc: { type: Boolean, default: false },
   verifiedAt: { type: Date, default: null },

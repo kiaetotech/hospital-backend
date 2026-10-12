@@ -28,6 +28,7 @@ const pharmacySchema = new mongoose.Schema({
   }],
   suspendedReason: { type: String },
   suspendedAt: { type: Date },
+  suspendedUntil: { type: Date },
   isActive: { type: Boolean, default: false },
 
   documents: { drugLicense: String, gstCertificate: String, shopPhoto: String },
