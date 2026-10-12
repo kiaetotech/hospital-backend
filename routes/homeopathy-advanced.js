@@ -854,6 +854,32 @@ router.put('/corporate/packages/:pkgId', async (req, res) => {
   }
 });
 
+router.delete('/corporate/packages/:pkgId', async (req, res) => {
+  try {
+    const providerId = req.body?.providerId || req.query?.providerId || req.body?.doctorId || req.query?.doctorId;
+    const { pkgId } = req.params;
+    if (!providerId) return res.status(400).json({ success: false, message: 'providerId required' });
+
+    const HomeopathyDoctor = require('../models/HomeopathyDoctor');
+    const doctor = await HomeopathyDoctor.findById(providerId);
+    if (!doctor) return res.status(404).json({ success: false, message: 'Doctor not found' });
+
+    const before = (doctor.corporateWellnessPackages || []).length;
+    doctor.corporateWellnessPackages = (doctor.corporateWellnessPackages || [])
+      .filter(p => String(p._id) !== String(pkgId));
+
+    if (doctor.corporateWellnessPackages.length === before) {
+      return res.status(404).json({ success: false, message: 'Package not found' });
+    }
+
+    await doctor.save();
+    res.json({ success: true, message: 'Package deleted' });
+  } catch (error) {
+    console.error('[homeopathy/corporate/packages DELETE]', error);
+    res.status(500).json({ success: false, message: error.message });
+  }
+});
+
 // GET enquiries
 router.get('/corporate/enquiries', async (req, res) => {
   try {
