@@ -774,27 +774,46 @@ router.post('/apply/:id/verify-payment', authenticate, asyncHandler(async (req, 
     return ok(res, { proposal, policy: existing, alreadyConverted: true });
   }
 
-  // Verify signature
-  const razorpayService = require('../services/razorpayService');
-  let isValid = false;
-  try {
-    isValid = razorpayService.verifyPaymentSignature({
-      orderId: razorpay_order_id,
-      paymentId: razorpay_payment_id,
-      signature: razorpay_signature,
-    });
-  } catch (e) {
-    return fail(res, 400, 'VERIFY_ERROR', 'Signature verification failed: ' + e.message);
-  }
+    // Verify signature (matches Ayurveda inline pattern)
+  const crypto = require('crypto');
+  const expectedSignature = crypto
+    .createHmac('sha256', process.env.RAZORPAY_KEY_SECRET)
+    .update(`${razorpay_order_id}|${razorpay_payment_id}`)
+    .digest('hex');
 
-  if (!isValid) {
+  if (expectedSignature !== razorpay_signature) {
     return fail(res, 400, 'INVALID_SIGNATURE', 'Payment signature verification failed');
   }
 
-  // Sanity: order must match proposal
-  if (!proposal.payment || proposal.payment.orderId !== razorpay_order_id) {
-    return fail(res, 400, 'ORDER_MISMATCH', 'Payment order does not match proposal');
+    // Sanity: verify order with Razorpay API (don't trust local DB)
+  let rzpOrder;
+  try {
+    const rzpInstance = require('../services/razorpayService').razorpay;
+    rzpOrder = await rzpInstance.orders.fetch(razorpay_order_id);
+  } catch (e) {
+    return fail(res, 400, 'ORDER_NOT_FOUND', 'Payment order not found on Razorpay: ' + e.message);
   }
+
+  if (!rzpOrder || !rzpOrder.id) {
+    return fail(res, 400, 'ORDER_NOT_FOUND', 'Payment order not found');
+  }
+
+  // Amount must match the proposal's premium
+  const expectedPaise = Math.round((proposal.premium?.total || proposal.payment?.amount || 0) * 100);
+  if (expectedPaise > 0 && Number(rzpOrder.amount) !== expectedPaise) {
+    return fail(res, 400, 'AMOUNT_MISMATCH', 'Payment amount does not match proposal premium');
+  }
+
+  // Save the order id back to proposal (in case it wasn't persisted earlier)
+  proposal.payment = {
+    ...(proposal.payment || {}),
+    orderId: razorpay_order_id,
+    paymentId: razorpay_payment_id,
+    amount: rzpOrder.amount / 100,
+    status: 'paid',
+    paidAt: new Date(),
+  };
+  await proposal.save();
 
   // Confirm conversion (reuses existing route logic internally)
   const plan = await InsurancePlan.findById(proposal.planId).lean();
