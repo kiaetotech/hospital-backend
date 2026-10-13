@@ -91,10 +91,24 @@ const fetchPayment = async (paymentId) => {
   }
 };
 
+// ============================================
+// verifyPaymentSignature — HMAC SHA256 check
+// ============================================
+const verifyPaymentSignature = ({ orderId, paymentId, signature }) => {
+  if (!orderId || !paymentId || !signature) return false;
+  const crypto = require('crypto');
+  const expected = crypto
+    .createHmac('sha256', process.env.RAZORPAY_KEY_SECRET)
+    .update(`${orderId}|${paymentId}`)
+    .digest('hex');
+  return expected === signature;
+};
+
 module.exports = {
   razorpay,
   createOrder,
   capturePayment,
   createRefund,
-  fetchPayment
+  fetchPayment,
+  verifyPaymentSignature
 };
