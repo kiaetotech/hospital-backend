@@ -542,16 +542,24 @@ router.post('/apply/:id/confirm', authenticate, asyncHandler(async (req, res) =>
   });
   await booking.save();;
 
-  // 2) Create Transaction
+    // 2) Create Transaction
   const transaction = new Transaction({
+    transactionId: Transaction.generateTransactionId
+      ? Transaction.generateTransactionId()
+      : 'TXN' + Date.now() + Math.random().toString(36).slice(2, 8).toUpperCase(),
     userId: userId,
     bookingId: booking._id,
     bookingType: 'insurance',
     amount: premium.total,
     status: 'initiated',
     providerId: plan.companyId,
+    originalAmount: premium.total,
+    netAmount: premium.total,
+    insurancePlatformCommission: 0,
+    insurancePayoutToCompany: premium.total,
+    insuranceSettlementStatus: 'pending',
   });
-  await transaction.save();
+  await transaction.save();;
 
   // 3) Create InsurancePolicy
   const primaryMember = proposal.members.find((m) => m.relation === 'self') || proposal.members[0];
