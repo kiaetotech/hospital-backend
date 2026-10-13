@@ -515,14 +515,26 @@ router.post('/apply/:id/confirm', authenticate, asyncHandler(async (req, res) =>
   const endDate = new Date(startDate);
   endDate.setFullYear(endDate.getFullYear() + 1);
 
-  // 1) Create Booking first (matches existing insurance.js pattern)
+    // 1) Create Booking first (matches existing insurance.js pattern)
+  const primary = proposal.members.find((m) => m.relation === 'self') || proposal.members[0] || {};
   const booking = new Booking({
     userId: userId,
     bookingType: 'insurance',
-    bookingDate: startDate,
+    bookingDate: new Date(),
+    appointmentDate: startDate,
+    originalAmount: premium.total,
+    finalAmount: premium.total,
+    discount: premium.discount || 0,
     amount: premium.total,
     status: 'pending',
     paymentStatus: 'pending',
+    patientName: proposal.personal?.fullName || primary.name || 'Policyholder',
+    patientPhone: proposal.personal?.mobile || '0000000000',
+    patientEmail: proposal.personal?.email || 'noreply@hospitalhub.in',
+    patientAge: primary.age,
+    patientGender: primary.gender,
+    providerId: plan.companyId,
+    providerName: plan.companyId ? 'Insurance Company' : 'Pending',
     insurancePlanId: plan._id,
     insuranceCompanyId: plan.companyId,
   });
