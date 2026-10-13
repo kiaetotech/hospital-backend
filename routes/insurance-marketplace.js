@@ -515,67 +515,71 @@ router.post('/apply/:id/confirm', authenticate, asyncHandler(async (req, res) =>
   const endDate = new Date(startDate);
   endDate.setFullYear(endDate.getFullYear() + 1);
 
-    // 1) Create Booking first (matches existing insurance.js pattern)
-  const primary = proposal.members.find((m) => m.relation === 'self') || proposal.members[0] || {};
+      // ============================================
+  // Model creation — matches routes/insurance.js production pattern
+  // ============================================
+  const userIdStr = String(userId);
+  const primaryMember = proposal.members.find((m) => m.relation === 'self') || proposal.members[0] || {};
+  const now = new Date();
+
+  // 1) BOOKING
   const booking = new Booking({
-    userId: userId,
+    userId: userIdStr,
     bookingType: 'insurance',
-    bookingDate: new Date(),
-    appointmentDate: startDate,
-    originalAmount: premium.total,
-    finalAmount: premium.total,
-    discount: premium.discount || 0,
-    amount: premium.total,
-    status: 'pending',
-    paymentStatus: 'pending',
-    patientName: proposal.personal?.fullName || primary.name || 'Policyholder',
+    patientName: proposal.personal?.fullName || primaryMember.name || 'Policyholder',
     patientPhone: proposal.personal?.mobile || '0000000000',
     patientEmail: proposal.personal?.email || 'noreply@hospitalhub.in',
-    patientAge: primary.age,
-    patientGender: primary.gender,
+    patientAge: primaryMember.age,
+    patientGender: primaryMember.gender,
+    bookingDate: now,
+    appointmentDate: startDate,
+    originalAmount: premium.total,
+    discount: premium.discount || 0,
+    finalAmount: premium.total,
+    paymentStatus: 'pending',
+    status: 'pending',
     providerId: plan.companyId,
-    providerName: plan.companyId ? 'Insurance Company' : 'Pending',
+    providerName: 'Insurance Company',
+    platformCommission: 0,
+    providerCommission: premium.total,
+    commissionStatus: 'pending',
     insurancePlanId: plan._id,
-    insuranceCompanyId: plan.companyId,
-    // Geo index requires coordinates; insurance bookings have no pickup location
+    insuranceCompanyName: 'Insurance Company',
+    insurancePlanName: plan.planName,
+    sumInsured: proposal.sumInsured,
+    premiumAmount: premium.total,
+    insuranceMembers: proposal.members.map((m) => ({
+      name: m.name,
+      relation: m.relation,
+      age: m.age,
+      gender: m.gender,
+    })),
+    policyStartDate: startDate,
+    policyEndDate: endDate,
+    policyRenewalDate: endDate,
+    insuranceSettlementStatus: 'pending',
+    bookingId: 'INS' + Date.now() + Math.random().toString(36).slice(2, 5).toUpperCase(),
     location: { type: 'Point', coordinates: [0, 0] },
   });
-  await booking.save();;
+  await booking.save();
 
-    // 2) Create Transaction
-  const transaction = new Transaction({
-    transactionId: Transaction.generateTransactionId
-      ? Transaction.generateTransactionId()
-      : 'TXN' + Date.now() + Math.random().toString(36).slice(2, 8).toUpperCase(),
-    userId: userId,
-    bookingId: booking._id,
-    bookingType: 'insurance',
-    amount: premium.total,
-    status: 'initiated',
-    providerId: plan.companyId,
-    originalAmount: premium.total,
-    netAmount: premium.total,
-    insurancePlatformCommission: 0,
-    insurancePayoutToCompany: premium.total,
-    insuranceSettlementStatus: 'pending',
-  });
-  await transaction.save();;
-
-  // 3) Create InsurancePolicy
-  const primaryMember = proposal.members.find((m) => m.relation === 'self') || proposal.members[0];
-
+  // 2) INSURANCE POLICY
   const policy = new InsurancePolicy({
     bookingId: booking._id,
     planId: plan._id,
-    companyId: plan.companyId,             // User._id, matches existing convention
-    userId: String(userId),                // existing schema uses String
+    companyId: plan.companyId,
+    userId: userIdStr,
     policyName: plan.planName,
-    policyType: plan.planCategory || 'individual',
+    policyType: plan.planCategory || plan.planType || 'individual',
     sumInsured: proposal.sumInsured,
+    roomRentLimit: plan.roomRentLimit || plan.coverage?.roomRent,
     premiumAmount: premium.base + premium.addons - premium.discount,
     gstAmount: premium.gst,
     discountAmount: premium.discount,
     totalAmount: premium.total,
+    platformCommission: 0,
+    platformCommissionRate: 0,
+    payoutToCompany: premium.total,
     members: proposal.members.map((m) => ({
       name: m.name,
       relation: m.relation,
@@ -600,32 +604,65 @@ router.post('/apply/:id/confirm', authenticate, asyncHandler(async (req, res) =>
         : undefined,
       contactNumber: proposal.nominee.phone,
     } : undefined,
-    startDate,
-    endDate,
-    status: 'pending',
-    paymentStatus: 'pending',
-    proposalNumber: proposal.proposalNumber,
-    proposalDate: new Date(),
-    proposalFormData: {
-      personal: proposal.personal,
-      medical: proposal.medical,
-    },
-    declarations: {
-      medicalHistoryDeclared: true,
-      preExistingDeclared: (proposal.medical.conditions || []).length > 0,
-    },
-    medicalHistory: {
-      chronicDiseases: proposal.medical.conditions || [],
-      currentMedications: proposal.medical.currentMedications ? [proposal.medical.medicationDetails || ''] : [],
-    },
     selectedAddons: (proposal.selectedAddons || []).map((code) => {
       const a = (plan.addons || []).find((x) => x.code === code);
       return a ? { name: a.name, price: a.price, coverage: a.coverage || '' } : null;
     }).filter(Boolean),
+    startDate,
+    endDate,
+    renewalDate: endDate,
+    status: 'pending',
+    paymentStatus: 'pending',
+    settlementStatus: 'pending',
     termsAccepted: true,
-    termsAcceptedAt: new Date(),
+    termsAcceptedAt: now,
+    proposalNumber: proposal.proposalNumber,
+    proposalDate: now,
+    proposalFormData: { personal: proposal.personal, medical: proposal.medical },
+    declarations: {
+      medicalHistoryDeclared: true,
+      preExistingDeclared: (proposal.medical?.conditions || []).length > 0,
+    },
+    medicalHistory: {
+      chronicDiseases: proposal.medical?.conditions || [],
+      currentMedications: proposal.medical?.currentMedications ? [proposal.medical.medicationDetails || ''] : [],
+    },
   });
   await policy.save();
+
+  // 3) TRANSACTION
+  const transaction = new Transaction({
+    transactionId: typeof Transaction.generateTransactionId === 'function'
+      ? Transaction.generateTransactionId()
+      : 'TXN' + Date.now() + Math.random().toString(36).slice(2, 8).toUpperCase(),
+    applicationId: booking._id.toString(),
+    lenderId: plan.companyId ? plan.companyId.toString() : null,
+    type: 'booking_payment',
+    amount: premium.total,
+    commissionAmount: 0,
+    status: 'initiated',
+    paymentGateway: 'razorpay',
+    bookingId: booking._id,
+    bookingType: 'insurance',
+    userId: userIdStr,
+    providerId: plan.companyId,
+    originalAmount: premium.total,
+    netAmount: premium.total,
+    platformCommission: 0,
+    providerAmount: premium.total,
+    commissionStatus: 'pending',
+    settledToProvider: false,
+    insurancePolicyId: policy._id,
+    insurancePlanId: plan._id,
+    premiumAmount: premium.total,
+    gstAmount: premium.gst,
+    totalPremium: premium.total,
+    insuranceCommissionRate: 0,
+    insurancePlatformCommission: 0,
+    insurancePayoutToCompany: premium.total,
+    insuranceSettlementStatus: 'pending',
+  });
+  await transaction.save();
 
   // 4) Link booking → policy
   booking.insurancePolicyId = policy._id;
