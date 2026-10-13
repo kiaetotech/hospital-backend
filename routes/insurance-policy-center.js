@@ -379,4 +379,228 @@ router.post('/portability-request/:policyId', authenticate, asyncHandler(async (
   return ok(res, { policy, message: 'Portability request submitted.' });
 }));
 
+// ============================================
+// POST /renewal/create-order/:policyId — Razorpay order for renewal
+// ============================================
+router.post('/renewal/create-order/:policyId', authenticate, asyncHandler(async (req, res) => {
+  const policy = await InsurancePolicy.findOne({ _id: req.params.policyId, userId: String(uid(req)) });
+  if (!policy) return fail(res, 404, 'NOT_FOUND', 'Policy not found');
+  if (policy.status === 'cancelled') return fail(res, 400, 'CANCELLED', 'Cannot renew a cancelled policy');
+
+  const plan = await InsurancePlan.findById(policy.planId).lean();
+  if (!plan) return fail(res, 404, 'NOT_FOUND', 'Plan not available');
+
+  const members = (policy.members || []).map((m) => ({
+    relation: m.relation, age: m.age, gender: m.gender,
+    smoker: !!m.isSmoker, preExisting: [],
+  }));
+
+  let quote;
+  try {
+    quote = calculateRenewalPremium({
+      plan, members, sumInsured: policy.sumInsured,
+      addonCodes: (policy.selectedAddons || []).map((a) => a.name),
+      previousPremium: policy.totalAmount,
+    });
+  } catch (e) {
+    const inflated = Math.round(policy.totalAmount * 1.08);
+    quote = { total: inflated, base: Math.round(inflated / 1.18), gst: Math.round(inflated - inflated / 1.18), monthly: Math.round(inflated / 12) };
+  }
+
+  const razorpayService = require('../services/razorpayService');
+  const receipt = 'RENEW_' + policy._id.toString().slice(-12);
+
+  let orderResult;
+  try {
+    orderResult = await razorpayService.createOrder(
+      Math.round(quote.total * 100) / 100,
+      'INR',
+      receipt,
+      { policyId: policy._id.toString(), userId: String(uid(req)) }
+    );
+  } catch (e) {
+    return fail(res, 502, 'RAZORPAY_ERROR', 'Payment gateway unavailable: ' + e.message);
+  }
+
+  if (!orderResult?.success || !orderResult.order?.id) {
+    return fail(res, 502, 'ORDER_FAILED', 'Unable to create payment order');
+  }
+
+  return ok(res, {
+    orderId: orderResult.order.id,
+    amount: quote.total,
+    currency: 'INR',
+    razorpayKey: process.env.RAZORPAY_KEY_ID,
+    quote,
+  });
+}));
+
+// ============================================
+// POST /renewal/verify-payment/:policyId — verify + execute renewal
+// Body: { razorpay_order_id, razorpay_payment_id, razorpay_signature }
+// ============================================
+router.post('/renewal/verify-payment/:policyId', authenticate, asyncHandler(async (req, res) => {
+  const { razorpay_order_id, razorpay_payment_id, razorpay_signature } = req.body;
+  if (!razorpay_order_id || !razorpay_payment_id || !razorpay_signature) {
+    return fail(res, 400, 'MISSING_FIELDS', 'razorpay_order_id, razorpay_payment_id, razorpay_signature required');
+  }
+
+  const policy = await InsurancePolicy.findOne({ _id: req.params.policyId, userId: String(uid(req)) });
+  if (!policy) return fail(res, 404, 'NOT_FOUND', 'Policy not found');
+
+  // Verify signature inline (matches Ayurveda pattern)
+  const crypto = require('crypto');
+  const expectedSignature = crypto
+    .createHmac('sha256', process.env.RAZORPAY_KEY_SECRET)
+    .update(`${razorpay_order_id}|${razorpay_payment_id}`)
+    .digest('hex');
+
+  if (expectedSignature !== razorpay_signature) {
+    return fail(res, 400, 'INVALID_SIGNATURE', 'Payment signature verification failed');
+  }
+
+  const plan = await InsurancePlan.findById(policy.planId).lean();
+  if (!plan) return fail(res, 404, 'NOT_FOUND', 'Plan not available');
+
+  const members = (policy.members || []).map((m) => ({
+    relation: m.relation, age: m.age, gender: m.gender,
+    smoker: !!m.isSmoker, preExisting: [],
+  }));
+
+  let quote;
+  try {
+    quote = calculateRenewalPremium({
+      plan, members, sumInsured: policy.sumInsured,
+      addonCodes: (policy.selectedAddons || []).map((a) => a.name),
+      previousPremium: policy.totalAmount,
+    });
+  } catch (e) {
+    const inflated = Math.round(policy.totalAmount * 1.08);
+    quote = { total: inflated, base: Math.round(inflated / 1.18), gst: Math.round(inflated - inflated / 1.18), monthly: Math.round(inflated / 12) };
+  }
+
+  const userId = uid(req);
+  const prevStart = policy.startDate;
+  const prevEnd = policy.endDate;
+  const startDate = new Date(prevEnd);
+  const endDate = new Date(startDate);
+  endDate.setFullYear(endDate.getFullYear() + 1);
+
+  const primaryMember = (policy.members || [])[0] || {};
+  const booking = new Booking({
+    userId: String(userId),
+    bookingType: 'insurance',
+    patientName: policy.primaryInsured?.name || primaryMember.name || 'Policyholder',
+    patientPhone: '0000000000',
+    patientEmail: 'noreply@hospitalhub.in',
+    patientAge: policy.primaryInsured?.age || primaryMember.age,
+    patientGender: policy.primaryInsured?.gender || primaryMember.gender,
+    bookingDate: new Date(),
+    appointmentDate: startDate,
+    originalAmount: quote.total,
+    discount: 0,
+    finalAmount: quote.total,
+    paymentStatus: 'paid',
+    status: 'policy_issued',
+    providerId: plan.companyId,
+    providerName: 'Insurance Company',
+    platformCommission: 0,
+    providerCommission: quote.total,
+    commissionStatus: 'pending',
+    insurancePlanId: plan._id,
+    insuranceCompanyName: 'Insurance Company',
+    insurancePlanName: plan.planName,
+    sumInsured: policy.sumInsured,
+    premiumAmount: quote.total,
+    insuranceMembers: (policy.members || []).map((m) => ({
+      name: m.name, relation: m.relation, age: m.age, gender: m.gender,
+    })),
+    policyStartDate: startDate,
+    policyEndDate: endDate,
+    policyRenewalDate: endDate,
+    insuranceSettlementStatus: 'pending',
+    bookingId: 'INS' + Date.now() + Math.random().toString(36).slice(2, 5).toUpperCase(),
+    location: { type: 'Point', coordinates: [0, 0] },
+    razorpayOrderId: razorpay_order_id,
+    razorpayPaymentId: razorpay_payment_id,
+    razorpaySignature: razorpay_signature,
+    paymentId: razorpay_payment_id,
+    orderId: razorpay_order_id,
+  });
+  await booking.save();
+
+  const transaction = new Transaction({
+    transactionId: typeof Transaction.generateTransactionId === 'function'
+      ? Transaction.generateTransactionId()
+      : 'TXN' + Date.now() + Math.random().toString(36).slice(2, 8).toUpperCase(),
+    applicationId: booking._id.toString(),
+    lenderId: plan.companyId ? plan.companyId.toString() : null,
+    type: 'booking_payment',
+    amount: quote.total,
+    commissionAmount: 0,
+    status: 'completed',
+    paymentGateway: 'razorpay',
+    gatewayReferenceId: razorpay_order_id,
+    orderId: razorpay_order_id,
+    paymentId: razorpay_payment_id,
+    paidAt: new Date(),
+    completedAt: new Date(),
+    bookingId: booking._id,
+    bookingType: 'insurance',
+    userId: String(userId),
+    providerId: plan.companyId,
+    originalAmount: quote.total,
+    netAmount: quote.total,
+    platformCommission: 0,
+    providerAmount: quote.total,
+    commissionStatus: 'pending',
+    settledToProvider: false,
+    insurancePolicyId: policy._id,
+    insurancePlanId: plan._id,
+    premiumAmount: quote.total,
+    gstAmount: quote.gst,
+    totalPremium: quote.total,
+    insuranceCommissionRate: 0,
+    insurancePlatformCommission: 0,
+    insurancePayoutToCompany: quote.total,
+    insuranceSettlementStatus: 'pending',
+  });
+  await transaction.save();
+
+  policy.startDate = startDate;
+  policy.endDate = endDate;
+  policy.premiumAmount = quote.base;
+  policy.gstAmount = quote.gst;
+  policy.totalAmount = quote.total;
+  policy.status = 'active';
+  policy.paymentStatus = 'paid';
+  policy.renewalDate = new Date();
+
+  policy.renewals = policy.renewals || [];
+  policy.renewals.push({
+    policyNumber: policy.policyNumber,
+    startDate: prevStart,
+    endDate: prevEnd,
+    premiumAmount: quote.total,
+    transactionId: transaction._id.toString(),
+    renewedAt: new Date(),
+  });
+
+  policy.paymentHistory = policy.paymentHistory || [];
+  policy.paymentHistory.push({
+    transactionId: transaction._id.toString(),
+    amount: quote.total,
+    paymentMethod: 'razorpay',
+    paymentDate: new Date(),
+    status: 'paid',
+  });
+
+  await policy.save();
+
+  booking.insurancePolicyId = policy._id;
+  await booking.save();
+
+  return ok(res, { policy, booking, transaction, renewalQuote: quote });
+}));
+
 module.exports = router;
