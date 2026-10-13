@@ -22,6 +22,32 @@ const notificationService = require('../services/notificationService');
 const pdfService = require('../services/pdfService');
 
 // ============================================
+// MODEL REGISTRY GUARD
+// server.js clears mongoose.models after connect.
+// Re-register on demand so populate() works.
+// ============================================
+function ensureModels() {
+  const mongoose = require('mongoose');
+  if (mongoose.models.InsurancePlan) return;
+  const paths = [
+    '../models/User',
+    '../models/InsurancePlan',
+    '../models/InsuranceCompany',
+    '../models/InsurancePolicy',
+    '../models/InsuranceClaim',
+    '../models/Booking',
+    '../models/Transaction',
+  ];
+  for (const p of paths) {
+    try {
+      const resolved = require.resolve(p);
+      delete require.cache[resolved];
+      require(p);
+    } catch (e) { /* ignore */ }
+  }
+}
+
+// ============================================
 // AUTHENTICATE HR MIDDLEWARE
 // ============================================
 
@@ -1194,6 +1220,7 @@ router.post('/verify-payment', auth, async (req, res) => {
 
 // Get user's insurance policies
 router.get('/my-policies', auth, async (req, res) => {
+  ensureModels();
   try {
     const userId = req.user.id;
     
@@ -1226,6 +1253,7 @@ router.get('/my-policies', auth, async (req, res) => {
 
 // Get single policy details
 router.get('/my-policies/:id', auth, async (req, res) => {
+  ensureModels();
   try {
     const policy = await InsurancePolicy.findById(req.params.id)
       .populate('planId')
