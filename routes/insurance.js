@@ -1376,6 +1376,69 @@ router.get('/download-policy/:id', auth, async (req, res) => {
   }
 });
 
+// Download premium receipt
+router.get('/download-receipt/:id', auth, async (req, res) => {
+  try {
+    const policy = await InsurancePolicy.findById(req.params.id)
+      .populate('planId')
+      .populate('companyId', 'name logo email phone address');
+    if (!policy) return res.status(404).json({ success: false, message: 'Policy not found' });
+    if (policy.userId.toString() !== req.user.id.toString() && req.user.role !== 'admin') {
+      return res.status(403).json({ success: false, message: 'Unauthorized' });
+    }
+    const result = await pdfService.generateReceipt({
+      ...policy.toObject(),
+      planName: policy.policyName,
+      companyId: policy.companyId,
+    });
+    if (!result?.success || !result.pdf) {
+      return res.status(503).json({ success: false, message: 'Receipt could not be generated: ' + (result?.error || 'unknown') });
+    }
+    res.set({
+      'Content-Type': 'application/pdf',
+      'Content-Disposition': `attachment; filename="receipt-${policy.policyNumber}.pdf"`,
+      'Cache-Control': 'private, no-store',
+    });
+    res.send(result.pdf);
+  } catch (error) {
+    console.error('Error downloading receipt:', error);
+    res.status(500).json({ success: false, message: 'Failed to generate receipt' });
+  }
+});
+
+// Download member card
+router.get('/download-member-card/:id', auth, async (req, res) => {
+  try {
+    const policy = await InsurancePolicy.findById(req.params.id)
+      .populate('planId')
+      .populate('companyId', 'name logo email phone address');
+    if (!policy) return res.status(404).json({ success: false, message: 'Policy not found' });
+    if (policy.userId.toString() !== req.user.id.toString() && req.user.role !== 'admin') {
+      return res.status(403).json({ success: false, message: 'Unauthorized' });
+    }
+    if (policy.status !== 'active') {
+      return res.status(400).json({ success: false, message: 'Member card is available only for active policies' });
+    }
+    const result = await pdfService.generateMemberCard({
+      ...policy.toObject(),
+      planName: policy.policyName,
+      companyId: policy.companyId,
+    });
+    if (!result?.success || !result.pdf) {
+      return res.status(503).json({ success: false, message: 'Member card could not be generated: ' + (result?.error || 'unknown') });
+    }
+    res.set({
+      'Content-Type': 'application/pdf',
+      'Content-Disposition': `attachment; filename="card-${policy.policyNumber}.pdf"`,
+      'Cache-Control': 'private, no-store',
+    });
+    res.send(result.pdf);
+  } catch (error) {
+    console.error('Error downloading member card:', error);
+    res.status(500).json({ success: false, message: 'Failed to generate member card' });
+  }
+});
+
 // ============================================
 // CLAIMS ROUTES
 // ============================================
