@@ -537,8 +537,10 @@ router.post('/apply/:id/confirm', authenticate, asyncHandler(async (req, res) =>
     providerName: plan.companyId ? 'Insurance Company' : 'Pending',
     insurancePlanId: plan._id,
     insuranceCompanyId: plan.companyId,
+    // Geo index requires coordinates; insurance bookings have no pickup location
+    location: { type: 'Point', coordinates: [0, 0] },
   });
-  await booking.save();
+  await booking.save();;
 
   // 2) Create Transaction
   const transaction = new Transaction({
