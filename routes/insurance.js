@@ -28,8 +28,11 @@ const pdfService = require('../services/pdfService');
 // ============================================
 function ensureModels() {
   const mongoose = require('mongoose');
-  if (mongoose.models.InsurancePlan) return;
-  const paths = [
+  if (mongoose.models.InsurancePlan) {
+    console.log('[ensureModels] InsurancePlan already registered');
+    return;
+  }
+  console.log('[ensureModels] Re-registering models, current:', Object.keys(mongoose.models).join(','));  const paths = [
     '../models/User',
     '../models/InsurancePlan',
     '../models/InsuranceCompany',
@@ -38,13 +41,14 @@ function ensureModels() {
     '../models/Booking',
     '../models/Transaction',
   ];
-  for (const p of paths) {
+    for (const p of paths) {
     try {
       const resolved = require.resolve(p);
       delete require.cache[resolved];
       require(p);
-    } catch (e) { /* ignore */ }
+    } catch (e) { console.log('[ensureModels] failed:', p, e.message); }
   }
+  console.log('[ensureModels] after re-register:', Object.keys(mongoose.models).join(','));
 }
 
 // ============================================
