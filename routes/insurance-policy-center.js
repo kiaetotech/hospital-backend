@@ -110,17 +110,74 @@ router.post('/renew/:policyId', authenticate, asyncHandler(async (req, res) => {
   const endDate = new Date(startDate);
   endDate.setFullYear(endDate.getFullYear() + 1);
 
+    const primaryMember = (policy.members || [])[0] || {};
   const booking = new Booking({
-    userId, bookingType: 'insurance',
-    bookingDate: new Date(), amount: quote.total,
-    status: 'pending', paymentStatus: 'pending',
-    insurancePlanId: plan._id, insuranceCompanyId: plan.companyId,
+    userId: String(userId),
+    bookingType: 'insurance',
+    patientName: policy.primaryInsured?.name || primaryMember.name || 'Policyholder',
+    patientPhone: '0000000000',
+    patientEmail: 'noreply@hospitalhub.in',
+    patientAge: policy.primaryInsured?.age || primaryMember.age,
+    patientGender: policy.primaryInsured?.gender || primaryMember.gender,
+    bookingDate: new Date(),
+    appointmentDate: startDate,
+    originalAmount: quote.total,
+    discount: 0,
+    finalAmount: quote.total,
+    paymentStatus: 'paid',
+    status: 'policy_issued',
+    providerId: plan.companyId,
+    providerName: 'Insurance Company',
+    platformCommission: 0,
+    providerCommission: quote.total,
+    commissionStatus: 'pending',
+    insurancePlanId: plan._id,
+    insuranceCompanyName: 'Insurance Company',
+    insurancePlanName: plan.planName,
+    sumInsured: newCover,
+    premiumAmount: quote.total,
+    insuranceMembers: (policy.members || []).map((m) => ({
+      name: m.name, relation: m.relation, age: m.age, gender: m.gender,
+    })),
+    policyStartDate: startDate,
+    policyEndDate: endDate,
+    policyRenewalDate: endDate,
+    insuranceSettlementStatus: 'pending',
+    bookingId: 'INS' + Date.now() + Math.random().toString(36).slice(2, 5).toUpperCase(),
+    location: { type: 'Point', coordinates: [0, 0] },
   });
   await booking.save();
 
-  const transaction = new Transaction({
-    userId, bookingId: booking._id, bookingType: 'insurance',
-    amount: quote.total, status: 'initiated', providerId: plan.companyId,
+    const transaction = new Transaction({
+    transactionId: typeof Transaction.generateTransactionId === 'function'
+      ? Transaction.generateTransactionId()
+      : 'TXN' + Date.now() + Math.random().toString(36).slice(2, 8).toUpperCase(),
+    applicationId: booking._id.toString(),
+    lenderId: plan.companyId ? plan.companyId.toString() : null,
+    type: 'booking_payment',
+    amount: quote.total,
+    commissionAmount: 0,
+    status: 'completed',
+    paymentGateway: 'internal',
+    bookingId: booking._id,
+    bookingType: 'insurance',
+    userId: String(userId),
+    providerId: plan.companyId,
+    originalAmount: quote.total,
+    netAmount: quote.total,
+    platformCommission: 0,
+    providerAmount: quote.total,
+    commissionStatus: 'pending',
+    settledToProvider: false,
+    insurancePolicyId: policy._id,
+    insurancePlanId: plan._id,
+    premiumAmount: quote.total,
+    gstAmount: quote.gst,
+    totalPremium: quote.total,
+    insuranceCommissionRate: 0,
+    insurancePlatformCommission: 0,
+    insurancePayoutToCompany: quote.total,
+    insuranceSettlementStatus: 'pending',
   });
   await transaction.save();
 

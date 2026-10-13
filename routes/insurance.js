@@ -1383,10 +1383,10 @@ router.post('/claims', auth, async (req, res) => {
     if (!hospitalName || !admissionDate || Number.isNaN(new Date(admissionDate).getTime())) {
       return res.status(400).json({ success: false, message: 'Hospital name and a valid admission date are required' });
     }
-    const company = await InsuranceCompany.findOne({ userId: policy.companyId, isActive: true });
-    if (!company) return res.status(409).json({ success: false, message: 'Insurance company profile is unavailable' });
+        const company = await InsuranceCompany.findOne({ userId: policy.companyId, isActive: true });
+    const claimCompanyId = company ? company._id : policy.companyId;
     const claim = new InsuranceClaim({
-      policyId: policy._id, bookingId: policy.bookingId, companyId: company._id, userId: req.user.id,
+      policyId: policy._id, bookingId: policy.bookingId, companyId: claimCompanyId, userId: req.user.id,
       claimType: 'reimbursement', amount: claimAmount, description, hospitalName, hospitalAddress,
       admissionDate: new Date(admissionDate), documents: Array.isArray(documents) ? documents : [], submittedBy: req.user.id
     });
