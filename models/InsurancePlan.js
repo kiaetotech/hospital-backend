@@ -854,6 +854,49 @@ const _limitSchema = new mongoose.Schema({
   subLimits: [{ label: String, value: String }],
 }, { _id: false });
 
+// ============================================
+// CANCELLATION POLICY (IRDAI-compliant)
+// ============================================
+const CancellationPolicySchema = new mongoose.Schema({
+  // IRDAI MANDATED
+  freeLookDays: {
+    type: Number,
+    default: 15,
+    min: 15,
+    required: true,
+  },
+  freeLookRefundPercent: {
+    type: Number,
+    default: 100,
+    min: 0,
+    max: 100,
+    required: true,
+  },
+  freeLookAdminFee: { type: Number, default: 0, min: 0 },
+  freeLookMedicalExamFee: { type: Number, default: 0, min: 0 },
+
+  // INSURER CONFIGURABLE
+  afterFreeLook: {
+    refundType: {
+      type: String,
+      enum: ['pro_rata', 'slab', 'none'],
+      required: true,
+    },
+    refundPercent: { type: Number, min: 0, max: 100 },
+    slabs: [{
+      uptoMonths: { type: Number, min: 1 },
+      percent: { type: Number, min: 0, max: 100 },
+    }],
+    cancellationFee: { type: Number, default: 0, min: 0 },
+    allowPartialRefund: { type: Boolean, default: false },
+    claimsImpact: {
+      type: String,
+      enum: ['none', 'reduce_refund', 'zero_refund'],
+      default: 'none',
+    },
+  },
+}, { _id: false });
+
 // Attach fields to existing schema
 InsurancePlanSchema.add({
   coverage: { type: _coverageSchema, default: () => ({}) },

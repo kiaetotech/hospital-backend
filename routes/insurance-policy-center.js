@@ -367,13 +367,24 @@ router.post('/portability-request/:policyId', authenticate, asyncHandler(async (
     return fail(res, 400, 'TOO_LATE', 'Portability must be filed at least 30 days before renewal');
   }
 
-  policy.portabilityRequests = policy.portabilityRequests || [];
+    policy.portabilityRequests = policy.portabilityRequests || [];
   policy.portabilityRequests.push({
     requestedAt: new Date(),
     preferredInsurer: req.body.preferredInsurerId || null,
     reason: req.body.reason || '',
     status: 'submitted',
   });
+
+  // Portability does NOT change policy status — coverage continues until renewal
+  // We only add a tracking flag
+  policy.serviceHistory = policy.serviceHistory || [];
+  policy.serviceHistory.push({
+    action: 'portability_requested',
+    data: { reason: req.body.reason, preferredInsurer: req.body.preferredInsurerId },
+    at: new Date(),
+    by: uid(req),
+  });
+
   await policy.save();
 
   return ok(res, { policy, message: 'Portability request submitted.' });
@@ -601,6 +612,117 @@ router.post('/renewal/verify-payment/:policyId', authenticate, asyncHandler(asyn
   await booking.save();
 
   return ok(res, { policy, booking, transaction, renewalQuote: quote });
+}));
+
+// ============================================
+// GET /cancellation-quote/:policyId
+// Returns refund breakdown based on policy wording
+// ============================================
+router.get('/cancellation-quote/:policyId', authenticate, asyncHandler(async (req, res) => {
+  const policy = await InsurancePolicy.findOne({ _id: req.params.policyId, userId: String(uid(req)) });
+  if (!policy) return fail(res, 404, 'NOT_FOUND', 'Policy not found');
+
+  if (policy.status !== 'active') {
+    return fail(res, 400, 'POLICY_NOT_ACTIVE', 'Only active policies can be cancelled');
+  }
+
+  const plan = await InsurancePlan.findById(policy.planId).lean();
+  if (!plan) return fail(res, 404, 'NOT_FOUND', 'Plan not found');
+
+  const cp = plan.cancellationPolicy || {};
+  const after = cp.afterFreeLook || {};
+
+  const daysSinceStart = Math.floor((Date.now() - new Date(policy.startDate).getTime()) / (24 * 60 * 60 * 1000));
+  const freeLookDays = cp.freeLookDays || 15;
+  const withinFreeLook = daysSinceStart <= freeLookDays;
+
+  const premiumPaid = policy.totalAmount || policy.premiumAmount || 0;
+  let refundAmount = 0;
+  let refundPercent = 0;
+  let breakdown = {
+    premiumPaid,
+    daysSinceStart,
+    freeLookDays,
+    withinFreeLook,
+  };
+
+  if (withinFreeLook) {
+    // Free-look: 100% minus admin + medical
+    const adminFee = cp.freeLookAdminFee || 0;
+    const medFee = cp.freeLookMedicalExamFee || 0;
+    const flPercent = cp.freeLookRefundPercent || 100;
+    const baseRefund = Math.round((premiumPaid * flPercent) / 100);
+    refundAmount = Math.max(0, baseRefund - adminFee - medFee);
+    refundPercent = premiumPaid > 0 ? Math.round((refundAmount / premiumPaid) * 1000) / 10 : 0;
+
+    breakdown.mode = 'free_look';
+    breakdown.freeLookRefundPercent = flPercent;
+    breakdown.adminFee = adminFee;
+    breakdown.medicalExamFee = medFee;
+    breakdown.baseRefund = baseRefund;
+  } else {
+    // After free-look: use insurer's config
+    if (!after.refundType || after.refundType === 'none') {
+      refundAmount = 0;
+      refundPercent = 0;
+      breakdown.mode = 'none';
+      breakdown.note = 'No refund after free-look period as per policy wording.';
+    } else if (after.refundType === 'pro_rata') {
+      const totalDays = Math.max(1, Math.floor((new Date(policy.endDate).getTime() - new Date(policy.startDate).getTime()) / (24 * 60 * 60 * 1000)));
+      const unusedDays = Math.max(0, totalDays - daysSinceStart);
+      const proRataRefund = Math.round((premiumPaid * unusedDays) / totalDays);
+      const configPercent = after.refundPercent != null ? after.refundPercent : 100;
+      const afterConfig = Math.round((proRataRefund * configPercent) / 100);
+      const fee = after.cancellationFee || 0;
+      refundAmount = Math.max(0, afterConfig - fee);
+      refundPercent = premiumPaid > 0 ? Math.round((refundAmount / premiumPaid) * 1000) / 10 : 0;
+
+      breakdown.mode = 'pro_rata';
+      breakdown.totalPolicyDays = totalDays;
+      breakdown.unusedDays = unusedDays;
+      breakdown.proRataRefund = proRataRefund;
+      breakdown.configPercent = configPercent;
+      breakdown.cancellationFee = fee;
+    } else if (after.refundType === 'slab') {
+      const monthsUsed = daysSinceStart / 30;
+      const slabs = (after.slabs || []).sort((a, b) => a.uptoMonths - b.uptoMonths);
+      let slabPercent = 0;
+      let matchedSlab = null;
+      for (const s of slabs) {
+        if (monthsUsed <= s.uptoMonths) { slabPercent = s.percent; matchedSlab = s; break; }
+      }
+      const fee = after.cancellationFee || 0;
+      refundAmount = Math.max(0, Math.round((premiumPaid * slabPercent) / 100) - fee);
+      refundPercent = premiumPaid > 0 ? Math.round((refundAmount / premiumPaid) * 1000) / 10 : 0;
+
+      breakdown.mode = 'slab';
+      breakdown.monthsUsed = Math.round(monthsUsed * 10) / 10;
+      breakdown.appliedSlab = matchedSlab;
+      breakdown.cancellationFee = fee;
+    }
+
+    // Claims impact
+    if (after.claimsImpact === 'zero_refund' && (policy.claims || []).length > 0) {
+      refundAmount = 0;
+      refundPercent = 0;
+      breakdown.mode = 'zero_due_to_claims';
+      breakdown.note = 'No refund because claims exist on this policy.';
+    } else if (after.claimsImpact === 'reduce_refund' && (policy.claims || []).length > 0) {
+      refundAmount = Math.round(refundAmount * 0.5);
+      refundPercent = premiumPaid > 0 ? Math.round((refundAmount / premiumPaid) * 1000) / 10 : 0;
+      breakdown.claimsReduction = true;
+      breakdown.note = 'Refund reduced by 50% because claims exist on this policy.';
+    }
+  }
+
+  return ok(res, {
+    policyId: policy._id,
+    policyNumber: policy.policyNumber,
+    premiumPaid,
+    refundAmount,
+    refundPercent,
+    breakdown,
+  });
 }));
 
 module.exports = router;

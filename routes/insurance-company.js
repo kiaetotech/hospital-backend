@@ -240,6 +240,32 @@ router.post('/plans', auth, checkInsurer, async (req, res) => {
     }
 
     // Create plan
+        // Enforce cancellation policy
+    if (!planData.cancellationPolicy || !planData.cancellationPolicy.afterFreeLook || !planData.cancellationPolicy.afterFreeLook.refundType) {
+      return res.status(400).json({
+        success: false,
+        message: 'Cancellation policy is required. Please set afterFreeLook.refundType (pro_rata / slab / none).'
+      });
+    }
+
+    // Validate freeLookDays >= 15 (IRDAI mandate)
+    const cp = planData.cancellationPolicy;
+    if (cp.freeLookDays && cp.freeLookDays < 15) {
+      return res.status(400).json({
+        success: false,
+        message: 'Free-look period must be at least 15 days (IRDAI mandate).'
+      });
+    }
+
+    // Validate slab config if refundType is slab
+    if (cp.afterFreeLook.refundType === 'slab' && (!cp.afterFreeLook.slabs || cp.afterFreeLook.slabs.length === 0)) {
+      return res.status(400).json({
+        success: false,
+        message: 'Slab refund type requires at least one slab.'
+      });
+    }
+
+    // Create plan
     const plan = new InsurancePlan({
       ...planData,
       companyId,
