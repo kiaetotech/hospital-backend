@@ -390,7 +390,14 @@ router.post('/:id/cancel', auth, async (req, res) => {
 // ============================================
 router.get('/:id/sla', auth, async (req, res) => {
   try {
-    const claim = await InsuranceClaim.findOne({ _id: req.params.id, userId: req.user.id });
+    const raw = req.params.id;
+    const isObjectId = /^[a-f\d]{24}$/i.test(raw);
+    const claim = await InsuranceClaim.findOne({
+      userId: req.user.id,
+      $or: isObjectId
+        ? [{ _id: raw }, { claimNumber: raw }]
+        : [{ claimNumber: raw }]
+    });
     if (!claim) return res.status(404).json({ success: false, message: 'Claim not found' });
 
     const filedAt = claim.createdAt || new Date();
@@ -438,8 +445,13 @@ router.post('/:id/dispute', auth, async (req, res) => {
       return res.status(400).json({ success: false, message: 'Dispute reason must be at least 10 characters' });
     }
 
-    const claim = await InsuranceClaim.findOne({ _id: req.params.id, userId: req.user.id });
-    if (!claim) return res.status(404).json({ success: false, message: 'Claim not found' });
+    const raw = req.params.id;
+const isObjectId = /^[a-f\d]{24}$/i.test(raw);
+const claim = await InsuranceClaim.findOne({
+  userId: req.user.id,
+  $or: isObjectId ? [{ _id: raw }, { claimNumber: raw }] : [{ claimNumber: raw }]
+});
+if (!claim) return res.status(404).json({ success: false, message: 'Claim not found' });
 
     if (!['rejected', 'partially_settled'].includes(claim.status)) {
       return res.status(400).json({ success: false, message: 'Only rejected or partially-settled claims can be disputed' });
@@ -499,7 +511,12 @@ router.post('/:id/dispute', auth, async (req, res) => {
 // ============================================
 router.get('/:id/settlement-receipt', auth, async (req, res) => {
   try {
-    const claim = await InsuranceClaim.findOne({ _id: req.params.id, userId: req.user.id })
+    const raw = req.params.id;
+const isObjectId = /^[a-f\d]{24}$/i.test(raw);
+const claim = await InsuranceClaim.findOne({
+  userId: req.user.id,
+  $or: isObjectId ? [{ _id: raw }, { claimNumber: raw }] : [{ claimNumber: raw }]
+})
       .populate('policyId')
       .populate('companyId', 'companyName name email phone address logo');
     if (!claim) return res.status(404).json({ success: false, message: 'Claim not found' });
