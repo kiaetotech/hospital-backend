@@ -1227,7 +1227,7 @@ router.get('/my-policies', auth, async (req, res) => {
   ensureModels();
   try {
     const userId = req.user.id;
-    
+
     const policies = await InsurancePolicy.find({ userId })
       .populate('planId', 'planName planType sumInsured features')
       .populate('companyId', 'name companyLogo')
@@ -1235,8 +1235,21 @@ router.get('/my-policies', auth, async (req, res) => {
 
     const policiesWithBooking = await Promise.all(policies.map(async (policy) => {
       const booking = await Booking.findById(policy.bookingId);
+
+      // Fetch real claims from InsuranceClaim collection
+      let realClaims = [];
+      try {
+        realClaims = await InsuranceClaim.find({ policyId: policy._id })
+          .sort({ createdAt: -1 })
+          .lean();
+      } catch (e) { /* ignore */ }
+
+      const policyObj = policy.toObject();
+      // Prefer real claims; fall back to embedded
+      policyObj.claims = realClaims.length > 0 ? realClaims : (policyObj.claims || []);
+
       return {
-        ...policy.toObject(),
+        ...policyObj,
         booking: booking ? {
           status: booking.status,
           paymentStatus: booking.paymentStatus,
@@ -1273,10 +1286,21 @@ router.get('/my-policies/:id', auth, async (req, res) => {
 
     const booking = await Booking.findById(policy.bookingId);
 
+    // Fetch real claims from InsuranceClaim collection
+    let realClaims = [];
+    try {
+      realClaims = await InsuranceClaim.find({ policyId: policy._id })
+        .sort({ createdAt: -1 })
+        .lean();
+    } catch (e) { /* ignore */ }
+
+    const policyObj = policy.toObject();
+    policyObj.claims = realClaims.length > 0 ? realClaims : (policyObj.claims || []);
+
     res.json({
       success: true,
       data: {
-        ...policy.toObject(),
+        ...policyObj,
         booking: booking ? {
           status: booking.status,
           paymentStatus: booking.paymentStatus,
