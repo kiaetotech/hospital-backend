@@ -1509,10 +1509,40 @@ router.post('/claims', auth, async (req, res) => {
       claimType: 'reimbursement', amount: claimAmount, description, hospitalName, hospitalAddress,
       admissionDate: new Date(admissionDate), documents: Array.isArray(documents) ? documents : [], submittedBy: req.user.id
     });
-    await claim.save();
+        await claim.save();
 
     // Preserve the existing embedded policy-claims view for backward compatibility.
     await policy.addClaim({ amount: claimAmount, description, hospitalName, hospitalAddress, admissionDate, documents: documents || [] });
+
+    // Notify insurer: new claim filed
+    try {
+      const companyProfile = await InsuranceCompany.findOne({ userId: policy.companyId });
+      const insurerEmail = companyProfile?.email;
+      const insurerPhone = companyProfile?.phone;
+      if (insurerEmail) {
+        await notificationService.sendEmail(
+          insurerEmail,
+          `New Claim Filed — ${claim.claimNumber}`,
+          `<p>A new claim has been filed by a policyholder.</p>
+           <ul>
+             <li><strong>Claim Number:</strong> ${claim.claimNumber}</li>
+             <li><strong>Policy Number:</strong> ${policy.policyNumber}</li>
+             <li><strong>Amount:</strong> ₹${claimAmount}</li>
+             <li><strong>Hospital:</strong> ${hospitalName}</li>
+             <li><strong>Admission Date:</strong> ${new Date(admissionDate).toLocaleDateString()}</li>
+           </ul>
+           <p>Please log in to review and process within 30 days (IRDAI SLA).</p>`
+        );
+      }
+      if (insurerPhone) {
+        await notificationService.sendSMS(
+          insurerPhone,
+          `New claim ${claim.claimNumber} filed for policy ${policy.policyNumber}. Amount: ₹${claimAmount}. Login to review.`
+        );
+      }
+    } catch (notifyErr) {
+      console.error('[claim-filed] insurer notify failed:', notifyErr.message);
+    }
 
     const user = await User.findById(req.user.id);
     if (user && notificationService && notificationService.sendEmail) {

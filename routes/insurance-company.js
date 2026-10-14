@@ -517,13 +517,15 @@ router.put('/claims/:id/status', auth, checkInsurer, async (req, res) => {
     const allowedStatuses = ['submitted', 'document_uploaded', 'under_review', 'pending_verification', 'approved', 'rejected', 'settled', 'partially_settled', 'cancelled'];
     if (!allowedStatuses.includes(status)) return res.status(400).json({ success: false, message: 'Invalid claim status' });
 
-    const claim = await InsuranceClaim.findOne({ _id: claimId, companyId });
+        const claim = await InsuranceClaim.findOne({ _id: claimId, companyId });
     if (!claim) {
       return res.status(404).json({
         success: false,
         message: 'Claim not found'
       });
     }
+
+    const prevStatus = claim.status;
 
     const policy = await InsurancePolicy.findById(claim.policyId);
     const numericAmount = amount == null ? null : Number(amount);
@@ -551,10 +553,49 @@ router.put('/claims/:id/status', auth, checkInsurer, async (req, res) => {
       claim.settlementReference = `SETTLE_${Date.now()}`;
     }
 
-    await claim.save();
+        await claim.save();
 
     // Add timeline entry
     await claim.addTimeline(status, note || `Status updated to ${status}`, req.user.id);
+
+    // Notify patient: status changed
+    try {
+      if (prevStatus !== status) {
+        const patient = await require('../models/User').findById(claim.userId);
+        const statusLabels = {
+          under_review: 'Under Review',
+          pending_verification: 'Pending Verification',
+          approved: 'Approved',
+          rejected: 'Rejected',
+          settled: 'Settled',
+          partially_settled: 'Partially Settled',
+        };
+        const statusLabel = statusLabels[status] || status;
+
+        if (patient?.email) {
+          await require('../services/notificationService').sendEmail(
+            patient.email,
+            `Claim ${claim.claimNumber} — ${statusLabel}`,
+            `<p>Your insurance claim status has been updated.</p>
+             <ul>
+               <li><strong>Claim Number:</strong> ${claim.claimNumber}</li>
+               <li><strong>Status:</strong> ${statusLabel}</li>
+               ${note ? `<li><strong>Note:</strong> ${note}</li>` : ''}
+               ${amount ? `<li><strong>Amount:</strong> ₹${amount}</li>` : ''}
+             </ul>
+             <p>Log in to your policy dashboard for details.</p>`
+          );
+        }
+        if (patient?.phone) {
+          await require('../services/notificationService').sendSMS(
+            patient.phone,
+            `Claim ${claim.claimNumber}: ${statusLabel}. ${note ? note + '. ' : ''}Login to view details.`
+          );
+        }
+      }
+    } catch (notifyErr) {
+      console.error('[claim-status] patient notify failed:', notifyErr.message);
+    }
 
     res.json({
       success: true,

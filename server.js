@@ -409,9 +409,41 @@ if (schedulerService && typeof schedulerService.processExpiredSuspensions === 'f
     }
   }, 60 * 60 * 1000);
 
-  console.log('[auto-unsuspend] Cron scheduled every hour');
-}
+  console.log('[auto-unsuspend] Cron scheduled every hour');   // ← keep this here
+}                                                              // ← CLOSE if-block BEFORE new code
 
+// ============================================
+// INSURANCE CLAIM SLA CRONS
+// ============================================
+const axiosLib = require('axios');
+const API_SELF = `http://127.0.0.1:${process.env.PORT || 5001}`;
+
+setInterval(async () => {
+  try {
+    await axiosLib.post(`${API_SELF}/api/insurance-claims/admin/sla-reminder`, {}, {
+      headers: { 'x-admin-key': process.env.ADMIN_KEY },
+      timeout: 30000,
+    });
+  } catch (e) {
+    console.error('[sla-reminder cron]', e.message);
+  }
+}, 6 * 60 * 60 * 1000);
+
+setInterval(async () => {
+  try {
+    const r = await axiosLib.post(`${API_SELF}/api/insurance-claims/admin/auto-escalate`, {}, {
+      headers: { 'x-admin-key': process.env.ADMIN_KEY },
+      timeout: 30000,
+    });
+    if (r.data?.escalated > 0) {
+      console.log(`[auto-escalate] Escalated ${r.data.escalated} claims`);
+    }
+  } catch (e) {
+    console.error('[auto-escalate cron]', e.message);
+  }
+}, 12 * 60 * 60 * 1000);
+
+console.log('[claim-sla] Insurance claim SLA crons scheduled (reminder 6h, escalate 12h)');
 // ============================================
 // MODELS WITH FALLBACK
 // ============================================

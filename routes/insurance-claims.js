@@ -549,4 +549,116 @@ const claim = await InsuranceClaim.findOne({
   }
 });
 
+// ============================================
+// POST /admin/auto-escalate — cron-triggered
+// ============================================
+router.post('/admin/auto-escalate', async (req, res) => {
+  try {
+    const key = req.headers['x-admin-key'];
+    if (!key || key !== process.env.ADMIN_KEY) {
+      return res.status(401).json({ success: false, message: 'Admin key required' });
+    }
+
+    const THIRTY_DAYS_MS = 30 * 24 * 60 * 60 * 1000;
+    const cutoff = new Date(Date.now() - THIRTY_DAYS_MS);
+
+    const overdueClaims = await InsuranceClaim.find({
+      createdAt: { $lte: cutoff },
+      status: { $in: ['submitted', 'document_uploaded', 'under_review', 'pending_verification'] },
+      escalationLevel: { $ne: 'critical' },
+    });
+
+    let escalated = 0;
+    const notificationService = require('../services/notificationService');
+    const User = require('../models/User');
+    const InsuranceCompany = require('../models/InsuranceCompany');
+
+    for (const claim of overdueClaims) {
+      claim.escalationLevel = 'critical';
+      claim.timeline.push({
+        status: 'escalated',
+        date: new Date(),
+        note: 'Auto-escalated: IRDAI 30-day SLA breached',
+        performedBy: null,
+      });
+      await claim.save();
+      escalated++;
+
+      try {
+        const patient = await User.findById(claim.userId);
+        const company = await InsuranceCompany.findById(claim.companyId);
+        if (patient?.email) {
+          await notificationService.sendEmail(
+            patient.email,
+            `Claim ${claim.claimNumber} — Escalated`,
+            `<p>Your claim exceeded the 30-day IRDAI window and has been auto-escalated.</p>`
+          );
+        }
+        if (company?.email) {
+          await notificationService.sendEmail(
+            company.email,
+            `URGENT: Claim ${claim.claimNumber} SLA breached`,
+            `<p>Claim ${claim.claimNumber} has breached the 30-day IRDAI SLA.</p>`
+          );
+        }
+      } catch (notifyErr) {
+        console.error('[auto-escalate] notify failed:', notifyErr.message);
+      }
+    }
+
+    res.json({ success: true, escalated, checked: overdueClaims.length });
+  } catch (e) {
+    console.error('[auto-escalate] error:', e.message);
+    res.status(500).json({ success: false, message: e.message });
+  }
+});
+
+// ============================================
+// POST /admin/sla-reminder — day 25-30 reminder
+// ============================================
+router.post('/admin/sla-reminder', async (req, res) => {
+  try {
+    const key = req.headers['x-admin-key'];
+    if (!key || key !== process.env.ADMIN_KEY) {
+      return res.status(401).json({ success: false, message: 'Admin key required' });
+    }
+
+    const TWENTY_FIVE_DAYS_MS = 25 * 24 * 60 * 60 * 1000;
+    const THIRTY_DAYS_MS = 30 * 24 * 60 * 60 * 1000;
+    const from = new Date(Date.now() - THIRTY_DAYS_MS);
+    const to = new Date(Date.now() - TWENTY_FIVE_DAYS_MS);
+
+    const nearSlaClaims = await InsuranceClaim.find({
+      createdAt: { $gte: from, $lte: to },
+      status: { $in: ['submitted', 'document_uploaded', 'under_review', 'pending_verification'] },
+      escalationLevel: 'normal',
+    });
+
+    let reminded = 0;
+    const notificationService = require('../services/notificationService');
+    const InsuranceCompany = require('../models/InsuranceCompany');
+
+    for (const claim of nearSlaClaims) {
+      try {
+        const company = await InsuranceCompany.findById(claim.companyId);
+        if (company?.email) {
+          await notificationService.sendEmail(
+            company.email,
+            `Reminder: Claim ${claim.claimNumber} nearing SLA`,
+            `<p>Claim ${claim.claimNumber} is approaching the 30-day IRDAI deadline.</p>`
+          );
+          reminded++;
+        }
+      } catch (notifyErr) {
+        console.error('[sla-reminder] notify failed:', notifyErr.message);
+      }
+    }
+
+    res.json({ success: true, reminded, checked: nearSlaClaims.length });
+  } catch (e) {
+    console.error('[sla-reminder] error:', e.message);
+    res.status(500).json({ success: false, message: e.message });
+  }
+});
+
 module.exports = router;
