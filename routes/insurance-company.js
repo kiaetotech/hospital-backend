@@ -811,4 +811,176 @@ router.get('/reports/sales', auth, checkInsurer, async (req, res) => {
   }
 });
 
+// ============================================
+// RENEWALS — expiring policies + follow-up
+// ============================================
+router.get('/renewals', auth, checkInsurer, async (req, res) => {
+  try {
+    const companyId = req.user.id;
+    const { days = 30 } = req.query;
+
+    const now = new Date();
+    const threshold = new Date(now);
+    threshold.setDate(threshold.getDate() + parseInt(days));
+
+    const expiringPolicies = await InsurancePolicy.find({
+      companyId,
+      status: 'active',
+      endDate: { $gte: now, $lte: threshold },
+    })
+      .populate('planId', 'planName')
+      .populate('userId', 'name email phone')
+      .sort({ endDate: 1 })
+      .lean();
+
+    const expiredPolicies = await InsurancePolicy.find({
+      companyId,
+      status: 'active',
+      endDate: { $lt: now },
+    })
+      .populate('planId', 'planName')
+      .populate('userId', 'name email phone')
+      .sort({ endDate: -1 })
+      .limit(100)
+      .lean();
+
+    res.json({
+      success: true,
+      data: {
+        expiring: expiringPolicies,
+        expired: expiredPolicies,
+        counts: {
+          expiring: expiringPolicies.length,
+          expired: expiredPolicies.length,
+        },
+      },
+    });
+  } catch (error) {
+    console.error('Renewals fetch error:', error);
+    res.status(500).json({ success: false, message: 'Failed to fetch renewals' });
+  }
+});
+
+// ============================================
+// NETWORK HOSPITALS — cashless network management
+// ============================================
+router.get('/network-hospitals', auth, checkInsurer, async (req, res) => {
+  try {
+    const company = await InsuranceCompany.findOne({ userId: req.user.id });
+    if (!company) return res.status(404).json({ success: false, message: 'Company not found' });
+
+    res.json({
+      success: true,
+      data: company.networkHospitals || [],
+    });
+  } catch (error) {
+    res.status(500).json({ success: false, message: 'Failed to fetch network hospitals' });
+  }
+});
+
+router.post('/network-hospitals', auth, checkInsurer, async (req, res) => {
+  try {
+    const { hospitalName, address, city, state, pincode, specialty, cashless } = req.body;
+    if (!hospitalName || !city) {
+      return res.status(400).json({ success: false, message: 'hospitalName and city required' });
+    }
+
+    const company = await InsuranceCompany.findOne({ userId: req.user.id });
+    if (!company) return res.status(404).json({ success: false, message: 'Company not found' });
+
+    company.networkHospitals = company.networkHospitals || [];
+    company.networkHospitals.push({
+      hospitalName,
+      address: address || '',
+      city,
+      state: state || '',
+      pincode: pincode || '',
+      specialty: specialty || '',
+      cashless: cashless !== false,
+      addedAt: new Date(),
+    });
+    await company.save();
+
+    res.json({ success: true, data: company.networkHospitals });
+  } catch (error) {
+    res.status(500).json({ success: false, message: 'Failed to add hospital' });
+  }
+});
+
+router.delete('/network-hospitals/:index', auth, checkInsurer, async (req, res) => {
+  try {
+    const company = await InsuranceCompany.findOne({ userId: req.user.id });
+    if (!company) return res.status(404).json({ success: false, message: 'Company not found' });
+
+    const idx = parseInt(req.params.index);
+    if (!company.networkHospitals || idx < 0 || idx >= company.networkHospitals.length) {
+      return res.status(404).json({ success: false, message: 'Hospital not found' });
+    }
+
+    company.networkHospitals.splice(idx, 1);
+    await company.save();
+
+    res.json({ success: true, data: company.networkHospitals });
+  } catch (error) {
+    res.status(500).json({ success: false, message: 'Failed to remove hospital' });
+  }
+});
+
+// ============================================
+// SUSPENDED STATUS
+// ============================================
+router.get('/suspended-status', auth, checkInsurer, async (req, res) => {
+  try {
+    const company = await InsuranceCompany.findOne({ userId: req.user.id })
+      .select('verificationStatus status suspendedReason suspendedAt suspendedUntil isActive');
+
+    const isSuspended = company.verificationStatus === 'suspended' || company.status === 'suspended';
+
+    res.json({
+      success: true,
+      data: {
+        isSuspended,
+        reason: company.suspendedReason || null,
+        suspendedAt: company.suspendedAt || null,
+        suspendedUntil: company.suspendedUntil || null,
+        verificationStatus: company.verificationStatus || company.status,
+      },
+    });
+  } catch (error) {
+    res.status(500).json({ success: false, message: 'Failed to fetch status' });
+  }
+});
+
+// ============================================
+// KYC UPDATE (post-onboarding)
+// ============================================
+router.post('/kyc/update', auth, checkInsurer, async (req, res) => {
+  try {
+    const { irdaCertificate, gstCertificate, panCard, bankProof, registrationCertificate, panNumber, gstNumber } = req.body;
+
+    const company = await InsuranceCompany.findById(req.insuranceCompany._id);
+    if (!company) return res.status(404).json({ success: false, message: 'Company not found' });
+
+    company.documents = company.documents || {};
+    if (irdaCertificate) company.documents.irdaCertificate = irdaCertificate;
+    if (gstCertificate) company.documents.gstCertificate = gstCertificate;
+    if (panCard) company.documents.panCard = panCard;
+    if (bankProof) company.documents.bankProof = bankProof;
+    if (registrationCertificate) company.documents.registrationCertificate = registrationCertificate;
+    if (panNumber) company.documents.panNumber = panNumber;
+    if (gstNumber) company.documents.gstNumber = gstNumber;
+
+    company.documents.kycStatus = 'submitted';
+    company.documents.submittedAt = new Date();
+    company.verificationStatus = 'pending';
+
+    await company.save();
+
+    res.json({ success: true, message: 'KYC updated. Awaiting admin verification.' });
+  } catch (error) {
+    console.error('KYC update error:', error);
+    res.status(500).json({ success: false, message: 'Failed to update KYC' });
+  }
+});
+
 module.exports = router;
