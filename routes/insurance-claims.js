@@ -385,4 +385,151 @@ router.post('/:id/cancel', auth, async (req, res) => {
   }
 });
 
+// ============================================
+// SLA TRACKER — GET /:id/sla
+// ============================================
+router.get('/:id/sla', auth, async (req, res) => {
+  try {
+    const claim = await InsuranceClaim.findOne({ _id: req.params.id, userId: req.user.id });
+    if (!claim) return res.status(404).json({ success: false, message: 'Claim not found' });
+
+    const filedAt = claim.createdAt || new Date();
+    const daysSinceFiled = Math.floor((Date.now() - new Date(filedAt).getTime()) / (24 * 60 * 60 * 1000));
+    const IRDAI_SLA_DAYS = 30;
+    const daysRemaining = Math.max(0, IRDAI_SLA_DAYS - daysSinceFiled);
+    const isOverdue = daysSinceFiled > IRDAI_SLA_DAYS;
+
+    const terminalStatuses = ['settled', 'rejected', 'cancelled', 'partially_settled'];
+    const isActive = !terminalStatuses.includes(claim.status);
+
+    res.json({
+      success: true,
+      data: {
+        claimNumber: claim.claimNumber,
+        status: claim.status,
+        filedAt,
+        daysSinceFiled,
+        slaDays: IRDAI_SLA_DAYS,
+        daysRemaining,
+        isOverdue,
+        isActive,
+        isEscalated: claim.escalationLevel === 'escalated' || claim.escalationLevel === 'critical',
+        message: isOverdue && isActive
+          ? `⚠️ IRDAI SLA breached by ${daysSinceFiled - IRDAI_SLA_DAYS} days. You can escalate.`
+          : isActive
+            ? `${daysRemaining} days remaining in IRDAI 30-day settlement window.`
+            : `Claim ${claim.status}.`
+      }
+    });
+  } catch (e) {
+    console.error('[claim sla] error:', e.message);
+    res.status(500).json({ success: false, message: 'Failed to load SLA' });
+  }
+});
+
+// ============================================
+// DISPUTE CLAIM — POST /:id/dispute
+// Body: { reason }
+// ============================================
+router.post('/:id/dispute', auth, async (req, res) => {
+  try {
+    const { reason } = req.body;
+    if (!reason || reason.trim().length < 10) {
+      return res.status(400).json({ success: false, message: 'Dispute reason must be at least 10 characters' });
+    }
+
+    const claim = await InsuranceClaim.findOne({ _id: req.params.id, userId: req.user.id });
+    if (!claim) return res.status(404).json({ success: false, message: 'Claim not found' });
+
+    if (!['rejected', 'partially_settled'].includes(claim.status)) {
+      return res.status(400).json({ success: false, message: 'Only rejected or partially-settled claims can be disputed' });
+    }
+
+    if (claim.isGrievance) {
+      return res.status(400).json({ success: false, message: 'This claim has already been disputed' });
+    }
+
+    claim.isGrievance = true;
+    claim.grievanceRaisedAt = new Date();
+    claim.escalationLevel = 'escalated';
+    claim.status = 'under_review'; // Re-open for insurer review
+    claim.timeline.push({
+      status: 'disputed',
+      date: new Date(),
+      note: `Dispute raised by customer: ${reason.trim()}`,
+      performedBy: req.user.id
+    });
+    await claim.save();
+
+    // Send email to insurer (fire and forget)
+    try {
+      const company = await InsuranceCompany.findById(claim.companyId);
+      const notificationService = require('../services/notificationService');
+      if (company && notificationService && notificationService.sendEmail) {
+        await notificationService.sendEmail(
+          company.email,
+          `Claim Dispute Raised: ${claim.claimNumber}`,
+          {
+            template: 'claim_dispute',
+            data: {
+              claimNumber: claim.claimNumber,
+              reason: reason.trim(),
+              customerName: req.user.name || 'Customer'
+            }
+          }
+        );
+      }
+    } catch (mailErr) {
+      console.log('[dispute] email failed:', mailErr.message);
+    }
+
+    res.json({
+      success: true,
+      message: 'Dispute raised. The insurer has been notified and will review within 15 days.',
+      data: { claimNumber: claim.claimNumber, status: claim.status, escalationLevel: claim.escalationLevel }
+    });
+  } catch (e) {
+    console.error('[claim dispute] error:', e.message);
+    res.status(500).json({ success: false, message: 'Failed to raise dispute' });
+  }
+});
+
+// ============================================
+// SETTLEMENT RECEIPT PDF — GET /:id/settlement-receipt
+// ============================================
+router.get('/:id/settlement-receipt', auth, async (req, res) => {
+  try {
+    const claim = await InsuranceClaim.findOne({ _id: req.params.id, userId: req.user.id })
+      .populate('policyId')
+      .populate('companyId', 'companyName name email phone address logo');
+    if (!claim) return res.status(404).json({ success: false, message: 'Claim not found' });
+
+    if (!['settled', 'partially_settled'].includes(claim.status)) {
+      return res.status(400).json({ success: false, message: 'Settlement receipt is available only for settled claims' });
+    }
+
+    const pdfService = require('../services/pdfService');
+    const result = await pdfService.generateSettlementReceipt({
+      ...claim.toObject(),
+      policyNumber: claim.policyId?.policyNumber,
+      planName: claim.policyId?.policyName,
+      companyName: claim.companyId?.companyName || claim.companyId?.name
+    });
+
+    if (!result?.success || !result.pdf) {
+      return res.status(503).json({ success: false, message: result?.error || 'PDF generation failed' });
+    }
+
+    res.set({
+      'Content-Type': 'application/pdf',
+      'Content-Disposition': `attachment; filename="settlement-${claim.claimNumber}.pdf"`,
+      'Cache-Control': 'private, no-store'
+    });
+    res.send(result.pdf);
+  } catch (e) {
+    console.error('[settlement receipt] error:', e.message);
+    res.status(500).json({ success: false, message: 'Failed to generate settlement receipt' });
+  }
+});
+
 module.exports = router;
