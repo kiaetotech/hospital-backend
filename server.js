@@ -962,7 +962,8 @@ app.use('/api/online-doctor', searchLimiter, onlineDoctorRoutes);
 app.use('/api/search', searchLimiter, globalSearchRoutes);
 app.use('/api/employee', employeePortalRoutes);
 app.use('/api/discounts', discountRoutes);
-app.use('/api/admin/taxes', require('./routes/adminTaxes'));   // ← or here
+app.use('/api/admin/taxes', require('./routes/adminTaxes'));
+app.use('/api/ads', require('./routes/ads'));
 
 // ============================================
 // TEST ROUTES
