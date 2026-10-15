@@ -86,6 +86,47 @@ router.post('/logout', auth, async (req, res) => {
   res.json({ success: true, message: 'Logged out successfully' });
 });
 
+
+// Alias for frontend
+router.get('/stats', auth, checkInsurer, async (req, res) => {
+  try {
+    const companyId = req.user.id;
+    const [plans, policies, claims, transactions] = await Promise.all([
+      InsurancePlan.find({ companyId }),
+      InsurancePolicy.find({ companyId }),
+      InsuranceClaim.find({ companyId }),
+      Transaction.find({ providerId: companyId, status: 'completed' }),
+    ]);
+
+    const totalPremium = transactions.reduce((s, t) => s + (t.premiumAmount || 0), 0);
+    const totalCommission = transactions.reduce((s, t) => s + (t.insurancePlatformCommission || 0), 0);
+    const totalPayout = transactions.reduce((s, t) => s + (t.insurancePayoutToCompany || 0), 0);
+
+    res.json({
+      success: true,
+      data: {
+        stats: {
+          totalPlans: plans.length,
+          activePlans: plans.filter(p => p.isActive).length,
+          totalPolicies: policies.length,
+          activePolicies: policies.filter(p => p.status === 'active').length,
+          pendingPolicies: policies.filter(p => p.status === 'pending').length,
+          totalClaims: claims.length,
+          pendingClaims: claims.filter(c => ['submitted', 'under_review'].includes(c.status)).length,
+          approvedClaims: claims.filter(c => c.status === 'approved').length,
+          settledClaims: claims.filter(c => c.status === 'settled').length,
+          totalPremium,
+          totalCommission,
+          totalPayout,
+        },
+      },
+    });
+  } catch (error) {
+    console.error('Stats error:', error);
+    res.status(500).json({ success: false, message: 'Failed to fetch stats' });
+  }
+});
+
 // ============================================
 // DASHBOARD
 // ============================================
