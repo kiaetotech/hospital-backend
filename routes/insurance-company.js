@@ -44,6 +44,11 @@ const checkInsurer = async (req, res, next) => {
 };
 
 // ============================================
+// HELPER — escape user input for use in regex
+// ============================================
+const escapeRegex = (str) => String(str || '').replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+
+// ============================================
 // INSURANCE COMPANY AUTHENTICATION
 // ============================================
 
@@ -82,7 +87,6 @@ router.get('/auth/verify', auth, checkInsurer, async (req, res) => {
 });
 
 router.post('/logout', auth, async (req, res) => {
-  // JWTs are stateless; the client removes its token. Keep this endpoint for portal consistency.
   res.json({ success: true, message: 'Logged out successfully' });
 });
 
@@ -131,28 +135,23 @@ router.get('/stats', auth, checkInsurer, async (req, res) => {
 // DASHBOARD
 // ============================================
 
-// Get insurer dashboard stats
 router.get('/dashboard', auth, checkInsurer, async (req, res) => {
   try {
     const company = req.insuranceCompany;
     const companyId = req.user.id;
 
-    // Get all plans
     const plans = await InsurancePlan.find({ companyId });
     const activePlans = plans.filter(p => p.isActive);
 
-    // Get all policies
     const policies = await InsurancePolicy.find({ companyId });
     const activePolicies = policies.filter(p => p.status === 'active');
     const pendingPolicies = policies.filter(p => p.status === 'pending');
 
-    // Get claims
     const claims = await InsuranceClaim.find({ companyId });
     const pendingClaims = claims.filter(c => c.status === 'under_review' || c.status === 'submitted');
     const approvedClaims = claims.filter(c => c.status === 'approved');
     const settledClaims = claims.filter(c => c.status === 'settled');
 
-    // Get transactions
     const transactions = await Transaction.find({ 
       insurancePolicyId: { $in: policies.map(p => p._id) },
       status: 'completed'
@@ -162,7 +161,6 @@ router.get('/dashboard', auth, checkInsurer, async (req, res) => {
     const totalCommission = transactions.reduce((sum, t) => sum + (t.insurancePlatformCommission || 0), 0);
     const totalPayout = transactions.reduce((sum, t) => sum + (t.insurancePayoutToCompany || 0), 0);
 
-    // Monthly data (last 12 months)
     const monthlyData = await Transaction.aggregate([
       {
         $match: {
@@ -228,7 +226,6 @@ router.get('/dashboard', auth, checkInsurer, async (req, res) => {
 // PLAN MANAGEMENT
 // ============================================
 
-// Get all plans
 router.get('/plans', auth, checkInsurer, async (req, res) => {
   try {
     const companyId = req.user.id;
@@ -266,13 +263,11 @@ router.get('/plans', auth, checkInsurer, async (req, res) => {
   }
 });
 
-// Create new plan
 router.post('/plans', auth, checkInsurer, async (req, res) => {
   try {
     const companyId = req.user.id;
     const planData = req.body;
 
-    // Validate company is verified
     if (!req.insuranceCompany.isVerified) {
       return res.status(403).json({
         success: false,
@@ -280,8 +275,6 @@ router.post('/plans', auth, checkInsurer, async (req, res) => {
       });
     }
 
-    // Create plan
-        // Enforce cancellation policy
     if (!planData.cancellationPolicy || !planData.cancellationPolicy.afterFreeLook || !planData.cancellationPolicy.afterFreeLook.refundType) {
       return res.status(400).json({
         success: false,
@@ -289,7 +282,6 @@ router.post('/plans', auth, checkInsurer, async (req, res) => {
       });
     }
 
-    // Validate freeLookDays >= 15 (IRDAI mandate)
     const cp = planData.cancellationPolicy;
     if (cp.freeLookDays && cp.freeLookDays < 15) {
       return res.status(400).json({
@@ -298,7 +290,6 @@ router.post('/plans', auth, checkInsurer, async (req, res) => {
       });
     }
 
-    // Validate slab config if refundType is slab
     if (cp.afterFreeLook.refundType === 'slab' && (!cp.afterFreeLook.slabs || cp.afterFreeLook.slabs.length === 0)) {
       return res.status(400).json({
         success: false,
@@ -306,7 +297,6 @@ router.post('/plans', auth, checkInsurer, async (req, res) => {
       });
     }
 
-    // Create plan
     const plan = new InsurancePlan({
       ...planData,
       companyId,
@@ -317,7 +307,6 @@ router.post('/plans', auth, checkInsurer, async (req, res) => {
 
     await plan.save();
 
-    // Update company plan count
     await InsuranceCompany.findByIdAndUpdate(companyId, {
       $inc: { totalPlans: 1 }
     });
@@ -337,7 +326,6 @@ router.post('/plans', auth, checkInsurer, async (req, res) => {
   }
 });
 
-// Update plan
 router.put('/plans/:id', auth, checkInsurer, async (req, res) => {
   try {
     const companyId = req.user.id;
@@ -376,7 +364,6 @@ router.put('/plans/:id', auth, checkInsurer, async (req, res) => {
   }
 });
 
-// Delete plan (soft delete)
 router.delete('/plans/:id', auth, checkInsurer, async (req, res) => {
   try {
     const companyId = req.user.id;
@@ -390,7 +377,6 @@ router.delete('/plans/:id', auth, checkInsurer, async (req, res) => {
       });
     }
 
-    // Check if plan has active policies
     const activePolicies = await InsurancePolicy.countDocuments({
       planId,
       status: 'active'
@@ -426,39 +412,76 @@ router.delete('/plans/:id', auth, checkInsurer, async (req, res) => {
 // POLICY MANAGEMENT
 // ============================================
 
-// Get all policies
+// Get all policies (with search + filters + server-side pagination)
 router.get('/policies', auth, checkInsurer, async (req, res) => {
   try {
     const companyId = req.user.id;
-    const { status, startDate, endDate, page = 1, limit = 20 } = req.query;
+    const {
+      status,
+      search,
+      startDate,
+      endDate,
+      page = 1,
+      limit = 20,
+    } = req.query;
 
     const query = { companyId };
-    if (status) query.status = status;
+
+    if (status && status !== 'all') query.status = status;
+
     if (startDate || endDate) {
       query.createdAt = {};
       if (startDate) query.createdAt.$gte = new Date(startDate);
-      if (endDate) query.createdAt.$lte = new Date(endDate);
+      if (endDate) {
+        const end = new Date(endDate);
+        end.setHours(23, 59, 59, 999);
+        query.createdAt.$lte = end;
+      }
     }
 
-    const skip = (page - 1) * limit;
-    const policies = await InsurancePolicy.find(query)
-      .populate('planId', 'planName planType')
-      .populate('userId', 'name email phone')
-      .sort({ createdAt: -1 })
-      .skip(skip)
-      .limit(parseInt(limit));
+    // Search across policyNumber, planName, and customer name/email/phone
+    if (search && String(search).trim()) {
+      const safe = escapeRegex(search.trim());
+      const rx = new RegExp(safe, 'i');
 
-    const total = await InsurancePolicy.countDocuments(query);
+      // Find matching user IDs first (customer search)
+      const User = require('../models/User');
+      const matchingUsers = await User.find({
+        $or: [{ name: rx }, { email: rx }, { phone: rx }],
+      }).select('_id').limit(500).lean();
+      const userIds = matchingUsers.map(u => u._id);
+
+      query.$or = [
+        { policyNumber: rx },
+        { policyName: rx },
+        { planName: rx },
+        { userId: { $in: userIds } },
+      ];
+    }
+
+    const pageNum = Math.max(1, parseInt(page) || 1);
+    const limitNum = Math.min(100, Math.max(1, parseInt(limit) || 20));
+    const skip = (pageNum - 1) * limitNum;
+
+    const [policies, total] = await Promise.all([
+      InsurancePolicy.find(query)
+        .populate('planId', 'planName planType')
+        .populate('userId', 'name email phone')
+        .sort({ createdAt: -1 })
+        .skip(skip)
+        .limit(limitNum),
+      InsurancePolicy.countDocuments(query),
+    ]);
 
     res.json({
       success: true,
       data: policies,
       pagination: {
-        page: parseInt(page),
-        limit: parseInt(limit),
+        page: pageNum,
+        limit: limitNum,
         total,
-        pages: Math.ceil(total / limit)
-      }
+        pages: Math.ceil(total / limitNum),
+      },
     });
 
   } catch (error) {
@@ -470,7 +493,6 @@ router.get('/policies', auth, checkInsurer, async (req, res) => {
   }
 });
 
-// Get policy details
 router.get('/policies/:id', auth, checkInsurer, async (req, res) => {
   try {
     const companyId = req.user.id;
@@ -505,34 +527,74 @@ router.get('/policies/:id', auth, checkInsurer, async (req, res) => {
 // CLAIM MANAGEMENT
 // ============================================
 
-// Get all claims
+// Get all claims (with search + date range + pagination)
 router.get('/claims', auth, checkInsurer, async (req, res) => {
   try {
     const companyId = req.user.id;
-    const { status, page = 1, limit = 20 } = req.query;
+    const {
+      status,
+      search,
+      startDate,
+      endDate,
+      page = 1,
+      limit = 20,
+    } = req.query;
 
     const query = { companyId };
-    if (status) query.status = status;
 
-    const skip = (page - 1) * limit;
-    const claims = await InsuranceClaim.find(query)
-      .populate('policyId', 'policyNumber planName')
-      .populate('userId', 'name email phone')
-      .sort({ createdAt: -1 })
-      .skip(skip)
-      .limit(parseInt(limit));
+    if (status && status !== 'all') query.status = status;
 
-    const total = await InsuranceClaim.countDocuments(query);
+    if (startDate || endDate) {
+      query.createdAt = {};
+      if (startDate) query.createdAt.$gte = new Date(startDate);
+      if (endDate) {
+        const end = new Date(endDate);
+        end.setHours(23, 59, 59, 999);
+        query.createdAt.$lte = end;
+      }
+    }
+
+    if (search && String(search).trim()) {
+      const safe = escapeRegex(search.trim());
+      const rx = new RegExp(safe, 'i');
+
+      const User = require('../models/User');
+      const matchingUsers = await User.find({
+        $or: [{ name: rx }, { email: rx }, { phone: rx }],
+      }).select('_id').limit(500).lean();
+      const userIds = matchingUsers.map(u => u._id);
+
+      query.$or = [
+        { claimNumber: rx },
+        { claimId: rx },
+        { policyNumber: rx },
+        { userId: { $in: userIds } },
+      ];
+    }
+
+    const pageNum = Math.max(1, parseInt(page) || 1);
+    const limitNum = Math.min(100, Math.max(1, parseInt(limit) || 20));
+    const skip = (pageNum - 1) * limitNum;
+
+    const [claims, total] = await Promise.all([
+      InsuranceClaim.find(query)
+        .populate('policyId', 'policyNumber planName')
+        .populate('userId', 'name email phone')
+        .sort({ createdAt: -1 })
+        .skip(skip)
+        .limit(limitNum),
+      InsuranceClaim.countDocuments(query),
+    ]);
 
     res.json({
       success: true,
       data: claims,
       pagination: {
-        page: parseInt(page),
-        limit: parseInt(limit),
+        page: pageNum,
+        limit: limitNum,
         total,
-        pages: Math.ceil(total / limit)
-      }
+        pages: Math.ceil(total / limitNum),
+      },
     });
 
   } catch (error) {
@@ -544,7 +606,6 @@ router.get('/claims', auth, checkInsurer, async (req, res) => {
   }
 });
 
-// Get claim details
 router.get('/claims/:id', auth, checkInsurer, async (req, res) => {
   try {
     const companyId = req.user.id;
@@ -575,7 +636,6 @@ router.get('/claims/:id', auth, checkInsurer, async (req, res) => {
   }
 });
 
-// Update claim status
 router.put('/claims/:id/status', auth, checkInsurer, async (req, res) => {
   try {
     const companyId = req.user.id;
@@ -584,7 +644,7 @@ router.put('/claims/:id/status', auth, checkInsurer, async (req, res) => {
     const allowedStatuses = ['submitted', 'document_uploaded', 'under_review', 'pending_verification', 'approved', 'rejected', 'settled', 'partially_settled', 'cancelled'];
     if (!allowedStatuses.includes(status)) return res.status(400).json({ success: false, message: 'Invalid claim status' });
 
-        const claim = await InsuranceClaim.findOne({ _id: claimId, companyId });
+    const claim = await InsuranceClaim.findOne({ _id: claimId, companyId });
     if (!claim) {
       return res.status(404).json({
         success: false,
@@ -598,7 +658,7 @@ router.put('/claims/:id/status', auth, checkInsurer, async (req, res) => {
     const numericAmount = amount == null ? null : Number(amount);
     if (numericAmount != null && (!Number.isFinite(numericAmount) || numericAmount < 0)) return res.status(400).json({ success: false, message: 'Invalid amount' });
     if (numericAmount != null && policy && numericAmount > policy.sumInsured) return res.status(400).json({ success: false, message: 'Amount exceeds policy sum insured' });
-    // Update status
+
     claim.status = status;
     claim.updatedAt = new Date();
 
@@ -620,12 +680,10 @@ router.put('/claims/:id/status', auth, checkInsurer, async (req, res) => {
       claim.settlementReference = `SETTLE_${Date.now()}`;
     }
 
-        await claim.save();
+    await claim.save();
 
-    // Add timeline entry
     await claim.addTimeline(status, note || `Status updated to ${status}`, req.user.id);
 
-    // Notify patient: status changed
     try {
       if (prevStatus !== status) {
         const patient = await require('../models/User').findById(claim.userId);
@@ -683,35 +741,55 @@ router.put('/claims/:id/status', auth, checkInsurer, async (req, res) => {
 // SETTLEMENT MANAGEMENT
 // ============================================
 
-// Get settlements
+// Get settlements (with date range + pagination)
 router.get('/settlements', auth, checkInsurer, async (req, res) => {
   try {
     const companyId = req.user.id;
-    const { status, page = 1, limit = 20 } = req.query;
+    const {
+      status,
+      startDate,
+      endDate,
+      page = 1,
+      limit = 20,
+    } = req.query;
 
-    const query = { 
+    const query = {
       providerId: companyId,
       bookingType: 'insurance',
-      insuranceSettlementStatus: status === 'paid' ? 'completed' : { $ne: 'completed' }
+      insuranceSettlementStatus: status === 'paid' ? 'completed' : { $ne: 'completed' },
     };
 
-    const transactions = await Transaction.find(query)
-      .populate('bookingId')
-      .sort({ createdAt: -1 })
-      .skip((page - 1) * limit)
-      .limit(parseInt(limit));
+    if (startDate || endDate) {
+      query.createdAt = {};
+      if (startDate) query.createdAt.$gte = new Date(startDate);
+      if (endDate) {
+        const end = new Date(endDate);
+        end.setHours(23, 59, 59, 999);
+        query.createdAt.$lte = end;
+      }
+    }
 
-    const total = await Transaction.countDocuments(query);
+    const pageNum = Math.max(1, parseInt(page) || 1);
+    const limitNum = Math.min(100, Math.max(1, parseInt(limit) || 20));
+
+    const [transactions, total] = await Promise.all([
+      Transaction.find(query)
+        .populate('bookingId')
+        .sort({ createdAt: -1 })
+        .skip((pageNum - 1) * limitNum)
+        .limit(limitNum),
+      Transaction.countDocuments(query),
+    ]);
 
     res.json({
       success: true,
       data: transactions,
       pagination: {
-        page: parseInt(page),
-        limit: parseInt(limit),
+        page: pageNum,
+        limit: limitNum,
         total,
-        pages: Math.ceil(total / limit)
-      }
+        pages: Math.ceil(total / limitNum),
+      },
     });
 
   } catch (error) {
@@ -727,7 +805,6 @@ router.get('/settlements', auth, checkInsurer, async (req, res) => {
 // PROFILE MANAGEMENT
 // ============================================
 
-// Get company profile
 router.get('/profile', auth, checkInsurer, async (req, res) => {
   try {
     const company = await InsuranceCompany.findById(req.insuranceCompany._id)
@@ -747,13 +824,11 @@ router.get('/profile', auth, checkInsurer, async (req, res) => {
   }
 });
 
-// Update company profile
 router.put('/profile', auth, checkInsurer, async (req, res) => {
   try {
     const companyId = req.user.id;
     const updateData = req.body;
 
-    // Remove sensitive fields
     delete updateData.apiConfig?.apiSecret;
 
     const updatedCompany = await InsuranceCompany.findByIdAndUpdate(
@@ -785,7 +860,6 @@ router.put('/profile', auth, checkInsurer, async (req, res) => {
 // REPORTS
 // ============================================
 
-// Get sales report
 router.get('/reports/sales', auth, checkInsurer, async (req, res) => {
   try {
     const companyId = req.user.id;
@@ -817,7 +891,6 @@ router.get('/reports/sales', auth, checkInsurer, async (req, res) => {
       }
     ]);
 
-    // Get policy type breakdown
     const typeBreakdown = await InsurancePolicy.aggregate([
       { $match: { companyId } },
       {
