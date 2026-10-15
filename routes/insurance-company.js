@@ -1155,4 +1155,81 @@ router.post('/policies/:id/send-renewal-reminder', auth, checkInsurer, async (re
   } catch (e) { res.status(500).json({ success: false, message: e.message }); }
 });
 
+// ============================================
+// BULK POLICY OPERATIONS
+// ============================================
+
+// Renew a policy
+router.post('/policies/:id/renew', auth, checkInsurer, async (req, res) => {
+  try {
+    const policy = await InsurancePolicy.findOne({ _id: req.params.id, companyId: req.user.id });
+    if (!policy) return res.status(404).json({ success: false, message: 'Policy not found' });
+    const { newEndDate } = req.body;
+    policy.previousEndDate = policy.endDate;
+    policy.endDate = newEndDate
+      ? new Date(newEndDate)
+      : new Date(new Date(policy.endDate).setFullYear(new Date(policy.endDate).getFullYear() + 1));
+    policy.status = 'active';
+    policy.lastRenewedAt = new Date();
+    await policy.save();
+    res.json({ success: true, data: policy });
+  } catch (e) {
+    console.error('Policy renewal error:', e);
+    res.status(500).json({ success: false, message: e.message });
+  }
+});
+
+// Cancel a policy
+router.post('/policies/:id/cancel', auth, checkInsurer, async (req, res) => {
+  try {
+    const policy = await InsurancePolicy.findOne({ _id: req.params.id, companyId: req.user.id });
+    if (!policy) return res.status(404).json({ success: false, message: 'Policy not found' });
+    policy.status = 'cancelled';
+    policy.cancelledAt = new Date();
+    policy.cancellationReason = req.body.reason || 'Cancelled by insurer';
+    await policy.save();
+    res.json({ success: true, data: policy });
+  } catch (e) {
+    console.error('Policy cancellation error:', e);
+    res.status(500).json({ success: false, message: e.message });
+  }
+});
+
+// Send renewal reminder (SMS + Email)
+router.post('/policies/:id/send-renewal-reminder', auth, checkInsurer, async (req, res) => {
+  try {
+    const policy = await InsurancePolicy.findOne({ _id: req.params.id, companyId: req.user.id })
+      .populate('userId', 'name email phone');
+    if (!policy) return res.status(404).json({ success: false, message: 'Policy not found' });
+
+    const { customerPhone, customerEmail, policyNumber, expiryDate } = req.body;
+    const notif = require('../services/notificationService');
+
+    if (customerEmail) {
+      await notif.sendEmail(
+        customerEmail,
+        `Your policy ${policyNumber} is up for renewal`,
+        `<p>Hi ${policy.userId?.name || 'Customer'},</p>
+         <p>Your policy <strong>${policyNumber}</strong> expires on <strong>${new Date(expiryDate).toLocaleDateString()}</strong>.</p>
+         <p>Renew now to continue uninterrupted coverage.</p>`
+      );
+    }
+    if (customerPhone) {
+      await notif.sendSMS(
+        customerPhone,
+        `Your policy ${policyNumber} expires on ${new Date(expiryDate).toLocaleDateString()}. Renew now to stay covered.`
+      );
+    }
+
+    policy.lastReminderSentAt = new Date();
+    policy.reminderCount = (policy.reminderCount || 0) + 1;
+    await policy.save();
+
+    res.json({ success: true, message: 'Reminder sent', reminderCount: policy.reminderCount });
+  } catch (e) {
+    console.error('Renewal reminder error:', e);
+    res.status(500).json({ success: false, message: 'Failed to send reminder' });
+  }
+});
+
 module.exports = router;
