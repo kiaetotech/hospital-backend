@@ -1232,4 +1232,78 @@ router.post('/policies/:id/send-renewal-reminder', auth, checkInsurer, async (re
   }
 });
 
+// ============================================
+// PDF DOWNLOADS — insurer side
+// ============================================
+
+// Download policy PDF (insurer's own copy)
+router.get('/policies/:id/pdf', auth, checkInsurer, async (req, res) => {
+  try {
+    const policy = await InsurancePolicy.findOne({
+      _id: req.params.id,
+      companyId: req.user.id,
+    })
+      .populate('planId')
+      .populate('userId', 'name email phone address');
+
+    if (!policy) return res.status(404).json({ success: false, message: 'Policy not found' });
+
+    const pdfService = require('../services/pdfService');
+    const result = await pdfService.generatePolicyPDF({
+      ...policy.toObject(),
+      planName: policy.policyName,
+      companyId: policy.companyId,
+    });
+
+    if (!result?.success || !result.pdf) {
+      return res.status(503).json({ success: false, message: 'PDF generation failed' });
+    }
+
+    res.set({
+      'Content-Type': 'application/pdf',
+      'Content-Disposition': `attachment; filename="${policy.policyNumber}.pdf"`,
+      'Cache-Control': 'private, no-store',
+    });
+    res.send(result.pdf);
+  } catch (error) {
+    console.error('[insurer policy pdf]', error);
+    res.status(500).json({ success: false, message: 'Failed to generate PDF' });
+  }
+});
+
+// Download claim settlement receipt
+router.get('/claims/:id/settlement-receipt', auth, checkInsurer, async (req, res) => {
+  try {
+    const claim = await InsuranceClaim.findOne({
+      _id: req.params.id,
+      companyId: req.user.id,
+    })
+      .populate('policyId')
+      .populate('userId', 'name email phone address');
+
+    if (!claim) return res.status(404).json({ success: false, message: 'Claim not found' });
+
+    const pdfService = require('../services/pdfService');
+    const result = await pdfService.generateSettlementReceipt({
+      claim: claim.toObject(),
+      policy: claim.policyId,
+      customer: claim.userId,
+    });
+
+    if (!result?.success || !result.pdf) {
+      return res.status(503).json({ success: false, message: 'PDF generation failed' });
+    }
+
+    res.set({
+      'Content-Type': 'application/pdf',
+      'Content-Disposition': `attachment; filename="settlement-${claim.claimNumber || claim._id}.pdf"`,
+      'Cache-Control': 'private, no-store',
+    });
+    res.send(result.pdf);
+  } catch (error) {
+    console.error('[insurer claim pdf]', error);
+    res.status(500).json({ success: false, message: 'Failed to generate PDF' });
+  }
+});
+
 module.exports = router;
