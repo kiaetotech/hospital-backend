@@ -1427,25 +1427,21 @@ const DB_URI = process.env.DB_URI || process.env.MONGODB_URI || 'mongodb://local
 mongoose.connect(DB_URI)
   .then(() => {
     console.log('✅ MongoDB connected');
-// Pre-register all Mongoose models before any route uses them
-[
-  './models/User',
-  './models/InsuranceCompany',
-  './models/InsurancePolicy',
-  './models/InsurancePlan',
-  './models/InsuranceClaim',
-  './models/Provider',
-  './models/Hospital',
-  './models/Transaction',
-  './models/InsuranceMarketplace',
-  './models/Booking',
-].forEach((p) => {
-  try { require(p); } catch (e) { console.warn('[startup] model load failed:', p, e.message); }
-});
-    Object.keys(mongoose.models).forEach(modelName => {
-      delete mongoose.models[modelName];
+    [
+      './models/User',
+      './models/InsuranceCompany',
+      './models/InsurancePolicy',
+      './models/InsurancePlan',
+      './models/InsuranceClaim',
+      './models/Provider',
+      './models/Hospital',
+      './models/Transaction',
+      './models/InsuranceMarketplace',
+      './models/Booking',
+    ].forEach((p) => {
+      try { require(p); } catch (e) { console.warn('[startup] model load failed:', p, e.message); }
     });
-  })
+  })                                                         // ← this closes .then
   .catch(err => {
     console.error('❌ MongoDB connection error:', err.message);
   });
