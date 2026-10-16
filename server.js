@@ -950,6 +950,7 @@ app.use('/api/insurance/company', insuranceOnboardingRoutes);
 app.use('/api/insurance/company', insuranceCompanyRoutes);
 app.use('/api/insurance-admin', insuranceAdminRoutes);
 app.use('/api/admin/insurance', insuranceAdminRoutes);
+app.use('/api/insurance/admin', insuranceAdminRoutes);          
 app.use('/api/otp', authLimiter, otpRoutes);
 app.use('/api/corporate', corporateRoutes);
 app.use('/api/corporate/billing', corporateBillingRoutes);

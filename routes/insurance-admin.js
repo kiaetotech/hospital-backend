@@ -621,4 +621,251 @@ router.get('/reports/summary', auth, isAdmin, async (req, res) => {
   }
 });
 
+// ============================================
+// COMPANY APPROVAL / SUSPENSION (matches frontend InsuranceAdminPanel.jsx)
+// ============================================
+
+// Approve company
+router.post('/companies/:id/approve', auth, isAdmin, async (req, res) => {
+  try {
+    const company = await InsuranceCompany.findByIdAndUpdate(
+      req.params.id,
+      {
+        isVerified: true,
+        isActive: true,
+        status: 'verified',
+        verifiedAt: new Date(),
+        verifiedBy: req.user.id,
+        rejectionReason: null,
+        rejectedAt: null
+      },
+      { new: true }
+    );
+    if (!company) return res.status(404).json({ success: false, message: 'Company not found' });
+    res.json({ success: true, message: 'Company approved', data: company });
+  } catch (error) {
+    console.error('[insurance-admin/company-approve]', error.message);
+    res.status(500).json({ success: false, message: error.message });
+  }
+});
+
+// Reject company
+router.post('/companies/:id/reject', auth, isAdmin, async (req, res) => {
+  try {
+    const { reason } = req.body;
+    if (!reason || !reason.trim()) return res.status(400).json({ success: false, message: 'Rejection reason required' });
+    const company = await InsuranceCompany.findByIdAndUpdate(
+      req.params.id,
+      {
+        isVerified: false,
+        isActive: false,
+        status: 'inactive',
+        rejectionReason: reason.trim(),
+        rejectedAt: new Date(),
+        rejectedBy: req.user.id
+      },
+      { new: true }
+    );
+    if (!company) return res.status(404).json({ success: false, message: 'Company not found' });
+    res.json({ success: true, message: 'Company rejected', data: company });
+  } catch (error) {
+    console.error('[insurance-admin/company-reject]', error.message);
+    res.status(500).json({ success: false, message: error.message });
+  }
+});
+
+// Suspend company
+router.post('/companies/:id/suspend', auth, isAdmin, async (req, res) => {
+  try {
+    const { reason, until } = req.body;
+    if (!reason || !reason.trim()) return res.status(400).json({ success: false, message: 'Suspension reason required' });
+    const update = {
+      isActive: false,
+      status: 'suspended',
+      suspensionReason: reason.trim(),
+      suspendedAt: new Date(),
+      suspendedBy: req.user.id
+    };
+    if (until) update.suspendedUntil = new Date(until);
+    const company = await InsuranceCompany.findByIdAndUpdate(req.params.id, update, { new: true });
+    if (!company) return res.status(404).json({ success: false, message: 'Company not found' });
+    res.json({ success: true, message: 'Company suspended', data: company });
+  } catch (error) {
+    console.error('[insurance-admin/company-suspend]', error.message);
+    res.status(500).json({ success: false, message: error.message });
+  }
+});
+
+// Unsuspend company
+router.post('/companies/:id/unsuspend', auth, isAdmin, async (req, res) => {
+  try {
+    const company = await InsuranceCompany.findByIdAndUpdate(
+      req.params.id,
+      {
+        isActive: true,
+        status: 'verified',
+        suspensionReason: null,
+        suspendedAt: null,
+        suspendedUntil: null,
+        suspendedBy: null
+      },
+      { new: true }
+    );
+    if (!company) return res.status(404).json({ success: false, message: 'Company not found' });
+    res.json({ success: true, message: 'Company unsuspended', data: company });
+  } catch (error) {
+    console.error('[insurance-admin/company-unsuspend]', error.message);
+    res.status(500).json({ success: false, message: error.message });
+  }
+});
+
+// ============================================
+// PLAN APPROVAL
+// ============================================
+
+router.post('/plans/:id/approve', auth, isAdmin, async (req, res) => {
+  try {
+    const plan = await InsurancePlan.findByIdAndUpdate(
+      req.params.id,
+      {
+        isVerified: true,
+        isActive: true,
+        verificationDate: new Date(),
+        verifiedBy: req.user.id,
+        rejectionReason: null
+      },
+      { new: true }
+    );
+    if (!plan) return res.status(404).json({ success: false, message: 'Plan not found' });
+    res.json({ success: true, message: 'Plan approved', data: plan });
+  } catch (error) {
+    console.error('[insurance-admin/plan-approve]', error.message);
+    res.status(500).json({ success: false, message: error.message });
+  }
+});
+
+router.post('/plans/:id/reject', auth, isAdmin, async (req, res) => {
+  try {
+    const { reason } = req.body;
+    if (!reason || !reason.trim()) return res.status(400).json({ success: false, message: 'Rejection reason required' });
+    const plan = await InsurancePlan.findByIdAndUpdate(
+      req.params.id,
+      {
+        isVerified: false,
+        isActive: false,
+        rejectionReason: reason.trim(),
+        rejectedAt: new Date(),
+        rejectedBy: req.user.id
+      },
+      { new: true }
+    );
+    if (!plan) return res.status(404).json({ success: false, message: 'Plan not found' });
+    res.json({ success: true, message: 'Plan rejected', data: plan });
+  } catch (error) {
+    console.error('[insurance-admin/plan-reject]', error.message);
+    res.status(500).json({ success: false, message: error.message });
+  }
+});
+
+router.post('/plans/:id/toggle', auth, isAdmin, async (req, res) => {
+  try {
+    const plan = await InsurancePlan.findById(req.params.id);
+    if (!plan) return res.status(404).json({ success: false, message: 'Plan not found' });
+    plan.isActive = !plan.isActive;
+    await plan.save();
+    res.json({ success: true, message: `Plan ${plan.isActive ? 'activated' : 'deactivated'}`, data: plan });
+  } catch (error) {
+    console.error('[insurance-admin/plan-toggle]', error.message);
+    res.status(500).json({ success: false, message: error.message });
+  }
+});
+
+// ============================================
+// KYC
+// ============================================
+
+// Pending KYC list (companies with uploaded docs not yet verified)
+router.get('/kyc/pending', auth, isAdmin, async (req, res) => {
+  try {
+    const companies = await InsuranceCompany.find({
+      $or: [
+        { kycStatus: 'pending' },
+        { kycStatus: 'submitted' },
+        { kycStatus: { $exists: false } },
+        { kycStatus: null }
+      ],
+      'documents.0': { $exists: true }  // has at least 1 document
+    })
+      .select('companyName legalName email phone panNumber gstNumber irdaRegistration registrationNumber documents status createdAt')
+      .sort({ createdAt: -1 })
+      .limit(100)
+      .lean();
+
+    res.json({ success: true, data: companies });
+  } catch (error) {
+    console.error('[insurance-admin/kyc-pending]', error.message);
+    res.status(500).json({ success: false, message: error.message });
+  }
+});
+
+router.post('/kyc/:id/verify', auth, isAdmin, async (req, res) => {
+  try {
+    const company = await InsuranceCompany.findByIdAndUpdate(
+      req.params.id,
+      {
+        kycStatus: 'verified',
+        kycVerifiedAt: new Date(),
+        kycVerifiedBy: req.user.id,
+        'documents.$[].verified': true,
+        'documents.$[].verifiedAt': new Date()
+      },
+      { new: true }
+    );
+    if (!company) return res.status(404).json({ success: false, message: 'Company not found' });
+    res.json({ success: true, message: 'KYC verified', data: company });
+  } catch (error) {
+    console.error('[insurance-admin/kyc-verify]', error.message);
+    res.status(500).json({ success: false, message: error.message });
+  }
+});
+
+router.post('/kyc/:id/reject', auth, isAdmin, async (req, res) => {
+  try {
+    const { reason } = req.body;
+    if (!reason || !reason.trim()) return res.status(400).json({ success: false, message: 'Rejection reason required' });
+    const company = await InsuranceCompany.findByIdAndUpdate(
+      req.params.id,
+      {
+        kycStatus: 'rejected',
+        kycNotes: reason.trim(),
+        kycVerifiedAt: new Date(),
+        kycVerifiedBy: req.user.id
+      },
+      { new: true }
+    );
+    if (!company) return res.status(404).json({ success: false, message: 'Company not found' });
+    res.json({ success: true, message: 'KYC rejected', data: company });
+  } catch (error) {
+    console.error('[insurance-admin/kyc-reject]', error.message);
+    res.status(500).json({ success: false, message: error.message });
+  }
+});
+
+// ============================================
+// SUSPENDED LIST
+// ============================================
+
+router.get('/suspended', auth, isAdmin, async (req, res) => {
+  try {
+    const companies = await InsuranceCompany.find({ status: 'suspended' })
+      .select('companyName email phone suspensionReason suspendedAt suspendedUntil')
+      .sort({ suspendedAt: -1 })
+      .lean();
+    res.json({ success: true, data: companies });
+  } catch (error) {
+    console.error('[insurance-admin/suspended]', error.message);
+    res.status(500).json({ success: false, message: error.message });
+  }
+});
+
 module.exports = router;

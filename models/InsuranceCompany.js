@@ -70,6 +70,28 @@ const InsuranceCompanySchema = new mongoose.Schema({
   isVerified: { type: Boolean, default: false },
   verifiedAt: { type: Date },
   verifiedBy: { type: mongoose.Schema.Types.ObjectId, ref: 'User' },
+
+
+  // Rejection tracking
+  rejectionReason: { type: String },
+  rejectedAt: { type: Date },
+  rejectedBy: { type: mongoose.Schema.Types.ObjectId, ref: 'User' },
+
+  // Suspension tracking
+  suspensionReason: { type: String },
+  suspendedAt: { type: Date },
+  suspendedUntil: { type: Date },
+  suspendedBy: { type: mongoose.Schema.Types.ObjectId, ref: 'User' },
+
+  // KYC tracking
+  kycStatus: {
+    type: String,
+    enum: ['pending', 'submitted', 'verified', 'rejected'],
+    default: 'pending'
+  },
+  kycNotes: { type: String },
+  kycVerifiedAt: { type: Date },
+  kycVerifiedBy: { type: mongoose.Schema.Types.ObjectId, ref: 'User' },
   
   // API Integration
   apiConfig: {
