@@ -1306,4 +1306,259 @@ router.get('/claims/:id/settlement-receipt', auth, checkInsurer, async (req, res
   }
 });
 
+// ============================================
+// CUSTOM REPORT BUILDER
+// POST /reports/custom
+// Body: { reportType, groupBy, filters, metrics }
+// ============================================
+router.post('/reports/custom', auth, checkInsurer, async (req, res) => {
+  try {
+    const companyId = req.user.id;
+    const {
+      reportType = 'policies',        // 'policies' | 'claims' | 'revenue'
+      groupBy = 'month',              // 'month' | 'status' | 'plan' | 'city' | 'hospital'
+      filters = {},
+      limit = 500,
+    } = req.body;
+
+    const { startDate, endDate, status, planId, city, search } = filters;
+
+    // --------------------------------------------
+    // POLICY REPORTS
+    // --------------------------------------------
+    if (reportType === 'policies') {
+      const match = { companyId };
+      if (status && status !== 'all') match.status = status;
+      if (planId) match.planId = new mongoose.Types.ObjectId(planId);
+      if (startDate || endDate) {
+        match.createdAt = {};
+        if (startDate) match.createdAt.$gte = new Date(startDate);
+        if (endDate) {
+          const end = new Date(endDate);
+          end.setHours(23, 59, 59, 999);
+          match.createdAt.$lte = end;
+        }
+      }
+      if (search) {
+        const rx = new RegExp(String(search).replace(/[.*+?^${}()|[\]\\]/g, '\\$&'), 'i');
+        const User = require('../models/User');
+        const users = await User.find({ $or: [{ name: rx }, { email: rx }, { phone: rx }] }).select('_id').limit(500).lean();
+        match.$or = [{ policyNumber: rx }, { userId: { $in: users.map(u => u._id) } }];
+      }
+
+      let groupStage;
+      let sortStage = { _id: 1 };
+
+      if (groupBy === 'month') {
+        groupStage = {
+          _id: { $dateToString: { format: '%Y-%m', date: '$createdAt' } },
+          count: { $sum: 1 },
+          totalPremium: { $sum: '$premiumAmount' },
+          totalSumInsured: { $sum: '$sumInsured' },
+          avgPremium: { $avg: '$premiumAmount' },
+        };
+      } else if (groupBy === 'status') {
+        groupStage = {
+          _id: '$status',
+          count: { $sum: 1 },
+          totalPremium: { $sum: '$premiumAmount' },
+          totalSumInsured: { $sum: '$sumInsured' },
+          avgPremium: { $avg: '$premiumAmount' },
+        };
+      } else if (groupBy === 'plan') {
+        groupStage = {
+          _id: '$planName',
+          count: { $sum: 1 },
+          totalPremium: { $sum: '$premiumAmount' },
+          totalSumInsured: { $sum: '$sumInsured' },
+          avgPremium: { $avg: '$premiumAmount' },
+        };
+      } else if (groupBy === 'city') {
+        groupStage = {
+          _id: '$primaryInsured.city',
+          count: { $sum: 1 },
+          totalPremium: { $sum: '$premiumAmount' },
+          totalSumInsured: { $sum: '$sumInsured' },
+          avgPremium: { $avg: '$premiumAmount' },
+        };
+      } else {
+        groupStage = {
+          _id: null,
+          count: { $sum: 1 },
+          totalPremium: { $sum: '$premiumAmount' },
+          totalSumInsured: { $sum: '$sumInsured' },
+          avgPremium: { $avg: '$premiumAmount' },
+        };
+      }
+
+      const data = await InsurancePolicy.aggregate([
+        { $match: match },
+        { $group: groupStage },
+        { $sort: sortStage },
+        { $limit: Number(limit) },
+      ]);
+
+      return res.json({
+        success: true,
+        data: {
+          reportType, groupBy,
+          rows: data.map(r => ({
+            group: r._id || 'Total',
+            count: r.count || 0,
+            totalPremium: r.totalPremium || 0,
+            totalSumInsured: r.totalSumInsured || 0,
+            avgPremium: Math.round(r.avgPremium || 0),
+          })),
+        },
+      });
+    }
+
+    // --------------------------------------------
+    // CLAIMS REPORTS
+    // --------------------------------------------
+    if (reportType === 'claims') {
+      const match = { companyId };
+      if (status && status !== 'all') match.status = status;
+      if (startDate || endDate) {
+        match.createdAt = {};
+        if (startDate) match.createdAt.$gte = new Date(startDate);
+        if (endDate) {
+          const end = new Date(endDate);
+          end.setHours(23, 59, 59, 999);
+          match.createdAt.$lte = end;
+        }
+      }
+
+      let groupStage;
+      if (groupBy === 'month') {
+        groupStage = {
+          _id: { $dateToString: { format: '%Y-%m', date: '$createdAt' } },
+          count: { $sum: 1 },
+          totalAmount: { $sum: '$amount' },
+          totalApproved: { $sum: '$approvedAmount' },
+          totalSettled: { $sum: '$settlementAmount' },
+        };
+      } else if (groupBy === 'status') {
+        groupStage = {
+          _id: '$status',
+          count: { $sum: 1 },
+          totalAmount: { $sum: '$amount' },
+          totalApproved: { $sum: '$approvedAmount' },
+          totalSettled: { $sum: '$settlementAmount' },
+        };
+      } else if (groupBy === 'hospital') {
+        groupStage = {
+          _id: '$hospitalName',
+          count: { $sum: 1 },
+          totalAmount: { $sum: '$amount' },
+          totalApproved: { $sum: '$approvedAmount' },
+          totalSettled: { $sum: '$settlementAmount' },
+        };
+      } else {
+        groupStage = {
+          _id: null,
+          count: { $sum: 1 },
+          totalAmount: { $sum: '$amount' },
+          totalApproved: { $sum: '$approvedAmount' },
+          totalSettled: { $sum: '$settlementAmount' },
+        };
+      }
+
+      const data = await InsuranceClaim.aggregate([
+        { $match: match },
+        { $group: groupStage },
+        { $sort: { _id: 1 } },
+        { $limit: Number(limit) },
+      ]);
+
+      return res.json({
+        success: true,
+        data: {
+          reportType, groupBy,
+          rows: data.map(r => ({
+            group: r._id || 'Total',
+            count: r.count || 0,
+            totalAmount: r.totalAmount || 0,
+            totalApproved: r.totalApproved || 0,
+            totalSettled: r.totalSettled || 0,
+          })),
+        },
+      });
+    }
+
+    // --------------------------------------------
+    // REVENUE REPORTS (from Transactions)
+    // --------------------------------------------
+    if (reportType === 'revenue') {
+      const match = {
+        providerId: companyId,
+        bookingType: 'insurance',
+        status: 'completed',
+      };
+      if (startDate || endDate) {
+        match.createdAt = {};
+        if (startDate) match.createdAt.$gte = new Date(startDate);
+        if (endDate) {
+          const end = new Date(endDate);
+          end.setHours(23, 59, 59, 999);
+          match.createdAt.$lte = end;
+        }
+      }
+
+      let groupStage;
+      if (groupBy === 'month') {
+        groupStage = {
+          _id: { $dateToString: { format: '%Y-%m', date: '$createdAt' } },
+          count: { $sum: 1 },
+          totalPremium: { $sum: '$premiumAmount' },
+          totalCommission: { $sum: '$insurancePlatformCommission' },
+          totalPayout: { $sum: '$insurancePayoutToCompany' },
+        };
+      } else {
+        groupStage = {
+          _id: null,
+          count: { $sum: 1 },
+          totalPremium: { $sum: '$premiumAmount' },
+          totalCommission: { $sum: '$insurancePlatformCommission' },
+          totalPayout: { $sum: '$insurancePayoutToCompany' },
+        };
+      }
+
+      const data = await Transaction.aggregate([
+        { $match: match },
+        { $group: groupStage },
+        { $sort: { _id: 1 } },
+        { $limit: Number(limit) },
+      ]);
+
+      return res.json({
+        success: true,
+        data: {
+          reportType, groupBy,
+          rows: data.map(r => {
+            const premium = r.totalPremium || 0;
+            const commission = r.totalCommission || 0;
+            const tds = Math.round(commission * 0.05);
+            const gst = Math.round(commission * 0.18);
+            return {
+              group: r._id || 'Total',
+              count: r.count || 0,
+              totalPremium: premium,
+              totalCommission: commission,
+              totalTds: tds,
+              totalGst: gst,
+              totalPayout: r.totalPayout || 0,
+            };
+          }),
+        },
+      });
+    }
+
+    return res.status(400).json({ success: false, message: 'Invalid reportType' });
+  } catch (error) {
+    console.error('[reports/custom]', error);
+    res.status(500).json({ success: false, message: 'Failed to generate report' });
+  }
+});
+
 module.exports = router;
