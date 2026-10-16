@@ -964,6 +964,7 @@ app.use('/api/employee', employeePortalRoutes);
 app.use('/api/discounts', discountRoutes);
 app.use('/api/admin/taxes', require('./routes/adminTaxes'));
 app.use('/api/ads', require('./routes/ads'));
+app.use('/api/ai-triage', require('./routes/ai-triage'));
 
 // ============================================
 // TEST ROUTES
