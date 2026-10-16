@@ -11,6 +11,15 @@ const User = require('../models/User');
 const { authenticate: auth } = require('../middleware/auth');
 const upload = require('../middleware/upload');
 
+// Ensure all models are registered before they're used
+require('../models/User');
+require('../models/InsurancePolicy');
+require('../models/InsurancePlan');
+require('../models/InsuranceClaim');
+require('../models/Provider');
+require('../models/Hospital');
+require('../models/Transaction');
+
 // ============================================
 // ADMIN MIDDLEWARE
 // ============================================

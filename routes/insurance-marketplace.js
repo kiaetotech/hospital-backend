@@ -48,17 +48,17 @@ function ensureModels() {
     '../models/InsuranceMarketplace',
   ];
 
-  for (const p of paths) {
+    for (const p of paths) {
     try {
-      // Clear require cache so the file re-executes and calls mongoose.model(...) again
-      const resolved = require.resolve(p);
-      delete require.cache[resolved];
-      require(p);
+      // Only require if not already loaded — never clear cache
+      const modelName = p.split('/').pop();
+      if (!mongoose.models[modelName]) {
+        require(p);
+      }
     } catch (e) {
       console.warn('[ensureModels] failed:', p, e.message);
     }
   }
-}
 
 // ============================================
 // HELPERS
