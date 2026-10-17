@@ -865,6 +865,21 @@ router.post('/kyc/:id/reject', auth, isAdmin, async (req, res) => {
 // ============================================
 router.get('/suspended', auth, isAdmin, async (req, res) => {
   try {
+    console.log('[SUSPENDED DEBUG] ============= START');
+    console.log('[SUSPENDED DEBUG] mongoose.models.InsuranceCompany?', !!mongoose.models.InsuranceCompany);
+
+    // First — total count
+    const total = await InsuranceCompany.countDocuments({});
+    console.log('[SUSPENDED DEBUG] Total InsuranceCompany docs:', total);
+
+    // Second — count with each condition separately
+    const countStatus = await InsuranceCompany.countDocuments({ status: 'suspended' });
+    console.log('[SUSPENDED DEBUG] status:suspended count:', countStatus);
+
+    const countInactive = await InsuranceCompany.countDocuments({ isActive: false });
+    console.log('[SUSPENDED DEBUG] isActive:false count:', countInactive);
+
+    // Third — the actual query
     const companies = await InsuranceCompany.find({
       $or: [
         { status: 'suspended' },
@@ -875,11 +890,15 @@ router.get('/suspended', auth, isAdmin, async (req, res) => {
       .select('companyName email phone status isActive suspensionReason suspendedAt suspendedUntil suspendedBy')
       .sort({ suspendedAt: -1 })
       .lean();
-    console.log('[insurance-admin/suspended] found', companies.length, 'suspended companies');
-    res.json({ success: true, data: companies });
+
+    console.log('[SUSPENDED DEBUG] Found:', companies.length);
+    console.log('[SUSPENDED DEBUG] Names:', companies.map(c => c.companyName));
+    console.log('[SUSPENDED DEBUG] ============= END');
+
+    res.json({ success: true, data: companies, meta: { total: companies.length } });
   } catch (error) {
-    console.error('[insurance-admin/suspended]', error.message);
-    res.status(500).json({ success: false, message: error.message });
+    console.error('[SUSPENDED DEBUG] ERROR:', error.message, error.stack);
+    res.status(500).json({ success: false, message: error.message, stack: error.stack });
   }
 });
 
