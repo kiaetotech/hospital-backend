@@ -83,13 +83,14 @@ const InsuranceCompanySchema = new mongoose.Schema({
   suspendedUntil: { type: Date },
   suspendedBy: { type: mongoose.Schema.Types.ObjectId, ref: 'User' },
 
-  // KYC tracking
+    // KYC tracking
   kycStatus: {
     type: String,
     enum: ['pending', 'submitted', 'verified', 'rejected'],
     default: 'pending'
   },
   kycNotes: { type: String },
+  kycSubmittedAt: { type: Date },          // ← ADD THIS LINE
   kycVerifiedAt: { type: Date },
   kycVerifiedBy: { type: mongoose.Schema.Types.ObjectId, ref: 'User' },
   

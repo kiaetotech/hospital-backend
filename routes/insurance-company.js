@@ -1097,23 +1097,47 @@ router.post('/kyc/update', auth, checkInsurer, requireActiveCompany, async (req,
     const company = await InsuranceCompany.findById(req.insuranceCompany._id);
     if (!company) return res.status(404).json({ success: false, message: 'Company not found' });
 
-        company.documents = company.documents || {};
-    if (irdaCertificate) company.documents.irdaCertificate = irdaCertificate;
-    if (gstCertificate) company.documents.gstCertificate = gstCertificate;
-    if (panCard) company.documents.panCard = panCard;
-    if (bankProof) company.documents.bankProof = bankProof;
-    if (registrationCertificate) company.documents.registrationCertificate = registrationCertificate;
-    if (panNumber) company.documents.panNumber = panNumber;
-    if (gstNumber) company.documents.gstNumber = gstNumber;
-    company.documents.submittedAt = new Date();
+    // Preserve existing documents that aren't being replaced
+    const existing = company.documents || [];
+    const docByType = {};
+    existing.forEach(d => { if (d.type) docByType[d.type] = d; });
 
-    // Status fields live at TOP level (matches admin query + verify/reject routes)
+    // Build new documents array (merge with existing)
+    const incoming = {
+      irda_certificate: irdaCertificate,
+      gst_certificate: gstCertificate,
+      pan_card: panCard,
+      bank_proof: bankProof,
+      registration_certificate: registrationCertificate
+    };
+
+    Object.entries(incoming).forEach(([type, url]) => {
+      if (url) {
+        docByType[type] = {
+          ...docByType[type],
+          type,
+          url,
+          uploadedAt: new Date(),
+          verified: false,
+          verifiedAt: null
+        };
+      }
+    });
+
+    company.documents = Object.values(docByType);
     company.kycStatus = 'submitted';
-    company.kycNotes = null;   // clear previous rejection reason on resubmit
+    company.kycNotes = null;
+    company.kycSubmittedAt = new Date();
+    if (panNumber) company.panNumber = panNumber;
+    if (gstNumber) company.gstNumber = gstNumber;
 
     await company.save();
 
-    res.json({ success: true, message: 'KYC updated. Awaiting admin verification.' });
+    res.json({
+      success: true,
+      message: 'KYC updated. Awaiting admin verification.',
+      documentCount: company.documents.length
+    });
   } catch (error) {
     console.error('KYC update error:', error);
     res.status(500).json({ success: false, message: 'Failed to update KYC' });
@@ -1691,13 +1715,24 @@ router.get('/my-kyc', auth, checkInsurer, async (req, res) => {
       .lean();
     if (!company) return res.status(404).json({ success: false, message: 'Company not found' });
 
-    const docs = company.documents || {};
-    const requiredDocs = ['irdaCertificate', 'gstCertificate', 'panCard', 'bankProof'];
-    const missingDocs = requiredDocs.filter(k => !docs[k]);
-    const hasAnyDoc = requiredDocs.some(k => !!docs[k]);
+    const docsArray = company.documents || [];
+    const requiredDocTypes = ['irda_certificate', 'gst_certificate', 'pan_card', 'bank_proof'];
 
-    let status = company.kycStatus || (hasAnyDoc ? 'pending' : 'not_submitted');
-    if (status === 'pending' && !hasAnyDoc) status = 'not_submitted';
+    // Map by type for easy access
+    const docMap = {};
+    docsArray.forEach(d => { if (d.type) docMap[d.type] = d; });
+
+    const missingDocs = requiredDocTypes.filter(t => !docMap[t]?.url);
+
+    let status = company.kycStatus || (docsArray.length > 0 ? 'pending' : 'not_submitted');
+    if (status === 'pending' && docsArray.length === 0) status = 'not_submitted';
+
+    // Latest submittedAt from documents
+    const submittedAt = docsArray.reduce((latest, d) => {
+      if (!d.uploadedAt) return latest;
+      const t = new Date(d.uploadedAt).getTime();
+      return t > latest ? t : latest;
+    }, 0);
 
     res.json({
       success: true,
@@ -1705,13 +1740,13 @@ router.get('/my-kyc', auth, checkInsurer, async (req, res) => {
         kycStatus: status,
         kycNotes: company.kycNotes || null,
         kycVerifiedAt: company.kycVerifiedAt || null,
-        submittedAt: docs.submittedAt || null,
-        panNumber: company.panNumber || docs.panNumber || null,
-        gstNumber: company.gstNumber || docs.gstNumber || null,
+        submittedAt: submittedAt ? new Date(submittedAt) : null,
+        panNumber: company.panNumber || null,
+        gstNumber: company.gstNumber || null,
         irdaRegistration: company.irdaRegistration || null,
         missingDocs,
-        totalRequired: requiredDocs.length,
-        documents: docs
+        totalRequired: requiredDocTypes.length,
+        documents: docsArray   // array of { type, url, uploadedAt, verified }
       }
     });
   } catch (err) {
