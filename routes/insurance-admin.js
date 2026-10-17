@@ -902,4 +902,89 @@ router.get('/suspended', auth, isAdmin, async (req, res) => {
   }
 });
 
+const InsuranceAppeal = require('../models/InsuranceAppeal');
+
+// ============================================
+// APPEALS — Admin view + action
+// ============================================
+
+// Get pending appeals
+router.get('/appeals', auth, isAdmin, async (req, res) => {
+  try {
+    const { status = 'pending' } = req.query;
+    const filter = status === 'all' ? {} : { status };
+    const appeals = await InsuranceAppeal.find(filter)
+      .populate('companyId', 'companyName email phone status suspensionReason')
+      .populate('userId', 'name email')
+      .sort({ createdAt: -1 })
+      .lean();
+    res.json({ success: true, data: appeals });
+  } catch (err) {
+    res.status(500).json({ success: false, message: err.message });
+  }
+});
+
+// Get single appeal detail
+router.get('/appeals/:id', auth, isAdmin, async (req, res) => {
+  try {
+    const appeal = await InsuranceAppeal.findById(req.params.id)
+      .populate('companyId', 'companyName email phone status suspensionReason suspendedAt suspendedUntil')
+      .populate('userId', 'name email')
+      .lean();
+    if (!appeal) return res.status(404).json({ success: false, message: 'Appeal not found' });
+    res.json({ success: true, data: appeal });
+  } catch (err) {
+    res.status(500).json({ success: false, message: err.message });
+  }
+});
+
+// Approve appeal → revoke suspension
+router.post('/appeals/:id/approve', auth, isAdmin, async (req, res) => {
+  try {
+    const { adminNotes } = req.body;
+    const appeal = await InsuranceAppeal.findById(req.params.id);
+    if (!appeal) return res.status(404).json({ success: false, message: 'Appeal not found' });
+    if (appeal.status === 'approved') return res.json({ success: true, message: 'Already approved' });
+
+    // Unsuspend the company
+    await InsuranceCompany.findByIdAndUpdate(
+      appeal.companyId,
+      {
+        $set: { isActive: true, status: 'verified' },
+        $unset: { suspensionReason: 1, suspendedAt: 1, suspendedUntil: 1, suspendedBy: 1 }
+      }
+    );
+
+    appeal.status = 'approved';
+    appeal.reviewedBy = req.user.id;
+    appeal.reviewedAt = new Date();
+    appeal.adminNotes = adminNotes || 'Appeal approved — suspension revoked';
+    await appeal.save();
+
+    res.json({ success: true, message: 'Appeal approved, company unsuspended', data: appeal });
+  } catch (err) {
+    res.status(500).json({ success: false, message: err.message });
+  }
+});
+
+// Reject appeal → uphold suspension
+router.post('/appeals/:id/reject', auth, isAdmin, async (req, res) => {
+  try {
+    const { reason } = req.body;
+    if (!reason || !reason.trim()) return res.status(400).json({ success: false, message: 'Rejection reason required' });
+    const appeal = await InsuranceAppeal.findById(req.params.id);
+    if (!appeal) return res.status(404).json({ success: false, message: 'Appeal not found' });
+
+    appeal.status = 'rejected';
+    appeal.reviewedBy = req.user.id;
+    appeal.reviewedAt = new Date();
+    appeal.rejectionReason = reason.trim();
+    await appeal.save();
+
+    res.json({ success: true, message: 'Appeal rejected, suspension upheld', data: appeal });
+  } catch (err) {
+    res.status(500).json({ success: false, message: err.message });
+  }
+});
+
 module.exports = router;

@@ -1561,4 +1561,101 @@ router.post('/reports/custom', auth, checkInsurer, async (req, res) => {
   }
 });
 
+// ============================================
+// APPEALS — company-side (submit + view own)
+// ============================================
+const InsuranceAppeal = require('../models/InsuranceAppeal');
+
+// Get my suspension info + last appeal status
+router.get('/my-suspension', auth, async (req, res) => {
+  try {
+    const company = await InsuranceCompany.findOne({ userId: req.user.id }).lean();
+    if (!company) return res.status(404).json({ success: false, message: 'Company not found' });
+
+    const lastAppeal = await InsuranceAppeal.findOne({ companyId: company._id })
+      .sort({ createdAt: -1 })
+      .lean();
+
+    res.json({
+      success: true,
+      data: {
+        isSuspended: company.status === 'suspended',
+        reason: company.suspensionReason || null,
+        suspendedAt: company.suspendedAt || null,
+        suspendedUntil: company.suspendedUntil || null,
+        company: {
+          _id: company._id,
+          companyName: company.companyName,
+          status: company.status,
+          isActive: company.isActive,
+          suspensionReason: company.suspensionReason,
+          suspendedAt: company.suspendedAt,
+          suspendedUntil: company.suspendedUntil
+        },
+        lastAppeal
+      }
+    });
+  } catch (err) {
+    console.error('[insurance-company/my-suspension]', err.message);
+    res.status(500).json({ success: false, message: err.message });
+  }
+});
+
+// Submit appeal
+router.post('/appeals', auth, async (req, res) => {
+  try {
+    const { appealReason, lapseExplanation, correctiveActions, documents } = req.body;
+
+    if (!appealReason || appealReason.trim().length < 20) {
+      return res.status(400).json({ success: false, message: 'Appeal reason must be at least 20 characters' });
+    }
+
+    const company = await InsuranceCompany.findOne({ userId: req.user.id });
+    if (!company) return res.status(404).json({ success: false, message: 'Company not found' });
+    if (company.status !== 'suspended') {
+      return res.status(400).json({ success: false, message: 'Company is not suspended — nothing to appeal' });
+    }
+
+    const existing = await InsuranceAppeal.findOne({ companyId: company._id, status: 'pending' });
+    if (existing) {
+      return res.status(400).json({ success: false, message: 'You already have a pending appeal' });
+    }
+
+    const appeal = new InsuranceAppeal({
+      companyId: company._id,
+      userId: req.user.id,
+      suspensionReason: company.suspensionReason || 'Not specified',
+      suspendedAt: company.suspendedAt,
+      suspendedUntil: company.suspendedUntil,
+      appealReason: appealReason.trim(),
+      lapseExplanation: lapseExplanation ? lapseExplanation.trim() : undefined,
+      correctiveActions: correctiveActions ? correctiveActions.trim() : undefined,
+      documents: documents || []
+    });
+    await appeal.save();
+
+    res.json({ success: true, message: 'Appeal submitted — admin will review', data: appeal });
+  } catch (err) {
+    console.error('[insurance-company/appeals-submit]', err.message);
+    res.status(500).json({ success: false, message: err.message });
+  }
+});
+
+// Get my appeals history
+router.get('/my-appeals', auth, async (req, res) => {
+  try {
+    const company = await InsuranceCompany.findOne({ userId: req.user.id }).lean();
+    if (!company) return res.status(404).json({ success: false, message: 'Company not found' });
+
+    const appeals = await InsuranceAppeal.find({ companyId: company._id })
+      .sort({ createdAt: -1 })
+      .lean();
+
+    res.json({ success: true, data: appeals });
+  } catch (err) {
+    console.error('[insurance-company/my-appeals]', err.message);
+    res.status(500).json({ success: false, message: err.message });
+  }
+});
+
 module.exports = router;
