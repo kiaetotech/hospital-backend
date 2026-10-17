@@ -1095,7 +1095,7 @@ router.post(
   auth,
   checkInsurer,
   requireActiveCompany,
-  require('../middleware/upload').fields([
+  require('../middleware/upload').upload.fields([
     { name: 'irdaCertificate', maxCount: 1 },
     { name: 'gstCertificate', maxCount: 1 },
     { name: 'panCard', maxCount: 1 },
@@ -1151,7 +1151,7 @@ router.post(
             console.error(`[kyc/update] Cloudinary upload failed for ${fieldName}:`, uploadErr.message);
           }
         }
-
+      }
       company.documents = Object.values(docByType);
       company.kycStatus = 'submitted';
       company.kycNotes = null;
