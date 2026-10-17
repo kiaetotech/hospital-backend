@@ -59,6 +59,7 @@ function ensureModels() {
       console.warn('[ensureModels] failed:', p, e.message);
     }
   }
+}
 
 // ============================================
 // HELPERS
