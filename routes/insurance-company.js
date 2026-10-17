@@ -1097,7 +1097,7 @@ router.post('/kyc/update', auth, checkInsurer, requireActiveCompany, async (req,
     const company = await InsuranceCompany.findById(req.insuranceCompany._id);
     if (!company) return res.status(404).json({ success: false, message: 'Company not found' });
 
-    company.documents = company.documents || {};
+        company.documents = company.documents || {};
     if (irdaCertificate) company.documents.irdaCertificate = irdaCertificate;
     if (gstCertificate) company.documents.gstCertificate = gstCertificate;
     if (panCard) company.documents.panCard = panCard;
@@ -1105,10 +1105,11 @@ router.post('/kyc/update', auth, checkInsurer, requireActiveCompany, async (req,
     if (registrationCertificate) company.documents.registrationCertificate = registrationCertificate;
     if (panNumber) company.documents.panNumber = panNumber;
     if (gstNumber) company.documents.gstNumber = gstNumber;
-
-    company.documents.kycStatus = 'submitted';
     company.documents.submittedAt = new Date();
-    company.verificationStatus = 'pending';
+
+    // Status fields live at TOP level (matches admin query + verify/reject routes)
+    company.kycStatus = 'submitted';
+    company.kycNotes = null;   // clear previous rejection reason on resubmit
 
     await company.save();
 
@@ -1676,6 +1677,45 @@ router.get('/my-appeals', auth, async (req, res) => {
     res.json({ success: true, data: appeals });
   } catch (err) {
     console.error('[insurance-company/my-appeals]', err.message);
+    res.status(500).json({ success: false, message: err.message });
+  }
+});
+
+// ============================================
+// MY KYC — company views own KYC status
+// ============================================
+router.get('/my-kyc', auth, checkInsurer, async (req, res) => {
+  try {
+    const company = await InsuranceCompany.findById(req.insuranceCompany._id)
+      .select('kycStatus kycNotes kycVerifiedAt documents panNumber gstNumber irdaRegistration legalName companyName email phone status')
+      .lean();
+    if (!company) return res.status(404).json({ success: false, message: 'Company not found' });
+
+    const docs = company.documents || {};
+    const requiredDocs = ['irdaCertificate', 'gstCertificate', 'panCard', 'bankProof'];
+    const missingDocs = requiredDocs.filter(k => !docs[k]);
+    const hasAnyDoc = requiredDocs.some(k => !!docs[k]);
+
+    let status = company.kycStatus || (hasAnyDoc ? 'pending' : 'not_submitted');
+    if (status === 'pending' && !hasAnyDoc) status = 'not_submitted';
+
+    res.json({
+      success: true,
+      data: {
+        kycStatus: status,
+        kycNotes: company.kycNotes || null,
+        kycVerifiedAt: company.kycVerifiedAt || null,
+        submittedAt: docs.submittedAt || null,
+        panNumber: company.panNumber || docs.panNumber || null,
+        gstNumber: company.gstNumber || docs.gstNumber || null,
+        irdaRegistration: company.irdaRegistration || null,
+        missingDocs,
+        totalRequired: requiredDocs.length,
+        documents: docs
+      }
+    });
+  } catch (err) {
+    console.error('[insurance-company/my-kyc]', err.message);
     res.status(500).json({ success: false, message: err.message });
   }
 });
