@@ -679,17 +679,26 @@ router.post('/companies/:id/suspend', auth, isAdmin, async (req, res) => {
   try {
     const { reason, until } = req.body;
     if (!reason || !reason.trim()) return res.status(400).json({ success: false, message: 'Suspension reason required' });
-    const update = {
-      isActive: false,
-      status: 'suspended',
-      suspensionReason: reason.trim(),
-      suspendedAt: new Date(),
-      suspendedBy: req.user.id
-    };
-    if (until) update.suspendedUntil = new Date(until);
-    const company = await InsuranceCompany.findByIdAndUpdate(req.params.id, update, { new: true });
+
+    const company = await InsuranceCompany.findById(req.params.id);
     if (!company) return res.status(404).json({ success: false, message: 'Company not found' });
+
+    company.status = 'suspended';
+    company.isActive = false;
+    company.suspensionReason = reason.trim();
+    company.suspendedAt = new Date();
+    company.suspendedBy = req.user.id;
+    if (until) company.suspendedUntil = new Date(until);
+
+    await company.save();
+
+    console.log('[insurance-admin/suspend]', company.companyName, '→ suspended');
     res.json({ success: true, message: 'Company suspended', data: company });
+  } catch (error) {
+    console.error('[insurance-admin/suspend]', error.message);
+    res.status(500).json({ success: false, message: error.message });
+  }
+});
   } catch (error) {
     console.error('[insurance-admin/company-suspend]', error.message);
     res.status(500).json({ success: false, message: error.message });
@@ -702,12 +711,16 @@ router.post('/companies/:id/unsuspend', auth, isAdmin, async (req, res) => {
     const company = await InsuranceCompany.findByIdAndUpdate(
       req.params.id,
       {
-        isActive: true,
-        status: 'verified',
-        suspensionReason: null,
-        suspendedAt: null,
-        suspendedUntil: null,
-        suspendedBy: null
+        $set: {
+          isActive: true,
+          status: 'verified'
+        },
+        $unset: {
+          suspensionReason: 1,
+          suspendedAt: 1,
+          suspendedUntil: 1,
+          suspendedBy: 1
+        }
       },
       { new: true }
     );
@@ -854,13 +867,19 @@ router.post('/kyc/:id/reject', auth, isAdmin, async (req, res) => {
 // ============================================
 // SUSPENDED LIST
 // ============================================
-
 router.get('/suspended', auth, isAdmin, async (req, res) => {
   try {
-    const companies = await InsuranceCompany.find({ status: 'suspended' })
-      .select('companyName email phone suspensionReason suspendedAt suspendedUntil')
+    const companies = await InsuranceCompany.find({
+      $or: [
+        { status: 'suspended' },
+        { isActive: false, status: { $ne: 'inactive' } },
+        { suspensionReason: { $exists: true, $ne: null } }
+      ]
+    })
+      .select('companyName email phone status isActive suspensionReason suspendedAt suspendedUntil suspendedBy')
       .sort({ suspendedAt: -1 })
       .lean();
+    console.log('[insurance-admin/suspended] found', companies.length, 'suspended companies');
     res.json({ success: true, data: companies });
   } catch (error) {
     console.error('[insurance-admin/suspended]', error.message);
