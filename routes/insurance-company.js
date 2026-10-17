@@ -16,22 +16,24 @@ const { authenticate: auth } = require('../middleware/auth');
 
 const checkInsurer = async (req, res, next) => {
   try {
-    let company = await InsuranceCompany.findOne({ userId: req.user.id, isActive: true });
+    // Find the company — DO NOT filter by isActive here.
+    // Suspended companies still need read-only access to their own data.
+    let company = await InsuranceCompany.findOne({ userId: req.user.id });
     if (!company && req.user.email) {
-      company = await InsuranceCompany.findOne({ email: req.user.email, isActive: true });
+      company = await InsuranceCompany.findOne({ email: req.user.email });
       if (company && !company.userId) {
         company.userId = req.user.id;
         await company.save();
       }
     }
-    
+
     if (!company) {
       return res.status(403).json({
         success: false,
         message: 'Insurance company access required'
       });
     }
-    
+
     req.insuranceCompany = company;
     next();
   } catch (error) {
@@ -43,6 +45,26 @@ const checkInsurer = async (req, res, next) => {
   }
 };
 
+// requireActiveCompany: ensures the company is not suspended.
+// Use for WRITE actions (plans, policies, claims updates, KYC).
+const requireActiveCompany = (req, res, next) => {
+  if (!req.insuranceCompany) {
+    return res.status(500).json({
+      success: false,
+      message: 'requireActiveCompany used without checkInsurer'
+    });
+  }
+  if (req.insuranceCompany.status === 'suspended' || req.insuranceCompany.isActive === false) {
+    return res.status(403).json({
+      success: false,
+      message: 'Your account is suspended. Submit an appeal from your dashboard to restore access.',
+      suspended: true,
+      reason: req.insuranceCompany.suspensionReason || null,
+      suspendedUntil: req.insuranceCompany.suspendedUntil || null
+    });
+  }
+  next();
+};
 // ============================================
 // HELPER — escape user input for use in regex
 // ============================================
@@ -263,7 +285,7 @@ router.get('/plans', auth, checkInsurer, async (req, res) => {
   }
 });
 
-router.post('/plans', auth, checkInsurer, async (req, res) => {
+router.post('/plans', auth, checkInsurer, requireActiveCompany, async (req, res) => {
   try {
     const companyId = req.user.id;
     const planData = req.body;
@@ -326,7 +348,7 @@ router.post('/plans', auth, checkInsurer, async (req, res) => {
   }
 });
 
-router.put('/plans/:id', auth, checkInsurer, async (req, res) => {
+router.put('/plans/:id', auth, checkInsurer, requireActiveCompany, async (req, res) => {
   try {
     const companyId = req.user.id;
     const planId = req.params.id;
@@ -364,7 +386,7 @@ router.put('/plans/:id', auth, checkInsurer, async (req, res) => {
   }
 });
 
-router.delete('/plans/:id', auth, checkInsurer, async (req, res) => {
+router.delete('/plans/:id', auth, checkInsurer, requireActiveCompany, async (req, res) => {
   try {
     const companyId = req.user.id;
     const planId = req.params.id;
@@ -636,7 +658,7 @@ router.get('/claims/:id', auth, checkInsurer, async (req, res) => {
   }
 });
 
-router.put('/claims/:id/status', auth, checkInsurer, async (req, res) => {
+router.put('/claims/:id/status', auth, checkInsurer, requireActiveCompany, async (req, res) => {
   try {
     const companyId = req.user.id;
     const claimId = req.params.id;
@@ -824,7 +846,7 @@ router.get('/profile', auth, checkInsurer, async (req, res) => {
   }
 });
 
-router.put('/profile', auth, checkInsurer, async (req, res) => {
+router.put('/profile', auth, checkInsurer, requireActiveCompany, async (req, res) => {
   try {
     const companyId = req.user.id;
     const updateData = req.body;
@@ -992,7 +1014,7 @@ router.get('/network-hospitals', auth, checkInsurer, async (req, res) => {
   }
 });
 
-router.post('/network-hospitals', auth, checkInsurer, async (req, res) => {
+router.post('/network-hospitals', auth, checkInsurer, requireActiveCompany, async (req, res) => {
   try {
     const { hospitalName, address, city, state, pincode, specialty, cashless } = req.body;
     if (!hospitalName || !city) {
@@ -1021,7 +1043,7 @@ router.post('/network-hospitals', auth, checkInsurer, async (req, res) => {
   }
 });
 
-router.delete('/network-hospitals/:index', auth, checkInsurer, async (req, res) => {
+router.delete('/network-hospitals/:index', auth, checkInsurer, requireActiveCompany, async (req, res) => {
   try {
     const company = await InsuranceCompany.findOne({ userId: req.user.id });
     if (!company) return res.status(404).json({ success: false, message: 'Company not found' });
@@ -1068,7 +1090,7 @@ router.get('/suspended-status', auth, checkInsurer, async (req, res) => {
 // ============================================
 // KYC UPDATE (post-onboarding)
 // ============================================
-router.post('/kyc/update', auth, checkInsurer, async (req, res) => {
+router.post('/kyc/update', auth, checkInsurer, requireActiveCompany, async (req, res) => {
   try {
     const { irdaCertificate, gstCertificate, panCard, bankProof, registrationCertificate, panNumber, gstNumber } = req.body;
 
@@ -1098,7 +1120,7 @@ router.post('/kyc/update', auth, checkInsurer, async (req, res) => {
 });
 
 // Renew a policy
-router.post('/policies/:id/renew', auth, checkInsurer, async (req, res) => {
+router.post('/policies/:id/renew', auth, checkInsurer, requireActiveCompany, async (req, res) => {
   try {
     const policy = await InsurancePolicy.findOne({ _id: req.params.id, companyId: req.user.id });
     if (!policy) return res.status(404).json({ success: false, message: 'Policy not found' });
@@ -1113,7 +1135,7 @@ router.post('/policies/:id/renew', auth, checkInsurer, async (req, res) => {
 });
 
 // Cancel a policy
-router.post('/policies/:id/cancel', auth, checkInsurer, async (req, res) => {
+router.post('/policies/:id/cancel', auth, checkInsurer, requireActiveCompany, async (req, res) => {
   try {
     const policy = await InsurancePolicy.findOne({ _id: req.params.id, companyId: req.user.id });
     if (!policy) return res.status(404).json({ success: false, message: 'Policy not found' });
@@ -1126,7 +1148,7 @@ router.post('/policies/:id/cancel', auth, checkInsurer, async (req, res) => {
 });
 
 // Send renewal reminder
-router.post('/policies/:id/send-renewal-reminder', auth, checkInsurer, async (req, res) => {
+router.post('/policies/:id/send-renewal-reminder', auth, checkInsurer, requireActiveCompany, async (req, res) => {
   try {
     const policy = await InsurancePolicy.findOne({ _id: req.params.id, companyId: req.user.id })
       .populate('userId', 'name email phone');
@@ -1160,7 +1182,7 @@ router.post('/policies/:id/send-renewal-reminder', auth, checkInsurer, async (re
 // ============================================
 
 // Renew a policy
-router.post('/policies/:id/renew', auth, checkInsurer, async (req, res) => {
+router.post('/policies/:id/renew', auth, checkInsurer, requireActiveCompany, async (req, res) => {
   try {
     const policy = await InsurancePolicy.findOne({ _id: req.params.id, companyId: req.user.id });
     if (!policy) return res.status(404).json({ success: false, message: 'Policy not found' });
@@ -1180,7 +1202,7 @@ router.post('/policies/:id/renew', auth, checkInsurer, async (req, res) => {
 });
 
 // Cancel a policy
-router.post('/policies/:id/cancel', auth, checkInsurer, async (req, res) => {
+router.post('/policies/:id/cancel', auth, checkInsurer, requireActiveCompany, async (req, res) => {
   try {
     const policy = await InsurancePolicy.findOne({ _id: req.params.id, companyId: req.user.id });
     if (!policy) return res.status(404).json({ success: false, message: 'Policy not found' });
@@ -1196,7 +1218,7 @@ router.post('/policies/:id/cancel', auth, checkInsurer, async (req, res) => {
 });
 
 // Send renewal reminder (SMS + Email)
-router.post('/policies/:id/send-renewal-reminder', auth, checkInsurer, async (req, res) => {
+router.post('/policies/:id/send-renewal-reminder', auth, checkInsurer, requireActiveCompany, async (req, res) => {
   try {
     const policy = await InsurancePolicy.findOne({ _id: req.params.id, companyId: req.user.id })
       .populate('userId', 'name email phone');
@@ -1311,7 +1333,7 @@ router.get('/claims/:id/settlement-receipt', auth, checkInsurer, async (req, res
 // POST /reports/custom
 // Body: { reportType, groupBy, filters, metrics }
 // ============================================
-router.post('/reports/custom', auth, checkInsurer, async (req, res) => {
+router.post('/reports/custom', auth, checkInsurer, requireActiveCompany, async (req, res) => {
   try {
     const companyId = req.user.id;
     const {
