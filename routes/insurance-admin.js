@@ -699,11 +699,7 @@ router.post('/companies/:id/suspend', auth, isAdmin, async (req, res) => {
     res.status(500).json({ success: false, message: error.message });
   }
 });
-  } catch (error) {
-    console.error('[insurance-admin/company-suspend]', error.message);
-    res.status(500).json({ success: false, message: error.message });
-  }
-});
+  
 
 // Unsuspend company
 router.post('/companies/:id/unsuspend', auth, isAdmin, async (req, res) => {
