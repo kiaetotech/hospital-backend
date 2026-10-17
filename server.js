@@ -939,6 +939,12 @@ app.use('/api/homeopathy', homeopathyAdvancedRoutes);
 // Once homeopathy-advanced.js has all routes and frontend is migrated,
 // delete this line + archive routes/homeopathy.js.
 app.use('/api/homeopathy-legacy', homeopathyRoutes);
+
+// Insurance admin — MUST come before /api/insurance to avoid shadowing
+app.use('/api/insurance-admin', insuranceAdminRoutes);
+app.use('/api/admin/insurance', insuranceAdminRoutes);
+app.use('/api/insurance/admin', insuranceAdminRoutes);
+
 app.use('/api/insurance', insuranceAllTabsRoutes);
 app.use('/api/insurance-marketplace', searchLimiter, insuranceMarketplaceRoutes);
 app.use('/api/insurance-admin/plans', insuranceAdminPlansRoutes);
@@ -947,10 +953,7 @@ app.use('/api/insurance-preauth', insurancePreAuthRoutes);
 app.use('/api/insurance', insuranceRoutes);
 app.use('/api/insurance-claims', insuranceClaimsRoutes);
 app.use('/api/insurance/company', insuranceOnboardingRoutes);
-app.use('/api/insurance/company', insuranceCompanyRoutes);
-app.use('/api/insurance-admin', insuranceAdminRoutes);
-app.use('/api/admin/insurance', insuranceAdminRoutes);
-app.use('/api/insurance/admin', insuranceAdminRoutes);          
+app.use('/api/insurance/company', insuranceCompanyRoutes);          
 app.use('/api/otp', authLimiter, otpRoutes);
 app.use('/api/corporate', corporateRoutes);
 app.use('/api/corporate/billing', corporateBillingRoutes);
