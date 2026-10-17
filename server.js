@@ -945,15 +945,18 @@ app.use('/api/insurance-admin', insuranceAdminRoutes);
 app.use('/api/admin/insurance', insuranceAdminRoutes);
 app.use('/api/insurance/admin', insuranceAdminRoutes);
 
+// ✅ More specific paths FIRST — prevent route shadowing
+app.use('/api/insurance/company', insuranceOnboardingRoutes);
+app.use('/api/insurance/company', insuranceCompanyRoutes);
+
+// Broad prefixes after
 app.use('/api/insurance', insuranceAllTabsRoutes);
 app.use('/api/insurance-marketplace', searchLimiter, insuranceMarketplaceRoutes);
 app.use('/api/insurance-admin/plans', insuranceAdminPlansRoutes);
 app.use('/api/insurance-policy-center', insurancePolicyCenterRoutes);
 app.use('/api/insurance-preauth', insurancePreAuthRoutes);
 app.use('/api/insurance', insuranceRoutes);
-app.use('/api/insurance-claims', insuranceClaimsRoutes);
-app.use('/api/insurance/company', insuranceOnboardingRoutes);
-app.use('/api/insurance/company', insuranceCompanyRoutes);          
+app.use('/api/insurance-claims', insuranceClaimsRoutes);          
 app.use('/api/otp', authLimiter, otpRoutes);
 app.use('/api/corporate', corporateRoutes);
 app.use('/api/corporate/billing', corporateBillingRoutes);

@@ -59,9 +59,9 @@ function requireAdminKey(req, res, next) {
 // ============================================
 
 const checkInsurer = asyncHandler(async (req, res, next) => {
-  let company = await InsuranceCompany.findOne({ userId: req.user.id, isActive: true });
+    let company = await InsuranceCompany.findOne({ userId: req.user.id });
   if (!company && req.user.email) {
-    company = await InsuranceCompany.findOne({ email: req.user.email, isActive: true });
+    company = await InsuranceCompany.findOne({ email: req.user.email });
     if (company && !company.userId) {
       company.userId = req.user.id;
       await company.save();
