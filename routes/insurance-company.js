@@ -1090,59 +1090,88 @@ router.get('/suspended-status', auth, checkInsurer, async (req, res) => {
 // ============================================
 // KYC UPDATE (post-onboarding)
 // ============================================
-router.post('/kyc/update', auth, checkInsurer, requireActiveCompany, async (req, res) => {
-  try {
-    const { irdaCertificate, gstCertificate, panCard, bankProof, registrationCertificate, panNumber, gstNumber } = req.body;
+router.post(
+  '/kyc/update',
+  auth,
+  checkInsurer,
+  requireActiveCompany,
+  require('../middleware/upload').fields([
+    { name: 'irdaCertificate', maxCount: 1 },
+    { name: 'gstCertificate', maxCount: 1 },
+    { name: 'panCard', maxCount: 1 },
+    { name: 'bankProof', maxCount: 1 },
+    { name: 'registrationCertificate', maxCount: 1 }
+  ]),
+  async (req, res) => {
+    try {
+      const { uploadFile } = require('../services/cloudinaryService');
+      const { panNumber, gstNumber } = req.body;
 
-    const company = await InsuranceCompany.findById(req.insuranceCompany._id);
-    if (!company) return res.status(404).json({ success: false, message: 'Company not found' });
+      const company = await InsuranceCompany.findById(req.insuranceCompany._id);
+      if (!company) return res.status(404).json({ success: false, message: 'Company not found' });
 
-    // Preserve existing documents that aren't being replaced
-    const existing = company.documents || [];
-    const docByType = {};
-    existing.forEach(d => { if (d.type) docByType[d.type] = d; });
+      const files = req.files || {};
+      const existing = company.documents || [];
+      const docByType = {};
+      existing.forEach(d => { if (d.type) docByType[d.type] = d; });
 
-    // Build new documents array (merge with existing)
-    const incoming = {
-      irda_certificate: irdaCertificate,
-      gst_certificate: gstCertificate,
-      pan_card: panCard,
-      bank_proof: bankProof,
-      registration_certificate: registrationCertificate
-    };
+      // Map incoming file fields → document types
+      const fileToTypeMap = {
+        irdaCertificate: 'irda_certificate',
+        gstCertificate: 'gst_certificate',
+        panCard: 'pan_card',
+        bankProof: 'bank_proof',
+        registrationCertificate: 'registration_certificate'
+      };
 
-    Object.entries(incoming).forEach(([type, url]) => {
-      if (url) {
-        docByType[type] = {
-          ...docByType[type],
-          type,
-          url,
-          uploadedAt: new Date(),
-          verified: false,
-          verifiedAt: null
-        };
-      }
-    });
+      // Upload each provided file to Cloudinary
+      for (const [fieldName, docType] of Object.entries(fileToTypeMap)) {
+        const fileArr = files[fieldName];
+                if (fileArr && fileArr[0]) {
+          try {
+            const file = fileArr[0];
+            const isPdf = file.mimetype === 'application/pdf';
+            const publicId = `insurance_kyc/${docType}_${Date.now()}`;
+            const uploaded = await uploadFile(file.buffer, {
+              public_id: publicId,
+              resource_type: isPdf ? 'raw' : 'auto',
+              access_mode: 'public'
+            });
+            const url = uploaded?.secure_url || uploaded?.url;
+            if (url) {
+              docByType[docType] = {
+                type: docType,
+                url,
+                uploadedAt: new Date(),
+                verified: false,
+                verifiedAt: null
+              };
+            }
+          } catch (uploadErr) {
+            console.error(`[kyc/update] Cloudinary upload failed for ${fieldName}:`, uploadErr.message);
+          }
+        }
 
-    company.documents = Object.values(docByType);
-    company.kycStatus = 'submitted';
-    company.kycNotes = null;
-    company.kycSubmittedAt = new Date();
-    if (panNumber) company.panNumber = panNumber;
-    if (gstNumber) company.gstNumber = gstNumber;
+      company.documents = Object.values(docByType);
+      company.kycStatus = 'submitted';
+      company.kycNotes = null;
+      company.kycSubmittedAt = new Date();
+      if (panNumber) company.panNumber = panNumber;
+      if (gstNumber) company.gstNumber = gstNumber;
 
-    await company.save();
+      await company.save();
 
-    res.json({
-      success: true,
-      message: 'KYC updated. Awaiting admin verification.',
-      documentCount: company.documents.length
-    });
-  } catch (error) {
-    console.error('KYC update error:', error);
-    res.status(500).json({ success: false, message: 'Failed to update KYC' });
+      res.json({
+        success: true,
+        message: 'KYC uploaded. Awaiting admin verification.',
+        documentCount: company.documents.length
+      });
+    } catch (error) {
+      console.error('KYC update error:', error);
+      res.status(500).json({ success: false, message: error.message });
+    }
   }
-});
+);
 
 // Renew a policy
 router.post('/policies/:id/renew', auth, checkInsurer, requireActiveCompany, async (req, res) => {
