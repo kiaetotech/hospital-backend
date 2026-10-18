@@ -628,6 +628,70 @@ router.get('/claims', auth, checkInsurer, async (req, res) => {
   }
 });
 
+// Update claim status (insurer approves/rejects/settles)
+router.put('/claims/:id', auth, checkInsurer, requireActiveCompany, async (req, res) => {
+  try {
+    const { status, note, amount } = req.body;
+
+    const allowed = ['under_review', 'approved', 'rejected', 'settled', 'partially_settled'];
+    if (!allowed.includes(status)) {
+      return res.status(400).json({ success: false, message: 'Invalid status' });
+    }
+
+    const claim = await InsuranceClaim.findById(req.params.id);
+    if (!claim) {
+      return res.status(404).json({ success: false, message: 'Claim not found' });
+    }
+
+    const policy = await InsurancePolicy.findById(claim.policyId);
+    if (!policy || String(policy.companyId) !== String(req.insuranceCompany._id)) {
+      return res.status(403).json({
+        success: false,
+        message: 'Claim is not under your company policy'
+      });
+    }
+
+    if (status === 'approved') {
+      const numericAmount = amount != null ? Number(amount) : claim.amount;
+      if (!Number.isFinite(numericAmount) || numericAmount < 0) {
+        return res.status(400).json({ success: false, message: 'Invalid approved amount' });
+      }
+      if (policy && numericAmount > policy.sumInsured) {
+        return res.status(400).json({ success: false, message: 'Amount exceeds policy sum insured' });
+      }
+      claim.approvedAmount = numericAmount;
+      claim.approvedBy = req.user.id;
+      claim.approvedAt = new Date();
+    }
+
+    if (status === 'rejected') {
+      claim.rejectedReason = note || 'Rejected by insurer';
+      claim.rejectedAt = new Date();
+    }
+
+    if (status === 'settled' || status === 'partially_settled') {
+      const settlement = amount != null ? Number(amount) : (claim.approvedAmount || claim.amount);
+      claim.settlementAmount = settlement;
+      claim.settlementDate = new Date();
+      claim.settlementReference = claim.settlementReference ||
+        `SETTLE_${Date.now()}_${require('crypto').randomInt(1000, 10000)}`;
+    }
+
+    claim.status = status;
+    claim.updatedAt = new Date();
+    await claim.save();
+
+    res.json({
+      success: true,
+      message: `Claim ${status} successfully`,
+      data: claim
+    });
+  } catch (error) {
+    console.error('[insurance-company/claim-update]', error.message);
+    res.status(500).json({ success: false, message: error.message });
+  }
+});
+
 router.get('/claims/:id', auth, checkInsurer, async (req, res) => {
   try {
     const companyId = req.user.id;
