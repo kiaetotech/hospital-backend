@@ -370,17 +370,31 @@ router.get('/settlements/pending', auth, isAdmin, async (req, res) => {
       insuranceSettlementStatus: 'pending',
       settledToProvider: false
     })
-      .populate('providerId', 'name companyName')
-      .populate('bookingId')
-      .sort({ createdAt: 1 });
+      .sort({ createdAt: 1 })
+      .lean();
+
+    let enriched = transactions;
+    try {
+      enriched = await Transaction.populate(transactions, [
+        { path: 'providerId', select: 'name companyName' },
+        { path: 'bookingId' }
+      ]);
+    } catch (popErr) {
+      console.warn('[settlements/pending] populate failed, using raw data:', popErr.message);
+    }
 
     res.json({
       success: true,
-      data: transactions
+      data: enriched,
+      meta: { total: enriched.length }
     });
   } catch (error) {
-    console.error('Error fetching pending settlements:', error);
-    res.status(500).json({ success: false, message: 'Failed to fetch pending settlements' });
+    console.error('[settlements/pending] query error:', error.message);
+    res.status(500).json({
+      success: false,
+      message: 'Failed to fetch pending settlements',
+      debug: error.message
+    });
   }
 });
 
@@ -902,13 +916,12 @@ router.get('/suspended', auth, isAdmin, async (req, res) => {
   }
 });
 
-const InsuranceAppeal = require('../models/InsuranceAppeal');
-
 // ============================================
 // APPEALS — Admin view + action
 // ============================================
+const InsuranceAppeal = require('../models/InsuranceAppeal');
 
-// Get pending appeals
+// Get pending appeals (or filter by ?status=pending|approved|rejected|all)
 router.get('/appeals', auth, isAdmin, async (req, res) => {
   try {
     const { status = 'pending' } = req.query;
@@ -920,6 +933,7 @@ router.get('/appeals', auth, isAdmin, async (req, res) => {
       .lean();
     res.json({ success: true, data: appeals });
   } catch (err) {
+    console.error('[insurance-admin/appeals]', err.message);
     res.status(500).json({ success: false, message: err.message });
   }
 });
@@ -934,6 +948,7 @@ router.get('/appeals/:id', auth, isAdmin, async (req, res) => {
     if (!appeal) return res.status(404).json({ success: false, message: 'Appeal not found' });
     res.json({ success: true, data: appeal });
   } catch (err) {
+    console.error('[insurance-admin/appeals-detail]', err.message);
     res.status(500).json({ success: false, message: err.message });
   }
 });
@@ -963,6 +978,7 @@ router.post('/appeals/:id/approve', auth, isAdmin, async (req, res) => {
 
     res.json({ success: true, message: 'Appeal approved, company unsuspended', data: appeal });
   } catch (err) {
+    console.error('[insurance-admin/appeals-approve]', err.message);
     res.status(500).json({ success: false, message: err.message });
   }
 });
@@ -983,6 +999,7 @@ router.post('/appeals/:id/reject', auth, isAdmin, async (req, res) => {
 
     res.json({ success: true, message: 'Appeal rejected, suspension upheld', data: appeal });
   } catch (err) {
+    console.error('[insurance-admin/appeals-reject]', err.message);
     res.status(500).json({ success: false, message: err.message });
   }
 });
