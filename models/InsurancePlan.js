@@ -366,6 +366,109 @@ const InsurancePlanSchema = new mongoose.Schema({
     }],
     defaultCoverageAmount: { type: Number }
   },
+
+
+  // ============================================
+  // CATEGORY (discriminator for plan type)
+  // ============================================
+  category: {
+    type: String,
+    enum: ['individual', 'family_floater', 'senior_citizen', 'critical_illness', 'top_up'],
+    default: 'individual',
+    index: true
+  },
+
+  // ============================================
+  // AGE-BASED PRICING MATRIX
+  // Insurer defines premium per age band
+  // ============================================
+  agePremiumMatrix: [{
+    ageMin: { type: Number, required: true },
+    ageMax: { type: Number, required: true },
+    premium: { type: Number, required: true }
+  }],
+
+  // ============================================
+  // HABIT-BASED LOADINGS (%)
+  // Insurer sets the surcharge for each habit
+  // ============================================
+  habitLoadings: {
+    smoker: { type: Number, default: 0 },
+    alcohol: { type: Number, default: 0 },
+    tobacco: { type: Number, default: 0 },
+    nonSmokerDiscount: { type: Number, default: 0 }
+  },
+
+  // ============================================
+  // BMI-BASED LOADINGS
+  // ============================================
+  bmiLoadings: [{
+    minBMI: { type: Number, required: true },
+    maxBMI: { type: Number, required: true },
+    loadingPercent: { type: Number, default: 0 }
+  }],
+
+  // ============================================
+  // PRE-EXISTING DISEASE LOADINGS
+  // ============================================
+  pedLoadings: [{
+    condition: { type: String, required: true },
+    loadingPercent: { type: Number, default: 0 },
+    waitingYears: { type: Number, default: 3 },
+    rejected: { type: Boolean, default: false }
+  }],
+
+  // ============================================
+  // CO-PAY OPTIONS with price impact
+  // ============================================
+  coPayOptions: [{
+    percent: { type: Number, required: true },
+    priceImpact: { type: Number, default: 0 }
+  }],
+
+  // ============================================
+  // DEDUCTIBLE OPTIONS with price impact
+  // ============================================
+  deductibleOptions: [{
+    amount: { type: Number, required: true },
+    priceImpact: { type: Number, default: 0 }
+  }],
+
+  // ============================================
+  // RIDERS / ADD-ONS with prices
+  // ============================================
+  riders: [{
+    code: { type: String, required: true },
+    name: { type: String, required: true },
+    price: { type: Number, required: true },
+    description: { type: String }
+  }],
+
+  // ============================================
+  // TENURE DISCOUNTS
+  // ============================================
+  tenureDiscounts: [{
+    years: { type: Number, required: true },
+    discountPercent: { type: Number, default: 0 }
+  }],
+
+  // ============================================
+  // ZONE MULTIPLIERS
+  // ============================================
+  zoneMultipliers: [{
+    zone: { type: String, required: true },
+    multiplier: { type: Number, default: 1.0 }
+  }],
+
+  // ============================================
+  // WAITING PERIODS
+  // ============================================
+  initialWaitingDays: { type: Number, default: 30 },
+
+  specificDiseaseWaiting: [{
+    condition: { type: String, required: true },
+    years: { type: Number, default: 2 }
+  }],
   
   // Corporate enrollment
   corporateEnrollment: {
