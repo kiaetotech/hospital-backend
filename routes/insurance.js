@@ -1469,6 +1469,86 @@ router.get('/download-member-card/:id', auth, async (req, res) => {
 // ============================================
 // CLAIMS ROUTES
 // ============================================
+// ============================================
+// GET /claims/my-claims — all claims across user's policies
+// Must come BEFORE /claims/:policyId to avoid route shadowing
+// ============================================
+router.get('/claims/my-claims', auth, async (req, res) => {
+  try {
+    const InsuranceClaim = require('../models/InsuranceClaim');
+    const InsurancePolicy = require('../models/InsurancePolicy');
+
+    const userId = req.user.id;
+    const { status, type, page = 1, limit = 50 } = req.query;
+
+    // Find all policies owned by this user
+    const policies = await InsurancePolicy.find({ userId }).select('_id policyNumber policyName').lean();
+    const policyIds = policies.map((p) => p._id);
+
+    if (policyIds.length === 0) {
+      return res.json({
+        success: true,
+        data: [],
+        meta: {
+          summary: { total: 0, pending: 0, approved: 0, settled: 0, rejected: 0 },
+          pagination: { page: 1, limit: Number(limit), total: 0, pages: 0 },
+          timestamp: new Date().toISOString(),
+        },
+      });
+    }
+
+    const query = { policyId: { $in: policyIds } };
+    if (status && status !== 'all') query.status = status;
+    if (type && type !== 'all') query.claimType = type;
+
+    const skip = (Number(page) - 1) * Number(limit);
+
+    const [claims, total] = await Promise.all([
+      InsuranceClaim.find(query)
+        .populate('policyId', 'policyNumber policyName')
+        .sort({ createdAt: -1 })
+        .skip(skip)
+        .limit(Number(limit))
+        .lean(),
+      InsuranceClaim.countDocuments(query),
+    ]);
+
+    // Summary counts
+    const summaryAgg = await InsuranceClaim.aggregate([
+      { $match: { policyId: { $in: policyIds } } },
+      {
+        $group: {
+          _id: null,
+          total: { $sum: 1 },
+          pending: { $sum: { $cond: [{ $in: ['$status', ['submitted', 'under_review', 'pending_verification', 'pending']] }, 1, 0] } },
+          approved: { $sum: { $cond: [{ $eq: ['$status', 'approved'] }, 1, 0] } },
+          settled: { $sum: { $cond: [{ $in: ['$status', ['settled', 'partially_settled']] }, 1, 0] } },
+          rejected: { $sum: { $cond: [{ $eq: ['$status', 'rejected'] }, 1, 0] } },
+        },
+      },
+    ]);
+
+    const summary = summaryAgg[0] || { total: 0, pending: 0, approved: 0, settled: 0, rejected: 0 };
+
+    res.json({
+      success: true,
+      data: claims,
+      meta: {
+        summary,
+        pagination: {
+          page: Number(page),
+          limit: Number(limit),
+          total,
+          pages: Math.ceil(total / Number(limit)),
+        },
+        timestamp: new Date().toISOString(),
+      },
+    });
+  } catch (error) {
+    console.error('[insurance/claims/my-claims]', error.message);
+    res.status(500).json({ success: false, error: { message: error.message } });
+  }
+});
 
 // Submit a claim
 router.post('/claims', auth, async (req, res) => {
