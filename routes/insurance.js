@@ -1550,6 +1550,108 @@ router.get('/claims/my-claims', auth, async (req, res) => {
   }
 });
 
+// ============================================
+// PUT /claims/:claimId/cancel — cancel a claim
+// ============================================
+router.put('/claims/:claimId/cancel', auth, async (req, res) => {
+  try {
+    const InsuranceClaim = require('../models/InsuranceClaim');
+    const InsurancePolicy = require('../models/InsurancePolicy');
+
+    const claim = await InsuranceClaim.findById(req.params.claimId);
+    if (!claim) {
+      return res.status(404).json({ success: false, message: 'Claim not found' });
+    }
+
+    // Verify ownership
+    const policy = await InsurancePolicy.findById(claim.policyId);
+    if (!policy || String(policy.userId) !== String(req.user.id)) {
+      return res.status(403).json({ success: false, message: 'Not authorized to cancel this claim' });
+    }
+
+    // Cannot cancel if already settled
+    if (['settled', 'partially_settled'].includes(claim.status)) {
+      return res.status(400).json({ success: false, message: 'Settled claims cannot be cancelled' });
+    }
+
+    claim.status = 'cancelled';
+    claim.cancellationReason = req.body.reason || 'Cancelled by patient';
+    claim.cancelledAt = new Date();
+    claim.updatedAt = new Date();
+
+    if (typeof claim.addTimeline === 'function') {
+      await claim.addTimeline('cancelled', claim.cancellationReason, req.user.id);
+    }
+
+    await claim.save();
+
+    res.json({ success: true, message: 'Claim cancelled', data: claim });
+  } catch (error) {
+    console.error('[insurance/claims/:id/cancel]', error.message);
+    res.status(500).json({ success: false, message: error.message });
+  }
+});
+
+// ============================================
+// POST /claims/:claimId/documents — upload claim document
+// ============================================
+router.post(
+  '/claims/:claimId/documents',
+  auth,
+  require('../middleware/upload').upload.fields([{ name: 'file', maxCount: 1 }]),
+  async (req, res) => {
+    try {
+      const InsuranceClaim = require('../models/InsuranceClaim');
+      const InsurancePolicy = require('../models/InsurancePolicy');
+      const { uploadFile } = require('../services/cloudinaryService');
+
+      const claim = await InsuranceClaim.findById(req.params.claimId);
+      if (!claim) {
+        return res.status(404).json({ success: false, message: 'Claim not found' });
+      }
+
+      // Verify ownership
+      const policy = await InsurancePolicy.findById(claim.policyId);
+      if (!policy || String(policy.userId) !== String(req.user.id)) {
+        return res.status(403).json({ success: false, message: 'Not authorized' });
+      }
+
+      if (!req.files?.file?.[0]) {
+        return res.status(400).json({ success: false, message: 'No file uploaded' });
+      }
+
+      const file = req.files.file[0];
+      const isPdf = file.mimetype === 'application/pdf';
+      const publicId = `insurance_claims/${claim._id}_${Date.now()}`;
+      const uploaded = await uploadFile(file.buffer, {
+        public_id: publicId,
+        resource_type: isPdf ? 'raw' : 'auto',
+        access_mode: 'public',
+      });
+
+      const url = uploaded?.secure_url || uploaded?.url;
+      if (!url) {
+        return res.status(500).json({ success: false, message: 'Upload to Cloudinary failed' });
+      }
+
+      claim.documents = claim.documents || [];
+      claim.documents.push({
+        type: req.body.documentType || 'bill',
+        url,
+        uploadedAt: new Date(),
+      });
+
+      claim.updatedAt = new Date();
+      await claim.save();
+
+      res.json({ success: true, message: 'Document uploaded', data: claim });
+    } catch (error) {
+      console.error('[insurance/claims/:id/documents]', error.message);
+      res.status(500).json({ success: false, message: error.message });
+    }
+  }
+);
+
 // Submit a claim
 router.post('/claims', auth, async (req, res) => {
   try {
