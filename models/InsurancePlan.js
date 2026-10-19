@@ -382,11 +382,39 @@ const InsurancePlanSchema = new mongoose.Schema({
   // AGE-BASED PRICING MATRIX
   // Insurer defines premium per age band
   // ============================================
-  agePremiumMatrix: [{
-    ageMin: { type: Number, required: true },
-    ageMax: { type: Number, required: true },
-    premium: { type: Number, required: true }
+    // ============================================
+  // PRICING GRID (age × sum insured matrix)
+  // Insurer defines the exact premium for each cell
+  // ============================================
+  pricingGrid: {
+    ageBands: [{
+      ageMin: { type: Number, required: true },
+      ageMax: { type: Number, required: true },
+      label: { type: String }
+    }],
+    sumInsuredTiers: [{ type: Number }],
+    // Map key format: "ageMin_ageMax_sumInsured" → premium ₹
+    // e.g. "18_25_500000": 8500
+    prices: {
+      type: Map,
+      of: Number,
+      default: {}
+    }
+  },
+
+  // ============================================
+  // COMPLIANCE & COMMISSION
+  // ============================================
+  uin: { type: String },                          // IRDAI UIN number
+  commissionPercent: { type: Number, default: 0 }, // % platform takes
+  commissionVolumeTiers: [{
+    minPolicies: { type: Number },
+    maxPolicies: { type: Number },
+    percent: { type: Number }
   }],
+  irdaProductApprovalDoc: { type: String },
+  brochureUrl: { type: String },
+  termsConditionsUrl: { type: String },
 
   // ============================================
   // HABIT-BASED LOADINGS (%)
