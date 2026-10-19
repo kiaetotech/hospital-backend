@@ -1777,21 +1777,36 @@ router.get('/claims/:policyId', auth, async (req, res) => {
 });
 
 // Get claim details
+// Get claim details (from InsuranceClaim collection — modern storage)
 router.get('/claims/:policyId/:claimId', auth, async (req, res) => {
   try {
+    const InsuranceClaim = require('../models/InsuranceClaim');
+    const InsurancePolicy = require('../models/InsurancePolicy');
+
     const policy = await InsurancePolicy.findById(req.params.policyId);
-    
     if (!policy) {
       return res.status(404).json({ success: false, message: 'Policy not found' });
     }
 
+    // Ownership check
     if (policy.userId.toString() !== req.user.id.toString() && req.user.role !== 'admin') {
       return res.status(403).json({ success: false, message: 'Unauthorized' });
     }
 
-    const claim = policy.getClaim(req.params.claimId);
+    // Fetch claim from the standalone collection
+    const claim = await InsuranceClaim.findById(req.params.claimId)
+      .populate('policyId', 'policyNumber policyName sumInsured')
+      .populate('companyId', 'companyName name')
+      .populate('userId', 'name email phone')
+      .lean();
+
     if (!claim) {
       return res.status(404).json({ success: false, message: 'Claim not found' });
+    }
+
+    // Verify claim belongs to this policy
+    if (String(claim.policyId?._id || claim.policyId) !== String(policy._id)) {
+      return res.status(404).json({ success: false, message: 'Claim does not belong to this policy' });
     }
 
     res.json({
@@ -1800,8 +1815,8 @@ router.get('/claims/:policyId/:claimId', auth, async (req, res) => {
     });
 
   } catch (error) {
-    console.error('Error fetching claim:', error);
-    res.status(500).json({ success: false, message: 'Failed to fetch claim' });
+    console.error('[insurance/claims/detail]', error.message);
+    res.status(500).json({ success: false, message: error.message });
   }
 });
 
