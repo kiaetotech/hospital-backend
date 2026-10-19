@@ -2,7 +2,6 @@ const express = require('express');
 const router = express.Router();
 const mongoose = require('mongoose');
 const jwt = require('jsonwebtoken');
-const InsurancePlan = require('../models/InsurancePlan');
 const InsuranceCompany = require('../models/InsuranceCompany');
 const InsuranceClaim = require('../models/InsuranceClaim');
 const InsurancePolicy = require('../models/InsurancePolicy');
@@ -1699,5 +1698,231 @@ router.get('/search-suggestions', async (req, res) => {
     });
   }
 });
+
+// ============================================
+// QUOTE API — customer-facing premium calculation
+// Public endpoint, no auth required
+// ============================================
+
+const { calculatePremium } = require('../services/insurancePremiumEngine');
+const InsurancePlan = require('../models/InsurancePlan');
+
+router.post('/quote', async (req, res) => {
+  try {
+    const {
+      planId,
+      age,
+      sumInsured,
+      members = [],
+      habits = {},
+      bmi = 0,
+      pedConditions = [],
+      tenureYears = 1,
+      zone = 'tier1',
+      coPayPercent = 0,
+      deductibleAmount = 0,
+      selectedRiders = [],
+    } = req.body;
+
+    if (!planId) {
+      return res.status(400).json({ success: false, message: 'planId is required' });
+    }
+    if (!age || age < 0 || age > 120) {
+      return res.status(400).json({ success: false, message: 'age must be between 0 and 120' });
+    }
+    if (!sumInsured || sumInsured <= 0) {
+      return res.status(400).json({ success: false, message: 'sumInsured must be greater than 0' });
+    }
+
+    const plan = await InsurancePlan.findById(planId).lean();
+    if (!plan) {
+      return res.status(404).json({ success: false, message: 'Plan not found' });
+    }
+    if (!plan.isActive) {
+      return res.status(400).json({ success: false, message: 'Plan is not active' });
+    }
+    if (plan.isVerified === false) {
+      return res.status(400).json({ success: false, message: 'Plan is not yet verified' });
+    }
+
+    const result = calculatePremium({
+      plan,
+      age: Number(age),
+      sumInsured: Number(sumInsured),
+      members,
+      habits,
+      bmi: Number(bmi),
+      pedConditions,
+      tenureYears: Number(tenureYears),
+      zone,
+      coPayPercent: Number(coPayPercent),
+      deductibleAmount: Number(deductibleAmount),
+      selectedRiders,
+    });
+
+    if (!result.success) {
+      return res.status(400).json({
+        success: false,
+        rejected: result.rejected || false,
+        message: result.reason || 'Unable to calculate premium',
+      });
+    }
+
+    res.json({
+      success: true,
+      data: {
+        plan: {
+          id: plan._id,
+          planName: plan.planName,
+          planCategory: plan.planCategory,
+          uin: plan.uin,
+        },
+        inputs: {
+          age: Number(age),
+          sumInsured: Number(sumInsured),
+          members,
+          habits,
+          bmi: Number(bmi),
+          pedConditions,
+          tenureYears: Number(tenureYears),
+          zone,
+          coPayPercent: Number(coPayPercent),
+          deductibleAmount: Number(deductibleAmount),
+          selectedRiders,
+        },
+        premium: {
+          breakdown: result.breakdown,
+          grossPremium: result.grossPremium,
+          gstRate: result.gstRate,
+          gstAmount: result.gstAmount,
+          totalPremium: result.totalPremium,
+          monthlyPremium: result.monthlyPremium,
+        },
+      },
+      meta: { timestamp: new Date().toISOString() },
+    });
+  } catch (error) {
+    console.error('[insurance/quote]', error.message);
+    res.status(500).json({ success: false, message: 'Failed to calculate quote: ' + error.message });
+  }
+});
+
+router.post('/quote-all', async (req, res) => {
+  try {
+    const {
+      age,
+      sumInsured,
+      members = [],
+      habits = {},
+      bmi = 0,
+      pedConditions = [],
+      tenureYears = 1,
+      zone = 'tier1',
+      coPayPercent = 0,
+      deductibleAmount = 0,
+      selectedRiders = [],
+      category,
+      minPremium,
+      maxPremium,
+      sort = 'premium_low',
+      page = 1,
+      limit = 20,
+    } = req.body;
+
+    if (!age || age < 0 || age > 120) {
+      return res.status(400).json({ success: false, message: 'Valid age is required (0-120)' });
+    }
+    if (!sumInsured || sumInsured <= 0) {
+      return res.status(400).json({ success: false, message: 'Valid sumInsured is required' });
+    }
+
+    const planQuery = { isActive: true, isVerified: true };
+    if (category) planQuery.planCategory = category;
+
+    const plans = await InsurancePlan.find(planQuery).lean();
+    if (!plans.length) {
+      return res.json({
+        success: true,
+        data: [],
+        pagination: { page: 1, limit: Number(limit), total: 0, pages: 0 },
+        meta: { timestamp: new Date().toISOString() },
+      });
+    }
+
+    const quoted = [];
+    for (const plan of plans) {
+      try {
+        const result = calculatePremium({
+          plan,
+          age: Number(age),
+          sumInsured: Number(sumInsured),
+          members,
+          habits,
+          bmi: Number(bmi),
+          pedConditions,
+          tenureYears: Number(tenureYears),
+          zone,
+          coPayPercent: Number(coPayPercent),
+          deductibleAmount: Number(deductibleAmount),
+          selectedRiders,
+        });
+
+        if (result.success) {
+          quoted.push({
+            planId: plan._id,
+            planName: plan.planName,
+            planCategory: plan.planCategory,
+            uin: plan.uin,
+            description: plan.description,
+            companyId: plan.companyId,
+            totalPremium: result.totalPremium,
+            grossPremium: result.grossPremium,
+            monthlyPremium: result.monthlyPremium,
+            gstAmount: result.gstAmount,
+            breakdown: result.breakdown,
+            coverage: plan.coverage,
+            networkHospitals: plan.coverage?.networkHospitals || 0,
+          });
+        }
+      } catch (e) {
+        continue;
+      }
+    }
+
+    let filtered = quoted;
+    if (minPremium != null) filtered = filtered.filter((q) => q.totalPremium >= Number(minPremium));
+    if (maxPremium != null) filtered = filtered.filter((q) => q.totalPremium <= Number(maxPremium));
+
+    if (sort === 'premium_low') filtered.sort((a, b) => a.totalPremium - b.totalPremium);
+    else if (sort === 'premium_high') filtered.sort((a, b) => b.totalPremium - a.totalPremium);
+    else if (sort === 'network_high') filtered.sort((a, b) => b.networkHospitals - a.networkHospitals);
+
+    const total = filtered.length;
+    const skip = (Number(page) - 1) * Number(limit);
+    const paginated = filtered.slice(skip, skip + Number(limit));
+
+    res.json({
+      success: true,
+      data: paginated,
+      pagination: {
+        page: Number(page),
+        limit: Number(limit),
+        total,
+        pages: Math.ceil(total / Number(limit)),
+      },
+      inputs: {
+        age: Number(age),
+        sumInsured: Number(sumInsured),
+        zone,
+        tenureYears: Number(tenureYears),
+      },
+      meta: { timestamp: new Date().toISOString() },
+    });
+  } catch (error) {
+    console.error('[insurance/quote-all]', error.message);
+    res.status(500).json({ success: false, message: 'Failed to calculate quotes: ' + error.message });
+  }
+});
+
 
 module.exports = router;
