@@ -85,131 +85,128 @@ const authenticateHR = async (req, res, next) => {
 // Get all active insurance plans with filters
 router.get('/plans', async (req, res) => {
   try {
-    const { 
-      planType, 
-      minSumInsured, 
-      maxSumInsured, 
-      minPremium, 
-      maxPremium,
-      companyId,
-      isFeatured,
-      isPopular,
+    const {
+      // Search
       search,
-      sort,
+      // Category
+      planCategory,
+      // Premium range
+      minPremium, maxPremium,
+      // Sum insured
+      minCover, maxCover,
+      // Age
+      age,
+      // Company (comma-separated)
+      companyIds,
+      // Features
+      maternity, opd, ayush, mentalHealth, cashless, domiciliary, organDonor,
+      // Coverage
+      roomRentLimit,
+      coPay,
+      // Waiting period
+      maxPedWaiting,
+      // Claim settlement
+      minCsr,
+      // Network
+      minNetworkHospitals,
+      // Rating
+      minRating,
+      // Zone
+      zone,
+      // Tenure
+      tenureYears,
+      // Sort
+      sort = 'recommended',
+      // Pagination
       page = 1,
       limit = 20,
-      age,
-      pincode,
-      members
     } = req.query;
 
-    const query = { isActive: true };
+    const query = { isActive: true, isVerified: true };
 
-    if (age) {
-      const userAge = parseInt(age);
-      if (userAge >= 60) {
-        query.$or = [
-          { planType: 'senior_citizen' },
-          { planType: 'family_floater' }
-        ];
-      }
+    if (search) {
+      query.$or = [
+        { planName: { $regex: search, $options: 'i' } },
+        { description: { $regex: search, $options: 'i' } },
+      ];
     }
-
-    if (members) {
-      try {
-        const membersData = JSON.parse(members);
-        const memberCount = Object.values(membersData).filter(v => v).length;
-        if (memberCount > 1) {
-          query.$or = [
-            { planType: 'family_floater' },
-            { planType: 'family_floater' }
-          ];
-        }
-      } catch (e) {
-        console.log('Error parsing members:', e);
-      }
+    if (planCategory) query.planCategory = planCategory;
+    if (companyIds) {
+      const ids = String(companyIds).split(',').filter(Boolean);
+      if (ids.length > 0) query.companyId = { $in: ids };
     }
-
-    if (pincode) {
-      console.log('Pincode filter:', pincode);
-    }
-
-    if (planType && planType !== 'all') query.planType = planType;
-    if (companyId) query.companyId = companyId;
-    if (isFeatured === 'true') query.isFeatured = true;
-    if (isPopular === 'true') query.isPopular = true;
-    
-    if (minSumInsured || maxSumInsured) {
+    if (minCover || maxCover) {
       query['sumInsured.default'] = {};
-      if (minSumInsured) query['sumInsured.default'].$gte = parseInt(minSumInsured);
-      if (maxSumInsured) query['sumInsured.default'].$lte = parseInt(maxSumInsured);
+      if (minCover) query['sumInsured.default'].$gte = Number(minCover);
+      if (maxCover) query['sumInsured.default'].$lte = Number(maxCover);
     }
-    
     if (minPremium || maxPremium) {
       query.basePremium = {};
-      if (minPremium) query.basePremium.$gte = parseInt(minPremium);
-      if (maxPremium) query.basePremium.$lte = parseInt(maxPremium);
+      if (minPremium) query.basePremium.$gte = Number(minPremium);
+      if (maxPremium) query.basePremium.$lte = Number(maxPremium);
     }
-    
-    if (search) {
-      query.$text = { $search: search };
+    if (age) {
+      query.minEntryAge = { $lte: Number(age) };
+      query.maxEntryAge = { $gte: Number(age) };
     }
+    if (maternity === 'true') query['coverage.maternity'] = true;
+    if (opd === 'true') query['coverage.opd'] = true;
+    if (ayush === 'true') query['coverage.ayush'] = true;
+    if (mentalHealth === 'true') query['coverage.psychiatric'] = true;
+    if (domiciliary === 'true') query['coverage.domiciliary'] = true;
+    if (organDonor === 'true') query['coverage.organDonor'] = true;
+    if (cashless === 'true') query['claimProcess.cashless'] = true;
+    if (roomRentLimit) query.roomRentLimit = roomRentLimit;
+    if (coPay != null && coPay !== '') query['limits.coPay'] = { $lte: Number(coPay) };
+    if (maxPedWaiting) query.preExistingWaiting = { $lte: Number(maxPedWaiting) };
+    if (minCsr) query.claimSettlementRatio = { $gte: Number(minCsr) };
+    if (minNetworkHospitals) query.totalNetworkHospitals = { $gte: Number(minNetworkHospitals) };
+    if (minRating) query.rating = { $gte: Number(minRating) };
+    if (zone) query.zone = zone;
 
-    let sortCriteria = { isFeatured: -1, rating: -1 };
-    
-    if (members) {
-      try {
-        const membersData = JSON.parse(members);
-        const memberCount = Object.values(membersData).filter(v => v).length;
-        if (memberCount > 1) {
-          sortCriteria = { planType: 1, ...sortCriteria };
-        }
-      } catch (e) {}
-    }
+    let sortSpec = { isFeatured: -1, isPopular: -1, rating: -1, createdAt: -1 };
+    if (sort === 'premium_low') sortSpec = { basePremium: 1 };
+    else if (sort === 'premium_high') sortSpec = { basePremium: -1 };
+    else if (sort === 'csr_high') sortSpec = { claimSettlementRatio: -1 };
+    else if (sort === 'rating_high') sortSpec = { rating: -1 };
+    else if (sort === 'network_high') sortSpec = { totalNetworkHospitals: -1 };
+    else if (sort === 'popular') sortSpec = { applications: -1, views: -1 };
+    else if (sort === 'newest') sortSpec = { createdAt: -1 };
 
-    if (sort === 'popular') {
-      sortCriteria = { views: -1, applications: -1 };
-    } else if (sort === 'rating') {
-      sortCriteria = { rating: -1, totalReviews: -1 };
-    } else if (sort === 'price_low') {
-      sortCriteria = { basePremium: 1 };
-    } else if (sort === 'price_high') {
-      sortCriteria = { basePremium: -1 };
-    } else if (sort === 'sum_insured') {
-      sortCriteria = { 'sumInsured.default': -1 };
-    } else if (sort === 'newest') {
-      sortCriteria = { createdAt: -1 };
-    }
+    const skip = (Number(page) - 1) * Number(limit);
 
-    const skip = (page - 1) * limit;
-    const plans = await InsurancePlan.find(query)
-      .populate('companyId', 'name companyLogo companyDescription companyPhone companyEmail isVerified isActive role')
-      .sort(sortCriteria)
-      .skip(skip)
-      .limit(parseInt(limit));
-
-    const total = await InsurancePlan.countDocuments(query);
-
-    const personalizedPlans = plans.map(plan => plan.toObject());
+    const [plans, total, facets] = await Promise.all([
+      InsurancePlan.find(query)
+        .populate('companyId', 'companyName name logo')
+        .sort(sortSpec).skip(skip).limit(Number(limit)).lean(),
+      InsurancePlan.countDocuments(query),
+      // Facet counts: how many plans match each filter if applied alone
+      Promise.all([
+        InsurancePlan.countDocuments({ ...query, 'coverage.maternity': true }),
+        InsurancePlan.countDocuments({ ...query, 'coverage.ayush': true }),
+        InsurancePlan.countDocuments({ ...query, 'claimProcess.cashless': true }),
+        InsurancePlan.countDocuments({ ...query, claimSettlementRatio: { $gte: 90 } }),
+        InsurancePlan.countDocuments({ ...query, totalNetworkHospitals: { $gte: 5000 } }),
+      ]).then(([maternity, ayush, cashless, csr90, network5k]) => ({
+        maternity, ayush, cashless, csr90, network5k,
+      })).catch(() => ({})),
+    ]);
 
     res.json({
       success: true,
-      data: personalizedPlans,
-      pagination: {
-        page: parseInt(page),
-        limit: parseInt(limit),
-        total,
-        pages: Math.ceil(total / limit)
+      data: plans,
+      meta: {
+        pagination: {
+          page: Number(page), limit: Number(limit), total,
+          pages: Math.ceil(total / Number(limit)),
+        },
+        facets,
+        timestamp: new Date().toISOString(),
       },
-      searchCriteria: {
-        age: age || null,
-        pincode: pincode || null,
-        members: members || null
-      }
     });
   } catch (error) {
-    console.error('Error fetching insurance plans:', error);
-    res.status(500).json({ success: false, message: 'Failed to fetch plans' });
+    console.error('Error fetching plans:', error);
+    res.status(500).json({ success: false, message: 'Failed to fetch plans: ' + error.message });
   }
 });
 
@@ -1907,19 +1904,21 @@ const InsurancePlan = require('../models/InsurancePlan');
 router.post('/quote', async (req, res) => {
   try {
     const {
-      planId,
-      age,
-      sumInsured,
-      members = [],
-      habits = {},
-      bmi = 0,
-      pedConditions = [],
-      tenureYears = 1,
-      zone = 'tier1',
-      coPayPercent = 0,
-      deductibleAmount = 0,
-      selectedRiders = [],
-    } = req.body;
+  planId,
+  age,
+  sumInsured,
+  members = [],
+  habits = {},
+  bmi = 0,
+  pedConditions = [],
+  tenureYears = 1,
+  zone = 'tier1',
+  coPayPercent = 0,
+  deductibleAmount = 0,
+  selectedRiders = [],
+  addonCodes = [],
+  deductible = 0,
+} = req.body;
 
     if (!planId) {
       return res.status(400).json({ success: false, message: 'planId is required' });
