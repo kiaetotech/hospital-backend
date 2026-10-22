@@ -74,9 +74,28 @@ const loanApplicationSchema = new mongoose.Schema({
   // ============================================
   // STATUS TRACKING
   // ============================================
-  status: { 
+    status: { 
     type: String, 
-    enum: ['draft', 'submitted', 'document_pending', 'under_review', 'approved', 'rejected', 'pending_disbursal', 'disbursed', 'completed'],
+    enum: [
+      // Original states (unchanged — backward compatible)
+      'draft',
+      'submitted',
+      'document_pending',
+      'under_review',
+      'approved',
+      'rejected',
+      'pending_disbursal',
+      'disbursed',
+      'completed',
+      // 🆕 Added for loanStateService (Task 3)
+      'offer_issued',
+      'offer_accepted',
+      'offer_declined',
+      'offer_expired',
+      'agreement_pending',
+      'agreement_signed',
+      'withdrawn',
+    ],
     default: 'submitted'
   },
   
@@ -111,9 +130,18 @@ const loanApplicationSchema = new mongoose.Schema({
   rejectedAt: { type: Date },
   disbursedAt: { type: Date },
   
-  // External reference
+    // External reference
   externalReferenceId: { type: String, default: '' },
-  lastSyncAt: { type: Date, default: Date.now }
+  lastSyncAt: { type: Date, default: Date.now },
+
+  // ============================================
+  // 🆕 BOOKING LINKAGE (Task 4)
+  // ============================================
+  // Set by loanBookingLinkService after validating
+  // the loan is tied to a real HospitalHub booking.
+  linkedBookingId: { type: String, default: null, index: true },
+  linkedAmount: { type: Number, default: 0 },
+  linkedAt: { type: Date, default: null }
 });
 
 // Indexes for efficient queries

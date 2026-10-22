@@ -16,6 +16,8 @@ const { sendOTP, verifyOTP } = require('../services/smsService');
 // ============================================
 const { uploadDocuments } = require('../middleware/upload');
 const { uploadMultipleFiles, deleteFile } = require('../services/cloudinaryService');
+const loanBookingLinkService = require('../services/loan/loanBookingLinkService');
+const loanStateService = require('../services/loan/loanStateService');
 
 const JWT_SECRET = process.env.JWT_SECRET;
 
@@ -386,6 +388,7 @@ router.get('/lenders', async (req, res) => {
 // ============================================
 
 // Submit loan application
+// Submit loan application
 router.post('/applications', global.authenticatePatient, async (req, res) => {
   try {
     const {
@@ -394,6 +397,7 @@ router.post('/applications', global.authenticatePatient, async (req, res) => {
       hospitalAddress,
       estimatedAmount,
       lenderId,
+      bookingId,
       documents,
       tenure,
       collateral,
@@ -405,7 +409,34 @@ router.post('/applications', global.authenticatePatient, async (req, res) => {
       return res.status(404).json({ error: 'Patient not found' });
     }
     
-    // For demo, accept any lenderId
+    // ─── Validate lender (no demo fallback) ───
+    if (!lenderId) {
+      return res.status(400).json({ error: 'lenderId is required', code: 'MISSING_LENDER_ID' });
+    }
+    const lender = await Lender.findById(lenderId);
+    if (!lender) {
+      return res.status(400).json({ error: 'Lender not found', code: 'LENDER_NOT_FOUND' });
+    }
+    if (lender.status !== 'active') {
+      return res.status(400).json({
+        error: `Lender is ${lender.status}. Cannot process application.`,
+        code: 'LENDER_NOT_ACTIVE',
+      });
+    }
+    
+    // ─── Validate booking (no fake hospital names) ───
+    if (!bookingId) {
+      return res.status(400).json({
+        error: 'bookingId is required. Loans must be linked to a real HospitalHub booking.',
+        code: 'MISSING_BOOKING_ID',
+      });
+    }
+    
+    // ─── Validate amount ───
+    if (!estimatedAmount || estimatedAmount <= 0) {
+      return res.status(400).json({ error: 'estimatedAmount must be greater than 0', code: 'INVALID_AMOUNT' });
+    }
+    
     const applicationId = generateApplicationId();
     
     const finalPatientLocation = patientLocation || patient.locationDetails || {
@@ -417,7 +448,7 @@ router.post('/applications', global.authenticatePatient, async (req, res) => {
     const application = new LoanApplication({
       applicationId,
       patientId: patient._id,
-      lenderId: lenderId || 'demo_lender',
+      lenderId: lender._id,
       patientLocation: {
         pincode: finalPatientLocation.pincode,
         city: finalPatientLocation.city,
@@ -455,18 +486,33 @@ router.post('/applications', global.authenticatePatient, async (req, res) => {
     
     await application.save();
     
+    // ─── Link to real booking (validates ownership, amount, status) ───
+    let bookingLinkResult = null;
+    try {
+      bookingLinkResult = await loanBookingLinkService.link({
+        applicationId: application.applicationId,
+        bookingId,
+      });
+    } catch (linkErr) {
+      // Rollback — remove the orphan application
+      await LoanApplication.deleteOne({ applicationId: application.applicationId });
+      
+      if (linkErr.name === 'LoanBookingLinkError') {
+        return res.status(400).json({ error: linkErr.message, code: linkErr.code });
+      }
+      throw linkErr;
+    }
+    
     res.json({
       success: true,
       applicationId: application.applicationId,
-      assignedBranch: {
-        branchId: null,
-        branchName: 'Demo Lender',
-        branchAddress: 'Demo Address',
-        branchPincode: '000000',
-        branchManager: 'Demo Manager',
-        assignmentReason: 'demo'
+      linkedBooking: {
+        bookingId: bookingLinkResult.linkedBookingId,
+        amount: bookingLinkResult.linkedAmount,
+        status: bookingLinkResult.linkedStatus,
+        providerName: bookingLinkResult.providerName,
       },
-      message: 'Application submitted successfully'
+      message: 'Application submitted and linked to booking successfully'
     });
   } catch (error) {
     console.error('Application submission error:', error);
@@ -718,24 +764,23 @@ router.delete('/applications/:applicationId', global.authenticatePatient, async 
       return res.status(404).json({ error: 'Application not found' });
     }
     
-    if (!['draft', 'submitted'].includes(application.status)) {
-      return res.status(400).json({ error: 'Application cannot be cancelled at this stage' });
-    }
-    
-    application.status = 'cancelled';
-    application.statusHistory.push({
-      status: 'cancelled',
-      note: 'Application cancelled by patient',
-      updatedBy: application.patientDetails.fullName,
-      updatedByRole: 'patient',
-      timestamp: new Date()
+    // Transition to 'withdrawn' via service (validates state machine + role + audit)
+    // Note: 'cancelled' is not a valid enum; 'withdrawn' is the correct patient-initiated state.
+    await loanStateService.transition({
+      applicationId,
+      toStatus: 'withdrawn',
+      actor: application.patientDetails?.fullName || req.user.id,
+      actorRole: 'patient',
+      reason: 'Application cancelled by patient',
+      note: 'Application withdrawn by patient',
     });
-    
-    await application.save();
     
     res.json({ success: true, message: 'Application cancelled' });
   } catch (error) {
-    console.error(error);
+    if (error.name === 'LoanStateError') {
+      return res.status(400).json({ error: error.message, code: error.code });
+    }
+    console.error('cancel error:', error);
     res.status(500).json({ error: 'Failed to cancel application' });
   }
 });

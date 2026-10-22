@@ -6,6 +6,8 @@ const Lender = require('../models/Lender');
 const LoanApplication = require('../models/LoanApplication');
 const { authenticate, authenticateLender } = require('../middleware/auth');
 const generateId = require('../utils/generateId');
+const loanCommissionService = require('../services/loan/loanCommissionService');
+const loanStateService = require('../services/loan/loanStateService');
 
 const JWT_SECRET = process.env.JWT_SECRET;
 
@@ -165,6 +167,7 @@ router.get('/applications/:applicationId', authenticate, authenticateLender, asy
 });
 
 // Update application status (approve/reject)
+// Update application status (approve/reject)
 router.put('/applications/:applicationId/status', authenticate, authenticateLender, async (req, res) => {
   try {
     const { applicationId } = req.params;
@@ -179,37 +182,47 @@ router.put('/applications/:applicationId/status', authenticate, authenticateLend
       return res.status(404).json({ error: 'Application not found' });
     }
     
-    application.status = status;
-    application.statusHistory.push({
-      status,
-      note,
-      updatedBy: 'lender',
-      timestamp: new Date()
+    // State transition via centralized service (validates transitions + role + writes audit)
+    await loanStateService.transition({
+      applicationId,
+      toStatus: status,
+      actor: req.user.email || req.user.lenderId,
+      actorRole: 'lender_underwriter',
+      reason: status === 'rejected' ? (note || 'Rejected by lender') : null,
+      note: note || `Status changed to ${status}`,
     });
     
-    if (status === 'approved') {
-      application.sanctionedAmount = sanctionedAmount || application.estimatedAmount;
-      application.tenure = tenure;
-      application.interestRate = interestRate;
-      application.approvedAt = new Date();
-      
+    // If approving, apply loan terms (data, not state)
+    if (status === 'approved' && interestRate && tenure) {
+      const sanctioned = sanctionedAmount || application.estimatedAmount;
       const monthlyRate = interestRate / 100 / 12;
-      const emi = sanctionedAmount * monthlyRate * Math.pow(1 + monthlyRate, tenure) / (Math.pow(1 + monthlyRate, tenure) - 1);
-      application.emi = Math.round(emi);
+      const emi = sanctioned * monthlyRate * Math.pow(1 + monthlyRate, tenure) / (Math.pow(1 + monthlyRate, tenure) - 1);
+      
+      await LoanApplication.updateOne(
+        { applicationId },
+        {
+          $set: {
+            sanctionedAmount: sanctioned,
+            tenure,
+            interestRate,
+            emi: Math.round(emi),
+          },
+        }
+      );
     }
     
-    if (status === 'rejected') {
-      application.rejectedAt = new Date();
-    }
-    
-    await application.save();
-    
-    res.json({ success: true, application });
+    const updated = await LoanApplication.findOne({ applicationId });
+    res.json({ success: true, application: updated });
   } catch (error) {
+    if (error.name === 'LoanStateError') {
+      return res.status(400).json({ error: error.message, code: error.code });
+    }
+    console.error('updateStatus error:', error);
     res.status(500).json({ error: 'Failed to update status' });
   }
 });
 
+// Request additional documents from patient
 // Request additional documents from patient
 router.post('/applications/:applicationId/request-document', authenticate, authenticateLender, async (req, res) => {
   try {
@@ -225,6 +238,7 @@ router.post('/applications/:applicationId/request-document', authenticate, authe
       return res.status(404).json({ error: 'Application not found' });
     }
     
+    // 1. Save document request on the application
     const requestId = generateId('REQ');
     application.lenderRequests.push({
       requestId,
@@ -233,16 +247,37 @@ router.post('/applications/:applicationId/request-document', authenticate, authe
       requestedAt: new Date(),
       status: 'pending'
     });
-    
-    application.status = 'document_pending';
     await application.save();
+    
+    // 2. Transition state via centralized service
+    try {
+      await loanStateService.transition({
+        applicationId,
+        toStatus: 'document_pending',
+        actor: req.user.email || req.user.lenderId,
+        actorRole: 'lender_ops',
+        note: `Document requested: ${documentType}`,
+      });
+    } catch (stateErr) {
+      if (stateErr.name === 'LoanStateError') {
+        return res.status(400).json({
+          error: stateErr.message,
+          code: stateErr.code,
+          requestId,
+          note: 'Document request saved but state transition failed',
+        });
+      }
+      throw stateErr;
+    }
     
     res.json({ success: true, requestId });
   } catch (error) {
+    console.error('request-document error:', error);
     res.status(500).json({ error: 'Failed to request document' });
   }
 });
 
+// Mark loan as disbursed
 // Mark loan as disbursed
 router.post('/applications/:applicationId/disburse', authenticate, authenticateLender, async (req, res) => {
   try {
@@ -264,29 +299,49 @@ router.post('/applications/:applicationId/disburse', authenticate, authenticateL
     
     const actualDisbursedAmount = Math.min(application.sanctionedAmount, application.finalBillAmount);
     
-    application.disbursedAmount = actualDisbursedAmount;
-    application.status = 'disbursed';
-    application.disbursedAt = new Date();
-    application.statusHistory.push({
-      status: 'disbursed',
+    // 1. Persist disbursement data (not state)
+    await LoanApplication.updateOne(
+      { applicationId },
+      { $set: { disbursedAmount: actualDisbursedAmount } }
+    );
+    
+    // 2. Transition state via centralized service
+    await loanStateService.transition({
+      applicationId,
+      toStatus: 'disbursed',
+      actor: req.user.email || req.user.lenderId,
+      actorRole: 'lender_ops',
       note: `Amount ₹${actualDisbursedAmount} disbursed to hospital`,
-      updatedBy: 'lender',
-      timestamp: new Date()
+      metadata: {
+        transactionId: transactionId || null,
+        disbursedAmount: actualDisbursedAmount,
+      },
     });
     
-    const lender = await Lender.findOne({ lenderId: req.user.lenderId });
-    const commissionAmount = (actualDisbursedAmount * lender.commissionRate) / 100;
-    application.platformCommission = commissionAmount;
-    
-    await application.save();
+    // 3. Post commission via loanCommissionService (creates real Transaction row + idempotent)
+    const commissionResult = await loanCommissionService.postCommission({
+      applicationId,
+      disbursedAmount: actualDisbursedAmount,
+      updatedBy: req.user.email || req.user.lenderId,
+      updatedByRole: 'lender',
+    });
     
     res.json({
       success: true,
       disbursedAmount: actualDisbursedAmount,
-      commissionAmount,
-      message: `Disbursed ₹${actualDisbursedAmount} to hospital. Platform commission: ₹${commissionAmount}`
+      commissionAmount: commissionResult.commission.commissionAmount,
+      commissionCreated: commissionResult.created,
+      commissionTransactionId: commissionResult.transaction?.transactionId || null,
+      message: `Disbursed ₹${actualDisbursedAmount} to hospital. Platform commission: ₹${commissionResult.commission.commissionAmount}`,
     });
   } catch (error) {
+    if (error.name === 'LoanStateError') {
+      return res.status(400).json({ error: error.message, code: error.code });
+    }
+    if (error.name === 'LoanCommissionError') {
+      return res.status(400).json({ error: error.message, code: error.code });
+    }
+    console.error('disburse error:', error);
     res.status(500).json({ error: 'Failed to disburse loan' });
   }
 });
