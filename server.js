@@ -487,6 +487,19 @@ try {
   console.warn('⚠️ GstConfig model not available:', e.message);
 }
 try {
+  require('./models/LoanProduct');
+  console.log('✅ LoanProduct model registered');
+} catch (e) {
+  console.warn('⚠️ LoanProduct model not available:', e.message);
+}
+
+try {
+  require('./models/LoanWorkflow');
+  console.log('✅ LoanWorkflow model registered');
+} catch (e) {
+  console.warn('⚠️ LoanWorkflow model not available:', e.message);
+}
+try {
   require('./models/InsuranceMarketplace');
   console.log('✅ InsuranceMarketplace models registered (Proposal, ClaimEvent, PreAuth, Addon)');
 } catch (e) {
@@ -919,6 +932,7 @@ app.use('/api/loan/patient', loanPatientRoutes);
 app.use('/api/loan/lender', loanLenderRoutes);
 app.use('/api/loan/admin', loanAdminRoutes);
 app.use('/api/loan/webhook', loanWebhookRoutes);
+app.use('/api/loan/v2', require('./routes/loanRoutes')); 
 app.use('/api/ayurveda', ayurvedaRoutes);
 app.use('/api/ayurveda-centers', ayurvedaCenterRoutes);
 app.use('/api/ayurveda/prescriptions', ayurvedaPrescriptionRoutes);
