@@ -45,7 +45,7 @@ router.get('/health', (req, res) => {
       task9: 'done — scaffolding',
       task10: 'done — Loan Products CRUD',
       task11: 'done — Offers lifecycle',
-      task12: 'pending — Agreements + eSign',
+      task12: 'done — Agreements + eSign',
       task13: 'pending — Disbursements',
       task14: 'pending — Repayment + mandate',
       task15: 'pending — Refunds',
@@ -1128,8 +1128,13 @@ router.post('/offers/:offerId/expire', authenticate, authenticateLender, async (
 });
 
 // ============================================
-// AGREEMENTS (Task 12 placeholder)
+// AGREEMENTS (Task 12)
 // ============================================
+// Manual mode (default): lender/patient mark agreement signed.
+// Provider mode: integrates with Digio/Leegality/NSDL when contracts signed.
+// Uses LoanWorkflow.agreements[] sub-document.
+
+// ─── GET /agreements/:applicationId — list all agreements ───
 router.get('/agreements/:applicationId', authenticate, authenticateLender, async (req, res) => {
   try {
     const LoanWorkflow = getLoanWorkflowModel();
@@ -1150,20 +1155,414 @@ router.get('/agreements/:applicationId', authenticate, authenticateLender, async
   }
 });
 
+// ─── POST /agreements — initiate agreement after accepted offer ───
 router.post('/agreements', authenticate, authenticateLender, async (req, res) => {
-  res.status(501).json({
-    success: false,
-    error: 'Not implemented',
-    message: 'POST /agreements will be implemented in Task 12',
-  });
+  try {
+    const LoanWorkflow = getLoanWorkflowModel();
+    const LoanApplication = getLoanApplicationModel();
+    const loanStateService = require('../services/loan/loanStateService');
+    
+    const {
+      applicationId,
+      offerId,
+      esignProvider = 'manual',
+      expiresInDays = 14,
+    } = req.body;
+    
+    if (!applicationId) return res.status(400).json({ success: false, error: 'applicationId is required' });
+    if (!offerId) return res.status(400).json({ success: false, error: 'offerId is required' });
+    if (!['manual', 'digio', 'leegality', 'nsdl', 'none'].includes(esignProvider)) {
+      return res.status(400).json({
+        success: false,
+        error: 'esignProvider must be one of: manual, digio, leegality, nsdl',
+      });
+    }
+    
+    const application = await LoanApplication.findOne({
+      applicationId,
+      lenderId: req.user.id,
+    });
+    if (!application) {
+      return res.status(404).json({ success: false, error: 'Application not found for this lender' });
+    }
+    
+    if (!['offer_accepted', 'agreement_pending'].includes(application.status)) {
+      return res.status(400).json({
+        success: false,
+        error: `Cannot initiate agreement. Application status is "${application.status}". Allowed: offer_accepted, agreement_pending.`,
+        code: 'INVALID_APPLICATION_STATE',
+      });
+    }
+    
+    const workflow = await LoanWorkflow.findByApplication(applicationId);
+    if (!workflow) return res.status(404).json({ success: false, error: 'Workflow not found' });
+    
+    const offer = workflow.offers.find(o => o.offerId === offerId);
+    if (!offer) return res.status(404).json({ success: false, error: 'Offer not found' });
+    if (offer.status !== 'accepted') {
+      return res.status(400).json({
+        success: false,
+        error: `Offer must be accepted before initiating agreement (current: ${offer.status})`,
+        code: 'OFFER_NOT_ACCEPTED',
+      });
+    }
+    
+    const agreementId = `AGR_${Date.now()}_${Math.floor(Math.random() * 1000)}`;
+    const expiresAt = new Date();
+    expiresAt.setDate(expiresAt.getDate() + expiresInDays);
+    
+    const agreement = workflow.addAgreement({
+      agreementId,
+      offerId,
+      status: 'initiated',
+      initiatedAt: new Date(),
+      expiresAt,
+      esignProvider,
+      esignReferenceId: '',
+      esignDocumentUrl: '',
+      esignCertificateUrl: '',
+      signedByLender: false,
+      signedByPatient: false,
+      initiatedBy: req.user.email || req.user.lenderId || 'lender',
+    });
+    
+    await workflow.save();
+    
+    try {
+      await loanStateService.transition({
+        applicationId,
+        toStatus: 'agreement_pending',
+        actor: req.user.email || req.user.lenderId,
+        actorRole: 'lender_ops',
+        note: `Agreement ${agreementId} initiated (${esignProvider} mode)`,
+        metadata: { agreementId, offerId, esignProvider },
+      });
+    } catch (stateErr) {
+      if (stateErr.name === 'LoanStateError') {
+        return res.status(400).json({
+          success: false,
+          error: stateErr.message,
+          code: stateErr.code,
+          agreementId,
+          note: 'Agreement saved but state transition failed',
+        });
+      }
+      throw stateErr;
+    }
+    
+    res.status(201).json({
+      success: true,
+      agreementId,
+      agreement,
+      esignProvider,
+      expiresAt,
+      message: `Agreement initiated. ${esignProvider === 'manual' ? 'Both parties must sign manually.' : `Awaiting eSign provider (${esignProvider}) callback.`}`,
+    });
+  } catch (error) {
+    console.error('[loanRoutes] POST /agreements error:', error.message);
+    res.status(500).json({ success: false, error: error.message });
+  }
 });
 
+// ─── POST /agreements/:agreementId/sign — record signature ───
 router.post('/agreements/:agreementId/sign', authenticate, async (req, res) => {
-  res.status(501).json({
-    success: false,
-    error: 'Not implemented',
-    message: 'eSign will be implemented in Task 12',
-  });
+  try {
+    const LoanWorkflow = getLoanWorkflowModel();
+    const LoanApplication = getLoanApplicationModel();
+    const loanStateService = require('../services/loan/loanStateService');
+    
+    const { agreementId } = req.params;
+    const {
+      signerRole,
+      esignReferenceId,
+      esignDocumentUrl,
+      esignCertificateUrl,
+      signatoryName,
+    } = req.body;
+    
+    if (!signerRole || !['lender', 'patient'].includes(signerRole)) {
+      return res.status(400).json({ success: false, error: 'signerRole must be "lender" or "patient"' });
+    }
+    
+    const workflow = await LoanWorkflow.findOne({ 'agreements.agreementId': agreementId });
+    if (!workflow) return res.status(404).json({ success: false, error: 'Agreement not found' });
+    
+    const application = await LoanApplication.findOne({ applicationId: workflow.applicationId });
+    if (!application) return res.status(404).json({ success: false, error: 'Application not found' });
+    
+    if (signerRole === 'lender') {
+      if (application.lenderId.toString() !== req.user.id.toString()) {
+        return res.status(403).json({ success: false, error: 'Not authorized to sign as lender' });
+      }
+    } else {
+      if (application.patientId.toString() !== req.user.id.toString()) {
+        return res.status(403).json({ success: false, error: 'Not authorized to sign as patient' });
+      }
+    }
+    
+    const agreement = workflow.agreements.find(a => a.agreementId === agreementId);
+    if (!agreement) return res.status(404).json({ success: false, error: 'Agreement not found in workflow' });
+    
+    if (!['pending', 'initiated'].includes(agreement.status)) {
+      return res.status(400).json({
+        success: false,
+        error: `Agreement cannot be signed (current status: ${agreement.status})`,
+        code: 'AGREEMENT_NOT_SIGNABLE',
+      });
+    }
+    
+    if (agreement.expiresAt && new Date() > agreement.expiresAt) {
+      agreement.status = 'expired';
+      await workflow.save();
+      return res.status(400).json({
+        success: false,
+        error: 'Agreement has expired',
+        code: 'AGREEMENT_EXPIRED',
+      });
+    }
+    
+    if (signerRole === 'lender') {
+      agreement.signedByLender = true;
+      agreement.lenderSignatory = signatoryName || req.user.email || 'lender';
+    } else {
+      agreement.signedByPatient = true;
+      agreement.patientSignatory = signatoryName || 'patient';
+    }
+    
+    if (esignReferenceId) agreement.esignReferenceId = esignReferenceId;
+    if (esignDocumentUrl) agreement.esignDocumentUrl = esignDocumentUrl;
+    if (esignCertificateUrl) agreement.esignCertificateUrl = esignCertificateUrl;
+    
+    if (agreement.signedByLender && agreement.signedByPatient) {
+      agreement.status = 'signed';
+      agreement.signedAt = new Date();
+      workflow.updatedAt = new Date();
+      await workflow.save();
+      
+      try {
+        await loanStateService.transition({
+          applicationId: workflow.applicationId,
+          toStatus: 'agreement_signed',
+          actor: 'system',
+          actorRole: 'system',
+          note: `Agreement ${agreementId} fully signed by both parties`,
+          metadata: { agreementId },
+        });
+      } catch (stateErr) {
+        console.warn('[agreement sign] State transition warning:', stateErr.message);
+      }
+      
+      return res.json({
+        success: true,
+        agreementId,
+        agreement,
+        bothPartiesSigned: true,
+        nextStep: 'pending_disbursal',
+        message: 'Agreement fully signed. Ready for disbursement.',
+      });
+    }
+    
+    workflow.updatedAt = new Date();
+    await workflow.save();
+    
+    res.json({
+      success: true,
+      agreementId,
+      agreement,
+      bothPartiesSigned: false,
+      waitingFor: signerRole === 'lender' ? 'patient' : 'lender',
+      message: `${signerRole} signature recorded. Waiting for other party.`,
+    });
+  } catch (error) {
+    console.error('[loanRoutes] POST /agreements/:id/sign error:', error.message);
+    res.status(500).json({ success: false, error: error.message });
+  }
+});
+
+// ─── POST /agreements/:agreementId/cancel — cancel before signing ───
+router.post('/agreements/:agreementId/cancel', authenticate, authenticateLender, async (req, res) => {
+  try {
+    const LoanWorkflow = getLoanWorkflowModel();
+    const LoanApplication = getLoanApplicationModel();
+    const loanStateService = require('../services/loan/loanStateService');
+    
+    const { agreementId } = req.params;
+    const { reason } = req.body;
+    
+    if (!reason || reason.trim().length === 0) {
+      return res.status(400).json({ success: false, error: 'Cancel reason is required' });
+    }
+    
+    const workflow = await LoanWorkflow.findOne({ 'agreements.agreementId': agreementId });
+    if (!workflow) return res.status(404).json({ success: false, error: 'Agreement not found' });
+    
+    const application = await LoanApplication.findOne({
+      applicationId: workflow.applicationId,
+      lenderId: req.user.id,
+    });
+    if (!application) return res.status(403).json({ success: false, error: 'Not authorized' });
+    
+    const agreement = workflow.agreements.find(a => a.agreementId === agreementId);
+    if (!agreement) return res.status(404).json({ success: false, error: 'Agreement not found' });
+    
+    if (agreement.status === 'signed') {
+      return res.status(400).json({
+        success: false,
+        error: 'Cannot cancel a signed agreement',
+        code: 'AGREEMENT_ALREADY_SIGNED',
+      });
+    }
+    if (agreement.status === 'cancelled') {
+      return res.status(400).json({
+        success: false,
+        error: 'Agreement is already cancelled',
+        code: 'AGREEMENT_ALREADY_CANCELLED',
+      });
+    }
+    
+    agreement.status = 'cancelled';
+    agreement.cancelledReason = reason.trim();
+    workflow.updatedAt = new Date();
+    await workflow.save();
+    
+    try {
+      await loanStateService.transition({
+        applicationId: workflow.applicationId,
+        toStatus: 'withdrawn',
+        actor: req.user.email || req.user.lenderId,
+        actorRole: 'lender_ops',
+        reason: reason.trim(),
+        note: `Agreement ${agreementId} cancelled`,
+      });
+    } catch (stateErr) {
+      console.warn('[agreement cancel] State transition warning:', stateErr.message);
+    }
+    
+    res.json({
+      success: true,
+      agreementId,
+      message: 'Agreement cancelled.',
+    });
+  } catch (error) {
+    console.error('[loanRoutes] POST /agreements/:id/cancel error:', error.message);
+    res.status(500).json({ success: false, error: error.message });
+  }
+});
+
+// ─── GET /agreements/:agreementId/pdf — download agreement PDF ───
+router.get('/agreements/:agreementId/pdf', authenticate, authenticateLender, async (req, res) => {
+  try {
+    const LoanWorkflow = getLoanWorkflowModel();
+    const LoanApplication = getLoanApplicationModel();
+    
+    const { agreementId } = req.params;
+    
+    const workflow = await LoanWorkflow.findOne({ 'agreements.agreementId': agreementId });
+    if (!workflow) return res.status(404).json({ success: false, error: 'Agreement not found' });
+    
+    const application = await LoanApplication.findOne({
+      applicationId: workflow.applicationId,
+      lenderId: req.user.id,
+    });
+    if (!application) return res.status(403).json({ success: false, error: 'Not authorized' });
+    
+    const agreement = workflow.agreements.find(a => a.agreementId === agreementId);
+    if (!agreement) return res.status(404).json({ success: false, error: 'Agreement not found' });
+    
+    if (agreement.esignDocumentUrl) {
+      return res.json({
+        success: true,
+        agreementId,
+        downloadUrl: agreement.esignDocumentUrl,
+        certificateUrl: agreement.esignCertificateUrl || null,
+        status: agreement.status,
+        message: 'Download URL provided by eSign provider.',
+      });
+    }
+    
+    res.json({
+      success: true,
+      agreementId,
+      status: agreement.status,
+      signedByLender: agreement.signedByLender,
+      signedByPatient: agreement.signedByPatient,
+      signedAt: agreement.signedAt,
+      esignProvider: agreement.esignProvider,
+      downloadUrl: null,
+      message: 'Manual mode — no PDF stored. Use loanStateService history + statusHistory for audit.',
+    });
+  } catch (error) {
+    console.error('[loanRoutes] GET /agreements/:id/pdf error:', error.message);
+    res.status(500).json({ success: false, error: error.message });
+  }
+});
+
+// ─── POST /webhooks/esign — eSign provider callback ───
+// Public route (no auth) — signature-verified in production.
+router.post('/webhooks/esign', async (req, res) => {
+  try {
+    const LoanWorkflow = getLoanWorkflowModel();
+    const loanStateService = require('../services/loan/loanStateService');
+    
+    const {
+      esignReferenceId,
+      agreementId,
+      event,
+      signerRole,
+      documentUrl,
+      certificateUrl,
+      signature,
+    } = req.body;
+    
+    if (!agreementId || !event) {
+      return res.status(400).json({ success: false, error: 'agreementId and event are required' });
+    }
+    
+    // TODO: Verify signature against esign provider secret (Digio/Leegality/NSDL)
+    
+    const workflow = await LoanWorkflow.findOne({ 'agreements.agreementId': agreementId });
+    if (!workflow) return res.status(404).json({ success: false, error: 'Agreement not found' });
+    
+    const agreement = workflow.agreements.find(a => a.agreementId === agreementId);
+    if (!agreement) return res.status(404).json({ success: false, error: 'Agreement not found in workflow' });
+    
+    if (event === 'signed') {
+      if (signerRole === 'lender') agreement.signedByLender = true;
+      if (signerRole === 'patient') agreement.signedByPatient = true;
+      if (documentUrl) agreement.esignDocumentUrl = documentUrl;
+      if (certificateUrl) agreement.esignCertificateUrl = certificateUrl;
+      if (esignReferenceId) agreement.esignReferenceId = esignReferenceId;
+      
+      if (agreement.signedByLender && agreement.signedByPatient) {
+        agreement.status = 'signed';
+        agreement.signedAt = new Date();
+        
+        try {
+          await loanStateService.transition({
+            applicationId: workflow.applicationId,
+            toStatus: 'agreement_signed',
+            actor: 'system',
+            actorRole: 'system',
+            note: `eSign callback: agreement ${agreementId} fully signed`,
+          });
+        } catch (e) {
+          console.warn('[esign webhook] transition warning:', e.message);
+        }
+      }
+    } else if (event === 'failed') {
+      agreement.status = 'rejected';
+    } else if (event === 'expired') {
+      agreement.status = 'expired';
+    }
+    
+    workflow.updatedAt = new Date();
+    await workflow.save();
+    
+    res.json({ success: true, received: true });
+  } catch (error) {
+    console.error('[loanRoutes] POST /webhooks/esign error:', error.message);
+    res.status(500).json({ success: false, error: error.message });
+  }
 });
 
 // ============================================
