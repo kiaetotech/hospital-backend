@@ -41,10 +41,10 @@ router.get('/health', (req, res) => {
     status: 'active',
     version: '2.0',
     note: 'New consolidated loan endpoints. Existing /api/loan/* still active.',
-    taskStatus: {
+        taskStatus: {
       task9: 'done — scaffolding',
       task10: 'done — Loan Products CRUD',
-      task11: 'pending — Offers lifecycle',
+      task11: 'done — Offers lifecycle',
       task12: 'pending — Agreements + eSign',
       task13: 'pending — Disbursements',
       task14: 'pending — Repayment + mandate',
@@ -529,8 +529,13 @@ router.post('/products/:productId/version', authenticate, authenticateLender, as
 });
 
 // ============================================
-// OFFERS (Task 11 placeholder)
+// OFFERS (Task 11)
 // ============================================
+// Lender issues offer → patient accepts/declines → offer versioned if revised.
+// Uses LoanWorkflow model (offers[] sub-document).
+// Uses loanStateService for LoanApplication state transitions.
+
+// ─── GET /offers/:applicationId — list all offers (versions) for an application ───
 router.get('/offers/:applicationId', authenticate, authenticateLender, async (req, res) => {
   try {
     const LoanWorkflow = getLoanWorkflowModel();
@@ -551,28 +556,575 @@ router.get('/offers/:applicationId', authenticate, authenticateLender, async (re
   }
 });
 
+// ─── POST /offers — lender issues a new offer ───
 router.post('/offers', authenticate, authenticateLender, async (req, res) => {
-  res.status(501).json({
-    success: false,
-    error: 'Not implemented',
-    message: 'POST /offers will be implemented in Task 11',
-  });
+  try {
+    const LoanWorkflow = getLoanWorkflowModel();
+    const LoanApplication = getLoanApplicationModel();
+    const loanStateService = require('../services/loan/loanStateService');
+    
+    const {
+      applicationId,
+      sanctionedAmount,
+      interestRate,
+      tenureMonths,
+      emi,
+      processingFee,
+      totalPayable,
+      validUntilDays,
+      notes,
+    } = req.body;
+    
+    // ─── Validation ───
+    const errors = [];
+    if (!applicationId) errors.push('applicationId is required');
+    if (typeof sanctionedAmount !== 'number' || sanctionedAmount <= 0) {
+      errors.push('sanctionedAmount must be > 0');
+    }
+    if (typeof interestRate !== 'number' || interestRate < 0 || interestRate > 100) {
+      errors.push('interestRate must be between 0 and 100');
+    }
+    if (typeof tenureMonths !== 'number' || tenureMonths < 1) {
+      errors.push('tenureMonths must be >= 1');
+    }
+    if (errors.length > 0) {
+      return res.status(400).json({ success: false, error: 'Validation failed', details: errors });
+    }
+    
+    // ─── Load application ───
+    const application = await LoanApplication.findOne({
+      applicationId,
+      lenderId: req.user.id,
+    });
+    if (!application) {
+      return res.status(404).json({ success: false, error: 'Application not found for this lender' });
+    }
+    
+    // ─── Verify application state permits offer issuance ───
+    if (!['under_review', 'document_pending'].includes(application.status)) {
+      return res.status(400).json({
+        success: false,
+        error: `Cannot issue offer. Application status is "${application.status}". Allowed: under_review, document_pending.`,
+        code: 'INVALID_APPLICATION_STATE',
+      });
+    }
+    
+    // ─── Compute EMI if not provided ───
+    let computedEMI = emi;
+    let computedTotalPayable = totalPayable;
+    if (!computedEMI) {
+      const monthlyRate = interestRate / 100 / 12;
+      if (monthlyRate === 0) {
+        computedEMI = Math.round(sanctionedAmount / tenureMonths);
+      } else {
+        const num = sanctionedAmount * monthlyRate * Math.pow(1 + monthlyRate, tenureMonths);
+        const den = Math.pow(1 + monthlyRate, tenureMonths) - 1;
+        computedEMI = Math.round(num / den);
+      }
+      computedTotalPayable = computedEMI * tenureMonths;
+    }
+    
+    // ─── Load/create workflow ───
+    const workflow = await LoanWorkflow.getOrCreate(
+      applicationId,
+      req.user.id,
+      application.patientId
+    );
+    
+    // ─── Build offer ───
+    const validUntil = new Date();
+    validUntil.setDate(validUntil.getDate() + (validUntilDays || 7));
+    
+    const offerId = `OFFER_${Date.now()}_${Math.floor(Math.random() * 1000)}`;
+    const offer = workflow.addOffer({
+      offerId,
+      sanctionedAmount,
+      interestRate,
+      tenureMonths,
+      emi: computedEMI,
+      processingFee: processingFee || 0,
+      totalPayable: computedTotalPayable,
+      validUntil,
+      status: 'issued',
+      issuedBy: req.user.email || req.user.lenderId || 'lender',
+      issuedByRole: 'lender_underwriter',
+      notes: notes || '',
+    });
+    
+    await workflow.save();
+    
+    // ─── Transition application state ───
+    try {
+      await loanStateService.transition({
+        applicationId,
+        toStatus: 'offer_issued',
+        actor: req.user.email || req.user.lenderId,
+        actorRole: 'lender_underwriter',
+        note: `Offer issued: ₹${sanctionedAmount} @ ${interestRate}% for ${tenureMonths}m`,
+        metadata: { offerId, emi: computedEMI },
+      });
+    } catch (stateErr) {
+      if (stateErr.name === 'LoanStateError') {
+        return res.status(400).json({
+          success: false,
+          error: stateErr.message,
+          code: stateErr.code,
+          offerId,
+          note: 'Offer saved but state transition failed',
+        });
+      }
+      throw stateErr;
+    }
+    
+    res.status(201).json({
+      success: true,
+      offer,
+      offerId,
+      applicationId,
+      message: `Offer issued. Valid until ${validUntil.toISOString().split('T')[0]}.`,
+    });
+  } catch (error) {
+    console.error('[loanRoutes] POST /offers error:', error.message);
+    res.status(500).json({ success: false, error: error.message });
+  }
 });
 
+// ─── POST /offers/:offerId/accept — patient accepts offer ───
 router.post('/offers/:offerId/accept', authenticate, async (req, res) => {
-  res.status(501).json({
-    success: false,
-    error: 'Not implemented',
-    message: 'Offer acceptance will be implemented in Task 11',
-  });
+  try {
+    const LoanWorkflow = getLoanWorkflowModel();
+    const LoanApplication = getLoanApplicationModel();
+    const loanStateService = require('../services/loan/loanStateService');
+    
+    const { offerId } = req.params;
+    
+    // ─── Find workflow containing this offer ───
+    // (No applicationId in URL — search by offerId across workflows for this patient)
+    const workflow = await LoanWorkflow.findOne({
+      'offers.offerId': offerId,
+    });
+    if (!workflow) {
+      return res.status(404).json({ success: false, error: 'Offer not found' });
+    }
+    
+    // ─── Verify patient owns this application ───
+    const application = await LoanApplication.findOne({
+      applicationId: workflow.applicationId,
+    });
+    if (!application) {
+      return res.status(404).json({ success: false, error: 'Application not found' });
+    }
+    if (application.patientId.toString() !== req.user.id.toString()) {
+      return res.status(403).json({ success: false, error: 'You do not own this application' });
+    }
+    
+    // ─── Find offer ───
+    const offer = workflow.offers.find(o => o.offerId === offerId);
+    if (!offer) {
+      return res.status(404).json({ success: false, error: 'Offer not found in workflow' });
+    }
+    if (offer.status !== 'issued') {
+      return res.status(400).json({
+        success: false,
+        error: `Offer is not in "issued" state (current: ${offer.status})`,
+        code: 'OFFER_NOT_ISSUED',
+      });
+    }
+    
+    // ─── Check expiry ───
+    if (new Date() > offer.validUntil) {
+      offer.status = 'expired';
+      offer.expiredAt = new Date();
+      await workflow.save();
+      return res.status(400).json({
+        success: false,
+        error: 'Offer has expired',
+        code: 'OFFER_EXPIRED',
+      });
+    }
+    
+    // ─── Accept ───
+    offer.status = 'accepted';
+    offer.acceptedAt = new Date();
+    workflow.updatedAt = new Date();
+    await workflow.save();
+    
+    // ─── Transition application state ───
+    try {
+      await loanStateService.transition({
+        applicationId: workflow.applicationId,
+        toStatus: 'offer_accepted',
+        actor: req.user.id,
+        actorRole: 'patient',
+        note: `Patient accepted offer ${offerId}`,
+        metadata: { offerId },
+      });
+    } catch (stateErr) {
+      if (stateErr.name === 'LoanStateError') {
+        return res.status(400).json({
+          success: false,
+          error: stateErr.message,
+          code: stateErr.code,
+          note: 'Offer accepted but state transition failed',
+        });
+      }
+      throw stateErr;
+    }
+    
+    res.json({
+      success: true,
+      offer,
+      offerId,
+      applicationId: workflow.applicationId,
+      nextStep: 'agreement_pending',
+      message: 'Offer accepted. Agreement signing is the next step.',
+    });
+  } catch (error) {
+    console.error('[loanRoutes] POST /offers/:id/accept error:', error.message);
+    res.status(500).json({ success: false, error: error.message });
+  }
 });
 
+// ─── POST /offers/:offerId/decline — patient declines offer ───
 router.post('/offers/:offerId/decline', authenticate, async (req, res) => {
-  res.status(501).json({
-    success: false,
-    error: 'Not implemented',
-    message: 'Offer decline will be implemented in Task 11',
-  });
+  try {
+    const LoanWorkflow = getLoanWorkflowModel();
+    const LoanApplication = getLoanApplicationModel();
+    const loanStateService = require('../services/loan/loanStateService');
+    
+    const { offerId } = req.params;
+    const { reason } = req.body;
+    
+    if (!reason || reason.trim().length === 0) {
+      return res.status(400).json({ success: false, error: 'Decline reason is required' });
+    }
+    
+    const workflow = await LoanWorkflow.findOne({ 'offers.offerId': offerId });
+    if (!workflow) {
+      return res.status(404).json({ success: false, error: 'Offer not found' });
+    }
+    
+    const application = await LoanApplication.findOne({ applicationId: workflow.applicationId });
+    if (!application) {
+      return res.status(404).json({ success: false, error: 'Application not found' });
+    }
+    if (application.patientId.toString() !== req.user.id.toString()) {
+      return res.status(403).json({ success: false, error: 'You do not own this application' });
+    }
+    
+    const offer = workflow.offers.find(o => o.offerId === offerId);
+    if (!offer) {
+      return res.status(404).json({ success: false, error: 'Offer not found' });
+    }
+    if (offer.status !== 'issued') {
+      return res.status(400).json({
+        success: false,
+        error: `Offer is not in "issued" state (current: ${offer.status})`,
+        code: 'OFFER_NOT_ISSUED',
+      });
+    }
+    
+    offer.status = 'declined';
+    offer.declinedAt = new Date();
+    offer.declineReason = reason.trim();
+    workflow.updatedAt = new Date();
+    await workflow.save();
+    
+    try {
+      await loanStateService.transition({
+        applicationId: workflow.applicationId,
+        toStatus: 'offer_declined',
+        actor: req.user.id,
+        actorRole: 'patient',
+        reason: reason.trim(),
+        note: `Patient declined offer ${offerId}`,
+        metadata: { offerId },
+      });
+    } catch (stateErr) {
+      if (stateErr.name === 'LoanStateError') {
+        return res.status(400).json({
+          success: false,
+          error: stateErr.message,
+          code: stateErr.code,
+          note: 'Offer declined but state transition failed',
+        });
+      }
+      throw stateErr;
+    }
+    
+    res.json({
+      success: true,
+      offer,
+      offerId,
+      applicationId: workflow.applicationId,
+      message: 'Offer declined. Lender may issue a revised offer.',
+    });
+  } catch (error) {
+    console.error('[loanRoutes] POST /offers/:id/decline error:', error.message);
+    res.status(500).json({ success: false, error: error.message });
+  }
+});
+
+// ─── POST /offers/:offerId/version — lender revises offer (creates new version) ───
+router.post('/offers/:offerId/version', authenticate, authenticateLender, async (req, res) => {
+  try {
+    const LoanWorkflow = getLoanWorkflowModel();
+    const LoanApplication = getLoanApplicationModel();
+    const loanStateService = require('../services/loan/loanStateService');
+    
+    const { offerId } = req.params;
+    const {
+      sanctionedAmount,
+      interestRate,
+      tenureMonths,
+      processingFee,
+      validUntilDays,
+      notes,
+    } = req.body;
+    
+    const workflow = await LoanWorkflow.findOne({ 'offers.offerId': offerId });
+    if (!workflow) {
+      return res.status(404).json({ success: false, error: 'Offer not found' });
+    }
+    
+    const application = await LoanApplication.findOne({
+      applicationId: workflow.applicationId,
+      lenderId: req.user.id,
+    });
+    if (!application) {
+      return res.status(403).json({ success: false, error: 'Application not owned by this lender' });
+    }
+    
+    const oldOffer = workflow.offers.find(o => o.offerId === offerId);
+    if (!oldOffer) {
+      return res.status(404).json({ success: false, error: 'Offer not found' });
+    }
+    
+    // Can only version offers that are issued or declined (not yet accepted/expired/withdrawn)
+    if (!['issued', 'declined'].includes(oldOffer.status)) {
+      return res.status(400).json({
+        success: false,
+        error: `Cannot version offer in status "${oldOffer.status}". Allowed: issued, declined.`,
+        code: 'OFFER_NOT_VERSIONABLE',
+      });
+    }
+    
+    // ─── Use new values or fall back to old ───
+    const newSanctioned = sanctionedAmount || oldOffer.sanctionedAmount;
+    const newRate = interestRate !== undefined ? interestRate : oldOffer.interestRate;
+    const newTenure = tenureMonths || oldOffer.tenureMonths;
+    const newProcessingFee = processingFee !== undefined ? processingFee : oldOffer.processingFee;
+    
+    // ─── Compute EMI ───
+    const monthlyRate = newRate / 100 / 12;
+    let newEMI;
+    if (monthlyRate === 0) {
+      newEMI = Math.round(newSanctioned / newTenure);
+    } else {
+      const num = newSanctioned * monthlyRate * Math.pow(1 + monthlyRate, newTenure);
+      const den = Math.pow(1 + monthlyRate, newTenure) - 1;
+      newEMI = Math.round(num / den);
+    }
+    
+    const validUntil = new Date();
+    validUntil.setDate(validUntil.getDate() + (validUntilDays || 7));
+    
+    // ─── addOffer auto-supersedes old active offer ───
+    const newOfferId = `OFFER_${Date.now()}_${Math.floor(Math.random() * 1000)}`;
+    const newOffer = workflow.addOffer({
+      offerId: newOfferId,
+      sanctionedAmount: newSanctioned,
+      interestRate: newRate,
+      tenureMonths: newTenure,
+      emi: newEMI,
+      processingFee: newProcessingFee,
+      totalPayable: newEMI * newTenure,
+      validUntil,
+      issuedBy: req.user.email || req.user.lenderId || 'lender',
+      issuedByRole: 'lender_underwriter',
+      notes: notes || `Revised offer (replaces ${offerId})`,
+    });
+    
+    workflow.updatedAt = new Date();
+    await workflow.save();
+    
+    // If app was in offer_declined state, transition back to offer_issued
+    if (application.status === 'offer_declined') {
+      try {
+        await loanStateService.transition({
+          applicationId: workflow.applicationId,
+          toStatus: 'under_review',
+          actor: req.user.email || req.user.lenderId,
+          actorRole: 'lender_underwriter',
+          note: 'Lender is issuing revised offer',
+        });
+        await loanStateService.transition({
+          applicationId: workflow.applicationId,
+          toStatus: 'offer_issued',
+          actor: req.user.email || req.user.lenderId,
+          actorRole: 'lender_underwriter',
+          note: `Revised offer ${newOfferId} issued`,
+          metadata: { offerId: newOfferId, replaces: offerId },
+        });
+      } catch (stateErr) {
+        console.warn('[offer versioning] State transition warning:', stateErr.message);
+      }
+    }
+    
+    res.status(201).json({
+      success: true,
+      oldOfferId: offerId,
+      newOfferId,
+      newOffer,
+      applicationId: workflow.applicationId,
+      message: `New offer version issued: ${newOfferId}`,
+    });
+  } catch (error) {
+    console.error('[loanRoutes] POST /offers/:id/version error:', error.message);
+    res.status(500).json({ success: false, error: error.message });
+  }
+});
+
+// ─── POST /offers/:offerId/withdraw — lender withdraws offer ───
+router.post('/offers/:offerId/withdraw', authenticate, authenticateLender, async (req, res) => {
+  try {
+    const LoanWorkflow = getLoanWorkflowModel();
+    const LoanApplication = getLoanApplicationModel();
+    const loanStateService = require('../services/loan/loanStateService');
+    
+    const { offerId } = req.params;
+    const { reason } = req.body;
+    
+    if (!reason || reason.trim().length === 0) {
+      return res.status(400).json({ success: false, error: 'Withdraw reason is required' });
+    }
+    
+    const workflow = await LoanWorkflow.findOne({ 'offers.offerId': offerId });
+    if (!workflow) {
+      return res.status(404).json({ success: false, error: 'Offer not found' });
+    }
+    
+    const application = await LoanApplication.findOne({
+      applicationId: workflow.applicationId,
+      lenderId: req.user.id,
+    });
+    if (!application) {
+      return res.status(403).json({ success: false, error: 'Application not owned by this lender' });
+    }
+    
+    const offer = workflow.offers.find(o => o.offerId === offerId);
+    if (!offer) {
+      return res.status(404).json({ success: false, error: 'Offer not found' });
+    }
+    if (offer.status !== 'issued') {
+      return res.status(400).json({
+        success: false,
+        error: `Only "issued" offers can be withdrawn (current: ${offer.status})`,
+        code: 'OFFER_NOT_ISSUED',
+      });
+    }
+    
+    offer.status = 'withdrawn';
+    offer.withdrawnAt = new Date();
+    offer.withdrawalReason = reason.trim();
+    workflow.updatedAt = new Date();
+    await workflow.save();
+    
+    // Move app back to under_review so lender can reissue
+    try {
+      await loanStateService.transition({
+        applicationId: workflow.applicationId,
+        toStatus: 'under_review',
+        actor: req.user.email || req.user.lenderId,
+        actorRole: 'lender_underwriter',
+        reason: reason.trim(),
+        note: `Offer ${offerId} withdrawn`,
+      });
+    } catch (stateErr) {
+      if (stateErr.name === 'LoanStateError') {
+        return res.status(400).json({
+          success: false,
+          error: stateErr.message,
+          code: stateErr.code,
+          note: 'Offer withdrawn but state transition failed',
+        });
+      }
+      throw stateErr;
+    }
+    
+    res.json({
+      success: true,
+      offerId,
+      offer,
+      applicationId: workflow.applicationId,
+      message: 'Offer withdrawn. Application returned to under_review.',
+    });
+  } catch (error) {
+    console.error('[loanRoutes] POST /offers/:id/withdraw error:', error.message);
+    res.status(500).json({ success: false, error: error.message });
+  }
+});
+
+// ─── POST /offers/:offerId/expire — system/lender expires offer ───
+router.post('/offers/:offerId/expire', authenticate, authenticateLender, async (req, res) => {
+  try {
+    const LoanWorkflow = getLoanWorkflowModel();
+    const LoanApplication = getLoanApplicationModel();
+    const loanStateService = require('../services/loan/loanStateService');
+    
+    const { offerId } = req.params;
+    
+    const workflow = await LoanWorkflow.findOne({ 'offers.offerId': offerId });
+    if (!workflow) {
+      return res.status(404).json({ success: false, error: 'Offer not found' });
+    }
+    
+    const application = await LoanApplication.findOne({
+      applicationId: workflow.applicationId,
+      lenderId: req.user.id,
+    });
+    if (!application) {
+      return res.status(403).json({ success: false, error: 'Application not owned by this lender' });
+    }
+    
+    const offer = workflow.offers.find(o => o.offerId === offerId);
+    if (!offer) {
+      return res.status(404).json({ success: false, error: 'Offer not found' });
+    }
+    if (offer.status !== 'issued') {
+      return res.status(400).json({
+        success: false,
+        error: `Only "issued" offers can be expired (current: ${offer.status})`,
+        code: 'OFFER_NOT_ISSUED',
+      });
+    }
+    
+    offer.status = 'expired';
+    offer.expiredAt = new Date();
+    workflow.updatedAt = new Date();
+    await workflow.save();
+    
+    try {
+      await loanStateService.transition({
+        applicationId: workflow.applicationId,
+        toStatus: 'offer_expired',
+        actor: req.user.email || req.user.lenderId,
+        actorRole: 'lender_ops',
+        note: `Offer ${offerId} expired`,
+      });
+    } catch (stateErr) {
+      console.warn('[offer expire] State transition warning:', stateErr.message);
+    }
+    
+    res.json({
+      success: true,
+      offerId,
+      message: 'Offer marked as expired.',
+    });
+  } catch (error) {
+    console.error('[loanRoutes] POST /offers/:id/expire error:', error.message);
+    res.status(500).json({ success: false, error: error.message });
+  }
 });
 
 // ============================================
