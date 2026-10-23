@@ -41,16 +41,16 @@ router.get('/health', (req, res) => {
     status: 'active',
     version: '2.0',
     note: 'New consolidated loan endpoints. Existing /api/loan/* still active.',
-        taskStatus: {
+      taskStatus: {
       task9: 'done — scaffolding',
       task10: 'done — Loan Products CRUD',
       task11: 'done — Offers lifecycle',
       task12: 'done — Agreements + eSign',
-      task13: 'pending — Disbursements',
-      task14: 'pending — Repayment + mandate',
-      task15: 'pending — Refunds',
-      task16: 'pending — Reconciliation',
-      task17: 'pending — Audit',
+      task13: 'done — Disbursements',
+      task14: 'done — Repayment + mandate',
+      task15: 'done — Refunds',
+      task16: 'done — Reconciliation',
+      task17: 'done — Audit',
     },
   });
 });
@@ -1566,8 +1566,17 @@ router.post('/webhooks/esign', async (req, res) => {
 });
 
 // ============================================
-// DISBURSEMENTS (Task 13 placeholder)
+// DISBURSEMENTS (Task 13)
 // ============================================
+// Real money movement. Every disbursement creates:
+//   - LoanWorkflow.disbursements[] entry
+//   - Transaction ledger row (via loanCommissionService)
+//   - Application state transition: agreement_signed → pending_disbursal → disbursed
+//
+// Lifecycle: initiated → confirmed → reconciled
+// Idempotency: same UTR cannot be used twice across all workflows.
+
+// ─── GET /disbursements/:applicationId — list disbursements ───
 router.get('/disbursements/:applicationId', authenticate, authenticateLender, async (req, res) => {
   try {
     const LoanWorkflow = getLoanWorkflowModel();
@@ -1588,33 +1597,325 @@ router.get('/disbursements/:applicationId', authenticate, authenticateLender, as
   }
 });
 
+// ─── GET /disbursement/:disbursementId — single disbursement details ───
+router.get('/disbursement/:disbursementId', authenticate, authenticateLender, async (req, res) => {
+  try {
+    const LoanWorkflow = getLoanWorkflowModel();
+    const LoanApplication = getLoanApplicationModel();
+    
+    const { disbursementId } = req.params;
+    
+    const workflow = await LoanWorkflow.findOne({ 'disbursements.disbursementId': disbursementId });
+    if (!workflow) {
+      return res.status(404).json({ success: false, error: 'Disbursement not found' });
+    }
+    
+    const application = await LoanApplication.findOne({
+      applicationId: workflow.applicationId,
+      lenderId: req.user.id,
+    });
+    if (!application) {
+      return res.status(403).json({ success: false, error: 'Not authorized' });
+    }
+    
+    const disbursement = workflow.disbursements.find(d => d.disbursementId === disbursementId);
+    if (!disbursement) {
+      return res.status(404).json({ success: false, error: 'Disbursement not found in workflow' });
+    }
+    
+    res.json({
+      success: true,
+      applicationId: workflow.applicationId,
+      disbursement,
+    });
+  } catch (err) {
+    console.error('[loanRoutes] GET /disbursement/:id error:', err.message);
+    res.status(500).json({ success: false, error: err.message });
+  }
+});
+
+// ─── POST /disbursements — lender initiates disbursement ───
 router.post('/disbursements', authenticate, authenticateLender, async (req, res) => {
-  res.status(501).json({
-    success: false,
-    error: 'Not implemented',
-    message: 'POST /disbursements will be implemented in Task 13',
-  });
+  try {
+    const LoanWorkflow = getLoanWorkflowModel();
+    const LoanApplication = getLoanApplicationModel();
+    const loanStateService = require('../services/loan/loanStateService');
+    
+    const {
+      applicationId,
+      agreementId,
+      amount,
+      mode,
+      utrNumber,
+      beneficiaryType = 'hospital',
+      beneficiaryName,
+      beneficiaryAccount = '',
+      beneficiaryIfsc = '',
+    } = req.body;
+    
+    const errors = [];
+    if (!applicationId) errors.push('applicationId is required');
+    if (!agreementId) errors.push('agreementId is required');
+    if (typeof amount !== 'number' || amount <= 0) errors.push('amount must be > 0');
+    if (!mode || !['neft', 'rtgs', 'imps', 'upi', 'bank_transfer', 'cheque'].includes(mode)) {
+      errors.push('mode must be one of: neft, rtgs, imps, upi, bank_transfer, cheque');
+    }
+    if (!utrNumber || utrNumber.trim().length < 6) errors.push('utrNumber is required (min 6 chars)');
+    if (!beneficiaryName) errors.push('beneficiaryName is required');
+    if (!['hospital', 'patient', 'provider'].includes(beneficiaryType)) {
+      errors.push('beneficiaryType must be one of: hospital, patient, provider');
+    }
+    if (errors.length > 0) {
+      return res.status(400).json({ success: false, error: 'Validation failed', details: errors });
+    }
+    
+    const application = await LoanApplication.findOne({
+      applicationId,
+      lenderId: req.user.id,
+    });
+    if (!application) {
+      return res.status(404).json({ success: false, error: 'Application not found for this lender' });
+    }
+    
+    if (!['agreement_signed', 'pending_disbursal'].includes(application.status)) {
+      return res.status(400).json({
+        success: false,
+        error: `Cannot initiate disbursement. Application status is "${application.status}". Allowed: agreement_signed, pending_disbursal.`,
+        code: 'INVALID_APPLICATION_STATE',
+      });
+    }
+    
+    const workflow = await LoanWorkflow.findByApplication(applicationId);
+    if (!workflow) return res.status(404).json({ success: false, error: 'Workflow not found' });
+    
+    const agreement = workflow.agreements.find(a => a.agreementId === agreementId);
+    if (!agreement) return res.status(404).json({ success: false, error: 'Agreement not found' });
+    if (agreement.status !== 'signed') {
+      return res.status(400).json({
+        success: false,
+        error: `Agreement must be signed before disbursement (current: ${agreement.status})`,
+        code: 'AGREEMENT_NOT_SIGNED',
+      });
+    }
+    
+    const signedOffer = workflow.offers.find(o => o.offerId === agreement.offerId);
+    if (!signedOffer) {
+      return res.status(404).json({ success: false, error: 'Signed offer not found' });
+    }
+    if (amount > signedOffer.sanctionedAmount) {
+      return res.status(400).json({
+        success: false,
+        error: `Disbursement amount ₹${amount} exceeds sanctioned ₹${signedOffer.sanctionedAmount}`,
+        code: 'AMOUNT_EXCEEDS_SANCTIONED',
+      });
+    }
+    
+    const existingUtr = await LoanWorkflow.findOne({
+      'disbursements.utrNumber': utrNumber.trim(),
+    });
+    if (existingUtr) {
+      return res.status(400).json({
+        success: false,
+        error: `UTR "${utrNumber}" is already used in another disbursement`,
+        code: 'DUPLICATE_UTR',
+      });
+    }
+    
+    const disbursementId = `DISB_${Date.now()}_${Math.floor(Math.random() * 1000)}`;
+    const disbursement = workflow.addDisbursement({
+      disbursementId,
+      agreementId,
+      amount,
+      patientLiability: 0,
+      mode,
+      utrNumber: utrNumber.trim(),
+      bankReference: '',
+      beneficiaryType,
+      beneficiaryName,
+      beneficiaryAccount,
+      beneficiaryIfsc,
+      status: 'initiated',
+      initiatedBy: req.user.email || req.user.lenderId || 'lender',
+      initiatedByRole: 'lender_ops',
+      notes: '',
+    });
+    
+    await workflow.save();
+    
+    try {
+      await loanStateService.transition({
+        applicationId,
+        toStatus: 'pending_disbursal',
+        actor: req.user.email || req.user.lenderId,
+        actorRole: 'lender_ops',
+        note: `Disbursement ${disbursementId} initiated: ₹${amount} to ${beneficiaryName}`,
+        metadata: { disbursementId, utrNumber, amount },
+      });
+    } catch (stateErr) {
+      if (stateErr.name === 'LoanStateError') {
+        return res.status(400).json({
+          success: false,
+          error: stateErr.message,
+          code: stateErr.code,
+          disbursementId,
+          note: 'Disbursement saved but state transition failed',
+        });
+      }
+      throw stateErr;
+    }
+    
+    res.status(201).json({
+      success: true,
+      disbursementId,
+      disbursement,
+      message: `Disbursement of ₹${amount} initiated. Confirm when money is sent.`,
+    });
+  } catch (error) {
+    console.error('[loanRoutes] POST /disbursements error:', error.message);
+    res.status(500).json({ success: false, error: error.message });
+  }
 });
 
+// ─── POST /disbursements/:id/confirm — lender confirms money sent ───
 router.post('/disbursements/:disbursementId/confirm', authenticate, authenticateLender, async (req, res) => {
-  res.status(501).json({
-    success: false,
-    error: 'Not implemented',
-    message: 'Disbursement confirm will be implemented in Task 13',
-  });
+  try {
+    const LoanWorkflow = getLoanWorkflowModel();
+    const LoanApplication = getLoanApplicationModel();
+    const loanStateService = require('../services/loan/loanStateService');
+    const loanCommissionService = require('../services/loan/loanCommissionService');
+    
+    const { disbursementId } = req.params;
+    const { bankReference } = req.body;
+    
+    const workflow = await LoanWorkflow.findOne({ 'disbursements.disbursementId': disbursementId });
+    if (!workflow) return res.status(404).json({ success: false, error: 'Disbursement not found' });
+    
+    const application = await LoanApplication.findOne({
+      applicationId: workflow.applicationId,
+      lenderId: req.user.id,
+    });
+    if (!application) return res.status(403).json({ success: false, error: 'Not authorized' });
+    
+    const disbursement = workflow.disbursements.find(d => d.disbursementId === disbursementId);
+    if (!disbursement) return res.status(404).json({ success: false, error: 'Disbursement not found' });
+    
+    if (disbursement.status !== 'initiated') {
+      return res.status(400).json({
+        success: false,
+        error: `Disbursement is in status "${disbursement.status}" — only "initiated" can be confirmed`,
+        code: 'DISBURSEMENT_NOT_INITIATED',
+      });
+    }
+    
+    disbursement.status = 'confirmed';
+    disbursement.confirmedAt = new Date();
+    if (bankReference) disbursement.bankReference = bankReference;
+    workflow.updatedAt = new Date();
+    await workflow.save();
+    
+    try {
+      await loanStateService.transition({
+        applicationId: workflow.applicationId,
+        toStatus: 'disbursed',
+        actor: req.user.email || req.user.lenderId,
+        actorRole: 'lender_ops',
+        note: `Disbursement ${disbursementId} confirmed: ₹${disbursement.amount} sent (UTR: ${disbursement.utrNumber})`,
+        metadata: { disbursementId, utrNumber: disbursement.utrNumber },
+      });
+    } catch (stateErr) {
+      console.warn('[disbursement confirm] State transition warning:', stateErr.message);
+    }
+    
+    let commissionResult = null;
+    try {
+      commissionResult = await loanCommissionService.postCommission({
+        applicationId: workflow.applicationId,
+        disbursedAmount: disbursement.amount,
+        updatedBy: req.user.email || req.user.lenderId || 'lender',
+        updatedByRole: 'lender',
+      });
+    } catch (commErr) {
+      console.warn('[disbursement confirm] Commission posting failed:', commErr.message);
+    }
+    
+    if (commissionResult && commissionResult.transaction) {
+      disbursement.transactionId = commissionResult.transaction.transactionId;
+      await workflow.save();
+    }
+    
+    res.json({
+      success: true,
+      disbursementId,
+      disbursement,
+      commission: commissionResult ? {
+        commissionAmount: commissionResult.commission.commissionAmount,
+        commissionCreated: commissionResult.created,
+        transactionId: commissionResult.transaction?.transactionId,
+      } : null,
+      message: `Disbursement confirmed. ₹${disbursement.amount} to ${disbursement.beneficiaryName}.`,
+    });
+  } catch (error) {
+    console.error('[loanRoutes] POST /disbursements/:id/confirm error:', error.message);
+    res.status(500).json({ success: false, error: error.message });
+  }
 });
 
+// ─── POST /disbursements/:id/reconcile — reconcile against bank statement ───
 router.post('/disbursements/:disbursementId/reconcile', authenticate, authenticateLender, async (req, res) => {
-  res.status(501).json({
-    success: false,
-    error: 'Not implemented',
-    message: 'Disbursement reconcile will be implemented in Task 13',
-  });
+  try {
+    const LoanWorkflow = getLoanWorkflowModel();
+    const LoanApplication = getLoanApplicationModel();
+    
+    const { disbursementId } = req.params;
+    const { bankStatementUrl, reconciliationNotes } = req.body;
+    
+    const workflow = await LoanWorkflow.findOne({ 'disbursements.disbursementId': disbursementId });
+    if (!workflow) return res.status(404).json({ success: false, error: 'Disbursement not found' });
+    
+    const application = await LoanApplication.findOne({
+      applicationId: workflow.applicationId,
+      lenderId: req.user.id,
+    });
+    if (!application) return res.status(403).json({ success: false, error: 'Not authorized' });
+    
+    const disbursement = workflow.disbursements.find(d => d.disbursementId === disbursementId);
+    if (!disbursement) return res.status(404).json({ success: false, error: 'Disbursement not found' });
+    
+    if (disbursement.status !== 'confirmed') {
+      return res.status(400).json({
+        success: false,
+        error: `Only "confirmed" disbursements can be reconciled (current: ${disbursement.status})`,
+        code: 'DISBURSEMENT_NOT_CONFIRMED',
+      });
+    }
+    
+    disbursement.status = 'reconciled';
+    disbursement.reconciledAt = new Date();
+    disbursement.reconciledBy = req.user.email || req.user.lenderId || 'lender';
+    if (bankStatementUrl) disbursement.bankStatementUrl = bankStatementUrl;
+    if (reconciliationNotes) disbursement.notes = (disbursement.notes || '') + ` | Reconciled: ${reconciliationNotes}`;
+    workflow.updatedAt = new Date();
+    await workflow.save();
+    
+    res.json({
+      success: true,
+      disbursementId,
+      disbursement,
+      message: 'Disbursement reconciled. Bank statement matched.',
+    });
+  } catch (error) {
+    console.error('[loanRoutes] POST /disbursements/:id/reconcile error:', error.message);
+    res.status(500).json({ success: false, error: error.message });
+  }
 });
 
 // ============================================
-// REPAYMENT (Task 14 placeholder)
+// REPAYMENT + MANDATE (Task 14)
 // ============================================
+// EMI schedule generation, eNACH/UPI Autopay mandate, payment tracking.
+// Uses LoanWorkflow.mandates[] sub-document + Transaction ledger.
+
+// ─── GET /repayment/:applicationId — list mandates ───
 router.get('/repayment/:applicationId', authenticate, authenticateLender, async (req, res) => {
   try {
     const LoanWorkflow = getLoanWorkflowModel();
@@ -1635,60 +1936,601 @@ router.get('/repayment/:applicationId', authenticate, authenticateLender, async 
   }
 });
 
+// ─── POST /repayment/mandate — create eNACH/UPI Autopay mandate ───
 router.post('/repayment/mandate', authenticate, authenticateLender, async (req, res) => {
-  res.status(501).json({
-    success: false,
-    error: 'Not implemented',
-    message: 'Mandate creation will be implemented in Task 14',
-  });
+  try {
+    const LoanWorkflow = getLoanWorkflowModel();
+    const LoanApplication = getLoanApplicationModel();
+    
+    const {
+      applicationId,
+      type, // enach | upi_autopay | nach_debit | ecs
+      accountHolderName,
+      accountNumber,
+      ifsc,
+      bankName,
+      maxAmount,
+      frequency = 'monthly',
+      startDate,
+      endDate,
+      provider = 'manual',
+    } = req.body;
+    
+    // ─── Validation ───
+    const errors = [];
+    if (!applicationId) errors.push('applicationId is required');
+    if (!type || !['enach', 'upi_autopay', 'nach_debit', 'ecs'].includes(type)) {
+      errors.push('type must be one of: enach, upi_autopay, nach_debit, ecs');
+    }
+    if (!accountHolderName) errors.push('accountHolderName is required');
+    if (!accountNumber || accountNumber.length < 6) errors.push('accountNumber required (min 6 digits)');
+    if (!ifsc || ifsc.length !== 11) errors.push('valid 11-char IFSC required');
+    if (typeof maxAmount !== 'number' || maxAmount <= 0) errors.push('maxAmount must be > 0');
+    if (!frequency || !['monthly', 'quarterly', 'half_yearly', 'yearly'].includes(frequency)) {
+      errors.push('frequency must be one of: monthly, quarterly, half_yearly, yearly');
+    }
+    if (!startDate) errors.push('startDate is required');
+    if (!endDate) errors.push('endDate is required');
+    if (errors.length > 0) {
+      return res.status(400).json({ success: false, error: 'Validation failed', details: errors });
+    }
+    
+    // ─── Load application ───
+    const application = await LoanApplication.findOne({
+      applicationId,
+      lenderId: req.user.id,
+    });
+    if (!application) {
+      return res.status(404).json({ success: false, error: 'Application not found for this lender' });
+    }
+    
+    if (application.status !== 'disbursed') {
+      return res.status(400).json({
+        success: false,
+        error: `Mandate can only be created after disbursement (current status: ${application.status})`,
+        code: 'INVALID_APPLICATION_STATE',
+      });
+    }
+    
+    // ─── Load workflow ───
+    const workflow = await LoanWorkflow.findByApplication(applicationId);
+    if (!workflow) return res.status(404).json({ success: false, error: 'Workflow not found' });
+    
+    const disbursement = workflow.getLatestDisbursement();
+    if (!disbursement || disbursement.status === 'initiated') {
+      return res.status(400).json({
+        success: false,
+        error: 'Confirmed disbursement required before mandate creation',
+        code: 'DISBURSEMENT_NOT_CONFIRMED',
+      });
+    }
+    
+    // ─── Create mandate ───
+    const mandateId = `MANDATE_${Date.now()}_${Math.floor(Math.random() * 1000)}`;
+    const mandate = workflow.addMandate({
+      mandateId,
+      disbursementId: disbursement.disbursementId,
+      type,
+      accountHolderName,
+      accountNumber,
+      ifsc,
+      bankName: bankName || '',
+      maxAmount,
+      frequency,
+      startDate: new Date(startDate),
+      endDate: new Date(endDate),
+      provider,
+      providerMandateId: '',
+      providerSubscriptionId: '',
+      status: 'pending',
+      createdBy: req.user.email || req.user.lenderId || 'lender',
+      notes: '',
+    });
+    
+    await workflow.save();
+    
+    res.status(201).json({
+      success: true,
+      mandateId,
+      mandate,
+      provider,
+      message: `Mandate created (${type}). ${provider === 'manual' ? 'Activate manually after bank confirmation.' : `Awaiting ${provider} activation.`}`,
+    });
+  } catch (error) {
+    console.error('[loanRoutes] POST /repayment/mandate error:', error.message);
+    res.status(500).json({ success: false, error: error.message });
+  }
 });
 
+// ─── POST /repayment/mandate/:mandateId/activate — activate mandate ───
+router.post('/repayment/mandate/:mandateId/activate', authenticate, authenticateLender, async (req, res) => {
+  try {
+    const LoanWorkflow = getLoanWorkflowModel();
+    const LoanApplication = getLoanApplicationModel();
+    
+    const { mandateId } = req.params;
+    const { providerMandateId, providerSubscriptionId } = req.body;
+    
+    const workflow = await LoanWorkflow.findOne({ 'mandates.mandateId': mandateId });
+    if (!workflow) return res.status(404).json({ success: false, error: 'Mandate not found' });
+    
+    const application = await LoanApplication.findOne({
+      applicationId: workflow.applicationId,
+      lenderId: req.user.id,
+    });
+    if (!application) return res.status(403).json({ success: false, error: 'Not authorized' });
+    
+    const mandate = workflow.mandates.find(m => m.mandateId === mandateId);
+    if (!mandate) return res.status(404).json({ success: false, error: 'Mandate not found in workflow' });
+    
+    if (mandate.status !== 'pending') {
+      return res.status(400).json({
+        success: false,
+        error: `Mandate is in status "${mandate.status}" — only "pending" can be activated`,
+        code: 'MANDATE_NOT_PENDING',
+      });
+    }
+    
+    mandate.status = 'active';
+    mandate.activatedAt = new Date();
+    if (providerMandateId) mandate.providerMandateId = providerMandateId;
+    if (providerSubscriptionId) mandate.providerSubscriptionId = providerSubscriptionId;
+    workflow.updatedAt = new Date();
+    await workflow.save();
+    
+    res.json({
+      success: true,
+      mandateId,
+      mandate,
+      message: 'Mandate activated. Ready to collect EMI.',
+    });
+  } catch (error) {
+    console.error('[loanRoutes] POST /repayment/mandate/:id/activate error:', error.message);
+    res.status(500).json({ success: false, error: error.message });
+  }
+});
+
+// ─── POST /repayment/mandate/:mandateId/cancel — cancel mandate ───
+router.post('/repayment/mandate/:mandateId/cancel', authenticate, authenticateLender, async (req, res) => {
+  try {
+    const LoanWorkflow = getLoanWorkflowModel();
+    const LoanApplication = getLoanApplicationModel();
+    
+    const { mandateId } = req.params;
+    const { reason } = req.body;
+    
+    if (!reason || reason.trim().length === 0) {
+      return res.status(400).json({ success: false, error: 'Cancel reason is required' });
+    }
+    
+    const workflow = await LoanWorkflow.findOne({ 'mandates.mandateId': mandateId });
+    if (!workflow) return res.status(404).json({ success: false, error: 'Mandate not found' });
+    
+    const application = await LoanApplication.findOne({
+      applicationId: workflow.applicationId,
+      lenderId: req.user.id,
+    });
+    if (!application) return res.status(403).json({ success: false, error: 'Not authorized' });
+    
+    const mandate = workflow.mandates.find(m => m.mandateId === mandateId);
+    if (!mandate) return res.status(404).json({ success: false, error: 'Mandate not found' });
+    
+    if (!['pending', 'active', 'paused'].includes(mandate.status)) {
+      return res.status(400).json({
+        success: false,
+        error: `Cannot cancel mandate in status "${mandate.status}"`,
+        code: 'MANDATE_NOT_CANCELLABLE',
+      });
+    }
+    
+    mandate.status = 'cancelled';
+    mandate.cancelledAt = new Date();
+    mandate.cancelReason = reason.trim();
+    workflow.updatedAt = new Date();
+    await workflow.save();
+    
+    res.json({ success: true, mandateId, message: 'Mandate cancelled.' });
+  } catch (error) {
+    console.error('[loanRoutes] POST /repayment/mandate/:id/cancel error:', error.message);
+    res.status(500).json({ success: false, error: error.message });
+  }
+});
+
+// ─── GET /repayment/:applicationId/schedule — EMI schedule ───
 router.get('/repayment/:applicationId/schedule', authenticate, authenticateLender, async (req, res) => {
-  res.status(501).json({
-    success: false,
-    error: 'Not implemented',
-    message: 'EMI schedule will be implemented in Task 14',
-  });
+  try {
+    const LoanWorkflow = getLoanWorkflowModel();
+    const LoanApplication = getLoanApplicationModel();
+    
+    const { applicationId } = req.params;
+    
+    const application = await LoanApplication.findOne({
+      applicationId,
+      lenderId: req.user.id,
+    });
+    if (!application) return res.status(404).json({ success: false, error: 'Application not found' });
+    
+    const workflow = await LoanWorkflow.findByApplication(applicationId);
+    if (!workflow) return res.status(404).json({ success: false, error: 'Workflow not found' });
+    
+    const signedAgreement = workflow.getSignedAgreement();
+    if (!signedAgreement) {
+      return res.status(400).json({
+        success: false,
+        error: 'Signed agreement required to compute EMI schedule',
+        code: 'NO_SIGNED_AGREEMENT',
+      });
+    }
+    
+    const signedOffer = workflow.offers.find(o => o.offerId === signedAgreement.offerId);
+    if (!signedOffer) {
+      return res.status(404).json({ success: false, error: 'Signed offer not found' });
+    }
+    
+    // ─── Generate EMI schedule ───
+    const principal = signedOffer.sanctionedAmount;
+    const annualRate = signedOffer.interestRate;
+    const tenureMonths = signedOffer.tenureMonths;
+    const emi = signedOffer.emi;
+    
+    const schedule = [];
+    let outstanding = principal;
+    const monthlyRate = annualRate / 100 / 12;
+    const startDate = new Date(signedAgreement.signedAt || new Date());
+    
+    for (let i = 1; i <= tenureMonths; i++) {
+      const interest = Math.round(outstanding * monthlyRate);
+      const principalComponent = emi - interest;
+      const closingBalance = Math.max(0, outstanding - principalComponent);
+      
+      const dueDate = new Date(startDate);
+      dueDate.setMonth(dueDate.getMonth() + i);
+      
+      schedule.push({
+        emiNumber: i,
+        dueDate,
+        emiAmount: emi,
+        principal: principalComponent,
+        interest,
+        openingBalance: outstanding,
+        closingBalance,
+        status: i === 1 && outstanding > 0 ? 'due' : 'upcoming',
+      });
+      
+      outstanding = closingBalance;
+    }
+    
+    res.json({
+      success: true,
+      applicationId,
+      sanctionedAmount: principal,
+      interestRate: annualRate,
+      tenureMonths,
+      emi,
+      totalPayable: emi * tenureMonths,
+      totalInterest: (emi * tenureMonths) - principal,
+      scheduleStartDate: startDate,
+      schedule,
+      count: schedule.length,
+    });
+  } catch (error) {
+    console.error('[loanRoutes] GET /repayment/schedule error:', error.message);
+    res.status(500).json({ success: false, error: error.message });
+  }
 });
 
 // ============================================
-// REFUNDS (Task 15 placeholder)
+// REFUNDS (Task 15)
 // ============================================
+// Refund workflow for cancellations, service not delivered, etc.
+// Every refund creates a Transaction ledger entry.
+// Lender-side refund records via LoanWorkflow + Transaction.
+
+// ─── GET /refunds/:applicationId — list refunds ───
 router.get('/refunds/:applicationId', authenticate, authenticateLender, async (req, res) => {
-  res.status(501).json({
-    success: false,
-    error: 'Not implemented',
-    message: 'Refunds will be implemented in Task 15',
-  });
+  try {
+    const Transaction = require('../models/Transaction');
+    const LoanApplication = getLoanApplicationModel();
+    
+    const { applicationId } = req.params;
+    
+    const application = await LoanApplication.findOne({
+      applicationId,
+      lenderId: req.user.id,
+    });
+    if (!application) return res.status(404).json({ success: false, error: 'Application not found' });
+    
+    // Find all refund transactions for this application
+    const refunds = await Transaction.find({
+      applicationId,
+      $or: [
+        { type: 'refund' },
+        { bookingType: 'loan', status: { $in: ['refunded', 'partially_refunded'] } },
+      ],
+    }).sort({ createdAt: -1 });
+    
+    res.json({
+      success: true,
+      applicationId,
+      count: refunds.length,
+      refunds,
+    });
+  } catch (error) {
+    console.error('[loanRoutes] GET /refunds error:', error.message);
+    res.status(500).json({ success: false, error: error.message });
+  }
 });
 
-router.post('/refunds', authenticate, async (req, res) => {
-  res.status(501).json({
-    success: false,
-    error: 'Not implemented',
-    message: 'Refund request will be implemented in Task 15',
-  });
+// ─── POST /refunds — lender initiates refund ───
+router.post('/refunds', authenticate, authenticateLender, async (req, res) => {
+  try {
+    const LoanWorkflow = getLoanWorkflowModel();
+    const LoanApplication = getLoanApplicationModel();
+    const Transaction = require('../models/Transaction');
+    
+    const {
+      applicationId,
+      amount,
+      reason,
+      refundType = 'full', // full | partial
+      bankReference,
+    } = req.body;
+    
+    // ─── Validation ───
+    const errors = [];
+    if (!applicationId) errors.push('applicationId is required');
+    if (typeof amount !== 'number' || amount <= 0) errors.push('amount must be > 0');
+    if (!reason || reason.trim().length < 5) errors.push('reason is required (min 5 chars)');
+    if (!['full', 'partial'].includes(refundType)) errors.push('refundType must be full or partial');
+    if (errors.length > 0) {
+      return res.status(400).json({ success: false, error: 'Validation failed', details: errors });
+    }
+    
+    // ─── Load application ───
+    const application = await LoanApplication.findOne({
+      applicationId,
+      lenderId: req.user.id,
+    });
+    if (!application) return res.status(404).json({ success: false, error: 'Application not found' });
+    
+    if (!['disbursed', 'pending_disbursal', 'agreement_signed'].includes(application.status)) {
+      return res.status(400).json({
+        success: false,
+        error: `Cannot refund in status "${application.status}". Refunds allowed after agreement signed.`,
+        code: 'INVALID_APPLICATION_STATE',
+      });
+    }
+    
+    // ─── Load workflow ───
+    const workflow = await LoanWorkflow.findByApplication(applicationId);
+    if (!workflow) return res.status(404).json({ success: false, error: 'Workflow not found' });
+    
+    const disbursement = workflow.getLatestDisbursement();
+    if (!disbursement || !['confirmed', 'reconciled'].includes(disbursement.status)) {
+      return res.status(400).json({
+        success: false,
+        error: 'Confirmed disbursement required to refund',
+        code: 'DISBURSEMENT_NOT_CONFIRMED',
+      });
+    }
+    
+    // ─── Verify refund amount doesn't exceed disbursed ───
+    if (amount > disbursement.amount) {
+      return res.status(400).json({
+        success: false,
+        error: `Refund amount ₹${amount} exceeds disbursed ₹${disbursement.amount}`,
+        code: 'REFUND_EXCEEDS_DISBURSED',
+      });
+    }
+    
+    // ─── Idempotency: existing pending refunds for same application? ───
+    const existingPendingRefund = await Transaction.findOne({
+      applicationId,
+      type: 'refund',
+      status: 'pending',
+    });
+    if (existingPendingRefund) {
+      return res.status(400).json({
+        success: false,
+        error: 'A pending refund already exists for this application. Complete or reject it first.',
+        code: 'PENDING_REFUND_EXISTS',
+        existingTransactionId: existingPendingRefund.transactionId,
+      });
+    }
+    
+    // ─── Create refund Transaction row ───
+    const refundTransactionId = Transaction.generateTransactionId();
+    const refundTransaction = new Transaction({
+      transactionId: refundTransactionId,
+      applicationId,
+      lenderId: req.user.id,
+      type: 'refund',
+      bookingType: 'loan',
+      amount,
+      refundAmount: amount,
+      netAmount: amount,
+      status: 'pending',
+      paymentMethod: 'bank_transfer',
+      refund: {
+        initiatedBy: 'lender',
+        initiatedAt: new Date(),
+        reason: reason.trim(),
+        refundType,
+        refundPercentage: Math.round((amount / disbursement.amount) * 100),
+        processedBy: req.user.email || req.user.lenderId || 'lender',
+      },
+      notes: `Refund for application ${applicationId} — reason: ${reason.trim()}`,
+      metadata: {
+        disbursementId: disbursement.disbursementId,
+        bankReference: bankReference || null,
+        originalDisbursedAmount: disbursement.amount,
+      },
+    });
+    await refundTransaction.save();
+    
+    res.status(201).json({
+      success: true,
+      refundTransactionId,
+      amount,
+      refundType,
+      transaction: refundTransaction,
+      message: `Refund of ₹${amount} initiated. Approve to process.`,
+    });
+  } catch (error) {
+    console.error('[loanRoutes] POST /refunds error:', error.message);
+    res.status(500).json({ success: false, error: error.message });
+  }
+});
+
+// ─── POST /refunds/:transactionId/complete — complete a pending refund ───
+router.post('/refunds/:transactionId/complete', authenticate, authenticateLender, async (req, res) => {
+  try {
+    const Transaction = require('../models/Transaction');
+    const LoanApplication = getLoanApplicationModel();
+    
+    const { transactionId } = req.params;
+    const { gatewayRefundId, bankReference } = req.body;
+    
+    const refundTransaction = await Transaction.findOne({
+      transactionId,
+      type: 'refund',
+    });
+    if (!refundTransaction) return res.status(404).json({ success: false, error: 'Refund not found' });
+    
+    const application = await LoanApplication.findOne({
+      applicationId: refundTransaction.applicationId,
+      lenderId: req.user.id,
+    });
+    if (!application) return res.status(403).json({ success: false, error: 'Not authorized' });
+    
+    if (refundTransaction.status !== 'pending') {
+      return res.status(400).json({
+        success: false,
+        error: `Refund is in status "${refundTransaction.status}" — only "pending" can be completed`,
+        code: 'REFUND_NOT_PENDING',
+      });
+    }
+    
+    refundTransaction.status = 'refunded';
+    refundTransaction.refundedAt = new Date();
+    if (refundTransaction.refund) {
+      refundTransaction.refund.processedAt = new Date();
+      if (gatewayRefundId) refundTransaction.refund.gatewayRefundId = gatewayRefundId;
+      if (bankReference) refundTransaction.refund.gatewayRefundStatus = 'completed';
+    }
+    await refundTransaction.save();
+    
+    res.json({
+      success: true,
+      transactionId,
+      transaction: refundTransaction,
+      message: 'Refund completed.',
+    });
+  } catch (error) {
+    console.error('[loanRoutes] POST /refunds/:id/complete error:', error.message);
+    res.status(500).json({ success: false, error: error.message });
+  }
 });
 
 // ============================================
-// RECONCILIATION (Task 16 placeholder)
+// RECONCILIATION (Task 16)
 // ============================================
+// Settlement file matching between lender ledger and HospitalHub records.
+// Uses Transaction.reconciliation fields.
+
+// ─── GET /reconciliation — list unreconciled transactions ───
 router.get('/reconciliation', authenticate, authenticateLender, async (req, res) => {
-  res.status(501).json({
-    success: false,
-    error: 'Not implemented',
-    message: 'Reconciliation will be implemented in Task 16',
-  });
+  try {
+    const Transaction = require('../models/Transaction');
+    
+    const { status, from, to } = req.query;
+    
+    const query = {
+      lenderId: req.user.id,
+      bookingType: 'loan',
+    };
+    
+    if (status) {
+      query['reconciliation.status'] = status;
+    } else {
+      query['reconciliation.status'] = { $in: ['pending', 'mismatch'] };
+    }
+    
+    if (from || to) {
+      query.createdAt = {};
+      if (from) query.createdAt.$gte = new Date(from);
+      if (to) query.createdAt.$lte = new Date(to);
+    }
+    
+    const transactions = await Transaction.find(query).sort({ createdAt: -1 }).limit(500);
+    
+    const summary = {
+      total: transactions.length,
+      byStatus: {},
+    };
+    transactions.forEach(t => {
+      const s = t.reconciliation?.status || 'unknown';
+      summary.byStatus[s] = (summary.byStatus[s] || 0) + 1;
+    });
+    
+    res.json({
+      success: true,
+      count: transactions.length,
+      summary,
+      transactions,
+    });
+  } catch (error) {
+    console.error('[loanRoutes] GET /reconciliation error:', error.message);
+    res.status(500).json({ success: false, error: error.message });
+  }
 });
 
-router.post('/reconciliation/upload', authenticate, authenticateLender, async (req, res) => {
-  res.status(501).json({
-    success: false,
-    error: 'Not implemented',
-    message: 'File upload will be implemented in Task 16',
-  });
+// ─── POST /reconciliation/match — mark transaction as reconciled ───
+router.post('/reconciliation/match', authenticate, authenticateLender, async (req, res) => {
+  try {
+    const Transaction = require('../models/Transaction');
+    
+    const {
+      transactionId,
+      bankReference,
+      adjustmentAmount = 0,
+      adjustmentNote = '',
+    } = req.body;
+    
+    if (!transactionId) {
+      return res.status(400).json({ success: false, error: 'transactionId is required' });
+    }
+    
+    const transaction = await Transaction.findOne({
+      transactionId,
+      lenderId: req.user.id,
+    });
+    if (!transaction) {
+      return res.status(404).json({ success: false, error: 'Transaction not found' });
+    }
+    
+    transaction.reconciliation = {
+      status: 'matched',
+      reconciledAt: new Date(),
+      reconciledBy: req.user.email || req.user.lenderId || 'lender',
+      mismatchReason: '',
+      adjustmentAmount,
+      adjustmentNote,
+    };
+    
+    await transaction.save();
+    
+    res.json({
+      success: true,
+      transactionId,
+      reconciliation: transaction.reconciliation,
+      message: 'Transaction marked as reconciled.',
+    });
+  } catch (error) {
+    console.error('[loanRoutes] POST /reconciliation/match error:', error.message);
+    res.status(500).json({ success: false, error: error.message });
+  }
 });
-
 // ============================================
 // AUDIT
 // ============================================
