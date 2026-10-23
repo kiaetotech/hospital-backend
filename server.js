@@ -1,4 +1,4 @@
-// ============================================
+﻿// ============================================
 // ENVIRONMENT CONFIGURATION (No dotenv)
 // ============================================
 
@@ -24,14 +24,14 @@ try {
       }
     }
   }
-  console.log('✅ .env loaded manually from:', envPath);
+  console.log('âœ… .env loaded manually from:', envPath);
 } catch (err) {
-  console.warn('⚠️ No .env file found, using environment variables');
+  console.warn('âš ï¸ No .env file found, using environment variables');
 }
 
-console.log('GROQ_API_KEY:', process.env.GROQ_API_KEY ? '✅ Set' : '❌ Missing');
-console.log('GEMINI_API_KEY:', process.env.GEMINI_API_KEY ? '✅ Set' : '❌ Missing');
-console.log('🚀 CODE VERSION: v-' + new Date().toISOString().slice(0, 16));
+console.log('GROQ_API_KEY:', process.env.GROQ_API_KEY ? 'âœ… Set' : 'âŒ Missing');
+console.log('GEMINI_API_KEY:', process.env.GEMINI_API_KEY ? 'âœ… Set' : 'âŒ Missing');
+console.log('ðŸš€ CODE VERSION: v-' + new Date().toISOString().slice(0, 16));
 
 const express = require('express');
 const mongoose = require('mongoose');
@@ -103,7 +103,7 @@ try {
     maxRetriesPerRequest: 3,
     retryStrategy: (times) => {
       if (times > 10) {
-        console.warn('⚠️ Redis: Max retries reached. Running without cache.');
+        console.warn('âš ï¸ Redis: Max retries reached. Running without cache.');
         return null;
       }
       return Math.min(times * 200, 2000);
@@ -111,16 +111,16 @@ try {
     lazyConnect: true
   });
 
-  redis.on('connect', () => console.log('📍 Redis connected'));
-  redis.on('ready', () => console.log('📍 Redis: Ready'));
-  redis.on('error', (err) => console.warn('⚠️ Redis error:', err.message));
+  redis.on('connect', () => console.log('ðŸ“ Redis connected'));
+  redis.on('ready', () => console.log('ðŸ“ Redis: Ready'));
+  redis.on('error', (err) => console.warn('âš ï¸ Redis error:', err.message));
 
   redis.connect().catch(() => {
-    console.warn('⚠️ Redis connection failed - continuing without Redis');
+    console.warn('âš ï¸ Redis connection failed - continuing without Redis');
     redis = null;
   });
 } catch (error) {
-  console.warn('⚠️ Redis not configured - running without cache');
+  console.warn('âš ï¸ Redis not configured - running without cache');
 }
 
 global.redisClient = redis;
@@ -148,9 +148,9 @@ try {
   const socketModule = require('./socket/ambulanceSocket');
   initializeSocket = socketModule.initializeSocket || (() => {});
   getConnectionStats = socketModule.getConnectionStats || (() => ({}));
-  console.log('✅ Ambulance socket loaded successfully');
+  console.log('âœ… Ambulance socket loaded successfully');
 } catch (e) {
-  console.warn('⚠️ Ambulance socket not available:', e.message);
+  console.warn('âš ï¸ Ambulance socket not available:', e.message);
 }
 
 if (typeof initializeSocket === 'function') {
@@ -263,9 +263,9 @@ global.authenticateLender = authenticateLender;
 let dispatchService = {};
 try {
   dispatchService = require('./services/ambulanceDispatchService');
-  console.log('✅ Ambulance dispatch service loaded');
+  console.log('âœ… Ambulance dispatch service loaded');
 } catch (e) {
-  console.warn('⚠️ Ambulance dispatch service not available:', e.message);
+  console.warn('âš ï¸ Ambulance dispatch service not available:', e.message);
   dispatchService = {
     checkStuckBookings: async () => ({ checked: 0 })
   };
@@ -275,7 +275,7 @@ setInterval(async () => {
   try {
     if (dispatchService.checkStuckBookings) {
       const result = await dispatchService.checkStuckBookings();
-      if (result.checked > 0) console.log(`🔍 Stuck booking check: ${result.checked} checked`);
+      if (result.checked > 0) console.log(`ðŸ” Stuck booking check: ${result.checked} checked`);
     }
   } catch (error) { console.error('Stuck booking check error:', error.message); }
 }, 2 * 60 * 1000);
@@ -284,9 +284,9 @@ setInterval(async () => {
 let hospitalStatusService = {};
 try {
   hospitalStatusService = require('./services/hospitalStatusService');
-  console.log('✅ Hospital status service loaded');
+  console.log('âœ… Hospital status service loaded');
 } catch (e) {
-  console.warn('⚠️ Hospital status service not available:', e.message);
+  console.warn('âš ï¸ Hospital status service not available:', e.message);
   hospitalStatusService = {
     sendScheduledRequests: async () => {},
     expireStaleStatuses: async () => {}
@@ -310,7 +310,7 @@ if (redis) {
     try {
       const locationCache = require('./services/locationCacheService');
       const stats = await locationCache.getServiceStats();
-      console.log('📍 Location stats:', JSON.stringify(stats));
+      console.log('ðŸ“ Location stats:', JSON.stringify(stats));
     } catch (error) {}
   }, 15 * 60 * 1000);
 }
@@ -322,16 +322,16 @@ if (redis) {
 let bookingExpiryService = null;
 try {
   bookingExpiryService = require('./services/bookingExpiryService');
-  console.log('✅ Booking expiry service loaded');
+  console.log('âœ… Booking expiry service loaded');
 } catch (e) {
-  console.warn('⚠️ Booking expiry service not available:', e.message);
+  console.warn('âš ï¸ Booking expiry service not available:', e.message);
 }
 
 if (bookingExpiryService && typeof bookingExpiryService.processExpiredBookings === 'function') {
   // Initial run 30 sec after startup
   setTimeout(() => {
     bookingExpiryService.processExpiredBookings()
-      .then(result => console.log('📋 Initial booking expiry:', JSON.stringify(result)))
+      .then(result => console.log('ðŸ“‹ Initial booking expiry:', JSON.stringify(result)))
       .catch(err => console.error('Initial booking expiry failed:', err.message));
   }, 30000);
 
@@ -340,7 +340,7 @@ if (bookingExpiryService && typeof bookingExpiryService.processExpiredBookings =
     try {
       const result = await bookingExpiryService.processExpiredBookings();
       if (result.processed > 0) {
-        console.log(`📋 Booking expiry processed: ${result.processed} marked no-show`);
+        console.log(`ðŸ“‹ Booking expiry processed: ${result.processed} marked no-show`);
       }
     } catch (error) {
       console.error('Booking expiry cron error:', error.message);
@@ -348,22 +348,22 @@ if (bookingExpiryService && typeof bookingExpiryService.processExpiredBookings =
   }, 15 * 60 * 1000);
 }
 
-// ─────────────────────────────────────────
+// â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 // UNPAID BOOKING EXPIRY (Cancel after 30 min)
-// ─────────────────────────────────────────
+// â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 let unpaidExpiryService = null;
 try {
   unpaidExpiryService = require('./services/unpaidExpiryService');
-  console.log('✅ Unpaid expiry service loaded');
+  console.log('âœ… Unpaid expiry service loaded');
 } catch (e) {
-  console.warn('⚠️ Unpaid expiry service not available:', e.message);
+  console.warn('âš ï¸ Unpaid expiry service not available:', e.message);
 }
 
 if (unpaidExpiryService && typeof unpaidExpiryService.processUnpaidBookings === 'function') {
   // Initial run after 60 sec
   setTimeout(() => {
     unpaidExpiryService.processUnpaidBookings()
-      .then(r => console.log('💰 Initial unpaid expiry:', JSON.stringify(r)))
+      .then(r => console.log('ðŸ’° Initial unpaid expiry:', JSON.stringify(r)))
       .catch(err => console.error('Initial unpaid expiry failed:', err.message));
   }, 60000);
 
@@ -376,7 +376,7 @@ if (unpaidExpiryService && typeof unpaidExpiryService.processUnpaidBookings === 
     }
   }, 5 * 60 * 1000);
 
-  console.log('💰 Unpaid expiry cron scheduled every 5 minutes');
+  console.log('ðŸ’° Unpaid expiry cron scheduled every 5 minutes');
 }
 
 // ============================================
@@ -409,8 +409,8 @@ if (schedulerService && typeof schedulerService.processExpiredSuspensions === 'f
     }
   }, 60 * 60 * 1000);
 
-  console.log('[auto-unsuspend] Cron scheduled every hour');   // ← keep this here
-}                                                              // ← CLOSE if-block BEFORE new code
+  console.log('[auto-unsuspend] Cron scheduled every hour');   // â† keep this here
+}                                                              // â† CLOSE if-block BEFORE new code
 
 // ============================================
 // INSURANCE CLAIM SLA CRONS
@@ -450,66 +450,66 @@ console.log('[claim-sla] Insurance claim SLA crons scheduled (reminder 6h, escal
 // Ensure User model is registered early (fixes .populate('User') failures in other routes)
 try {
   require('./models/User');
-  console.log('✅ User model registered');
+  console.log('âœ… User model registered');
 } catch (e) {
-  console.warn('⚠️ User model not available:', e.message);
+  console.warn('âš ï¸ User model not available:', e.message);
 }
 
 try {
   require('./models/Admin');
 } catch (e) {
-  console.warn('⚠️ Admin model not available:', e.message);
+  console.warn('âš ï¸ Admin model not available:', e.message);
 }
 
 try {
   require('./models/TestMaster');
 } catch (e) {
-  console.warn('⚠️ TestMaster model not available:', e.message);
+  console.warn('âš ï¸ TestMaster model not available:', e.message);
 }
 
 try {
   require('./models/TestPricing');
 } catch (e) {
-  console.warn('⚠️ TestPricing model not available:', e.message);
+  console.warn('âš ï¸ TestPricing model not available:', e.message);
 }
 
 try {
   require('./models/TdsConfig');
-  console.log('✅ TdsConfig model registered');
+  console.log('âœ… TdsConfig model registered');
 } catch (e) {
-  console.warn('⚠️ TdsConfig model not available:', e.message);
+  console.warn('âš ï¸ TdsConfig model not available:', e.message);
 }
 
 try {
   require('./models/GstConfig');
-  console.log('✅ GstConfig model registered');
+  console.log('âœ… GstConfig model registered');
 } catch (e) {
-  console.warn('⚠️ GstConfig model not available:', e.message);
+  console.warn('âš ï¸ GstConfig model not available:', e.message);
 }
 try {
   require('./models/LoanProduct');
-  console.log('✅ LoanProduct model registered');
+  console.log('âœ… LoanProduct model registered');
 } catch (e) {
-  console.warn('⚠️ LoanProduct model not available:', e.message);
+  console.warn('âš ï¸ LoanProduct model not available:', e.message);
 }
 
 try {
   require('./models/LoanWorkflow');
-  console.log('✅ LoanWorkflow model registered');
+  console.log('âœ… LoanWorkflow model registered');
 } catch (e) {
-  console.warn('⚠️ LoanWorkflow model not available:', e.message);
+  console.warn('âš ï¸ LoanWorkflow model not available:', e.message);
 }
 try {
   require('./models/InsuranceMarketplace');
-  console.log('✅ InsuranceMarketplace models registered (Proposal, ClaimEvent, PreAuth, Addon)');
+  console.log('âœ… InsuranceMarketplace models registered (Proposal, ClaimEvent, PreAuth, Addon)');
 } catch (e) {
-  console.warn('⚠️ InsuranceMarketplace models not available:', e.message);
+  console.warn('âš ï¸ InsuranceMarketplace models not available:', e.message);
 }
 try {
   require('./models/AdminAuditLog');
-  console.log('✅ AdminAuditLog model registered');
+  console.log('âœ… AdminAuditLog model registered');
 } catch (e) {
-  console.warn('⚠️ AdminAuditLog model not available:', e.message);
+  console.warn('âš ï¸ AdminAuditLog model not available:', e.message);
 }
 
 
@@ -517,68 +517,67 @@ try {
 // ROUTES (ALL PRESERVED WITH FALLBACKS)
 // ============================================
 
-let hospitalRoutes, hospitalProviderRoutes, labPricingRoutes, packageRoutes, authRoutes, caregiverRoutes, diagnosticsRoutes, diagnosticsUploadRoutes, ambulanceRoutes, healthPackageRoutes, testRoutes, uploadRoutes, providerAuthRoutes, bookingRoutes, razorpayRoutes, reviewRoutes, adminRoutes, bookingStatusRoutes, customPackageRoutes, lenderAuthRoutes, adminLenderRoutes, lenderRoutes, loanPatientRoutes, loanLenderRoutes, loanAdminRoutes, loanWebhookRoutes, webhookRoutes, ayurvedaRoutes, ayurvedaCenterRoutes, ayurvedaPrescriptionRoutes, ayurvedaReportRoutes, homeopathyRoutes,homeopathyAdvancedRoutes, homeopathyBookingRoutes, homeopathySettlementRoutes, insuranceRoutes, insuranceClaimsRoutes, insuranceOnboardingRoutes, insuranceAdminRoutes, insuranceCompanyRoutes, insuranceAllTabsRoutes, otpRoutes, corporateRoutes, corporateBillingRoutes, corporateHubRoutes, mentalHealthRoutes, mentalHealthTherapistRoutes, mentalHealthAdminRoutes, mentalHealthPayoutRoutes, mentalHealthEarningsRoutes, onlineDoctorRoutes, hospitalStatusRoutes, globalSearchRoutes, employeePortalRoutes, discountRoutes;
+let hospitalRoutes, hospitalProviderRoutes, labPricingRoutes, packageRoutes, authRoutes, caregiverRoutes, diagnosticsRoutes, diagnosticsUploadRoutes, ambulanceRoutes, healthPackageRoutes, testRoutes, uploadRoutes, providerAuthRoutes, bookingRoutes, razorpayRoutes, reviewRoutes, adminRoutes, bookingStatusRoutes, customPackageRoutes, lenderAuthRoutes, adminLenderRoutes, lenderRoutes, loanPatientRoutes, loanAdminRoutes, loanWebhookRoutes, webhookRoutes, ayurvedaRoutes, ayurvedaCenterRoutes, ayurvedaPrescriptionRoutes, ayurvedaReportRoutes, homeopathyRoutes,homeopathyAdvancedRoutes, homeopathyBookingRoutes, homeopathySettlementRoutes, insuranceRoutes, insuranceClaimsRoutes, insuranceOnboardingRoutes, insuranceAdminRoutes, insuranceCompanyRoutes, insuranceAllTabsRoutes, otpRoutes, corporateRoutes, corporateBillingRoutes, corporateHubRoutes, mentalHealthRoutes, mentalHealthTherapistRoutes, mentalHealthAdminRoutes, mentalHealthPayoutRoutes, mentalHealthEarningsRoutes, onlineDoctorRoutes, hospitalStatusRoutes, globalSearchRoutes, employeePortalRoutes, discountRoutes;
 
-try { hospitalRoutes = require('./routes/hospitals'); } catch(e) { console.warn('⚠️ hospitals route missing'); hospitalRoutes = (req,res) => res.status(404).json({error:'Route not available'}); }
-try { hospitalProviderRoutes = require('./routes/hospitalProvider'); } catch(e) { console.warn('⚠️ hospitalProvider route missing'); hospitalProviderRoutes = (req,res) => res.status(404).json({error:'Route not available'}); }
-try { labPricingRoutes = require('./routes/labPricing'); } catch(e) { console.warn('⚠️ labPricing route missing'); labPricingRoutes = (req,res) => res.status(404).json({error:'Route not available'}); }
-try { packageRoutes = require('./routes/packageRoutes'); } catch(e) { console.warn('⚠️ packageRoutes route missing'); packageRoutes = (req,res) => res.status(404).json({error:'Route not available'}); }
-try { authRoutes = require('./routes/auth'); } catch(e) { console.warn('⚠️ auth route missing'); authRoutes = (req,res) => res.status(404).json({error:'Route not available'}); }
-try { caregiverRoutes = require('./routes/caregivers'); } catch(e) { console.warn('⚠️ caregivers route missing'); caregiverRoutes = (req,res) => res.status(404).json({error:'Route not available'}); }
-try { diagnosticsRoutes = require('./routes/diagnostics'); } catch(e) { console.warn('⚠️ diagnostics route missing'); diagnosticsRoutes = (req,res) => res.status(404).json({error:'Route not available'}); }
-try { diagnosticsUploadRoutes = require('./routes/diagnostics-upload'); } catch(e) { console.warn('⚠️ diagnostics-upload route missing'); diagnosticsUploadRoutes = (req,res) => res.status(404).json({error:'Route not available'}); }
-try { ambulanceRoutes = require('./routes/ambulance'); } catch(e) { console.warn('⚠️ ambulance route missing: ' + e.message); ambulanceRoutes = (req,res) => res.status(404).json({error:'Route not available', details: e.message}); }
-try { healthPackageRoutes = require('./routes/healthPackageRoutes'); } catch(e) { console.warn('⚠️ healthPackageRoutes route missing'); healthPackageRoutes = (req,res) => res.status(404).json({error:'Route not available'}); }
-try { testRoutes = require('./routes/tests'); } catch(e) { console.warn('⚠️ tests route missing'); testRoutes = (req,res) => res.status(404).json({error:'Route not available'}); }
-try { uploadRoutes = require('./routes/upload'); } catch(e) { console.warn('⚠️ upload route missing'); uploadRoutes = (req,res) => res.status(404).json({error:'Route not available'}); }
-try { providerAuthRoutes = require('./routes/providerAuth'); } catch(e) { console.warn('⚠️ providerAuth route missing'); providerAuthRoutes = (req,res) => res.status(404).json({error:'Route not available'}); }
-try { bookingRoutes = require('./routes/bookings'); } catch(e) { console.warn('⚠️ bookings route missing: ' + e.message); bookingRoutes = (req,res) => res.status(404).json({error:'Route not available', details: e.message}); }
-try { razorpayRoutes = require('./routes/payment'); } catch(e) { console.warn('⚠️ payment route missing'); razorpayRoutes = (req,res) => res.status(404).json({error:'Route not available'}); }
-try { reviewRoutes = require('./routes/reviews'); } catch(e) { console.warn('⚠️ reviews route missing: ' + e.message); reviewRoutes = (req,res) => res.status(404).json({error:'Route not available', details: e.message}); }
-try { adminRoutes = require('./routes/admin'); } catch(e) { console.warn('⚠️ admin route missing'); adminRoutes = (req,res) => res.status(404).json({error:'Route not available'}); }
-try { bookingStatusRoutes = require('./routes/booking-status'); } catch(e) { console.warn('⚠️ booking-status route missing'); bookingStatusRoutes = (req,res) => res.status(404).json({error:'Route not available'}); }
-try { customPackageRoutes = require('./routes/custom-packages'); } catch(e) { console.warn('⚠️ custom-packages route missing'); customPackageRoutes = (req,res) => res.status(404).json({error:'Route not available'}); }
-try { lenderAuthRoutes = require('./routes/lenderAuth'); } catch(e) { console.warn('⚠️ lenderAuth route missing'); lenderAuthRoutes = (req,res) => res.status(404).json({error:'Route not available'}); }
-try { adminLenderRoutes = require('./routes/adminLender'); } catch(e) { console.warn('⚠️ adminLender route missing'); adminLenderRoutes = (req,res) => res.status(404).json({error:'Route not available'}); }
-try { lenderRoutes = require('./routes/lender'); } catch(e) { console.warn('⚠️ lender route missing'); lenderRoutes = (req,res) => res.status(404).json({error:'Route not available'}); }
-try { loanPatientRoutes = require('./routes/loanPatient'); } catch(e) { console.warn('⚠️ loanPatient route missing'); loanPatientRoutes = (req,res) => res.status(404).json({error:'Route not available'}); }
-try { loanLenderRoutes = require('./routes/loanLender'); } catch(e) { console.warn('⚠️ loanLender route missing'); loanLenderRoutes = (req,res) => res.status(404).json({error:'Route not available'}); }
-try { loanAdminRoutes = require('./routes/loanAdmin'); } catch(e) { console.warn('⚠️ loanAdmin route missing'); loanAdminRoutes = (req,res) => res.status(404).json({error:'Route not available'}); }
-try { loanWebhookRoutes = require('./routes/loanWebhook'); } catch(e) { console.warn('⚠️ loanWebhook route missing'); loanWebhookRoutes = (req,res) => res.status(404).json({error:'Route not available'}); }
-try { webhookRoutes = require('./routes/webhooks'); } catch(e) { console.warn('⚠️ webhooks route missing'); webhookRoutes = (req,res) => res.status(404).json({error:'Route not available'}); }
-try { ayurvedaRoutes = require('./routes/ayurveda-advanced'); } catch(e) { console.warn('⚠️ ayurveda-advanced route missing'); ayurvedaRoutes = (req,res) => res.status(404).json({error:'Route not available'}); }
-try { ayurvedaCenterRoutes = require('./routes/ayurveda-centers'); } catch(e) { console.warn('⚠️ ayurveda-centers route missing'); ayurvedaCenterRoutes = (req,res) => res.status(404).json({error:'Route not available'}); }
-try { ayurvedaPrescriptionRoutes = require('./routes/ayurveda-prescriptions'); } catch(e) { console.warn('⚠️ ayurveda-prescriptions route missing'); ayurvedaPrescriptionRoutes = (req,res) => res.status(404).json({error:'Route not available'}); }
-try { ayurvedaReportRoutes = require('./routes/ayurveda-reports'); } catch(e) { console.warn('⚠️ ayurveda-reports route missing'); ayurvedaReportRoutes = (req,res) => res.status(404).json({error:'Route not available'}); }
-try { homeopathyRoutes = require('./routes/homeopathy'); } catch(e) { console.warn('⚠️ homeopathy route missing'); homeopathyRoutes = (req,res) => res.status(404).json({error:'Route not available'}); }
-try { homeopathyAdvancedRoutes = require('./routes/homeopathy-advanced'); } catch(e) { console.warn('⚠️ homeopathy-advanced route missing: ' + e.message); homeopathyAdvancedRoutes = (req,res) => res.status(404).json({error:'Route not available', details: e.message}); }
-try { homeopathyBookingRoutes = require('./routes/homeopathy-booking'); } catch(e) { console.warn('⚠️ homeopathy-booking route missing: ' + e.message); homeopathyBookingRoutes = (req,res) => res.status(404).json({error:'Route not available', details: e.message}); }
-try { homeopathySettlementRoutes = require('./routes/homeopathy-settlement'); } catch(e) { console.warn('⚠️ homeopathy-settlement route missing: ' + e.message); homeopathySettlementRoutes = (req,res) => res.status(404).json({error:'Route not available', details: e.message}); }
-try { insuranceRoutes = require('./routes/insurance'); } catch(e) { console.warn('⚠️ insurance route missing: ' + e.message); insuranceRoutes = (req,res) => res.status(404).json({error:'Route not available', details: e.message}); }
-try { insuranceClaimsRoutes = require('./routes/insurance-claims'); } catch(e) { console.warn('⚠️ insurance-claims route missing'); insuranceClaimsRoutes = (req,res) => res.status(404).json({error:'Route not available'}); }
-try { insuranceOnboardingRoutes = require('./routes/insurance-onboarding'); } catch(e) { console.warn('⚠️ insurance-onboarding route missing'); insuranceOnboardingRoutes = (req,res) => res.status(404).json({error:'Route not available'}); }
-try { insuranceOnboardingRoutes = require('./routes/insurance-onboarding'); } catch(e) { console.warn('⚠️ insurance-onboarding route missing'); insuranceOnboardingRoutes = (req,res) => res.status(404).json({error:'Route not available'}); }
-try { insuranceCompanyRoutes = require('./routes/insurance-company'); } catch(e) { console.warn('⚠️ insurance-company route missing'); insuranceCompanyRoutes = (req,res) => res.status(404).json({error:'Route not available'}); }
-try { insuranceAdminRoutes = require('./routes/insurance-admin'); } catch(e) { console.warn('⚠️ insurance-admin route missing'); insuranceAdminRoutes = (req,res) => res.status(404).json({error:'Route not available'}); }
-try { insuranceAllTabsRoutes = require('./routes/insurance-all-tabs'); } catch(e) { console.warn('⚠️ insurance-all-tabs route missing: ' + e.message); insuranceAllTabsRoutes = (req,res) => res.status(404).json({error:'Route not available', details: e.message}); }
-try { var insuranceMarketplaceRoutes = require('./routes/insurance-marketplace'); } catch(e) { console.warn('⚠️ insurance-marketplace route missing: ' + e.message); insuranceMarketplaceRoutes = (req,res) => res.status(404).json({error:'Route not available', details: e.message}); }
-try { var insuranceAdminPlansRoutes = require('./routes/insurance-admin-plans'); } catch(e) { console.warn('⚠️ insurance-admin-plans route missing: ' + e.message); insuranceAdminPlansRoutes = (req,res) => res.status(404).json({error:'Route not available', details: e.message}); }
-try { var insurancePolicyCenterRoutes = require('./routes/insurance-policy-center'); } catch(e) { console.warn('⚠️ insurance-policy-center route missing: ' + e.message); insurancePolicyCenterRoutes = (req,res) => res.status(404).json({error:'Route not available', details: e.message}); }
-try { var insurancePreAuthRoutes = require('./routes/insurance-preauth'); } catch(e) { console.warn('⚠️ insurance-preauth route missing: ' + e.message); insurancePreAuthRoutes = (req,res) => res.status(404).json({error:'Route not available', details: e.message}); }
-try { otpRoutes = require('./routes/otp'); } catch(e) { console.warn('⚠️ otp route missing'); otpRoutes = (req,res) => res.status(404).json({error:'Route not available'}); }
-try { corporateRoutes = require('./routes/corporate'); } catch(e) { console.warn('⚠️ corporate route missing'); corporateRoutes = (req,res) => res.status(404).json({error:'Route not available'}); }
-try { corporateBillingRoutes = require('./routes/corporate-billing'); } catch(e) { console.warn('⚠️ corporate-billing route missing'); corporateBillingRoutes = (req,res) => res.status(404).json({error:'Route not available'}); }
-try { corporateHubRoutes = require('./routes/corporateHub'); } catch(e) { console.warn('⚠️ corporateHub route missing'); corporateHubRoutes = (req,res) => res.status(404).json({error:'Route not available'}); }
-try { mentalHealthRoutes = require('./routes/mentalhealth'); } catch(e) { console.warn('⚠️ mentalhealth route missing'); mentalHealthRoutes = (req,res) => res.status(404).json({error:'Route not available'}); }
-try { mentalHealthTherapistRoutes = require('./routes/mentalhealth-therapist'); } catch(e) { console.warn('⚠️ mentalhealth-therapist route missing'); mentalHealthTherapistRoutes = (req,res) => res.status(404).json({error:'Route not available'}); }
-try { mentalHealthAdminRoutes = require('./routes/mentalhealth-admin'); } catch(e) { console.warn('⚠️ mentalhealth-admin route missing'); mentalHealthAdminRoutes = (req,res) => res.status(404).json({error:'Route not available'}); }
-try { mentalHealthPayoutRoutes = require('./routes/mentalhealth-payout'); } catch(e) { console.warn('⚠️ mentalhealth-payout route missing'); mentalHealthPayoutRoutes = (req,res) => res.status(404).json({error:'Route not available'}); }
-try { mentalHealthEarningsRoutes = require('./routes/mentalhealth-earnings'); } catch(e) { console.warn('⚠️ mentalhealth-earnings route missing'); mentalHealthEarningsRoutes = (req,res) => res.status(404).json({error:'Route not available'}); }
-try { onlineDoctorRoutes = require('./routes/onlineDoctor'); } catch(e) { console.warn('⚠️ onlineDoctor route missing'); onlineDoctorRoutes = (req,res) => res.status(404).json({error:'Route not available'}); }
-try { hospitalStatusRoutes = require('./routes/hospitalStatus'); } catch(e) { console.warn('⚠️ hospitalStatus route missing'); hospitalStatusRoutes = (req,res) => res.status(404).json({error:'Route not available'}); }
-try { globalSearchRoutes = require('./routes/globalSearch'); } catch(e) { console.warn('⚠️ globalSearch route missing'); globalSearchRoutes = (req,res) => res.status(404).json({error:'Route not available'}); }
-try { employeePortalRoutes = require('./routes/employeePortal'); } catch(e) { console.warn('⚠️ employeePortal route missing'); employeePortalRoutes = (req,res) => res.status(404).json({error:'Route not available'}); }
-try { discountRoutes = require('./routes/discounts'); } catch(e) { console.warn('⚠️ discounts route missing: ' + e.message); discountRoutes = (req,res) => res.status(404).json({error:'Route not available'}); }
+try { hospitalRoutes = require('./routes/hospitals'); } catch(e) { console.warn('âš ï¸ hospitals route missing'); hospitalRoutes = (req,res) => res.status(404).json({error:'Route not available'}); }
+try { hospitalProviderRoutes = require('./routes/hospitalProvider'); } catch(e) { console.warn('âš ï¸ hospitalProvider route missing'); hospitalProviderRoutes = (req,res) => res.status(404).json({error:'Route not available'}); }
+try { labPricingRoutes = require('./routes/labPricing'); } catch(e) { console.warn('âš ï¸ labPricing route missing'); labPricingRoutes = (req,res) => res.status(404).json({error:'Route not available'}); }
+try { packageRoutes = require('./routes/packageRoutes'); } catch(e) { console.warn('âš ï¸ packageRoutes route missing'); packageRoutes = (req,res) => res.status(404).json({error:'Route not available'}); }
+try { authRoutes = require('./routes/auth'); } catch(e) { console.warn('âš ï¸ auth route missing'); authRoutes = (req,res) => res.status(404).json({error:'Route not available'}); }
+try { caregiverRoutes = require('./routes/caregivers'); } catch(e) { console.warn('âš ï¸ caregivers route missing'); caregiverRoutes = (req,res) => res.status(404).json({error:'Route not available'}); }
+try { diagnosticsRoutes = require('./routes/diagnostics'); } catch(e) { console.warn('âš ï¸ diagnostics route missing'); diagnosticsRoutes = (req,res) => res.status(404).json({error:'Route not available'}); }
+try { diagnosticsUploadRoutes = require('./routes/diagnostics-upload'); } catch(e) { console.warn('âš ï¸ diagnostics-upload route missing'); diagnosticsUploadRoutes = (req,res) => res.status(404).json({error:'Route not available'}); }
+try { ambulanceRoutes = require('./routes/ambulance'); } catch(e) { console.warn('âš ï¸ ambulance route missing: ' + e.message); ambulanceRoutes = (req,res) => res.status(404).json({error:'Route not available', details: e.message}); }
+try { healthPackageRoutes = require('./routes/healthPackageRoutes'); } catch(e) { console.warn('âš ï¸ healthPackageRoutes route missing'); healthPackageRoutes = (req,res) => res.status(404).json({error:'Route not available'}); }
+try { testRoutes = require('./routes/tests'); } catch(e) { console.warn('âš ï¸ tests route missing'); testRoutes = (req,res) => res.status(404).json({error:'Route not available'}); }
+try { uploadRoutes = require('./routes/upload'); } catch(e) { console.warn('âš ï¸ upload route missing'); uploadRoutes = (req,res) => res.status(404).json({error:'Route not available'}); }
+try { providerAuthRoutes = require('./routes/providerAuth'); } catch(e) { console.warn('âš ï¸ providerAuth route missing'); providerAuthRoutes = (req,res) => res.status(404).json({error:'Route not available'}); }
+try { bookingRoutes = require('./routes/bookings'); } catch(e) { console.warn('âš ï¸ bookings route missing: ' + e.message); bookingRoutes = (req,res) => res.status(404).json({error:'Route not available', details: e.message}); }
+try { razorpayRoutes = require('./routes/payment'); } catch(e) { console.warn('âš ï¸ payment route missing'); razorpayRoutes = (req,res) => res.status(404).json({error:'Route not available'}); }
+try { reviewRoutes = require('./routes/reviews'); } catch(e) { console.warn('âš ï¸ reviews route missing: ' + e.message); reviewRoutes = (req,res) => res.status(404).json({error:'Route not available', details: e.message}); }
+try { adminRoutes = require('./routes/admin'); } catch(e) { console.warn('âš ï¸ admin route missing'); adminRoutes = (req,res) => res.status(404).json({error:'Route not available'}); }
+try { bookingStatusRoutes = require('./routes/booking-status'); } catch(e) { console.warn('âš ï¸ booking-status route missing'); bookingStatusRoutes = (req,res) => res.status(404).json({error:'Route not available'}); }
+try { customPackageRoutes = require('./routes/custom-packages'); } catch(e) { console.warn('âš ï¸ custom-packages route missing'); customPackageRoutes = (req,res) => res.status(404).json({error:'Route not available'}); }
+try { lenderAuthRoutes = require('./routes/lenderAuth'); } catch(e) { console.warn('âš ï¸ lenderAuth route missing'); lenderAuthRoutes = (req,res) => res.status(404).json({error:'Route not available'}); }
+try { adminLenderRoutes = require('./routes/adminLender'); } catch(e) { console.warn('âš ï¸ adminLender route missing'); adminLenderRoutes = (req,res) => res.status(404).json({error:'Route not available'}); }
+try { lenderRoutes = require('./routes/lender'); } catch(e) { console.warn('âš ï¸ lender route missing'); lenderRoutes = (req,res) => res.status(404).json({error:'Route not available'}); }
+try { loanPatientRoutes = require('./routes/loanPatient'); } catch(e) { console.warn('âš ï¸ loanPatient route missing'); loanPatientRoutes = (req,res) => res.status(404).json({error:'Route not available'}); }
+try { loanAdminRoutes = require('./routes/loanAdmin'); } catch(e) { console.warn('âš ï¸ loanAdmin route missing'); loanAdminRoutes = (req,res) => res.status(404).json({error:'Route not available'}); }
+try { loanWebhookRoutes = require('./routes/loanWebhook'); } catch(e) { console.warn('âš ï¸ loanWebhook route missing'); loanWebhookRoutes = (req,res) => res.status(404).json({error:'Route not available'}); }
+try { webhookRoutes = require('./routes/webhooks'); } catch(e) { console.warn('âš ï¸ webhooks route missing'); webhookRoutes = (req,res) => res.status(404).json({error:'Route not available'}); }
+try { ayurvedaRoutes = require('./routes/ayurveda-advanced'); } catch(e) { console.warn('âš ï¸ ayurveda-advanced route missing'); ayurvedaRoutes = (req,res) => res.status(404).json({error:'Route not available'}); }
+try { ayurvedaCenterRoutes = require('./routes/ayurveda-centers'); } catch(e) { console.warn('âš ï¸ ayurveda-centers route missing'); ayurvedaCenterRoutes = (req,res) => res.status(404).json({error:'Route not available'}); }
+try { ayurvedaPrescriptionRoutes = require('./routes/ayurveda-prescriptions'); } catch(e) { console.warn('âš ï¸ ayurveda-prescriptions route missing'); ayurvedaPrescriptionRoutes = (req,res) => res.status(404).json({error:'Route not available'}); }
+try { ayurvedaReportRoutes = require('./routes/ayurveda-reports'); } catch(e) { console.warn('âš ï¸ ayurveda-reports route missing'); ayurvedaReportRoutes = (req,res) => res.status(404).json({error:'Route not available'}); }
+try { homeopathyRoutes = require('./routes/homeopathy'); } catch(e) { console.warn('âš ï¸ homeopathy route missing'); homeopathyRoutes = (req,res) => res.status(404).json({error:'Route not available'}); }
+try { homeopathyAdvancedRoutes = require('./routes/homeopathy-advanced'); } catch(e) { console.warn('âš ï¸ homeopathy-advanced route missing: ' + e.message); homeopathyAdvancedRoutes = (req,res) => res.status(404).json({error:'Route not available', details: e.message}); }
+try { homeopathyBookingRoutes = require('./routes/homeopathy-booking'); } catch(e) { console.warn('âš ï¸ homeopathy-booking route missing: ' + e.message); homeopathyBookingRoutes = (req,res) => res.status(404).json({error:'Route not available', details: e.message}); }
+try { homeopathySettlementRoutes = require('./routes/homeopathy-settlement'); } catch(e) { console.warn('âš ï¸ homeopathy-settlement route missing: ' + e.message); homeopathySettlementRoutes = (req,res) => res.status(404).json({error:'Route not available', details: e.message}); }
+try { insuranceRoutes = require('./routes/insurance'); } catch(e) { console.warn('âš ï¸ insurance route missing: ' + e.message); insuranceRoutes = (req,res) => res.status(404).json({error:'Route not available', details: e.message}); }
+try { insuranceClaimsRoutes = require('./routes/insurance-claims'); } catch(e) { console.warn('âš ï¸ insurance-claims route missing'); insuranceClaimsRoutes = (req,res) => res.status(404).json({error:'Route not available'}); }
+try { insuranceOnboardingRoutes = require('./routes/insurance-onboarding'); } catch(e) { console.warn('âš ï¸ insurance-onboarding route missing'); insuranceOnboardingRoutes = (req,res) => res.status(404).json({error:'Route not available'}); }
+try { insuranceOnboardingRoutes = require('./routes/insurance-onboarding'); } catch(e) { console.warn('âš ï¸ insurance-onboarding route missing'); insuranceOnboardingRoutes = (req,res) => res.status(404).json({error:'Route not available'}); }
+try { insuranceCompanyRoutes = require('./routes/insurance-company'); } catch(e) { console.warn('âš ï¸ insurance-company route missing'); insuranceCompanyRoutes = (req,res) => res.status(404).json({error:'Route not available'}); }
+try { insuranceAdminRoutes = require('./routes/insurance-admin'); } catch(e) { console.warn('âš ï¸ insurance-admin route missing'); insuranceAdminRoutes = (req,res) => res.status(404).json({error:'Route not available'}); }
+try { insuranceAllTabsRoutes = require('./routes/insurance-all-tabs'); } catch(e) { console.warn('âš ï¸ insurance-all-tabs route missing: ' + e.message); insuranceAllTabsRoutes = (req,res) => res.status(404).json({error:'Route not available', details: e.message}); }
+try { var insuranceMarketplaceRoutes = require('./routes/insurance-marketplace'); } catch(e) { console.warn('âš ï¸ insurance-marketplace route missing: ' + e.message); insuranceMarketplaceRoutes = (req,res) => res.status(404).json({error:'Route not available', details: e.message}); }
+try { var insuranceAdminPlansRoutes = require('./routes/insurance-admin-plans'); } catch(e) { console.warn('âš ï¸ insurance-admin-plans route missing: ' + e.message); insuranceAdminPlansRoutes = (req,res) => res.status(404).json({error:'Route not available', details: e.message}); }
+try { var insurancePolicyCenterRoutes = require('./routes/insurance-policy-center'); } catch(e) { console.warn('âš ï¸ insurance-policy-center route missing: ' + e.message); insurancePolicyCenterRoutes = (req,res) => res.status(404).json({error:'Route not available', details: e.message}); }
+try { var insurancePreAuthRoutes = require('./routes/insurance-preauth'); } catch(e) { console.warn('âš ï¸ insurance-preauth route missing: ' + e.message); insurancePreAuthRoutes = (req,res) => res.status(404).json({error:'Route not available', details: e.message}); }
+try { otpRoutes = require('./routes/otp'); } catch(e) { console.warn('âš ï¸ otp route missing'); otpRoutes = (req,res) => res.status(404).json({error:'Route not available'}); }
+try { corporateRoutes = require('./routes/corporate'); } catch(e) { console.warn('âš ï¸ corporate route missing'); corporateRoutes = (req,res) => res.status(404).json({error:'Route not available'}); }
+try { corporateBillingRoutes = require('./routes/corporate-billing'); } catch(e) { console.warn('âš ï¸ corporate-billing route missing'); corporateBillingRoutes = (req,res) => res.status(404).json({error:'Route not available'}); }
+try { corporateHubRoutes = require('./routes/corporateHub'); } catch(e) { console.warn('âš ï¸ corporateHub route missing'); corporateHubRoutes = (req,res) => res.status(404).json({error:'Route not available'}); }
+try { mentalHealthRoutes = require('./routes/mentalhealth'); } catch(e) { console.warn('âš ï¸ mentalhealth route missing'); mentalHealthRoutes = (req,res) => res.status(404).json({error:'Route not available'}); }
+try { mentalHealthTherapistRoutes = require('./routes/mentalhealth-therapist'); } catch(e) { console.warn('âš ï¸ mentalhealth-therapist route missing'); mentalHealthTherapistRoutes = (req,res) => res.status(404).json({error:'Route not available'}); }
+try { mentalHealthAdminRoutes = require('./routes/mentalhealth-admin'); } catch(e) { console.warn('âš ï¸ mentalhealth-admin route missing'); mentalHealthAdminRoutes = (req,res) => res.status(404).json({error:'Route not available'}); }
+try { mentalHealthPayoutRoutes = require('./routes/mentalhealth-payout'); } catch(e) { console.warn('âš ï¸ mentalhealth-payout route missing'); mentalHealthPayoutRoutes = (req,res) => res.status(404).json({error:'Route not available'}); }
+try { mentalHealthEarningsRoutes = require('./routes/mentalhealth-earnings'); } catch(e) { console.warn('âš ï¸ mentalhealth-earnings route missing'); mentalHealthEarningsRoutes = (req,res) => res.status(404).json({error:'Route not available'}); }
+try { onlineDoctorRoutes = require('./routes/onlineDoctor'); } catch(e) { console.warn('âš ï¸ onlineDoctor route missing'); onlineDoctorRoutes = (req,res) => res.status(404).json({error:'Route not available'}); }
+try { hospitalStatusRoutes = require('./routes/hospitalStatus'); } catch(e) { console.warn('âš ï¸ hospitalStatus route missing'); hospitalStatusRoutes = (req,res) => res.status(404).json({error:'Route not available'}); }
+try { globalSearchRoutes = require('./routes/globalSearch'); } catch(e) { console.warn('âš ï¸ globalSearch route missing'); globalSearchRoutes = (req,res) => res.status(404).json({error:'Route not available'}); }
+try { employeePortalRoutes = require('./routes/employeePortal'); } catch(e) { console.warn('âš ï¸ employeePortal route missing'); employeePortalRoutes = (req,res) => res.status(404).json({error:'Route not available'}); }
+try { discountRoutes = require('./routes/discounts'); } catch(e) { console.warn('âš ï¸ discounts route missing: ' + e.message); discountRoutes = (req,res) => res.status(404).json({error:'Route not available'}); }
 
 // ============================================
 // AI ROUTER (18 Agents)
@@ -710,7 +709,7 @@ capabilityRegistry.register(frontendSyncAgent);
 const supervisorAgent = new SupervisorAgent(providerManager);
 capabilityRegistry.register(supervisorAgent);
 
-console.log('🤖 AI Router initialized with 27 agents (18 Business + 5 Engineering + 4 Support)');
+console.log('ðŸ¤– AI Router initialized with 27 agents (18 Business + 5 Engineering + 4 Support)');
 
 // ============================================
 // AI ROUTES
@@ -893,13 +892,13 @@ app.get('/api/debug/routes', authenticateAdmin, (req, res) => {
   res.json({ success: true, results });
 });
 
-console.log('🤖 AI Routes loaded:');
-console.log('   📡 POST /api/ai/route        - Process AI request');
-console.log('   📋 GET  /api/ai/agents       - List all agents');
-console.log('   📋 GET  /api/ai/agents/:id   - Get agent details');
-console.log('   🩺 GET  /api/ai/health       - AI system health');
-console.log('   💰 GET  /api/ai/cost         - AI cost tracking');
-console.log('   🐛 GET  /api/debug/routes    - Debug route loading');
+console.log('ðŸ¤– AI Routes loaded:');
+console.log('   ðŸ“¡ POST /api/ai/route        - Process AI request');
+console.log('   ðŸ“‹ GET  /api/ai/agents       - List all agents');
+console.log('   ðŸ“‹ GET  /api/ai/agents/:id   - Get agent details');
+console.log('   ðŸ©º GET  /api/ai/health       - AI system health');
+console.log('   ðŸ’° GET  /api/ai/cost         - AI cost tracking');
+console.log('   ðŸ› GET  /api/debug/routes    - Debug route loading');
 // ============================================
 // ROUTE MOUNTING
 // ============================================
@@ -929,7 +928,6 @@ app.use('/api/lender/auth', lenderAuthRoutes);
 app.use('/api/lender', lenderRoutes);
 app.use('/api/admin/lenders', adminLenderRoutes);
 app.use('/api/loan/patient', loanPatientRoutes);
-app.use('/api/loan/lender', loanLenderRoutes);
 app.use('/api/loan/admin', loanAdminRoutes);
 app.use('/api/loan/webhook', loanWebhookRoutes);
 app.use('/api/loan/v2', require('./routes/loanRoutes')); 
@@ -948,18 +946,18 @@ app.use('/api/homeopathy/bookings', homeopathyBookingRoutes);
 app.use('/api/homeopathy/settlements', homeopathySettlementRoutes);
 app.use('/api/homeopathy', homeopathyAdvancedRoutes);
 
-// ⚠️ LEGACY — mounted under different prefix to avoid path collisions.
+// âš ï¸ LEGACY â€” mounted under different prefix to avoid path collisions.
 // Still holds /doctor/dashboard/:id, /review (POST), /corporate/* (v1).
 // Once homeopathy-advanced.js has all routes and frontend is migrated,
 // delete this line + archive routes/homeopathy.js.
 app.use('/api/homeopathy-legacy', homeopathyRoutes);
 
-// Insurance admin — MUST come before /api/insurance to avoid shadowing
+// Insurance admin â€” MUST come before /api/insurance to avoid shadowing
 app.use('/api/insurance-admin', insuranceAdminRoutes);
 app.use('/api/admin/insurance', insuranceAdminRoutes);
 app.use('/api/insurance/admin', insuranceAdminRoutes);
 
-// ✅ More specific paths FIRST — prevent route shadowing
+// âœ… More specific paths FIRST â€” prevent route shadowing
 app.use('/api/insurance/company', insuranceOnboardingRoutes);
 app.use('/api/insurance/company', insuranceCompanyRoutes);
 
@@ -1340,7 +1338,7 @@ app.get('/api/seed-tests', authenticateAdmin, async (req, res) => {
 
 // ============================================
 // ADMIN: Backfill payout cities (one-time migration tool)
-// Safe to run multiple times — idempotent
+// Safe to run multiple times â€” idempotent
 // ============================================
 app.post('/api/admin/backfill-payout-cities', (req, res, next) => {
   const key = req.headers['x-admin-key'];
@@ -1447,7 +1445,7 @@ app.use((err, req, res, next) => {
 const DB_URI = process.env.DB_URI || process.env.MONGODB_URI || 'mongodb://localhost:27017/hospital_db';
 mongoose.connect(DB_URI)
   .then(() => {
-    console.log('✅ MongoDB connected');
+    console.log('âœ… MongoDB connected');
     [
       './models/User',
       './models/InsuranceCompany',
@@ -1462,9 +1460,9 @@ mongoose.connect(DB_URI)
     ].forEach((p) => {
       try { require(p); } catch (e) { console.warn('[startup] model load failed:', p, e.message); }
     });
-  })                                                         // ← this closes .then
+  })                                                         // â† this closes .then
   .catch(err => {
-    console.error('❌ MongoDB connection error:', err.message);
+    console.error('âŒ MongoDB connection error:', err.message);
   });
 
 // ============================================
@@ -1476,84 +1474,84 @@ const maintenanceEnabled = String(process.env.AUTO_MAINTENANCE || 'false').toLow
 const maintenanceUrl = process.env.INTERNAL_AI_SUPERVISOR_URL || `http://127.0.0.1:${process.env.PORT || 5001}/api/ai/supervisor`;
 if (maintenanceEnabled) setInterval(async () => {
   try {
-    console.log('🤖 AUTO-MAINTENANCE: Running tests...');
+    console.log('ðŸ¤– AUTO-MAINTENANCE: Running tests...');
     await axios.post(maintenanceUrl, { task: 'run_all_tests' }, { timeout: 60000 });
-    console.log('✅ AUTO-MAINTENANCE: Tests complete');
+    console.log('âœ… AUTO-MAINTENANCE: Tests complete');
   } catch(e) {
-    console.log('⚠️ AUTO-MAINTENANCE: ' + e.message);
+    console.log('âš ï¸ AUTO-MAINTENANCE: ' + e.message);
   }
 }, maintenanceIntervalMs);
-console.log(maintenanceEnabled ? `🕐 Auto-maintenance scheduled every ${Math.round(maintenanceIntervalMs / 60000)} minutes` : '🕐 Auto-maintenance disabled by default');
+console.log(maintenanceEnabled ? `ðŸ• Auto-maintenance scheduled every ${Math.round(maintenanceIntervalMs / 60000)} minutes` : 'ðŸ• Auto-maintenance disabled by default');
 
 // ============================================
 // SERVER START
 // ============================================
 const PORT = process.env.PORT || 5001;
 server.listen(PORT, () => {
-  console.log('═'.repeat(55));
-  console.log('🚀 HealthCare Hub Server Started');
-  console.log('═'.repeat(55));
-  console.log(`📍 Port: ${PORT}`);
-  console.log(`🌐 Environment: ${process.env.NODE_ENV || 'development'}`);
-  console.log(`🔌 WebSocket: ${io ? 'Active' : 'Disabled'}`);
-  console.log(`📍 Redis: ${redis ? 'Connected' : 'Unavailable'}`);
-  console.log('─'.repeat(55));
-  console.log('📦 Modules Loaded:');
-  console.log('─'.repeat(55));
-  console.log('🏥  Hospitals            → /api/hospitals/*');
-  console.log('🏥  Hospital Provider     → /api/hospitals/provider/*');
-  console.log('🏥  Hospital Status       → /api/hospital-status/*');
-  console.log('🚑  Ambulance (v3.0)      → /api/ambulance/*');
-  console.log('🏠  Caregivers            → /api/caregivers/*');
-  console.log('🔬  Diagnostics           → /api/diagnostics/*');
-  console.log('🧘  Ayurveda              → /api/ayurveda/*');
-  console.log('🌿  Homeopathy            → /api/homeopathy/*');
-  console.log('🛡️  Insurance             → /api/insurance/*');
-  console.log('🛡️  Insurance Admin       → /api/insurance-admin/*');
-  console.log('🏢  Corporate             → /api/corporate/*');
-  console.log('🧠  Mental Health         → /api/mentalhealth/*');
-  console.log('📱  Online Doctor         → /api/online-doctor/*');
-  console.log('💰  Loans                 → /api/loan/*');
-  console.log('💰  Lenders               → /api/lender/*');
-  console.log('💳  Payments              → /api/payment/*');
-  console.log('📋  Bookings              → /api/bookings/*');
-  console.log('⭐  Reviews               → /api/reviews/*');
-  console.log('📱  OTP                   → /api/otp/*');
-  console.log('🔧  Admin                 → /api/admin/*');
-  console.log('🔍  Global Search         → /api/search/*');
-  console.log('👨‍💼 Employee Portal       → /api/employee/*');
-  console.log('─'.repeat(55));
-  console.log('🆕 New Feature: Hospital Green Light System');
-  console.log('   🟢 Accepting  🟡 Limited  🔴 Full  ❓ Unknown');
-  console.log('   📱 WhatsApp tap update (1 second, free)');
-  console.log('   ⏰ Auto-request at 8AM, 2PM, 8PM');
-  console.log('   🕐 Auto-expire after 4 hours');
-  console.log('─'.repeat(55));
-  console.log('🔌 Real-time Features:');
-  console.log('   🚑 Driver Tracking (5s updates)');
-  console.log('   🏠 Caregiver Tracking (2min updates)');
-  console.log('   🔬 Phlebotomist Tracking');
-  console.log('   🏥 Hospital Bed Updates');
-  console.log('   👨‍💼 Admin Live Monitoring');
-  console.log('─'.repeat(55));
-  console.log('✅ All modules loaded successfully!');
-  console.log('═'.repeat(55));
+  console.log('â•'.repeat(55));
+  console.log('ðŸš€ HealthCare Hub Server Started');
+  console.log('â•'.repeat(55));
+  console.log(`ðŸ“ Port: ${PORT}`);
+  console.log(`ðŸŒ Environment: ${process.env.NODE_ENV || 'development'}`);
+  console.log(`ðŸ”Œ WebSocket: ${io ? 'Active' : 'Disabled'}`);
+  console.log(`ðŸ“ Redis: ${redis ? 'Connected' : 'Unavailable'}`);
+  console.log('â”€'.repeat(55));
+  console.log('ðŸ“¦ Modules Loaded:');
+  console.log('â”€'.repeat(55));
+  console.log('ðŸ¥  Hospitals            â†’ /api/hospitals/*');
+  console.log('ðŸ¥  Hospital Provider     â†’ /api/hospitals/provider/*');
+  console.log('ðŸ¥  Hospital Status       â†’ /api/hospital-status/*');
+  console.log('ðŸš‘  Ambulance (v3.0)      â†’ /api/ambulance/*');
+  console.log('ðŸ   Caregivers            â†’ /api/caregivers/*');
+  console.log('ðŸ”¬  Diagnostics           â†’ /api/diagnostics/*');
+  console.log('ðŸ§˜  Ayurveda              â†’ /api/ayurveda/*');
+  console.log('ðŸŒ¿  Homeopathy            â†’ /api/homeopathy/*');
+  console.log('ðŸ›¡ï¸  Insurance             â†’ /api/insurance/*');
+  console.log('ðŸ›¡ï¸  Insurance Admin       â†’ /api/insurance-admin/*');
+  console.log('ðŸ¢  Corporate             â†’ /api/corporate/*');
+  console.log('ðŸ§   Mental Health         â†’ /api/mentalhealth/*');
+  console.log('ðŸ“±  Online Doctor         â†’ /api/online-doctor/*');
+  console.log('ðŸ’°  Loans                 â†’ /api/loan/*');
+  console.log('ðŸ’°  Lenders               â†’ /api/lender/*');
+  console.log('ðŸ’³  Payments              â†’ /api/payment/*');
+  console.log('ðŸ“‹  Bookings              â†’ /api/bookings/*');
+  console.log('â­  Reviews               â†’ /api/reviews/*');
+  console.log('ðŸ“±  OTP                   â†’ /api/otp/*');
+  console.log('ðŸ”§  Admin                 â†’ /api/admin/*');
+  console.log('ðŸ”  Global Search         â†’ /api/search/*');
+  console.log('ðŸ‘¨â€ðŸ’¼ Employee Portal       â†’ /api/employee/*');
+  console.log('â”€'.repeat(55));
+  console.log('ðŸ†• New Feature: Hospital Green Light System');
+  console.log('   ðŸŸ¢ Accepting  ðŸŸ¡ Limited  ðŸ”´ Full  â“ Unknown');
+  console.log('   ðŸ“± WhatsApp tap update (1 second, free)');
+  console.log('   â° Auto-request at 8AM, 2PM, 8PM');
+  console.log('   ðŸ• Auto-expire after 4 hours');
+  console.log('â”€'.repeat(55));
+  console.log('ðŸ”Œ Real-time Features:');
+  console.log('   ðŸš‘ Driver Tracking (5s updates)');
+  console.log('   ðŸ  Caregiver Tracking (2min updates)');
+  console.log('   ðŸ”¬ Phlebotomist Tracking');
+  console.log('   ðŸ¥ Hospital Bed Updates');
+  console.log('   ðŸ‘¨â€ðŸ’¼ Admin Live Monitoring');
+  console.log('â”€'.repeat(55));
+  console.log('âœ… All modules loaded successfully!');
+  console.log('â•'.repeat(55));
 });
 
 // ============================================
 // PROCESS HANDLERS
 // ============================================
 process.on('unhandledRejection', (err) => {
-  console.error('❌ Unhandled Rejection:', err.message);
+  console.error('âŒ Unhandled Rejection:', err.message);
 });
 
 process.on('uncaughtException', (err) => {
-  console.error('❌ Uncaught Exception:', err.message);
+  console.error('âŒ Uncaught Exception:', err.message);
   process.exit(1);
 });
 
 process.on('SIGTERM', () => {
-  console.log('👋 SIGTERM received. Shutting down gracefully...');
+  console.log('ðŸ‘‹ SIGTERM received. Shutting down gracefully...');
   if (redis) redis.disconnect();
   server.close(() => {
     console.log('Server closed');
@@ -1562,7 +1560,7 @@ process.on('SIGTERM', () => {
 });
 
 process.on('SIGINT', () => {
-  console.log('👋 SIGINT received. Shutting down gracefully...');
+  console.log('ðŸ‘‹ SIGINT received. Shutting down gracefully...');
   if (redis) redis.disconnect();
   server.close(() => {
     console.log('Server closed');
